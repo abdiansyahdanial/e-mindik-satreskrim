@@ -1,3 +1,4 @@
+import 'docx-preview/dist/docx-preview.css';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Printer, 
@@ -77,17 +78,22 @@ export default function OfficialDocPreview({
       }
 
       // 2. Render instan lembar Word asli via docx-preview ke canvas container
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
+      if (res.blob && containerRef.current) {
+        containerRef.current.innerHTML = ''; // Bersihkan kanvas sebelumnya
+
         await renderAsync(res.blob, containerRef.current, undefined, {
-          className: 'docx-preview-sheet',
+          className: 'docx-preview-doc',
           inWrapper: true,
           ignoreWidth: false,
           ignoreHeight: false,
+          ignoreFonts: false,
           breakPages: true,
           renderHeaders: true,
           renderFooters: true,
-          useBase64URL: true
+          renderFootnotes: true,
+          renderEndnotes: true,
+          useBase64URL: true,
+          experimental: true
         });
       }
     } catch (err) {
@@ -350,19 +356,12 @@ export default function OfficialDocPreview({
 
       {/* Main Word Canvas Container */}
       <div 
-        className="docx-canvas-container"
+        className="docx-preview-container"
         style={{
-          background: '#0f172a',
-          padding: '24px',
-          overflowX: 'auto',
-          overflowY: 'auto',
-          minHeight: '750px',
           width: '100%',
+          minHeight: '750px',
           borderRadius: 'var(--radius-lg)',
           boxSizing: 'border-box',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
           position: 'relative'
         }}
       >

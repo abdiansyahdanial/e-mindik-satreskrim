@@ -1,0 +1,84 @@
+/* docx-preview official & base stylesheet */
+.docx-wrapper {
+  background: transparent;
+  padding: 0;
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  width: 100%;
+}
+
+.docx-wrapper > section.docx,
+.docx-preview-doc-wrapper > section.docx-preview-doc {
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+  margin-bottom: 24px !important;
+  box-sizing: border-box !important;
+  border-radius: 2px !important;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+.docx,
+.docx-preview-doc {
+  color: #000000;
+  hyphens: auto;
+  text-underline-position: from-font;
+}
+
+section.docx > article,
+section.docx-preview-doc > article {
+  margin-bottom: auto;
+  z-index: 1;
+}
+
+section.docx > footer,
+section.docx-preview-doc > footer {
+  z-index: 1;
+}
+
+.docx table,
+.docx-preview-doc table {
+  border-collapse: collapse;
+}
+
+.docx table td,
+.docx table th,
+.docx-preview-doc table td,
+.docx-preview-doc table th {
+  vertical-align: top;
+}
+
+.docx p,
+.docx-preview-doc p {
+  margin: 0pt;
+  min-height: 1em;
+}
+
+.docx span,
+.docx-preview-doc span {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.docx a,
+.docx-preview-doc a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+.docx svg,
+.docx-preview-doc svg {
+  fill: transparent;
+}
+
+/* Memastikan gambar/logo muncul proporsional */
+.docx-wrapper img,
+.docx-preview-doc img,
+.docx-preview-doc-wrapper img {
+  display: inline-block !important;
+  visibility: visible !important;
+  max-width: 100% !important;
+}

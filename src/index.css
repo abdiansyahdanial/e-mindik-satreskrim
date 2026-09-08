@@ -1025,41 +1025,46 @@ p {
 /* =========================================================
    DOCX-PREVIEW WORD VIEWER CANVAS STYLING
    ========================================================= */
-.docx-canvas-container,
-.mindik-viewer-container {
-  background: #0f172a !important;
-  padding: 24px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
-  box-sizing: border-box;
+.docx-preview-container {
+  background-color: #1e293b;
+  padding: 32px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100%;
+  gap: 24px;
+}
+
+/* Lembaran halaman dokumen Word */
+.docx-preview-doc, 
+.docx-wrapper > section.docx,
+.docx-preview-doc-wrapper > section.docx-preview-doc {
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+  margin-bottom: 24px !important;
+  box-sizing: border-box !important;
+  border-radius: 2px !important;
+}
+
+/* Memastikan gambar/logo muncul proporsional */
+.docx-wrapper img, 
+.docx-preview-doc img,
+.docx-preview-doc-wrapper img {
+  display: inline-block !important;
+  visibility: visible !important;
 }
 
 /* Neutralize docx-preview wrapper background and center pages */
-.docx-preview-sheet-wrapper,
-.mindik-docx-render-wrapper {
+.docx-preview-doc-wrapper,
+.docx-wrapper,
+.docx-preview-sheet-wrapper {
   background: transparent !important;
   padding: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   width: 100% !important;
-}
-
-/* Individual rendered Word pages with neat paper shadow & original template margins */
-.docx-preview-sheet-wrapper > section.docx-preview-sheet,
-.mindik-docx-render-wrapper > section.mindik-docx-render {
-  background: #ffffff !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
-  margin-bottom: 24px !important;
-  border-radius: 2px !important;
-  box-sizing: border-box !important;
-}
-
-.docx-preview-sheet-wrapper > section.docx-preview-sheet:last-child,
-.mindik-docx-render-wrapper > section.mindik-docx-render:last-child {
-  margin-bottom: 0 !important;
 }
 
 /* Print optimizations for docx-preview */
@@ -1070,19 +1075,22 @@ p {
   .no-print, .toolbar, button, .zoom-controls, .app-sidebar, .app-navbar {
     display: none !important;
   }
+  .docx-preview-container,
   .docx-canvas-container,
   .mindik-viewer-container {
     background: transparent !important;
     padding: 0 !important;
     box-shadow: none !important;
   }
-  .docx-preview-sheet-wrapper,
-  .mindik-docx-render-wrapper {
+  .docx-preview-doc-wrapper,
+  .docx-wrapper,
+  .docx-preview-sheet-wrapper {
     background: transparent !important;
     padding: 0 !important;
   }
-  .docx-preview-sheet-wrapper > section.docx-preview-sheet,
-  .mindik-docx-render-wrapper > section.mindik-docx-render {
+  .docx-preview-doc,
+  .docx-wrapper > section.docx,
+  .docx-preview-doc-wrapper > section.docx-preview-doc {
     box-shadow: none !important;
     margin: 0 !important;
     border: none !important;
