@@ -188,7 +188,120 @@ export function buildDocxDataMap({ caseData = {}, formValues = {}, personnelList
   data['DOC_TARGET'] = formValues.DOC_TARGET || 'Kepala Kejaksaan Negeri Kolaka';
   data['DOC_TARGET_ADDR'] = formValues.DOC_TARGET_ADDR || 'Jl. Dr. Sutomo No. 5, Kolaka';
 
+  // 4. Aliases in snake_case & lowercase for flexible template compatibility
+  data['nomor_lp'] = data['CASE_NO_LP'];
+  data['no_lp'] = data['CASE_NO_LP'];
+  data['tindak_pidana'] = data['CASE_TINDAK_PIDANA'];
+  data['pasal_uu'] = data['CASE_PASAL_UU'];
+  data['pasal'] = data['CASE_PASAL'];
+  data['locus'] = data['CASE_LOCUS'];
+  data['tempus'] = data['CASE_TEMPUS'];
+  data['pelapor_name'] = data['CASE_PELAPOR_NAME'];
+  data['pelapor'] = data['CASE_PELAPOR_NAME'];
+  data['terlapor_name'] = data['CASE_TERLAPOR_NAME'];
+  data['tersangka'] = data['CASE_PERSON_NAMA'];
+  data['nama_tersangka'] = data['CASE_PERSON_NAMA'];
+  data['nik_tersangka'] = data['CASE_PERSON_NIK'];
+  data['umur_tersangka'] = data['CASE_PERSON_UMUR'];
+  data['agama_tersangka'] = data['CASE_PERSON_AGAMA'];
+  data['pekerjaan_tersangka'] = data['CASE_PERSON_PEKERJAAN'];
+  data['alamat_tersangka'] = data['CASE_PERSON_ALAMAT'];
+  data['jenis_kelamin_tersangka'] = data['CASE_PERSON_GENDER'];
+  data['ttl_tersangka'] = data['CASE_PERSON_POB_DOB'];
+
+  data['penyidik_1'] = data['PENYIDIK_1_NAMA'] || '-';
+  data['penyidik_1_nama'] = data['PENYIDIK_1_NAMA'] || '-';
+  data['penyidik_1_pangkat'] = data['PENYIDIK_1_PANGKAT'] || '-';
+  data['penyidik_1_nrp'] = data['PENYIDIK_1_NRP'] || '-';
+  data['penyidik_1_jabatan'] = data['PENYIDIK_1_JABATAN'] || '-';
+
+  data['penyidik_2'] = data['PENYIDIK_2_NAMA'] || '-';
+  data['penyidik_2_nama'] = data['PENYIDIK_2_NAMA'] || '-';
+  data['penyidik_2_pangkat'] = data['PENYIDIK_2_PANGKAT'] || '-';
+  data['penyidik_2_nrp'] = data['PENYIDIK_2_NRP'] || '-';
+
+  data['penyidik_3'] = data['PENYIDIK_3_NAMA'] || '-';
+  data['penyidik_4'] = data['PENYIDIK_4_NAMA'] || '-';
+  data['penyidik_5'] = data['PENYIDIK_5_NAMA'] || '-';
+
+  data['kasat_nama'] = data['ATASAN_NAMA'];
+  data['kasat_pangkat'] = data['ATASAN_PANGKAT'];
+  data['kasat_nrp'] = data['ATASAN_NRP'];
+  data['kasat_jabatan'] = data['ATASAN_JABATAN'];
+  data['atasan_nama'] = data['ATASAN_NAMA'];
+  data['atasan_pangkat'] = data['ATASAN_PANGKAT'];
+  data['atasan_nrp'] = data['ATASAN_NRP'];
+  data['atasan_jabatan'] = data['ATASAN_JABATAN'];
+
+  data['kanit_nama'] = data['KANIT_NAMA'];
+  data['kanit_pangkat'] = data['KANIT_PANGKAT'];
+  data['kanit_nrp'] = data['KANIT_NRP'];
+  data['kanit_jabatan'] = data['KANIT_JABATAN'];
+
+  data['nomor_surat'] = data['DOC_NO'];
+  data['doc_no'] = data['DOC_NO'];
+  data['tanggal_surat'] = data['DOC_DATE'];
+  data['doc_date'] = data['DOC_DATE'];
+  data['tempat_surat'] = data['DOC_LOCATION'];
+  data['doc_location'] = data['DOC_LOCATION'];
+  data['masa_berlaku'] = data['DOC_VALIDITY'];
+  data['doc_validity'] = data['DOC_VALIDITY'];
+  data['doc_target'] = data['DOC_TARGET'];
+  data['kepada_yth'] = data['DOC_TARGET'];
+  data['doc_target_addr'] = data['DOC_TARGET_ADDR'];
+  data['alamat_tujuan'] = data['DOC_TARGET_ADDR'];
+
+  // Clean all values: replace undefined, null, or string "null"/"undefined" with "" or "-"
+  Object.keys(data).forEach((k) => {
+    if (data[k] === null || data[k] === undefined || data[k] === 'null' || data[k] === 'undefined') {
+      data[k] = '';
+    }
+  });
+
   return data;
+}
+
+/**
+ * Replace placeholders like {nomor_lp}, {CASE_NO_LP}, {{pelapor_name}}, etc. in an HTML or text template string.
+ * Strictly avoids rendering literal 'null' or 'undefined'.
+ */
+export function replaceDynamicVariables(content = '', dataMap = {}) {
+  if (!content || typeof content !== 'string') return '';
+
+  return content.replace(/\{\{?\s*([a-zA-Z0-9_ -]+)\s*\}?\}/g, (match, rawKey) => {
+    const key = rawKey.trim();
+    if (!key) return '';
+
+    // 1. Direct match
+    if (dataMap[key] !== undefined && dataMap[key] !== null) {
+      const val = String(dataMap[key]);
+      return (val === 'null' || val === 'undefined') ? '' : val;
+    }
+
+    // 2. Uppercase match
+    const upperKey = key.toUpperCase().replace(/\s+/g, '_');
+    if (dataMap[upperKey] !== undefined && dataMap[upperKey] !== null) {
+      const val = String(dataMap[upperKey]);
+      return (val === 'null' || val === 'undefined') ? '' : val;
+    }
+
+    // 3. Lowercase match
+    const lowerKey = key.toLowerCase().replace(/\s+/g, '_');
+    if (dataMap[lowerKey] !== undefined && dataMap[lowerKey] !== null) {
+      const val = String(dataMap[lowerKey]);
+      return (val === 'null' || val === 'undefined') ? '' : val;
+    }
+
+    // 4. Case-insensitive key match in dataMap
+    const foundKey = Object.keys(dataMap).find(k => k.toLowerCase() === lowerKey);
+    if (foundKey && dataMap[foundKey] !== undefined && dataMap[foundKey] !== null) {
+      const val = String(dataMap[foundKey]);
+      return (val === 'null' || val === 'undefined') ? '' : val;
+    }
+
+    // Not found / empty -> return empty or strip, never 'null' or 'undefined'
+    return '-';
+  });
 }
 
 /**

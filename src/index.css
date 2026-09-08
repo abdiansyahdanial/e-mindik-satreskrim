@@ -783,102 +783,271 @@ p {
   text-align: center;
 }
 
+@page {
+  size: 215mm 330mm;
+  margin: 25mm 20mm 25mm 30mm;
+}
+
 @media print {
-  body {
-    background: #FFF !important;
+  body, html {
+    background: #fff !important;
+    color: #000 !important;
   }
   body::before {
     display: none !important;
   }
-  .app-sidebar, .app-navbar, .no-print {
+  .app-sidebar,
+  .app-navbar,
+  .no-print,
+  .toolbar,
+  button,
+  .action-buttons,
+  .zoom-controls {
     display: none !important;
   }
-  .app-main {
+  .app-main,
+  .main-content {
     margin: 0 !important;
     padding: 0 !important;
   }
-  .police-doc-paper {
+  .mindik-paper-container {
+    padding: 0 !important;
+    background: transparent !important;
     box-shadow: none !important;
-    padding: 20mm 15mm !important;
-    max-width: 100% !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  .mindik-paper-scale-wrapper {
+    transform: none !important;
     width: 100% !important;
+    height: auto !important;
+  }
+  .mindik-paper-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
   }
 }
 
 /* ============================================================
-   Genuine Mammoth .docx HTML Rendering Styles
+   Canvas & Dimensi Fisik Kertas F4 (Folio Polri 215mm x 330mm)
    ============================================================ */
-.docx-mammoth-content {
+.mindik-paper-container {
+  background: #1e293b;
+  padding: 32px 20px;
+  overflow-y: auto;
+  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: var(--radius-lg);
+  position: relative;
+  min-height: 700px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mindik-paper-scale-wrapper {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top center;
+  display: flex;
+  justify-content: center;
+}
+
+.mindik-paper-sheet {
+  width: 215mm;
+  min-height: 330mm;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  padding: 25mm 20mm 25mm 30mm; /* Top 25mm, Right 20mm, Bottom 25mm, Left 30mm (margin jilid) */
+  position: relative;
+  color: #000000;
+  margin: 0 auto;
+}
+
+/* ============================================================
+   Normalisasi Styling Konten Scoped (Anti-Berantakan)
+   ============================================================ */
+.mindik-paper-content {
   font-family: 'Bookman Old Style', 'Times New Roman', Georgia, serif;
-  font-size: 12pt;
-  line-height: 1.45;
-  color: #111827;
+  font-size: 11.5pt;
+  line-height: 1.4;
+  text-align: justify;
+  color: #000000;
   word-wrap: break-word;
 }
 
-.docx-mammoth-content p {
-  margin: 0 0 8px 0;
+.mindik-paper-content * {
+  box-sizing: border-box;
+}
+
+/* Kop Surat Polri */
+.mindik-paper-content .kop-surat-polri {
+  text-align: center;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #000000;
+}
+
+.mindik-paper-content .kop-instansi {
+  font-weight: 700;
+  font-size: 11pt;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.mindik-paper-content .kop-address {
+  font-size: 9pt;
+  font-style: italic;
+  margin-top: 3px;
+  line-height: 1.2;
+}
+
+/* Pro Justitia & Judul */
+.mindik-paper-content .pro-justitia {
+  text-align: center;
+  font-weight: 700;
+  font-size: 12pt;
+  letter-spacing: 0.12em;
+  margin: 14px 0 10px;
+  text-decoration: underline;
+}
+
+.mindik-paper-content .doc-title-box {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.mindik-paper-content .doc-title-box .doc-title {
+  font-weight: 700;
+  font-size: 13pt;
+  text-transform: uppercase;
+  text-decoration: underline;
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.mindik-paper-content .doc-title-box .doc-number {
+  font-size: 11pt;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Paragraphs & Typo */
+.mindik-paper-content p {
+  text-align: justify;
+  line-height: 1.45;
+  margin: 0 0 10px 0;
+  color: #000000;
+}
+
+.mindik-paper-content p.indent {
+  text-indent: 32px;
+}
+
+/* Data Table Aligned (Titik Dua Sejajar Rapi) */
+.mindik-paper-content table.data-table-aligned,
+.mindik-paper-content table.mindik-data-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  border: none !important;
+  margin: 8px 0;
+}
+
+.mindik-paper-content table.data-table-aligned td,
+.mindik-paper-content table.mindik-data-table td {
+  border: none !important;
+  padding: 3px 0;
+  vertical-align: top;
+  font-size: 11.5pt;
+  line-height: 1.35;
+  color: #000000;
+}
+
+.mindik-paper-content table.data-table-aligned td.col-label {
+  width: 155px;
+  font-weight: 500;
+}
+
+.mindik-paper-content table.data-table-aligned td.col-colon {
+  width: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.mindik-paper-content table.data-table-aligned td.col-value {
+  width: auto;
+}
+
+/* Lists */
+.mindik-paper-content ol,
+.mindik-paper-content ul {
+  padding-left: 26px;
+  margin: 6px 0 10px 0;
+}
+
+.mindik-paper-content li {
+  text-align: justify;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  padding-left: 4px;
+}
+
+/* Signatures */
+.mindik-paper-content .signature-section {
+  margin-top: 28px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mindik-paper-content .signature-box {
+  width: 280px;
+  text-align: center;
+  font-size: 11pt;
+  line-height: 1.35;
+}
+
+.mindik-paper-content .signature-space {
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mammoth parsed docx styling inside mindik-paper-sheet */
+.mindik-paper-sheet .docx-mammoth-content {
+  font-family: 'Bookman Old Style', 'Times New Roman', Georgia, serif;
+  font-size: 11.5pt;
+  line-height: 1.4;
+  color: #000000;
   text-align: justify;
 }
 
-.docx-mammoth-content h1,
-.docx-mammoth-content h2,
-.docx-mammoth-content h3 {
-  color: #000;
-  margin: 12px 0 6px 0;
-  font-weight: 700;
-  text-align: center;
-}
-
-.docx-mammoth-content h1.police-doc-title {
-  text-transform: uppercase;
-  text-decoration: underline;
-  font-size: 14pt;
-  letter-spacing: 0.05em;
-}
-
-.docx-mammoth-content table {
+.mindik-paper-sheet .docx-mammoth-content table {
   width: 100%;
   border-collapse: collapse;
-  margin: 10px 0;
+  margin: 8px 0;
+}
+
+.mindik-paper-sheet .docx-mammoth-content table td,
+.mindik-paper-sheet .docx-mammoth-content table th {
+  padding: 3px 5px;
+  vertical-align: top;
   font-size: 11pt;
 }
 
-.docx-mammoth-content table td,
-.docx-mammoth-content table th {
-  padding: 4px 6px;
-  vertical-align: top;
-}
-
-.docx-mammoth-content table.mammoth-doc-table td,
-.docx-mammoth-content table.mammoth-doc-table th {
-  border: 1px solid #1F2937;
-}
-
-.docx-mammoth-content img {
+.mindik-paper-sheet .docx-mammoth-content img {
   max-width: 100%;
   height: auto;
   display: inline-block;
 }
 
-.docx-mammoth-content ol,
-.docx-mammoth-content ul {
-  padding-left: 24px;
-  margin: 6px 0;
-}
-
-.docx-mammoth-content li {
-  margin-bottom: 4px;
-  text-align: justify;
-}
-
-.docx-mammoth-content strong,
-.docx-mammoth-content b {
-  font-weight: 700;
-  color: #000;
-}
-
-.docx-mammoth-content u {
-  text-decoration: underline;
-}
 
