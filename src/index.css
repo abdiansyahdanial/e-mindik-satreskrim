@@ -1025,12 +1025,19 @@ p {
 /* =========================================================
    DOCX-PREVIEW WORD VIEWER CANVAS STYLING
    ========================================================= */
+.docx-canvas-container,
 .mindik-viewer-container {
-  background: #1e293b;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  background: #0f172a !important;
+  padding: 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
 }
 
-/* Override default gray background of docx-preview wrapper */
+/* Neutralize docx-preview wrapper background and center pages */
+.docx-preview-sheet-wrapper,
 .mindik-docx-render-wrapper {
   background: transparent !important;
   padding: 0 !important;
@@ -1040,15 +1047,17 @@ p {
   width: 100% !important;
 }
 
-/* Individual rendered Word pages (F4 / A4 / etc) */
+/* Individual rendered Word pages with neat paper shadow & original template margins */
+.docx-preview-sheet-wrapper > section.docx-preview-sheet,
 .mindik-docx-render-wrapper > section.mindik-docx-render {
   background: #ffffff !important;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35) !important;
-  margin-bottom: 28px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+  margin-bottom: 24px !important;
   border-radius: 2px !important;
-  box-sizing: border-box;
+  box-sizing: border-box !important;
 }
 
+.docx-preview-sheet-wrapper > section.docx-preview-sheet:last-child,
 .mindik-docx-render-wrapper > section.mindik-docx-render:last-child {
   margin-bottom: 0 !important;
 }
@@ -1061,15 +1070,18 @@ p {
   .no-print, .toolbar, button, .zoom-controls, .app-sidebar, .app-navbar {
     display: none !important;
   }
+  .docx-canvas-container,
   .mindik-viewer-container {
     background: transparent !important;
     padding: 0 !important;
     box-shadow: none !important;
   }
+  .docx-preview-sheet-wrapper,
   .mindik-docx-render-wrapper {
     background: transparent !important;
     padding: 0 !important;
   }
+  .docx-preview-sheet-wrapper > section.docx-preview-sheet,
   .mindik-docx-render-wrapper > section.mindik-docx-render {
     box-shadow: none !important;
     margin: 0 !important;
