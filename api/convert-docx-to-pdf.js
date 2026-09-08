@@ -488,6 +488,19 @@ export async function convertDocxBufferToPdf(docxBuffer) {
 }
 
 /**
+ * Vercel Serverless Function Configuration
+ * Allow up to 20MB request/response payloads to prevent 413 Payload Too Large
+ */
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '20mb',
+    },
+    responseLimit: '20mb',
+  },
+};
+
+/**
  * Vercel Serverless Function Handler
  */
 export default async function handler(req, res) {
@@ -499,18 +512,71 @@ export default async function handler(req, res) {
   try {
     let docxBuffer = null;
 
-    if (req.body && req.body.docxBase64) {
-      docxBuffer = Buffer.from(req.body.docxBase64, 'base64');
-    } else if (Buffer.isBuffer(req.body)) {
-      docxBuffer = req.body;
-    } else if (typeof req.body === 'string') {
-      docxBuffer = Buffer.from(req.body, 'base64');
-    } else {
-      const chunks = [];
-      for await (const chunk of req) {
-        chunks.push(chunk);
+    // 1. Check if payload contains Supabase Storage path/URL (Fallback direct from Supabase)
+    let jsonBody = null;
+    if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+      jsonBody = req.body;
+    } else if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+      try {
+        jsonBody = JSON.parse(req.body);
+      } catch {
+        jsonBody = null;
       }
-      docxBuffer = Buffer.concat(chunks);
+    }
+
+    if (jsonBody && (jsonBody.storagePath || jsonBody.fileUrl)) {
+      const targetUrl = jsonBody.fileUrl || (
+        jsonBody.storagePath.startsWith('http')
+          ? jsonBody.storagePath
+          : `https://ncsjgjftybxpxuixgumm.supabase.co/storage/v1/object/public/${jsonBody.storagePath.includes('/') ? jsonBody.storagePath : 'templates/' + jsonBody.storagePath}`
+      );
+      const sRes = await fetch(targetUrl);
+      if (!sRes.ok) {
+        throw new Error(`Gagal mengunduh file dari Supabase Storage (${sRes.status}): ${sRes.statusText}`);
+      }
+      const ab = await sRes.arrayBuffer();
+      docxBuffer = Buffer.from(ab);
+    } else if (jsonBody && jsonBody.docxBase64) {
+      docxBuffer = Buffer.from(jsonBody.docxBase64, 'base64');
+    }
+
+    // 2. If not parsed from JSON, read raw buffer / FormData / multipart stream
+    if (!docxBuffer) {
+      let rawBuffer = null;
+      if (Buffer.isBuffer(req.body)) {
+        rawBuffer = req.body;
+      } else if (typeof req.body === 'string') {
+        rawBuffer = Buffer.from(req.body, 'binary');
+      } else {
+        const chunks = [];
+        for await (const chunk of req) {
+          chunks.push(chunk);
+        }
+        rawBuffer = Buffer.concat(chunks);
+      }
+
+      if (rawBuffer && rawBuffer.length > 0) {
+        // Extract pure ZIP bytes (DOCX magic: PK\x03\x04 = 0x50 0x4B 0x03 0x04)
+        const zipMagic = Buffer.from([0x50, 0x4B, 0x03, 0x04]);
+        const zipIndex = rawBuffer.indexOf(zipMagic);
+
+        if (zipIndex !== -1) {
+          const endOfCentralDir = Buffer.from([0x50, 0x4B, 0x05, 0x06]);
+          const eocdIndex = rawBuffer.lastIndexOf(endOfCentralDir);
+
+          if (eocdIndex !== -1 && eocdIndex >= zipIndex) {
+            const commentLength = (rawBuffer.length > eocdIndex + 21)
+              ? rawBuffer.readUInt16LE(eocdIndex + 20)
+              : 0;
+            const zipLength = (eocdIndex + 22 + commentLength) - zipIndex;
+            docxBuffer = rawBuffer.subarray(zipIndex, zipIndex + zipLength);
+          } else {
+            docxBuffer = rawBuffer.subarray(zipIndex);
+          }
+        } else {
+          docxBuffer = rawBuffer;
+        }
+      }
     }
 
     if (!docxBuffer || docxBuffer.length === 0) {

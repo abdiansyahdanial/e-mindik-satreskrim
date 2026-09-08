@@ -510,27 +510,52 @@ export async function generateDocxBlob({
 
 /**
  * Send DOCX blob to conversion endpoint /api/convert-docx-to-pdf and return PDF Blob.
+ * Menggunakan FormData / binary multipart agar payload tidak membengkak karena Base64,
+ * dengan fallback ke Supabase Storage path jika payload terkena batas Vercel.
  */
-export async function convertDocxToPdf(docxBlob) {
-  if (!docxBlob) throw new Error('Blob .docx tidak valid.');
-
-  const arrayBuffer = await docxBlob.arrayBuffer();
-  // Safe base64 conversion for binary buffer
-  const bytes = new Uint8Array(arrayBuffer);
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+export async function convertDocxToPdf(docxBlob, options = {}) {
+  if (!docxBlob && !options.storagePath && !options.fileUrl) {
+    throw new Error('Blob .docx atau storagePath tidak valid.');
   }
-  const base64String = btoa(binary);
 
-  const response = await fetch('/api/convert-docx-to-pdf', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ docxBase64: base64String })
-  });
+  let response;
+
+  // 1. Jika storagePath atau fileUrl dikirim (Jalur Supabase Storage langsung)
+  if (options.storagePath || options.fileUrl) {
+    response = await fetch('/api/convert-docx-to-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        storagePath: options.storagePath,
+        fileUrl: options.fileUrl
+      })
+    });
+  } else {
+    // 2. Kirim menggunakan FormData / binary multipart murni
+    const formData = new FormData();
+    formData.append('file', docxBlob, 'document.docx');
+
+    response = await fetch('/api/convert-docx-to-pdf', {
+      method: 'POST',
+      body: formData
+    });
+
+    // 3. Fallback jika masih terkena batas 413 (Payload Too Large) dan ada path file Supabase
+    if (response.status === 413 && options.fallbackStoragePath) {
+      console.warn('FormData payload terkena batas 413, beralih ke jalur Supabase Storage path:', options.fallbackStoragePath);
+      response = await fetch('/api/convert-docx-to-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          storagePath: options.fallbackStoragePath
+        })
+      });
+    }
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -566,7 +591,9 @@ export async function generatePdfBlob({
     };
   }
 
-  const pdfBlob = await convertDocxToPdf(docxRes.blob);
+  const pdfBlob = await convertDocxToPdf(docxRes.blob, {
+    fallbackStoragePath: template?.file_path
+  });
   const pdfBlobUrl = URL.createObjectURL(pdfBlob);
 
   return {
