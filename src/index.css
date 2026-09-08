@@ -1022,32 +1022,61 @@ p {
   justify-content: center;
 }
 
-/* Mammoth parsed docx styling inside mindik-paper-sheet */
-.mindik-paper-sheet .docx-mammoth-content {
-  font-family: 'Bookman Old Style', 'Times New Roman', Georgia, serif;
-  font-size: 11.5pt;
-  line-height: 1.4;
-  color: #000000;
-  text-align: justify;
+/* =========================================================
+   DOCX-PREVIEW WORD VIEWER CANVAS STYLING
+   ========================================================= */
+.mindik-viewer-container {
+  background: #1e293b;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-.mindik-paper-sheet .docx-mammoth-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 8px 0;
+/* Override default gray background of docx-preview wrapper */
+.mindik-docx-render-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  width: 100% !important;
 }
 
-.mindik-paper-sheet .docx-mammoth-content table td,
-.mindik-paper-sheet .docx-mammoth-content table th {
-  padding: 3px 5px;
-  vertical-align: top;
-  font-size: 11pt;
+/* Individual rendered Word pages (F4 / A4 / etc) */
+.mindik-docx-render-wrapper > section.mindik-docx-render {
+  background: #ffffff !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35) !important;
+  margin-bottom: 28px !important;
+  border-radius: 2px !important;
+  box-sizing: border-box;
 }
 
-.mindik-paper-sheet .docx-mammoth-content img {
-  max-width: 100%;
-  height: auto;
-  display: inline-block;
+.mindik-docx-render-wrapper > section.mindik-docx-render:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Print optimizations for docx-preview */
+@media print {
+  body, html {
+    background: #ffffff !important;
+  }
+  .no-print, .toolbar, button, .zoom-controls, .app-sidebar, .app-navbar {
+    display: none !important;
+  }
+  .mindik-viewer-container {
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  .mindik-docx-render-wrapper {
+    background: transparent !important;
+    padding: 0 !important;
+  }
+  .mindik-docx-render-wrapper > section.mindik-docx-render {
+    box-shadow: none !important;
+    margin: 0 !important;
+    border: none !important;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
 }
 
 

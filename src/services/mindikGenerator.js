@@ -445,3 +445,66 @@ export async function renderDocxToHtml({
   };
 }
 
+/**
+ * Generate processed .docx Blob directly from Supabase Storage with dynamic data injected.
+ * Used by docx-preview to render the document in its native Word layout.
+ */
+export async function generateDocxBlob({
+  template,
+  caseData,
+  formValues = {},
+  personnelList = []
+}) {
+  if (!template) {
+    throw new Error('Template dokumen belum dipilih.');
+  }
+  if (!caseData) {
+    throw new Error('Data berkas perkara belum dipilih.');
+  }
+
+  // If no physical file on Supabase Storage
+  if (!template.file_path) {
+    return {
+      hasPhysicalFile: false,
+      blob: null,
+      message: 'Template ini belum memiliki file master .docx di Supabase Storage.'
+    };
+  }
+
+  // 1. Fetch .docx ArrayBuffer
+  const arrayBuffer = await fetchDocxArrayBuffer(template.file_path);
+
+  // 2. Load into PizZip & clean delimiters
+  const zip = new PizZip(arrayBuffer);
+  normalizeDocxXml(zip);
+
+  // 3. Build data map
+  const dataMap = buildDocxDataMap({ caseData, formValues, personnelList });
+
+  // 4. Render placeholders
+  const doc = new Docxtemplater(zip, {
+    paragraphLoop: true,
+    linebreaks: true,
+    nullGetter: () => ''
+  });
+
+  doc.render(dataMap);
+
+  // 5. Generate output Blob
+  const outputBlob = doc.getZip().generate({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  });
+
+  const cleanTitle = (template.title || 'Dokumen_Mindik').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const cleanNoLp = (caseData?.no_lp || 'LP').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `${cleanTitle}_${cleanNoLp}.docx`;
+
+  return {
+    hasPhysicalFile: true,
+    blob: outputBlob,
+    filename,
+    dataMap
+  };
+}
+
