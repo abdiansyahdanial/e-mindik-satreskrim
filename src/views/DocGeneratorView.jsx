@@ -103,7 +103,17 @@ export default function DocGeneratorView({
     const year = new Date().getFullYear();
     const randomNo = Math.floor(Math.random() * 80 + 10);
 
-    const fields = Array.isArray(currentTemplate.dynamic_fields) ? currentTemplate.dynamic_fields : [];
+    const defaultDocFields = [
+      { key: 'DOC_NO', label: 'Nomor Dokumen / Surat', type: 'text', placeholder: 'Sp.Sidik/___/___/2026/Reskrim', required: true },
+      { key: 'DOC_DATE', label: 'Tanggal Surat', type: 'date', required: true },
+      { key: 'DOC_LOCATION', label: 'Tempat Dikeluarkan', type: 'text', placeholder: 'Tirawuta' },
+      { key: 'DOC_SIGNER_ATASAN_NAME', label: 'Kasat Reskrim Penandatangan', type: 'select_personnel', role_filter: 'Kasat', required: true },
+      { key: 'DOC_PJ_NAME', label: 'Penyidik Penanggung Jawab', type: 'select_personnel', role_filter: null, required: true },
+    ];
+
+    const fields = Array.isArray(currentTemplate.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
+      ? currentTemplate.dynamic_fields 
+      : defaultDocFields;
 
     fields.forEach((field) => {
       const cleanKey = field.key.trim();
@@ -610,7 +620,13 @@ export default function DocGeneratorView({
             </label>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {(Array.isArray(currentTemplate?.dynamic_fields) ? currentTemplate.dynamic_fields : []).map((field) => {
+              {(Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 ? currentTemplate.dynamic_fields : [
+                { key: 'DOC_NO', label: 'Nomor Dokumen / Surat', type: 'text', placeholder: 'Sp.Sidik/___/___/2026/Reskrim', required: true },
+                { key: 'DOC_DATE', label: 'Tanggal Surat', type: 'date', required: true },
+                { key: 'DOC_LOCATION', label: 'Tempat Dikeluarkan', type: 'text', placeholder: 'Tirawuta' },
+                { key: 'DOC_SIGNER_ATASAN_NAME', label: 'Kasat Reskrim Penandatangan', type: 'select_personnel', role_filter: 'Kasat', required: true },
+                { key: 'DOC_PJ_NAME', label: 'Penyidik Penanggung Jawab', type: 'select_personnel', role_filter: null, required: true },
+              ]).map((field) => {
                 return (
                   <div key={field.key} className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label" style={{ fontSize: '11px' }}>

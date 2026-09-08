@@ -6,19 +6,19 @@ import {
   RefreshCw, 
   FileText, 
   Table, 
-  Sparkles,
+  Sparkles, 
   AlertCircle,
-  FileCheck,
-  Layers
+  FileCheck
 } from 'lucide-react';
-import { renderAsync } from 'docx-preview';
 import { 
-  generateDocxBlob,
+  generatePdfBlob, 
   generateAndDownloadDocx, 
-  buildDocxDataMap
+  buildDocxDataMap 
 } from '../services/mindikGenerator';
 
 export default function OfficialDocPreview({ 
+  pdfBlobUrl: externalPdfBlobUrl, 
+  isLoading: externalIsLoading,
   selectedCase, 
   template, 
   formValues = {}, 
@@ -26,102 +26,132 @@ export default function OfficialDocPreview({
   onSaveArchive,
   isSaved = false 
 }) {
-  const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  // State isConverting (loading indicator saat sistem merender lembar PDF baru)
+  const [internalPdfBlobUrl, setInternalPdfBlobUrl] = useState(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
   const [hasPhysicalFile, setHasPhysicalFile] = useState(true);
-  const [renderError, setRenderError] = useState(null);
-  const [downloadSuccessNotice, setDownloadSuccessNotice] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [showVariableMap, setShowVariableMap] = useState(false);
+  const [downloadSuccessNotice, setDownloadSuccessNotice] = useState(null);
 
-  // Reference for docx-preview canvas container
-  const docContainerRef = useRef(null);
+  // Debounce timer ref (1 detik auto-trigger setelah pengguna selesai mengetik)
+  const debounceTimerRef = useRef(null);
 
-  // Build complete dynamic data map from actual record
+  // Reference for active object URL to guarantee strict memory cleanup
+  const activeBlobUrlRef = useRef(null);
+
+  // Dynamic variable map from active case & form values
   const currentDataMap = selectedCase ? buildDocxDataMap({ 
     caseData: selectedCase, 
     formValues, 
     personnelList: personnel 
   }) : {};
 
-  // Main flow: Fetch binary .docx from Supabase Storage, inject variables via Docxtemplater,
-  // then render with docx-preview into docContainerRef
-  const loadDocxPreview = useCallback(async () => {
-    if (!template || !selectedCase) return;
+  // Clean up object URL helper
+  const cleanupActiveBlobUrl = useCallback(() => {
+    if (activeBlobUrlRef.current) {
+      try {
+        URL.revokeObjectURL(activeBlobUrlRef.current);
+      } catch (err) {
+        console.warn('Revoke object URL warning:', err);
+      }
+      activeBlobUrlRef.current = null;
+    }
+  }, []);
 
-    // Check if template has physical file in Supabase Storage
+  // Core conversion execution: DOCX -> PDF -> PDF Viewer
+  const executeConversion = useCallback(async () => {
+    if (!template || !selectedCase) {
+      cleanupActiveBlobUrl();
+      setInternalPdfBlobUrl(null);
+      return;
+    }
+
     if (!template.file_path) {
       setHasPhysicalFile(false);
-      setRenderError(null);
-      if (docContainerRef.current) {
-        docContainerRef.current.innerHTML = '';
-      }
+      cleanupActiveBlobUrl();
+      setInternalPdfBlobUrl(null);
+      setErrorMessage(null);
       return;
     }
 
     setHasPhysicalFile(true);
-    setIsLoadingPreview(true);
-    setRenderError(null);
+    setIsConverting(true);
+    setErrorMessage(null);
 
     try {
-      // 1. Ambil file binary (.docx / blob) dari Supabase Storage & isi variabel dinamis
-      const result = await generateDocxBlob({
+      const res = await generatePdfBlob({
         template,
         caseData: selectedCase,
         formValues,
         personnelList: personnel
       });
 
-      if (!result.hasPhysicalFile || !result.blob) {
+      if (!res.hasPhysicalFile || !res.pdfBlobUrl) {
         setHasPhysicalFile(false);
-        if (docContainerRef.current) {
-          docContainerRef.current.innerHTML = '';
-        }
+        cleanupActiveBlobUrl();
+        setInternalPdfBlobUrl(null);
         return;
       }
 
-      // 2. Gunakan engine docx-preview untuk merender dokumen Word asli
-      if (docContainerRef.current) {
-        docContainerRef.current.innerHTML = ''; // bersihkan preview lama
-        await renderAsync(result.blob, docContainerRef.current, undefined, {
-          className: 'mindik-docx-render',
-          inWrapper: true,
-          ignoreWidth: false,
-          ignoreHeight: false,
-          renderHeaders: true,
-          renderFooters: true,
-          breakPages: true
-        });
-      }
+      // Bersihkan URL objek lama sebelum memasang URL objek yang baru
+      cleanupActiveBlobUrl();
+      activeBlobUrlRef.current = res.pdfBlobUrl;
+      setInternalPdfBlobUrl(res.pdfBlobUrl);
     } catch (err) {
-      console.error('docx-preview render error:', err);
-      setRenderError(`Gagal membaca atau merender file Word .docx: ${err.message}`);
+      console.error('PDF Conversion error:', err);
+      setErrorMessage(`Gagal mengonversi dokumen ke PDF: ${err.message}`);
     } finally {
-      setIsLoadingPreview(false);
+      setIsConverting(false);
     }
-  }, [template, selectedCase, formValues, personnel]);
+  }, [template, selectedCase, formValues, personnel, cleanupActiveBlobUrl]);
+
+  // Auto-trigger debounce 1 second after user finishes editing
+  useEffect(() => {
+    if (externalPdfBlobUrl !== undefined) return;
+
+    if (!template || !selectedCase) {
+      cleanupActiveBlobUrl();
+      setInternalPdfBlobUrl(null);
+      return;
+    }
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      executeConversion();
+    }, 1000);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [template?.id, template?.file_path, selectedCase?.id, JSON.stringify(formValues), externalPdfBlobUrl, executeConversion, cleanupActiveBlobUrl]);
+
+  // Clean-up object URL saat komponen unmount atau saat perkara/template berganti
+  useEffect(() => {
+    return () => {
+      cleanupActiveBlobUrl();
+    };
+  }, [cleanupActiveBlobUrl]);
 
   useEffect(() => {
-    loadDocxPreview();
-  }, [loadDocxPreview]);
+    cleanupActiveBlobUrl();
+    setInternalPdfBlobUrl(null);
+  }, [selectedCase?.id, template?.id, cleanupActiveBlobUrl]);
 
-  if (!selectedCase || !template) {
-    return (
-      <div style={{
-        padding: '40px',
-        textAlign: 'center',
-        background: 'var(--bg-glass)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px dashed var(--border-glass)',
-        color: 'var(--text-secondary)'
-      }}>
-        Pilih Perkara dan Template Dokumen untuk menampilkan pratinjau resmi.
-      </div>
-    );
-  }
+  // Determine active state
+  const activeLoading = externalIsLoading !== undefined ? externalIsLoading : isConverting;
+  const activePdfUrl = externalPdfBlobUrl !== undefined ? externalPdfBlobUrl : internalPdfBlobUrl;
 
-  // Trigger real Docx generation from Supabase Storage
-  const handleGenerateDocx = async () => {
-    setIsGeneratingDocx(true);
+  // Handle direct DOCX download
+  const handleDownloadDocx = async () => {
+    if (!template || !selectedCase) return;
+    setIsDownloadingDocx(true);
     setDownloadSuccessNotice(null);
     try {
       const res = await generateAndDownloadDocx({
@@ -130,15 +160,27 @@ export default function OfficialDocPreview({
         formValues,
         personnelList: personnel
       });
-
-      setDownloadSuccessNotice(`Berhasil generate file '${res.filename}' dari Supabase Storage!`);
+      setDownloadSuccessNotice(`Berhasil membuat file '${res.filename}'!`);
       setTimeout(() => setDownloadSuccessNotice(null), 5000);
     } catch (err) {
-      console.error('Docx generation error:', err);
-      alert(`Gagal membuat file .docx: ${err.message}`);
+      console.error('Docx download error:', err);
+      alert(`Gagal mengunduh .docx: ${err.message}`);
     } finally {
-      setIsGeneratingDocx(false);
+      setIsDownloadingDocx(false);
     }
+  };
+
+  // Handle direct PDF download
+  const handleDownloadPdf = () => {
+    if (!activePdfUrl) return;
+    const cleanTitle = (template?.title || 'Dokumen_Mindik').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const cleanNoLp = (selectedCase?.no_lp || 'LP').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const a = document.createElement('a');
+    a.href = activePdfUrl;
+    a.download = `${cleanTitle}_${cleanNoLp}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
@@ -156,13 +198,13 @@ export default function OfficialDocPreview({
         gap: '12px',
         boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
       }}>
-        {/* Status Badges */}
+        {/* Badges */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span className="badge badge-green" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <FileCheck size={12} />
-            <span>WORD VIEWER (DOCX-PREVIEW)</span>
+            <span>PDF VIEWER PRESISI (F4 FOLIO)</span>
           </span>
-          {template.file_path ? (
+          {template?.file_path ? (
             <span className="badge badge-purple" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Sparkles size={11} />
               <span>DOKUMEN ASLI .DOCX (SUPABASE)</span>
@@ -174,59 +216,76 @@ export default function OfficialDocPreview({
           )}
         </div>
 
-        {/* Actions */}
+        {/* Buttons */}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Refresh Preview */}
-          {template.file_path && (
+          {/* Refresh button with isConverting spinner */}
+          {template?.file_path && (
             <button
               type="button"
-              onClick={loadDocxPreview}
-              disabled={isLoadingPreview}
+              onClick={executeConversion}
+              disabled={activeLoading}
               className="btn btn-secondary btn-sm"
-              title="Perbarui Pratinjau Dokumen Asli"
+              title="Segarkan dan render ulang dokumen PDF"
             >
-              <RefreshCw size={13} className={isLoadingPreview ? 'animate-spin' : ''} />
-              <span>{isLoadingPreview ? 'Merender...' : 'Segarkan'}</span>
+              <RefreshCw size={13} className={activeLoading ? 'animate-spin' : ''} />
+              <span>{activeLoading ? 'Sedang Merender PDF...' : 'Segarkan Pratinjau'}</span>
             </button>
           )}
 
           {/* Toggle Variable Map */}
-          <button
-            type="button"
-            onClick={() => setShowVariableMap(!showVariableMap)}
-            className="btn btn-secondary btn-sm"
-            title="Lihat pemetaan variabel {CASE_*}, {DOC_*}, dll."
-          >
-            <Table size={13} />
-            <span>{showVariableMap ? 'Tutup Variabel' : 'Cek Variabel'}</span>
-          </button>
+          {selectedCase && (
+            <button
+              type="button"
+              onClick={() => setShowVariableMap(!showVariableMap)}
+              className="btn btn-secondary btn-sm"
+              title="Cek daftar pemetaan variabel dinamis perkara"
+            >
+              <Table size={13} />
+              <span>{showVariableMap ? 'Tutup Variabel' : 'Cek Variabel'}</span>
+            </button>
+          )}
 
-          {/* Download Real .docx from Supabase */}
-          <button 
-            type="button"
-            disabled={isGeneratingDocx || !template.file_path}
-            onClick={handleGenerateDocx}
-            className="btn btn-primary btn-sm"
-            style={{
-              boxShadow: 'var(--glow-cyan)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            title="Generate dan unduh file Word (.docx) resmi dari Supabase Storage"
-          >
-            {isGeneratingDocx ? (
-              <>
-                <RefreshCw size={13} className="animate-pulse" />
-                <span>Memproses...</span>
-              </>
-            ) : (
-              <>
-                <Download size={13} />
-                <span>Unduh .docx</span>
-              </>
-            )}
-          </button>
+          {/* Download PDF */}
+          {activePdfUrl && (
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              className="btn btn-secondary btn-sm"
+              title="Unduh file PDF resmi hasil konversi"
+            >
+              <Download size={13} />
+              <span>Unduh .pdf</span>
+            </button>
+          )}
+
+          {/* Download DOCX */}
+          {template?.file_path && (
+            <button 
+              type="button"
+              disabled={isDownloadingDocx}
+              onClick={handleDownloadDocx}
+              className="btn btn-primary btn-sm"
+              style={{
+                boxShadow: 'var(--glow-cyan)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              title="Generate dan unduh file Word (.docx) murni dari Supabase Storage"
+            >
+              {isDownloadingDocx ? (
+                <>
+                  <RefreshCw size={13} className="animate-pulse" />
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                <>
+                  <Download size={13} />
+                  <span>Unduh .docx</span>
+                </>
+              )}
+            </button>
+          )}
 
           {onSaveArchive && (
             <button 
@@ -238,16 +297,6 @@ export default function OfficialDocPreview({
               <span>{isSaved ? 'Tersimpan' : 'Simpan'}</span>
             </button>
           )}
-
-          <button 
-            type="button"
-            onClick={() => window.print()}
-            className="btn btn-secondary btn-sm"
-            title="Cetak langsung layout Word atau Simpan ke PDF"
-          >
-            <Printer size={13} />
-            <span>Cetak / PDF</span>
-          </button>
         </div>
       </div>
 
@@ -271,7 +320,7 @@ export default function OfficialDocPreview({
       )}
 
       {/* Render Error Alert */}
-      {renderError && (
+      {errorMessage && (
         <div className="no-print" style={{
           padding: '10px 16px',
           borderRadius: 'var(--radius-md)',
@@ -284,12 +333,12 @@ export default function OfficialDocPreview({
           fontSize: '12px',
         }}>
           <AlertCircle size={16} color="var(--accent-red)" />
-          <span>{renderError}</span>
+          <span>{errorMessage}</span>
         </div>
       )}
 
       {/* Variable Map Inspector */}
-      {showVariableMap && (
+      {showVariableMap && currentDataMap && (
         <div className="no-print glass" style={{
           padding: '16px',
           borderRadius: 'var(--radius-lg)',
@@ -328,81 +377,103 @@ export default function OfficialDocPreview({
         </div>
       )}
 
-      {/* Kontainer Luar Pratinjau Dokumen (Mirip Word / Google Docs Viewer) */}
+      {/* Main PDF Viewer Display Area */}
       <div 
-        className="mindik-viewer-container"
         style={{
-          background: '#1e293b',
-          padding: '24px',
-          overflowX: 'auto',
-          overflowY: 'auto',
-          minHeight: '750px',
           width: '100%',
+          minHeight: '85vh',
+          height: '85vh',
+          background: '#0F172A',
           borderRadius: 'var(--radius-lg)',
-          boxSizing: 'border-box',
+          overflow: 'hidden',
+          border: '1px solid #334155',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+          position: 'relative',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          position: 'relative'
+          flexDirection: 'column'
         }}
       >
-        {/* Loading Spinner */}
-        {isLoadingPreview && (
-          <div style={{ 
-            padding: '80px 20px', 
-            textAlign: 'center', 
-            color: '#FFFFFF',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <RefreshCw size={36} className="animate-spin" style={{ color: 'var(--accent-cyan)' }} />
-            <div style={{ fontWeight: 700, fontSize: '15px' }}>
-              Merender Dokumen Word Asli via Engine docx-preview...
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Memproses ukuran kertas fisik, margin kedinasan, tabel, dan header/footer Word
-            </div>
+        {activeLoading ? (
+          <div 
+            className="flex flex-col items-center justify-center h-full min-h-[600px] text-slate-400"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              minHeight: '600px',
+              color: '#94A3B8',
+              gap: '12px'
+            }}
+          >
+            <div 
+              className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"
+              style={{
+                width: '40px',
+                height: '40px',
+                border: '4px solid #3B82F6',
+                borderTopColor: 'transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                marginBottom: '12px'
+              }}
+            />
+            <p className="text-sm font-medium" style={{ fontSize: '14px', fontWeight: 500, color: '#E2E8F0' }}>
+              Sedang memproses dokumen kedinasan (100% presisi)...
+            </p>
+            <p style={{ fontSize: '12px', color: '#64748B' }}>
+              Injeksi variabel perkara &rarr; Konversi ke format PDF F4 standar Polri
+            </p>
           </div>
-        )}
-
-        {/* Empty state when template doesn't have physical .docx file yet */}
-        {!hasPhysicalFile && !isLoadingPreview && (
+        ) : !hasPhysicalFile && template && !template.file_path ? (
           <div style={{
             margin: 'auto',
             padding: '40px 24px',
             textAlign: 'center',
             maxWidth: '520px',
-            background: 'rgba(15, 23, 42, 0.75)',
-            border: '1px dashed var(--border-glass)',
-            borderRadius: 'var(--radius-lg)',
-            color: 'var(--text-secondary)'
+            color: '#94A3B8'
           }}>
             <FileText size={48} style={{ color: '#F59E0B', margin: '0 auto 16px' }} />
-            <div style={{ fontWeight: 700, fontSize: '15px', color: '#FFFFFF', marginBottom: '8px' }}>
+            <div style={{ fontWeight: 700, fontSize: '16px', color: '#FFFFFF', marginBottom: '8px' }}>
               Master Template Word (.docx) Belum Tersedia
             </div>
-            <p style={{ fontSize: '12.5px', lineHeight: 1.5, margin: '0 0 16px' }}>
-              Template <strong>"{template.title}"</strong> belum ditautkan dengan file dokumen fisik <code>.docx</code> di Supabase Storage.
+            <p style={{ fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px' }}>
+              Template <strong>"{template.title}"</strong> belum ditautkan dengan file fisik <code>.docx</code> di Supabase Storage.
             </p>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Unggah file master template melalui menu <strong>Template Studio</strong> agar lembar dokumen dapat dirender secara presisi menggunakan engine <code>docx-preview</code>.
+            <div style={{ fontSize: '12px', color: '#64748B' }}>
+              Unggah file master template melalui menu <strong>Template Studio</strong> agar sistem dapat menginjeksi variabel perkara dan menghasilkan pratinjau PDF kedinasan.
             </div>
           </div>
+        ) : !activePdfUrl ? (
+          <div 
+            className="flex items-center justify-center h-full min-h-[600px] text-slate-500 text-sm"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              minHeight: '600px',
+              color: '#64748B',
+              fontSize: '14px'
+            }}
+          >
+            Pilih berkas perkara dan format template untuk menampilkan pratinjau.
+          </div>
+        ) : (
+          <iframe
+            src={`${activePdfUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+            title="Pratinjau Dokumen Kedinasan"
+            className="w-full h-full min-h-[85vh] border-none"
+            style={{
+              width: '100%',
+              height: '100%',
+              minHeight: '85vh',
+              border: 'none',
+              flex: 1
+            }}
+          />
         )}
-
-        {/* Elemen Penampung Kanvas docx-preview */}
-        <div 
-          id="docx-container" 
-          ref={docContainerRef}
-          style={{
-            width: '100%',
-            display: hasPhysicalFile && !isLoadingPreview ? 'flex' : 'none',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}
-        />
       </div>
     </div>
   );

@@ -508,3 +508,74 @@ export async function generateDocxBlob({
   };
 }
 
+/**
+ * Send DOCX blob to conversion endpoint /api/convert-docx-to-pdf and return PDF Blob.
+ */
+export async function convertDocxToPdf(docxBlob) {
+  if (!docxBlob) throw new Error('Blob .docx tidak valid.');
+
+  const arrayBuffer = await docxBlob.arrayBuffer();
+  // Safe base64 conversion for binary buffer
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64String = btoa(binary);
+
+  const response = await fetch('/api/convert-docx-to-pdf', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ docxBase64: base64String })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Gagal mengonversi ke PDF (status: ${response.status})`);
+  }
+
+  return await response.blob();
+}
+
+/**
+ * High level workflow: Injeksi template .docx -> Konversi ke PDF -> Return PDF blob & blob URL
+ */
+export async function generatePdfBlob({
+  template,
+  caseData,
+  formValues = {},
+  personnelList = []
+}) {
+  const docxRes = await generateDocxBlob({
+    template,
+    caseData,
+    formValues,
+    personnelList
+  });
+
+  if (!docxRes.hasPhysicalFile || !docxRes.blob) {
+    return {
+      hasPhysicalFile: false,
+      pdfBlob: null,
+      pdfBlobUrl: null,
+      docxBlob: null,
+      filename: null
+    };
+  }
+
+  const pdfBlob = await convertDocxToPdf(docxRes.blob);
+  const pdfBlobUrl = URL.createObjectURL(pdfBlob);
+
+  return {
+    hasPhysicalFile: true,
+    pdfBlob,
+    pdfBlobUrl,
+    docxBlob: docxRes.blob,
+    filename: docxRes.filename.replace(/\.docx$/i, '.pdf'),
+    dataMap: docxRes.dataMap
+  };
+}
+
