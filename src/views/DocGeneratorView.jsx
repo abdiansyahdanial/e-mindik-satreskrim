@@ -99,16 +99,16 @@ export default function DocGeneratorView({
 
     const initial = {};
     const todayStr = new Date().toISOString().split('T')[0];
-    const romanMonth = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][new Date().getMonth()];
-    const year = new Date().getFullYear();
-    const randomNo = Math.floor(Math.random() * 80 + 10);
 
     const defaultDocFields = [
-      { key: 'DOC_NO', label: 'Nomor Dokumen / Surat', type: 'text', placeholder: 'Sp.Sidik/___/___/2026/Reskrim', required: true },
-      { key: 'DOC_DATE', label: 'Tanggal Surat', type: 'date', required: true },
-      { key: 'DOC_LOCATION', label: 'Tempat Dikeluarkan', type: 'text', placeholder: 'Tirawuta' },
-      { key: 'DOC_SIGNER_ATASAN_NAME', label: 'Kasat Reskrim Penandatangan', type: 'select_personnel', role_filter: 'Kasat', required: true },
-      { key: 'DOC_PJ_NAME', label: 'Penyidik Penanggung Jawab', type: 'select_personnel', role_filter: null, required: true },
+      { field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
+      { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
+      { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
+      { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
+      { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
+      { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
+      { field_key: 'PENYIDIK_NAMA', field_label: 'Nama Penyidik', field_type: 'text', default_value: '', is_required: false },
+      { field_key: 'ATASAN_NAMA', field_label: 'Nama Atasan / Kasat', field_type: 'text', default_value: '', is_required: false }
     ];
 
     const fields = Array.isArray(currentTemplate.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
@@ -116,49 +116,48 @@ export default function DocGeneratorView({
       : defaultDocFields;
 
     fields.forEach((field) => {
-      const cleanKey = field.key.trim();
-      if (cleanKey === 'DOC_DATE') {
-        initial[field.key] = todayStr;
-      } else if (cleanKey === 'DOC_LOCATION') {
-        initial[field.key] = 'Tirawuta';
-      } else if (cleanKey === 'DOC_VALIDITY') {
-        initial[field.key] = currentTemplate.code === 'SPRIN_HAN' ? '20 (dua puluh) hari' : '30 (tiga puluh) hari';
-      } else if (cleanKey === 'DOC_SIGNER_ATASAN_NAME') {
-        initial[field.key] = activePersonnel.find(p => p.role === 'Kasat')?.id || 'usr-001';
-      } else if (cleanKey === 'DOC_SIGNER_KANIT_NAME') {
-        initial[field.key] = activePersonnel.find(p => p.role === 'Kanit')?.id || 'usr-003';
-      } else if (cleanKey === 'DOC_PJ_NAME') {
-        initial[field.key] = currentCase.investigators?.[0]?.user_id || 'usr-005';
-      } else if (cleanKey === 'DOC_PJ_PHONE') {
-        initial[field.key] = '081234567894';
-      } else if (cleanKey === 'DOC_TARGET') {
-        initial[field.key] = 'Kepala Kejaksaan Negeri Kolaka';
-      } else if (cleanKey === 'DOC_TARGET_ADDR') {
-        initial[field.key] = 'Jl. Dr. Sutomo No. 5, Kolaka';
-      } else if (cleanKey === 'DOC_NO' || cleanKey === 'DOC_NO 1') {
-        if (currentTemplate.code === 'SPRIN_SIDIK') {
-          initial[field.key] = `Sp.Sidik/${randomNo}/${romanMonth}/${year}/Reskrim`;
-        } else if (currentTemplate.code.includes('SPDP')) {
-          initial[field.key] = `B/${randomNo}/${romanMonth}/${year}/Reskrim`;
-        } else if (currentTemplate.code === 'SPRIN_KAP') {
-          initial[field.key] = `Sp.Kap/${randomNo}/${romanMonth}/${year}/Reskrim`;
-        } else if (currentTemplate.code === 'SPRIN_HAN') {
-          initial[field.key] = `Sp.Han/${randomNo}/${romanMonth}/${year}/Reskrim`;
-        } else if (currentTemplate.code.startsWith('BAP')) {
-          initial[field.key] = `BAP/${randomNo}/${romanMonth}/${year}/Reskrim`;
-        } else if (currentTemplate.code === 'SP_TAP_TSK') {
-          initial[field.key] = `S.Tap/${randomNo}/${romanMonth}/${year}/Reskrim`;
-        } else if (currentTemplate.code === 'BA_SITA') {
-          initial[field.key] = `BA.Sita/${randomNo}/${romanMonth}/${year}/Reskrim`;
-        } else {
-          initial[field.key] = `DOC/${randomNo}/${romanMonth}/${year}/Reskrim`;
-        }
+      const rawKey = field.field_key || field.key || '';
+      const cleanKey = rawKey.replace(/[{}]/g, '').trim();
+      if (!cleanKey) return;
+
+      const upperKey = cleanKey.toUpperCase();
+      const defVal = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
+
+      // Determine default value based on standardized dictionary
+      if (upperKey === 'TANGGAL_SURAT' || upperKey === 'DOC_DATE') {
+        initial[cleanKey] = todayStr;
+      } else if (upperKey === 'TEMPAT_SURAT' || upperKey === 'DOC_LOCATION') {
+        initial[cleanKey] = defVal || 'Tirawuta';
+      } else if (upperKey === 'MASA_BERLAKU' || upperKey === 'DOC_VALIDITY') {
+        initial[cleanKey] = defVal || '30 (tiga puluh) hari';
+      } else if (upperKey === 'TUJUAN_SURAT' || upperKey === 'DOC_TARGET') {
+        initial[cleanKey] = defVal || 'Kepala Kejaksaan Negeri Kolaka';
+      } else if (upperKey === 'ALAMAT_TUJUAN' || upperKey === 'DOC_TARGET_ADDR') {
+        initial[cleanKey] = defVal || 'Jl. Dr. Sutomo No. 5, Kolaka';
+      } else if (upperKey === 'PENYIDIK_NAMA') {
+        initial[cleanKey] = currentCase.penyidik_1_nama || defVal || '';
+      } else if (upperKey === 'ATASAN_NAMA') {
+        initial[cleanKey] = currentCase.kasat_nama || defVal || '';
+      } else if (field.field_type === 'select_personnel' || field.type === 'select_personnel') {
+        const filter = field.role_filter;
+        const matched = activePersonnel.find(p => !filter || p.role === filter);
+        initial[cleanKey] = matched ? matched.id : '';
       } else {
-        initial[field.key] = field.placeholder || '';
+        initial[cleanKey] = defVal || '';
       }
     });
 
-    setFormValues(initial);
+    setFormValues(prev => {
+      // Keep any user-typed inputs for matching keys
+      const merged = { ...initial };
+      Object.keys(prev || {}).forEach(k => {
+        const cleanK = k.replace(/[{}]/g, '').trim();
+        if (prev[k] !== undefined && prev[k] !== '') {
+          merged[cleanK] = prev[k];
+        }
+      });
+      return merged;
+    });
     setIsSaved(false);
   }, [selectedCaseId, selectedTemplateCode, currentTemplate]);
 
@@ -265,15 +264,17 @@ export default function DocGeneratorView({
         }
       }
 
-      // Default dynamic fields
+      // Default dynamic fields (Standard Indonesian)
       const defaultFields = [
-        { key: 'DOC_NO', label: 'Nomor Surat', type: 'text', placeholder: 'Sp.Doc/___/___/2026/Reskrim', required: true },
-        { key: 'DOC_DATE', label: 'Tanggal Surat', type: 'date', placeholder: '', required: true },
-        { key: 'DOC_LOCATION', label: 'Tempat Dikeluarkan', type: 'text', placeholder: 'Tirawuta', required: true },
-        { key: 'DOC_SIGNER_ATASAN_NAME', label: 'Atasan Penandatangan', type: 'select_personnel', role_filter: 'Kasat', required: true }
+        { id: 1, field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
+        { id: 2, field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
+        { id: 3, field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
+        { id: 4, field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
+        { id: 5, field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
+        { id: 6, field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false }
       ];
 
-      // Save metadata to document_templates
+      // Save metadata to document_templates with UPSERT to prevent unique constraint conflicts
       const payload = {
         title: newTitle.trim(),
         code: newCode.trim().toUpperCase(),
@@ -286,7 +287,7 @@ export default function DocGeneratorView({
 
       const { data: dbData, error: dbErr } = await supabase
         .from('document_templates')
-        .insert([payload])
+        .upsert([payload], { onConflict: 'code' })
         .select();
 
       if (dbErr) throw dbErr;
@@ -621,53 +622,82 @@ export default function DocGeneratorView({
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {(Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 ? currentTemplate.dynamic_fields : [
-                { key: 'DOC_NO', label: 'Nomor Dokumen / Surat', type: 'text', placeholder: 'Sp.Sidik/___/___/2026/Reskrim', required: true },
-                { key: 'DOC_DATE', label: 'Tanggal Surat', type: 'date', required: true },
-                { key: 'DOC_LOCATION', label: 'Tempat Dikeluarkan', type: 'text', placeholder: 'Tirawuta' },
-                { key: 'DOC_SIGNER_ATASAN_NAME', label: 'Kasat Reskrim Penandatangan', type: 'select_personnel', role_filter: 'Kasat', required: true },
-                { key: 'DOC_PJ_NAME', label: 'Penyidik Penanggung Jawab', type: 'select_personnel', role_filter: null, required: true },
-              ]).map((field) => {
-                return (
-                  <div key={field.key} className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '11px' }}>
-                      {field.label || field.key} {field.required && <span style={{ color: 'var(--accent-red)' }}>*</span>}
-                    </label>
+                { field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
+                { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
+                { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
+                { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
+                { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
+                { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
+              ]).map((field, idx) => {
+                const fieldKey = (field.field_key || field.key || `FIELD_${idx}`).replace(/[{}]/g, '').trim();
+                const fieldLabel = field.field_label || field.label || fieldKey;
+                const fieldType = field.field_type || field.type || 'text';
+                const isRequired = field.is_required !== undefined ? field.is_required : !!field.required;
+                const placeholder = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
+                const currentVal = formValues[fieldKey] !== undefined 
+                  ? formValues[fieldKey] 
+                  : (formValues[fieldKey.toUpperCase()] !== undefined 
+                      ? formValues[fieldKey.toUpperCase()] 
+                      : (formValues[fieldKey.toLowerCase()] || ''));
 
-                    {field.type === 'select_personnel' ? (
+                return (
+                  <div key={field.id || fieldKey || idx} className="form-group" style={{ marginBottom: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: 0 }}>
+                        {fieldLabel} {isRequired && <span style={{ color: 'var(--accent-red)' }}>*</span>}
+                      </label>
+                      <span className="mono" style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                        {`{${fieldKey}}`}
+                      </span>
+                    </div>
+
+                    {fieldType === 'select_personnel' ? (
                       <select
-                        value={formValues[field.key] || ''}
-                        onChange={(e) => handleInputChange(field.key, e.target.value)}
+                        value={currentVal}
+                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                         className="form-select"
                       >
+                        <option value="">-- Pilih Personel --</option>
                         {activePersonnel
                           .filter(p => !field.role_filter || p.role === field.role_filter)
                           .map((p) => (
-                            <option key={p.id || p.nrp} value={p.id}>
-                              {p.pangkat} {p.nama} ({p.jabatan})
+                            <option key={p.id || p.nrp} value={p.nama || p.id}>
+                              {p.pangkat} {p.nama} ({p.jabatan || p.role})
                             </option>
                           ))}
                       </select>
-                    ) : field.type === 'date' ? (
+                    ) : fieldType === 'select' && Array.isArray(field.options) ? (
+                      <select
+                        value={currentVal}
+                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+                        className="form-select"
+                      >
+                        <option value="">-- Pilih Pilihan --</option>
+                        {field.options.map((opt, oIdx) => (
+                          <option key={oIdx} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : fieldType === 'date' ? (
                       <input
                         type="date"
-                        value={formValues[field.key] || ''}
-                        onChange={(e) => handleInputChange(field.key, e.target.value)}
+                        value={currentVal}
+                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                         className="form-input mono"
                       />
-                    ) : field.type === 'textarea' ? (
+                    ) : fieldType === 'textarea' ? (
                       <textarea
-                        value={formValues[field.key] || ''}
-                        onChange={(e) => handleInputChange(field.key, e.target.value)}
+                        value={currentVal}
+                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                         className="form-textarea"
-                        placeholder={field.placeholder || ''}
+                        placeholder={placeholder}
                       />
                     ) : (
                       <input
                         type="text"
-                        value={formValues[field.key] || ''}
-                        onChange={(e) => handleInputChange(field.key, e.target.value)}
+                        value={currentVal}
+                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                         className="form-input mono"
-                        placeholder={field.placeholder || ''}
+                        placeholder={placeholder}
                       />
                     )}
                   </div>

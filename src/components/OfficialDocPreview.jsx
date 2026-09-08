@@ -14,8 +14,8 @@ import {
 import { 
   generatePdfBlob, 
   generateAndDownloadDocx, 
-  buildDocxDataMap 
-} from '../services/mindikGenerator';
+  buildMindikVariables 
+} from '../utils/mindikGenerator';
 
 export default function OfficialDocPreview({ 
   selectedCase, 
@@ -39,11 +39,12 @@ export default function OfficialDocPreview({
   const debounceTimerRef = useRef(null);
 
   // Dynamic variable map from active case & form values
-  const currentDataMap = selectedCase ? buildDocxDataMap({ 
-    caseData: selectedCase, 
+  const currentDataMap = selectedCase ? buildMindikVariables(
+    selectedCase, 
     formValues, 
-    personnelList: personnel 
-  }) : {};
+    template?.dynamic_fields, 
+    personnel
+  ) : {};
 
   // Core update function: True file-to-file conversion with memory cache & instant fallback
   const updatePreview = useCallback(async (isManual = false) => {

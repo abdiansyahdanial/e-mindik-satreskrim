@@ -121,166 +121,192 @@ function normalizeDocxXml(zip) {
 }
 
 /**
- * Map case, personnel, and dynamic input values into a unified dictionary of placeholders.
+ * STANDARISASI DATA VARIABEL (KAMUS RESMI MINDIK)
+ * Menghilangkan prefix CASE_, person, validity, dan string hardcoded.
+ * Mendukung format huruf besar (UPPERCASE) dan huruf kecil (lowercase).
  */
-export function buildDocxDataMap({ caseData = {}, formValues = {}, personnelList = [] }) {
-  const data = {};
+export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig = [], personnelList = []) {
+  // A. Bersihkan kurung kurawal jika ada user yang mengetik tanda { } di form
+  const cleanInput = {};
+  Object.keys(formValues || {}).forEach((k) => {
+    const cleanKey = k.replace(/[{}]/g, '').trim();
+    cleanInput[cleanKey] = formValues[k];
+  });
 
-  // 1. Helper to find personnel by ID
-  const findPerson = (id) => personnelList.find(p => p.id === id || p.nrp === id);
+  // B. Nilai Prioritas Form Input
+  const nomorSurat = cleanInput.NOMOR_SURAT || cleanInput.nomor_surat || cleanInput.DOC_NO || cleanInput.doc_no || '';
+  const tempatSurat = cleanInput.TEMPAT_SURAT || cleanInput.tempat_surat || cleanInput.DOC_LOCATION || cleanInput.doc_location || 'Tirawuta';
+  const tanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.tanggal_surat || cleanInput.DOC_DATE || cleanInput.doc_date || '';
+  const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || cleanInput.doc_target || 'Kepala Kejaksaan Negeri Kolaka';
+  const alamatTujuan = cleanInput.ALAMAT_TUJUAN || cleanInput.alamat_tujuan || cleanInput.DOC_TARGET_ADDR || cleanInput.doc_target_addr || 'Jl. Dr. Sutomo No. 5, Kolaka';
+  const masaBerlaku = cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || cleanInput.DOC_VALIDITY || cleanInput.doc_validity || '30 (tiga puluh) hari';
 
-  // 2. Case Variables ({CASE_*})
-  data['CASE_NO_LP'] = caseData.no_lp || '';
-  data['CASE_TINDAK_PIDANA'] = caseData.tindak_pidana || '';
-  data['CASE_PASAL_UU'] = caseData.pasal_uu || '';
-  data['CASE_PASAL'] = caseData.pasal || `${caseData.pasal_uu || ''} tentang ${caseData.tindak_pidana || ''}`;
-  data['CASE_LOCUS'] = caseData.locus || '';
-  data['CASE_TEMPUS'] = caseData.tempus || '';
-  data['CASE_PELAPOR_NAME'] = caseData.pelapor_name || '';
-  data['CASE_TERLAPOR_NAME'] = caseData.terlapor_name || caseData.person?.nama || 'Dalam Lidik';
-  data['CASE_STATUS'] = caseData.status === 'active' ? 'DALAM PROSES PENYIDIKAN' : 'P21 / SELESAI';
-  data['CASE_CREATED_AT'] = formatIndonesianDate(caseData.created_at);
+  // Helper untuk pelapor & terlapor / tersangka
+  const person = lpData.person || {};
+  const pelaporName = lpData.pelapor_name || lpData.pelapor || '';
+  const terlaporName = lpData.tersangka || lpData.nama_tersangka || person.nama || lpData.terlapor_name || '';
+  const nik = lpData.nik_tersangka || lpData.nik || person.nik || '-';
+  const gender = lpData.jenis_kelamin_tersangka || lpData.jenis_kelamin || person.gender || 'Laki-laki';
+  const ttl = lpData.ttl_tersangka || lpData.ttl || person.pob_dob || '-';
+  const rawUmur = lpData.umur_tersangka || lpData.umur || person.umur;
+  const umur = rawUmur ? (String(rawUmur).includes('Tahun') ? rawUmur : `${rawUmur} Tahun`) : '-';
+  const agama = lpData.agama_tersangka || lpData.agama || person.agama || 'Islam';
+  const pekerjaan = lpData.pekerjaan_tersangka || lpData.pekerjaan || person.pekerjaan || 'Swasta';
+  const alamat = lpData.alamat_tersangka || lpData.alamat || person.alamat || lpData.locus || '';
+  const pendidikan = lpData.pendidikan_tersangka || lpData.pendidikan || person.pendidikan || 'SMA';
+  const kewarganegaraan = lpData.kewarganegaraan || person.kewarganegaraan || 'Indonesia';
 
-  // Person / Suspect detail
-  const person = caseData.person || {};
-  data['CASE_PERSON_NAMA'] = person.nama || caseData.terlapor_name || 'Dalam Lidik';
-  data['CASE_PERSON_NIK'] = person.nik || '-';
-  data['CASE_PERSON_GENDER'] = person.gender || 'Laki-laki';
-  data['CASE_PERSON_POB_DOB'] = person.pob_dob || '-';
-  data['CASE_PERSON_UMUR'] = person.umur || '-';
-  data['CASE_PERSON_PEKERJAAN'] = person.pekerjaan || 'Swasta';
-  data['CASE_PERSON_AGAMA'] = person.agama || 'Islam';
-  data['CASE_PERSON_ALAMAT'] = person.alamat || caseData.locus || '-';
-  data['CASE_PERSON_PENDIDIKAN'] = person.pendidikan || 'SMA';
-  data['CASE_PERSON_WARGANEGARA'] = person.kewarganegaraan || 'Indonesia';
+  // Helper untuk penyidik & kasat dari personnelList jika tersedia
+  const findPerson = (id) => (personnelList || []).find(p => p.id === id || p.nrp === id);
+  const assignedInv = Array.isArray(lpData.investigators) ? lpData.investigators : [];
+  let p1Obj = null;
+  if (assignedInv[0]) {
+    p1Obj = findPerson(assignedInv[0].user_id) || assignedInv[0];
+  }
+  const penyidik1Nama = lpData.penyidik_1_nama || p1Obj?.nama || cleanInput.PENYIDIK_NAMA || cleanInput.penyidik_nama || '';
+  const penyidik1Pangkat = lpData.penyidik_1_pangkat || p1Obj?.pangkat || '';
+  const penyidik1Nrp = lpData.penyidik_1_nrp || p1Obj?.nrp || '';
+  const penyidik1Jabatan = lpData.penyidik_1_jabatan || p1Obj?.jabatan || 'PENYIDIK PEMBANTU';
 
-  // References ({REF_*})
-  const refs = caseData.references || {};
-  data['REF_NO_SPRIN_SIDIK'] = refs.no_sprin_sidik || '';
-  data['REF_NO_SP_TAP_TSK'] = refs.no_sp_tap_tsk || '';
-  data['REF_NO_SPRIN_KAP'] = refs.no_sprin_kap || '';
-  data['REF_NO_SPRIN_HAN'] = refs.no_sprin_han || '';
-  data['REF_NO_SPDP'] = refs.no_spdp || '';
-  data['REF_NO_SPRIN_GAS'] = refs.no_sprin_gas || '';
+  let p2Obj = null;
+  if (assignedInv[1]) {
+    p2Obj = findPerson(assignedInv[1].user_id) || assignedInv[1];
+  }
+  const penyidik2Nama = lpData.penyidik_2_nama || p2Obj?.nama || cleanInput.PENYIDIK_2_NAMA || cleanInput.penyidik_2_nama || '';
 
-  // Slot Penyidik 1 s/d 5 ({PENYIDIK_1_*} ... {PENYIDIK_5_*})
-  const assignedInv = Array.isArray(caseData.investigators) ? caseData.investigators : [];
-  for (let i = 1; i <= 5; i++) {
-    const invRef = assignedInv[i - 1];
-    let invObj = null;
-    if (invRef) {
-      invObj = findPerson(invRef.user_id) || invRef;
-    }
-    data[`PENYIDIK_${i}_NAMA`] = invObj?.nama || '';
-    data[`PENYIDIK_${i}_PANGKAT`] = invObj?.pangkat || '';
-    data[`PENYIDIK_${i}_NRP`] = invObj?.nrp || '';
-    data[`PENYIDIK_${i}_JABATAN`] = invObj?.jabatan || '';
+  const atasanId = cleanInput.DOC_SIGNER_ATASAN_NAME;
+  const kasat = atasanId ? findPerson(atasanId) : ((personnelList || []).find(p => p.role === 'Kasat') || (personnelList || [])[0]);
+  const atasanNama = lpData.kasat_nama || cleanInput.ATASAN_NAMA || cleanInput.atasan_nama || kasat?.nama || '';
+  const atasanPangkat = lpData.kasat_pangkat || kasat?.pangkat || '';
+  const atasanNrp = lpData.kasat_nrp || kasat?.nrp || '';
+  const atasanJabatan = lpData.kasat_jabatan || kasat?.jabatan || 'KASAT RESKRIM';
+
+  // C. Kamus Standar Dokumen Mindik (Support Uppercase & Lowercase)
+  const baseMap = {
+    // Administrasi & Kop
+    NOMOR_SURAT: nomorSurat,
+    nomor_surat: nomorSurat,
+    TEMPAT_SURAT: tempatSurat,
+    tempat_surat: tempatSurat,
+    TANGGAL_SURAT: tanggalSurat,
+    tanggal_surat: tanggalSurat,
+    TUJUAN_SURAT: tujuanSurat,
+    tujuan_surat: tujuanSurat,
+    ALAMAT_TUJUAN: alamatTujuan,
+    alamat_tujuan: alamatTujuan,
+    MASA_BERLAKU: masaBerlaku,
+    masa_berlaku: masaBerlaku,
+
+    // Berkas Perkara & Rumusan Tindak Pidana
+    NOMOR_LP: lpData.no_lp || lpData.nomor_lp || '',
+    nomor_lp: lpData.no_lp || lpData.nomor_lp || '',
+    DASAR_PASAL_UU: lpData.pasal_uu || lpData.dasar_pasal_uu || lpData.pasal || '',
+    dasar_pasal_uu: lpData.pasal_uu || lpData.dasar_pasal_uu || lpData.pasal || '',
+    PASAL: lpData.pasal || lpData.pasal_uu || '',
+    pasal: lpData.pasal || lpData.pasal_uu || '',
+    TINDAK_PIDANA: lpData.tindak_pidana || '',
+    tindak_pidana: lpData.tindak_pidana || '',
+    TEMPAT_KEJADIAN: lpData.locus || '',
+    tempat_kejadian: lpData.locus || '',
+    WAKTU_KEJADIAN: lpData.tempus || '',
+    waktu_kejadian: lpData.tempus || '',
+    STATUS_KASUS: lpData.status || 'DALAM PROSES PENYIDIKAN',
+    status_kasus: lpData.status || 'DALAM PROSES PENYIDIKAN',
+
+    // Pelapor & Terlapor / Tersangka
+    NAMA_PELAPOR: pelaporName,
+    nama_pelapor: pelaporName,
+    NAMA_TERLAPOR: terlaporName,
+    nama_terlapor: terlaporName,
+    NIK: nik,
+    nik: nik,
+    JENIS_KELAMIN: gender,
+    jenis_kelamin: gender,
+    TTL: ttl,
+    ttl: ttl,
+    UMUR: umur,
+    umur: umur,
+    AGAMA: agama,
+    agama: agama,
+    PEKERJAAN: pekerjaan,
+    pekerjaan: pekerjaan,
+    ALAMAT: alamat,
+    alamat: alamat,
+    PENDIDIKAN: pendidikan,
+    pendidikan: pendidikan,
+    KEWARGANEGARAAN: kewarganegaraan,
+    kewarganegaraan: kewarganegaraan,
+
+    // Penyidik
+    PENYIDIK_NAMA: penyidik1Nama,
+    penyidik_nama: penyidik1Nama,
+    PENYIDIK_PANGKAT: penyidik1Pangkat,
+    penyidik_pangkat: penyidik1Pangkat,
+    PENYIDIK_NRP: penyidik1Nrp,
+    penyidik_nrp: penyidik1Nrp,
+    PENYIDIK_JABATAN: penyidik1Jabatan,
+    penyidik_jabatan: penyidik1Jabatan,
+    PENYIDIK_2_NAMA: penyidik2Nama,
+    penyidik_2_nama: penyidik2Nama,
+
+    // Atasan / Kasat
+    ATASAN_NAMA: atasanNama,
+    atasan_nama: atasanNama,
+    ATASAN_PANGKAT: atasanPangkat,
+    atasan_pangkat: atasanPangkat,
+    ATASAN_NRP: atasanNrp,
+    atasan_nrp: atasanNrp,
+    ATASAN_JABATAN: atasanJabatan,
+    atasan_jabatan: atasanJabatan,
+
+    // Kompatibilitas mundur (Legacy Aliases)
+    DOC_NO: nomorSurat,
+    doc_no: nomorSurat,
+    nomor_spdp: nomorSurat,
+    DOC_LOCATION: tempatSurat,
+    doc_location: tempatSurat,
+    DOC_DATE: tanggalSurat,
+    doc_date: tanggalSurat,
+  };
+
+  // D. Terapkan nilai default dari dynamicConfig jika belum diisi user
+  if (Array.isArray(dynamicConfig)) {
+    dynamicConfig.forEach((cfg) => {
+      const k = (cfg.field_key || cfg.key || '').replace(/[{}]/g, '').trim();
+      if (k && !(k in cleanInput) && !(k.toUpperCase() in cleanInput) && !(k.toLowerCase() in cleanInput)) {
+        const def = cfg.default_value !== undefined ? cfg.default_value : (cfg.placeholder || '');
+        if (def) {
+          baseMap[k] = def;
+          baseMap[k.toUpperCase()] = def;
+          baseMap[k.toLowerCase()] = def;
+        }
+      }
+    });
   }
 
-  // Signer Kasat & Kanit
-  const atasanId = formValues.DOC_SIGNER_ATASAN_NAME;
-  const kasat = atasanId ? findPerson(atasanId) : personnelList.find(p => p.role === 'Kasat') || personnelList[0];
-  data['ATASAN_NAMA'] = kasat?.nama || 'AKP AHMAD FATONI, S.H.';
-  data['ATASAN_PANGKAT'] = kasat?.pangkat || 'AKP';
-  data['ATASAN_NRP'] = kasat?.nrp || '78120567';
-  data['ATASAN_JABATAN'] = kasat?.jabatan || 'Kepala Satuan Reserse Kriminal';
+  // E. Gabungkan seluruh custom dynamic field yang diisi user (prioritas tertinggi)
+  const finalMap = { ...baseMap };
+  Object.keys(cleanInput).forEach((key) => {
+    finalMap[key] = cleanInput[key];
+    finalMap[key.toUpperCase()] = cleanInput[key];
+    finalMap[key.toLowerCase()] = cleanInput[key];
+  });
 
-  const kanitId = formValues.DOC_SIGNER_KANIT_NAME;
-  const kanit = kanitId ? findPerson(kanitId) : personnelList.find(p => p.role === 'Kanit') || kasat;
-  data['KANIT_NAMA'] = kanit?.nama || '';
-  data['KANIT_PANGKAT'] = kanit?.pangkat || '';
-  data['KANIT_NRP'] = kanit?.nrp || '';
-  data['KANIT_JABATAN'] = kanit?.jabatan || '';
-
-  // 3. Dynamic Form inputs ({DOC_*})
-  Object.keys(formValues).forEach((key) => {
-    const cleanKey = key.trim().replace(/\s+/g, '_');
-    data[cleanKey] = formValues[key];
-    // If date key, also provide localized string
-    if (key.includes('DATE') && formValues[key]) {
-      data[`${cleanKey}_INDO`] = formatIndonesianDate(formValues[key]);
+  // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined'
+  Object.keys(finalMap).forEach((k) => {
+    if (finalMap[k] === null || finalMap[k] === undefined || finalMap[k] === 'null' || finalMap[k] === 'undefined') {
+      finalMap[k] = '';
     }
   });
 
-  // Standard DOC defaults if not provided in formValues
-  data['DOC_NO'] = formValues.DOC_NO || formValues['DOC_NO 1'] || 'B/___/IX/2026/Reskrim';
-  data['DOC_LOCATION'] = formValues.DOC_LOCATION || 'Tirawuta';
-  data['DOC_DATE'] = formValues.DOC_DATE ? formatIndonesianDate(formValues.DOC_DATE) : formatIndonesianDate(new Date());
-  data['DOC_VALIDITY'] = formValues.DOC_VALIDITY || '30 (tiga puluh) hari';
-  data['DOC_TARGET'] = formValues.DOC_TARGET || 'Kepala Kejaksaan Negeri Kolaka';
-  data['DOC_TARGET_ADDR'] = formValues.DOC_TARGET_ADDR || 'Jl. Dr. Sutomo No. 5, Kolaka';
+  return finalMap;
+}
 
-  // 4. Aliases in snake_case & lowercase for flexible template compatibility
-  data['nomor_lp'] = data['CASE_NO_LP'];
-  data['no_lp'] = data['CASE_NO_LP'];
-  data['tindak_pidana'] = data['CASE_TINDAK_PIDANA'];
-  data['pasal_uu'] = data['CASE_PASAL_UU'];
-  data['pasal'] = data['CASE_PASAL'];
-  data['locus'] = data['CASE_LOCUS'];
-  data['tempus'] = data['CASE_TEMPUS'];
-  data['pelapor_name'] = data['CASE_PELAPOR_NAME'];
-  data['pelapor'] = data['CASE_PELAPOR_NAME'];
-  data['terlapor_name'] = data['CASE_TERLAPOR_NAME'];
-  data['tersangka'] = data['CASE_PERSON_NAMA'];
-  data['nama_tersangka'] = data['CASE_PERSON_NAMA'];
-  data['nik_tersangka'] = data['CASE_PERSON_NIK'];
-  data['umur_tersangka'] = data['CASE_PERSON_UMUR'];
-  data['agama_tersangka'] = data['CASE_PERSON_AGAMA'];
-  data['pekerjaan_tersangka'] = data['CASE_PERSON_PEKERJAAN'];
-  data['alamat_tersangka'] = data['CASE_PERSON_ALAMAT'];
-  data['jenis_kelamin_tersangka'] = data['CASE_PERSON_GENDER'];
-  data['ttl_tersangka'] = data['CASE_PERSON_POB_DOB'];
-
-  data['penyidik_1'] = data['PENYIDIK_1_NAMA'] || '-';
-  data['penyidik_1_nama'] = data['PENYIDIK_1_NAMA'] || '-';
-  data['penyidik_1_pangkat'] = data['PENYIDIK_1_PANGKAT'] || '-';
-  data['penyidik_1_nrp'] = data['PENYIDIK_1_NRP'] || '-';
-  data['penyidik_1_jabatan'] = data['PENYIDIK_1_JABATAN'] || '-';
-
-  data['penyidik_2'] = data['PENYIDIK_2_NAMA'] || '-';
-  data['penyidik_2_nama'] = data['PENYIDIK_2_NAMA'] || '-';
-  data['penyidik_2_pangkat'] = data['PENYIDIK_2_PANGKAT'] || '-';
-  data['penyidik_2_nrp'] = data['PENYIDIK_2_NRP'] || '-';
-
-  data['penyidik_3'] = data['PENYIDIK_3_NAMA'] || '-';
-  data['penyidik_4'] = data['PENYIDIK_4_NAMA'] || '-';
-  data['penyidik_5'] = data['PENYIDIK_5_NAMA'] || '-';
-
-  data['kasat_nama'] = data['ATASAN_NAMA'];
-  data['kasat_pangkat'] = data['ATASAN_PANGKAT'];
-  data['kasat_nrp'] = data['ATASAN_NRP'];
-  data['kasat_jabatan'] = data['ATASAN_JABATAN'];
-  data['atasan_nama'] = data['ATASAN_NAMA'];
-  data['atasan_pangkat'] = data['ATASAN_PANGKAT'];
-  data['atasan_nrp'] = data['ATASAN_NRP'];
-  data['atasan_jabatan'] = data['ATASAN_JABATAN'];
-
-  data['kanit_nama'] = data['KANIT_NAMA'];
-  data['kanit_pangkat'] = data['KANIT_PANGKAT'];
-  data['kanit_nrp'] = data['KANIT_NRP'];
-  data['kanit_jabatan'] = data['KANIT_JABATAN'];
-
-  data['nomor_surat'] = data['DOC_NO'];
-  data['doc_no'] = data['DOC_NO'];
-  data['tanggal_surat'] = data['DOC_DATE'];
-  data['doc_date'] = data['DOC_DATE'];
-  data['tempat_surat'] = data['DOC_LOCATION'];
-  data['doc_location'] = data['DOC_LOCATION'];
-  data['masa_berlaku'] = data['DOC_VALIDITY'];
-  data['doc_validity'] = data['DOC_VALIDITY'];
-  data['doc_target'] = data['DOC_TARGET'];
-  data['kepada_yth'] = data['DOC_TARGET'];
-  data['doc_target_addr'] = data['DOC_TARGET_ADDR'];
-  data['alamat_tujuan'] = data['DOC_TARGET_ADDR'];
-
-  // Clean all values: replace undefined, null, or string "null"/"undefined" with "" or "-"
-  Object.keys(data).forEach((k) => {
-    if (data[k] === null || data[k] === undefined || data[k] === 'null' || data[k] === 'undefined') {
-      data[k] = '';
-    }
-  });
-
-  return data;
+/**
+ * Adapter fungsi kompatibilitas mundur
+ */
+export function buildDocxDataMap({ caseData = {}, formValues = {}, personnelList = [], dynamicConfig = [] }) {
+  return buildMindikVariables(caseData, formValues, dynamicConfig, personnelList);
 }
 
 /**
@@ -356,7 +382,7 @@ export async function generateAndDownloadDocx({
   normalizeDocxXml(zip);
 
   // 3. Prepare data map
-  const dataMap = buildDocxDataMap({ caseData, formValues, personnelList });
+  const dataMap = buildMindikVariables(caseData, formValues, template?.dynamic_fields, personnelList);
 
   // 4. Compile with Docxtemplater
   const doc = new Docxtemplater(zip, {
@@ -420,7 +446,7 @@ export async function renderDocxToHtml({
   normalizeDocxXml(zip);
 
   // 3. Build data map
-  const dataMap = buildDocxDataMap({ caseData, formValues, personnelList });
+  const dataMap = buildMindikVariables(caseData, formValues, template?.dynamic_fields, personnelList);
 
   // 4. Render placeholders
   const doc = new Docxtemplater(zip, {
@@ -501,7 +527,7 @@ export async function generateDocxBlob({
   normalizeDocxXml(zip);
 
   // 3. Build data map
-  const dataMap = buildDocxDataMap({ caseData, formValues, personnelList });
+  const dataMap = buildMindikVariables(caseData, formValues, template?.dynamic_fields, personnelList);
 
   // 4. Render placeholders
   const doc = new Docxtemplater(zip, {

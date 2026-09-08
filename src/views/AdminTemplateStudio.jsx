@@ -10,7 +10,9 @@ import {
   Database, 
   Layers, 
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Edit3,
+  XCircle
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { mockTemplates } from '../data/mockTemplates';
@@ -21,17 +23,24 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
   const [isUploading, setIsUploading] = useState(false);
   const [statusNotice, setStatusNotice] = useState(null);
 
+  // Edit mode states
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [existingFilePath, setExistingFilePath] = useState(null);
+
   // Form states
   const [title, setTitle] = useState('');
   const [code, setCode] = useState('');
   const [category, setCategory] = useState('SURAT PERINTAH');
   const [description, setDescription] = useState('');
   const [docxFile, setDocxFile] = useState(null);
+
+  // Standard Kamus Mindik Dynamic Fields
   const [dynamicFields, setDynamicFields] = useState([
-    { key: 'DOC_NO', label: 'Nomor Surat', type: 'text', placeholder: 'Sp.Sidik/___/___/2026/Reskrim', required: true },
-    { key: 'DOC_DATE', label: 'Tanggal Surat', type: 'date', placeholder: '', required: true },
-    { key: 'DOC_LOCATION', label: 'Tempat Dikeluarkan', type: 'text', placeholder: 'Tirawuta', required: true },
-    { key: 'DOC_SIGNER_ATASAN_NAME', label: 'Atasan Penandatangan', type: 'select_personnel', role_filter: 'Kasat', required: true }
+    { id: 1, field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: 'B/01/IX/2026/Reskrim', is_required: true },
+    { id: 2, field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
+    { id: 3, field_key: 'TEMPAT_SURAT', field_label: 'Tempat Dikeluarkan', field_type: 'text', default_value: 'Tirawuta', is_required: true },
+    { id: 4, field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
+    { id: 5, field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false }
   ]);
 
   // Load existing templates from Supabase
@@ -63,24 +72,43 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
     fetchSupabaseTemplates();
   }, []);
 
-  // Handle dynamic field modifications
-  const addDynamicField = () => {
-    setDynamicFields(prev => [
+  // Standard + Tambah Field
+  const handleAddField = () => {
+    setDynamicFields((prev) => [
       ...prev,
-      { key: `FIELD_${prev.length + 1}`, label: 'Label Field Baru', type: 'text', placeholder: '', required: false }
+      {
+        id: Date.now() + Math.random(),
+        field_key: '',
+        field_label: '',
+        field_type: 'text',
+        default_value: '',
+        is_required: false
+      }
     ]);
   };
 
-  const updateDynamicField = (index, key, value) => {
-    setDynamicFields(prev => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], [key]: value };
-      return copy;
-    });
+  // Standard Update Field
+  const updateDynamicField = (id, prop, value) => {
+    setDynamicFields((prev) => prev.map(f => {
+      if (f.id === id) {
+        return { ...f, [prop]: value };
+      }
+      return f;
+    }));
   };
 
-  const removeDynamicField = (index) => {
-    setDynamicFields(prev => prev.filter((_, i) => i !== index));
+  // Key Placeholder filter: Otomatis buang { } dan spasi, paksa UPPERCASE
+  const handleKeyChange = (id, rawValue) => {
+    const cleanKey = (rawValue || '')
+      .replace(/[{}]/g, '')
+      .replace(/\s+/g, '_')
+      .toUpperCase();
+    updateDynamicField(id, 'field_key', cleanKey);
+  };
+
+  // Hapus baris berdasarkan id
+  const handleRemoveField = (id) => {
+    setDynamicFields((prev) => prev.filter(f => f.id !== id));
   };
 
   // Preset loaders for convenience
@@ -91,15 +119,72 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
       setCode(found.code);
       setCategory(found.category);
       setDescription(found.description);
-      setDynamicFields([...found.dynamic_fields]);
+      
+      const convertedFields = (found.dynamic_fields || []).map((f, i) => ({
+        id: Date.now() + i,
+        field_key: (f.field_key || f.key || '').replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase(),
+        field_label: f.field_label || f.label || '',
+        field_type: f.field_type || f.type || 'text',
+        default_value: f.default_value !== undefined ? f.default_value : (f.placeholder || ''),
+        is_required: Boolean(f.is_required !== undefined ? f.is_required : f.required)
+      }));
+      setDynamicFields(convertedFields);
+
       setStatusNotice({
         type: 'info',
-        message: `Form diisi dengan template standar ${found.code}. Silakan pilih file .docx Anda.`
+        message: `Form diisi dengan preset standar ${found.code}. Silakan pilih file .docx Anda.`
       });
     }
   };
 
-  // Main handler: Upload .docx to storage & Save metadata to document_templates
+  // Start edit template mode
+  const handleEditTemplate = (tpl) => {
+    setEditingTemplateId(tpl.id);
+    setTitle(tpl.title || '');
+    setCode(tpl.code || '');
+    setCategory(tpl.category || 'SURAT PERINTAH');
+    setDescription(tpl.description || '');
+    setExistingFilePath(tpl.file_path || '');
+    setDocxFile(null);
+
+    const normFields = (Array.isArray(tpl.dynamic_fields) ? tpl.dynamic_fields : []).map((f, i) => ({
+      id: f.id || Date.now() + i,
+      field_key: (f.field_key || f.key || '').replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase(),
+      field_label: f.field_label || f.label || '',
+      field_type: f.field_type || f.type || 'text',
+      default_value: f.default_value !== undefined ? f.default_value : (f.placeholder || ''),
+      is_required: Boolean(f.is_required !== undefined ? f.is_required : f.required)
+    }));
+
+    setDynamicFields(normFields.length > 0 ? normFields : [
+      { id: 1, field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true }
+    ]);
+
+    setStatusNotice({
+      type: 'info',
+      message: `Mode Edit aktif untuk template '${tpl.title}'. Klik Simpan untuk memperbarui tanpa duplikasi data.`
+    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Cancel edit mode
+  const handleCancelEdit = () => {
+    setEditingTemplateId(null);
+    setExistingFilePath(null);
+    setTitle('');
+    setCode('');
+    setCategory('SURAT PERINTAH');
+    setDescription('');
+    setDocxFile(null);
+    setDynamicFields([
+      { id: 1, field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: 'B/01/IX/2026/Reskrim', is_required: true },
+      { id: 2, field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
+      { id: 3, field_key: 'TEMPAT_SURAT', field_label: 'Tempat Dikeluarkan', field_type: 'text', default_value: 'Tirawuta', is_required: true }
+    ]);
+  };
+
+  // Main handler: Upload .docx to storage & Upsert metadata to document_templates
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -108,49 +193,76 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
       return;
     }
 
-    if (!docxFile) {
+    if (!editingTemplateId && !docxFile) {
       setStatusNotice({ type: 'error', message: 'Silakan pilih file template .docx yang akan diunggah.' });
       return;
     }
 
     setIsUploading(true);
-    setStatusNotice({ type: 'info', message: 'Mengunggah file .docx ke Supabase Storage...' });
+    setStatusNotice({ type: 'info', message: 'Menyimpan konfigurasi template ke Supabase...' });
 
     try {
-      // 1. Upload .docx file to Supabase Storage bucket 'docx-templates'
-      const cleanFileName = docxFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const uniqueFileName = `${Date.now()}_${cleanFileName}`;
-      const storageFilePath = `templates/${uniqueFileName}`;
+      let finalFilePath = existingFilePath || '';
 
-      const { data: storageUpload, error: storageError } = await supabase.storage
-        .from('docx-templates')
-        .upload(storageFilePath, docxFile, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        });
+      // 1. Upload .docx file jika ada file fisik baru dipilih
+      if (docxFile) {
+        const cleanFileName = docxFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const uniqueFileName = `${Date.now()}_${cleanFileName}`;
+        const storageFilePath = `templates/${uniqueFileName}`;
 
-      if (storageError) {
-        console.error('Supabase Storage Error:', storageError);
-        throw new Error(`Gagal upload ke bucket 'docx-templates': ${storageError.message}. Pastikan bucket 'docx-templates' telah dibuat di Supabase Storage.`);
+        const { data: storageUpload, error: storageError } = await supabase.storage
+          .from('docx-templates')
+          .upload(storageFilePath, docxFile, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          });
+
+        if (storageError) {
+          console.warn('Upload to docx-templates failed, trying templates bucket:', storageError.message);
+          const { data: upload2, error: error2 } = await supabase.storage
+            .from('templates')
+            .upload(storageFilePath, docxFile, { upsert: true });
+
+          if (error2) {
+            throw new Error(`Gagal upload ke storage: ${storageError.message}`);
+          }
+          finalFilePath = upload2?.path || storageFilePath;
+        } else {
+          finalFilePath = storageUpload?.path || storageFilePath;
+        }
       }
 
-      const finalFilePath = storageUpload?.path || storageFilePath;
+      // 2. Normalisasi Dynamic Fields ke format baku
+      const cleanDynamicFields = dynamicFields.map((f) => ({
+        id: f.id || Date.now(),
+        field_key: (f.field_key || '').replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase(),
+        field_label: f.field_label || '',
+        field_type: f.field_type || 'text',
+        default_value: f.default_value !== undefined ? f.default_value : '',
+        is_required: Boolean(f.is_required)
+      }));
 
-      // 2. Insert metadata into 'document_templates' table
+      // 3. Upsert into 'document_templates' table (mencegah error duplicate key violates unique constraint)
       const payload = {
         title: title.trim(),
-        code: code.trim().toUpperCase(),
+        code: code.trim().replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase(),
         category,
         description: description.trim(),
         file_path: finalFilePath,
-        dynamic_fields: dynamicFields,
-        created_at: new Date().toISOString()
+        dynamic_fields: cleanDynamicFields,
+        updated_at: new Date().toISOString()
       };
+
+      if (editingTemplateId) {
+        payload.id = editingTemplateId;
+      } else {
+        payload.created_at = new Date().toISOString();
+      }
 
       const { data: dbData, error: dbError } = await supabase
         .from('document_templates')
-        .insert([payload])
+        .upsert([payload], { onConflict: editingTemplateId ? 'id' : 'code' })
         .select();
 
       if (dbError) {
@@ -160,14 +272,11 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
 
       setStatusNotice({
         type: 'success',
-        message: `Berhasil! File .docx '${docxFile.name}' tersimpan di Storage dan metadata template '${title}' tersimpan di Supabase.`
+        message: `Berhasil! Template '${title}' berhasil ${editingTemplateId ? 'diperbarui' : 'disimpan'} di Supabase.`
       });
 
       // Reset form
-      setTitle('');
-      setCode('');
-      setDescription('');
-      setDocxFile(null);
+      handleCancelEdit();
       
       // Refresh list
       fetchSupabaseTemplates();
@@ -189,19 +298,26 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
   // Download template .docx file from Supabase Storage
   const handleDownloadDocx = async (filePath, templateTitle) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('docx-templates')
-        .download(filePath);
-
+      let bucket = 'docx-templates';
+      let cleanPath = filePath.replace(/^\/+/, '');
+      
+      let { data, error } = await supabase.storage.from(bucket).download(cleanPath);
       if (error) {
-        alert(`Gagal mengunduh file dari Supabase Storage: ${error.message}`);
+        bucket = 'templates';
+        const res2 = await supabase.storage.from(bucket).download(cleanPath);
+        data = res2.data;
+        error = res2.error;
+      }
+
+      if (error || !data) {
+        alert(`Gagal mengunduh file dari Supabase Storage: ${error?.message || 'File tidak ditemukan'}`);
         return;
       }
 
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${templateTitle.replace(/\s+/g, '_')}.docx`;
+      a.download = `${(templateTitle || 'Template').replace(/\s+/g, '_')}.docx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -219,6 +335,7 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
     try {
       if (filePath) {
         await supabase.storage.from('docx-templates').remove([filePath]);
+        await supabase.storage.from('templates').remove([filePath]);
       }
       const { error } = await supabase.from('document_templates').delete().eq('id', id);
       if (error) throw error;
@@ -254,7 +371,7 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
             Manajemen Template Dokumen Mindik (.docx)
           </h2>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Unggah file master Microsoft Word (.docx) ke Supabase Storage dan daftarkan variabel dinamis (dynamic fields) untuk otomatisasi berkas penyidikan.
+            Unggah file master Microsoft Word (.docx) ke Supabase Storage dan kelola skema variabel dinamis (dynamic fields) untuk otomatisasi berkas penyidikan.
           </p>
         </div>
 
@@ -302,7 +419,7 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
       {/* Main Grid: Form Builder (Left) & Existing Templates (Right) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(380px, 540px) 1fr',
+        gridTemplateColumns: 'minmax(420px, 580px) 1fr',
         gap: '24px',
         alignItems: 'start',
       }}>
@@ -310,31 +427,52 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
         <div className="glass" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CloudUpload size={18} color="var(--accent-cyan)" />
-              <span>Upload Template Baru</span>
+              {editingTemplateId ? (
+                <>
+                  <Edit3 size={18} color="var(--accent-cyan)" />
+                  <span>Edit Template: {code || title}</span>
+                </>
+              ) : (
+                <>
+                  <CloudUpload size={18} color="var(--accent-cyan)" />
+                  <span>Upload Template Baru</span>
+                </>
+              )}
             </h3>
 
-            {/* Quick Presets */}
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button 
-                type="button" 
-                onClick={() => loadPreset('SPRIN_SIDIK')}
-                className="btn btn-secondary btn-sm" 
-                style={{ fontSize: '11px', padding: '3px 8px' }}
-                title="Isi form dengan preset SPRIN SIDIK"
+            {editingTemplateId ? (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '11px', padding: '3px 8px', gap: '4px' }}
               >
-                Preset Sidik
+                <XCircle size={13} />
+                <span>Batal Edit</span>
               </button>
-              <button 
-                type="button" 
-                onClick={() => loadPreset('SPDP')}
-                className="btn btn-secondary btn-sm" 
-                style={{ fontSize: '11px', padding: '3px 8px' }}
-                title="Isi form dengan preset SPDP"
-              >
-                Preset SPDP
-              </button>
-            </div>
+            ) : (
+              /* Quick Presets */
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => loadPreset('SPRIN_SIDIK')}
+                  className="btn btn-secondary btn-sm" 
+                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  title="Isi form dengan preset SPRIN SIDIK"
+                >
+                  Preset Sidik
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => loadPreset('SPDP')}
+                  className="btn btn-secondary btn-sm" 
+                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  title="Isi form dengan preset SPDP"
+                >
+                  Preset SPDP
+                </button>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -362,7 +500,7 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                 <input
                   type="text"
                   value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  onChange={(e) => setCode(e.target.value.replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase())}
                   placeholder="Contoh: SPRIN_SIDIK"
                   className="form-input mono"
                   required
@@ -393,21 +531,21 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Deskripsi singkat fungsi dan peruntukan template dokumen ini..."
                 className="form-textarea"
-                style={{ minHeight: '60px' }}
+                style={{ minHeight: '50px' }}
               />
             </div>
 
             {/* File .docx Upload Area */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">
-                File Master Word (.docx) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                File Master Word (.docx) {!editingTemplateId && <span style={{ color: 'var(--accent-red)' }}>*</span>}
               </label>
               
               <div 
                 style={{
                   border: '2px dashed var(--border-glass-hover)',
                   borderRadius: 'var(--radius-lg)',
-                  padding: '20px',
+                  padding: '16px',
                   textAlign: 'center',
                   background: docxFile ? 'rgba(0, 212, 255, 0.06)' : 'rgba(13, 21, 38, 0.4)',
                   cursor: 'pointer',
@@ -427,7 +565,7 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                   }}
                 />
 
-                <FileText size={32} color={docxFile ? 'var(--accent-cyan)' : 'var(--text-secondary)'} style={{ margin: '0 auto 8px' }} />
+                <FileText size={28} color={docxFile ? 'var(--accent-cyan)' : 'var(--text-secondary)'} style={{ margin: '0 auto 6px' }} />
                 
                 {docxFile ? (
                   <div>
@@ -435,7 +573,16 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                       {docxFile.name}
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
-                      {(docxFile.size / 1024).toFixed(1)} KB • Siap diupload ke bucket 'docx-templates'
+                      {(docxFile.size / 1024).toFixed(1)} KB • File siap diunggah ke Storage
+                    </div>
+                  </div>
+                ) : editingTemplateId && existingFilePath ? (
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: '12px', color: '#60a5fa' }}>
+                      File saat ini: {existingFilePath.split('/').pop()}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Klik untuk mengganti dengan file .docx baru (opsional)
                     </div>
                   </div>
                 ) : (
@@ -443,7 +590,7 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                     <div style={{ fontWeight: 500, fontSize: '13px', color: 'var(--text-primary)' }}>
                       Klik untuk memilih file template .docx
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                       Format dokumen resmi Microsoft Word (.docx)
                     </div>
                   </div>
@@ -452,7 +599,7 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
             </div>
 
             {/* Dynamic Fields Builder */}
-            <div style={{ marginTop: '8px' }}>
+            <div style={{ marginTop: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Layers size={14} color="var(--accent-cyan)" />
@@ -460,89 +607,103 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                 </label>
                 <button
                   type="button"
-                  onClick={addDynamicField}
+                  onClick={handleAddField}
                   className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  style={{ fontSize: '11px', padding: '4px 10px', gap: '4px' }}
                 >
-                  <Plus size={12} />
-                  <span>Tambah Field</span>
+                  <Plus size={13} />
+                  <span>+ Tambah Field</span>
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
-                {dynamicFields.map((field, idx) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '340px', overflowY: 'auto', paddingRight: '4px' }}>
+                {dynamicFields.map((field) => (
                   <div 
-                    key={idx}
+                    key={field.id}
                     style={{
-                      padding: '10px',
+                      padding: '10px 12px',
                       background: 'var(--bg-tertiary)',
                       borderRadius: 'var(--radius-md)',
                       border: '1px solid var(--border-glass)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '6px',
+                      gap: '8px',
                     }}
                   >
+                    {/* Baris Atas: Key Placeholder (Kiri), Label Field (Tengah), Tipe Data (Kanan), Hapus */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {/* Key Placeholder */}
                       <input
                         type="text"
-                        value={field.key}
-                        onChange={(e) => updateDynamicField(idx, 'key', e.target.value.toUpperCase())}
-                        placeholder="KEY (e.g. DOC_NO)"
+                        value={field.field_key || ''}
+                        onChange={(e) => handleKeyChange(field.id, e.target.value)}
+                        placeholder="KEY (e.g. NOMOR_SURAT)"
                         className="form-input mono"
-                        style={{ padding: '6px 8px', fontSize: '12px', flex: '1 1 120px' }}
+                        style={{ padding: '6px 8px', fontSize: '11.5px', flex: '1 1 130px', fontWeight: 600, color: 'var(--accent-cyan)' }}
+                        title="Key placeholder kurung kurawal pada template Word (otomatis uppercase tanpa kurung)"
                       />
+
+                      {/* Label Field */}
                       <input
                         type="text"
-                        value={field.label}
-                        onChange={(e) => updateDynamicField(idx, 'label', e.target.value)}
-                        placeholder="Label Field"
+                        value={field.field_label || ''}
+                        onChange={(e) => updateDynamicField(field.id, 'field_label', e.target.value)}
+                        placeholder="Label Field (misal: Nomor Surat)"
                         className="form-input"
                         style={{ padding: '6px 8px', fontSize: '12px', flex: '1 1 140px' }}
                       />
+
+                      {/* Tipe Data */}
                       <select
-                        value={field.type}
-                        onChange={(e) => updateDynamicField(idx, 'type', e.target.value)}
+                        value={field.field_type || 'text'}
+                        onChange={(e) => updateDynamicField(field.id, 'field_type', e.target.value)}
                         className="form-select"
-                        style={{ padding: '6px 8px', fontSize: '12px', width: '110px' }}
+                        style={{ padding: '6px 8px', fontSize: '11.5px', width: '125px' }}
                       >
                         <option value="text">Teks</option>
                         <option value="date">Tanggal</option>
+                        <option value="select">Pilihan (Dropdown)</option>
                         <option value="textarea">Textarea</option>
-                        <option value="select_personnel">Personel</option>
                       </select>
+
+                      {/* Tombol Hapus */}
                       <button
                         type="button"
-                        onClick={() => removeDynamicField(idx)}
+                        onClick={() => handleRemoveField(field.id)}
                         style={{
                           background: 'transparent',
                           border: 'none',
                           color: 'var(--accent-red)',
                           cursor: 'pointer',
                           padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
-                        title="Hapus Field"
+                        title="Hapus baris field ini"
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    {/* Baris Bawah: Placeholder / Default (Kiri) & Checkbox Wajib (Kanan) */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                       <input
                         type="text"
-                        value={field.placeholder || ''}
-                        onChange={(e) => updateDynamicField(idx, 'placeholder', e.target.value)}
-                        placeholder="Placeholder / Contoh isi..."
+                        value={field.default_value || ''}
+                        onChange={(e) => updateDynamicField(field.id, 'default_value', e.target.value)}
+                        placeholder="Contoh isi / default (misal: B/01/I/2026/Reskrim)..."
                         className="form-input"
-                        style={{ padding: '4px 8px', fontSize: '11px', flex: 1, marginRight: '10px' }}
+                        style={{ padding: '4px 8px', fontSize: '11px', flex: 1 }}
                       />
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
                         <input
                           type="checkbox"
-                          checked={field.required || false}
-                          onChange={(e) => updateDynamicField(idx, 'required', e.target.checked)}
+                          checked={Boolean(field.is_required)}
+                          onChange={(e) => updateDynamicField(field.id, 'is_required', e.target.checked)}
+                          style={{ cursor: 'pointer' }}
                         />
-                        <span>Wajib</span>
+                        <span>Wajib diisi</span>
                       </label>
                     </div>
                   </div>
@@ -555,17 +716,22 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
               type="submit"
               disabled={isUploading}
               className="btn btn-primary"
-              style={{ marginTop: '8px', padding: '12px' }}
+              style={{ marginTop: '6px', padding: '12px', fontWeight: 700 }}
             >
               {isUploading ? (
                 <>
                   <RefreshCw size={16} className="animate-pulse" />
-                  <span>Mengunggah & Menyimpan ke Supabase...</span>
+                  <span>Menyimpan ke Supabase...</span>
+                </>
+              ) : editingTemplateId ? (
+                <>
+                  <CheckCircle2 size={16} />
+                  <span>Perbarui Template di Supabase</span>
                 </>
               ) : (
                 <>
                   <Database size={16} />
-                  <span>Simpan Template & Unggah ke Supabase</span>
+                  <span>Simpan Template Baru ke Supabase</span>
                 </>
               )}
             </button>
@@ -605,11 +771,8 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                   Belum Ada Template di Supabase Cloud
                 </div>
                 <p style={{ fontSize: '12px', margin: '4px 0 12px', maxWidth: '360px', marginInline: 'auto' }}>
-                  Gunakan form di sebelah kiri untuk mengunggah file master .docx pertama Anda ke bucket 'docx-templates'.
+                  Gunakan form di sebelah kiri untuk mengunggah file master .docx pertama Anda.
                 </p>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Catatan: 8 template bawaan sistem tetap tersedia di Generator Mindik.
-                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -618,9 +781,9 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                     key={tpl.id}
                     style={{
                       padding: '16px',
-                      background: 'var(--bg-secondary)',
+                      background: editingTemplateId === tpl.id ? 'rgba(0, 212, 255, 0.08)' : 'var(--bg-secondary)',
                       borderRadius: 'var(--radius-lg)',
-                      border: '1px solid var(--border-glass)',
+                      border: editingTemplateId === tpl.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '10px',
@@ -631,6 +794,9 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="badge badge-cyan mono">{tpl.code}</span>
                         <span className="badge badge-blue">{tpl.category}</span>
+                        {editingTemplateId === tpl.id && (
+                          <span className="badge badge-purple">SEDANG DIEDIT</span>
+                        )}
                       </div>
                       <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                         {tpl.created_at ? new Date(tpl.created_at).toLocaleDateString('id-ID') : '-'}
@@ -655,14 +821,29 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                       paddingTop: '8px',
                       borderTop: '1px solid var(--border-subtle)',
                       fontSize: '11px',
+                      flexWrap: 'wrap',
+                      gap: '8px'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-secondary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-secondary)' }}>
                         <span className="mono">Storage: {tpl.file_path ? tpl.file_path.split('/').pop() : 'No file'}</span>
                         <span>•</span>
                         <span>{Array.isArray(tpl.dynamic_fields) ? tpl.dynamic_fields.length : 0} Variabel Dinamis</span>
                       </div>
 
                       <div style={{ display: 'flex', gap: '6px' }}>
+                        {/* Edit Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleEditTemplate(tpl)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: '4px', fontSize: '11.5px' }}
+                          title="Muat template ini ke form untuk diedit"
+                        >
+                          <Edit3 size={13} />
+                          <span>Edit</span>
+                        </button>
+
+                        {/* Download DOCX */}
                         {tpl.file_path && (
                           <button
                             type="button"
@@ -671,10 +852,11 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                             title="Unduh file .docx dari Supabase Storage"
                           >
                             <Download size={13} />
-                            <span>Unduh .docx</span>
+                            <span>Unduh</span>
                           </button>
                         )}
 
+                        {/* Gunakan di Generator */}
                         {onSelectTemplateForGenerator && (
                           <button
                             type="button"
@@ -687,6 +869,7 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                           </button>
                         )}
 
+                        {/* Delete */}
                         <button
                           type="button"
                           onClick={() => handleDeleteTemplate(tpl.id, tpl.file_path)}
