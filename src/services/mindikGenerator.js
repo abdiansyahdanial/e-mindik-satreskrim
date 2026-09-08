@@ -19,13 +19,29 @@ export function formatIndonesianDate(dateInput) {
   }).format(d);
 }
 
+// In-memory cache for master .docx buffers from Supabase Storage
+const templateBufferCache = new Map();
+
+/**
+ * Clear in-memory template buffer cache if templates are modified in Template Studio
+ */
+export function clearTemplateBufferCache() {
+  templateBufferCache.clear();
+}
+
 /**
  * Fetch physical .docx file from Supabase Storage.
- * Supports both 'templates' and 'docx-templates' buckets, as well as subfolders.
+ * Supports memory cache, 'templates' and 'docx-templates' buckets, as well as subfolders.
  */
 export async function fetchDocxArrayBuffer(filePath) {
   if (!filePath) {
     throw new Error('Path template file di Supabase Storage tidak valid.');
+  }
+
+  // 1. Check in-memory cache first (Instant < 1ms response)
+  if (templateBufferCache.has(filePath)) {
+    const cached = templateBufferCache.get(filePath);
+    return cached.slice(0); // cloned buffer
   }
 
   // Buckets to try in order of priority
@@ -43,7 +59,9 @@ export async function fetchDocxArrayBuffer(filePath) {
       try {
         const { data, error } = await supabase.storage.from(bucket).download(testPath);
         if (!error && data) {
-          return await data.arrayBuffer();
+          const ab = await data.arrayBuffer();
+          templateBufferCache.set(filePath, ab);
+          return ab.slice(0);
         }
       } catch (e) {
         // Continue trying
@@ -59,7 +77,9 @@ export async function fetchDocxArrayBuffer(filePath) {
         if (data?.publicUrl) {
           const res = await fetch(data.publicUrl);
           if (res.ok) {
-            return await res.arrayBuffer();
+            const ab = await res.arrayBuffer();
+            templateBufferCache.set(filePath, ab);
+            return ab.slice(0);
           }
         }
       } catch (e) {
@@ -72,7 +92,9 @@ export async function fetchDocxArrayBuffer(filePath) {
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
     const res = await fetch(filePath);
     if (res.ok) {
-      return await res.arrayBuffer();
+      const ab = await res.arrayBuffer();
+      templateBufferCache.set(filePath, ab);
+      return ab.slice(0);
     }
   }
 
@@ -507,4 +529,135 @@ export async function generateDocxBlob({
     dataMap
   };
 }
+
+/**
+ * Send DOCX blob to conversion endpoint /api/convert-docx-to-pdf and return PDF Blob.
+ * Uses binary FormData with fallback to Supabase Storage path to prevent 413 Payload Too Large.
+ */
+export async function convertDocxToPdf(docxBlob, options = {}) {
+  if (!docxBlob && !options.storagePath && !options.fileUrl) {
+    throw new Error('Blob .docx atau storagePath tidak valid.');
+  }
+
+  let response;
+
+  // 1. If storagePath or fileUrl provided, send via direct path
+  if (options.storagePath || options.fileUrl) {
+    response = await fetch('/api/convert-docx-to-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        storagePath: options.storagePath,
+        fileUrl: options.fileUrl
+      })
+    });
+  } else {
+    // 2. Send via FormData multipart binary
+    const formData = new FormData();
+    formData.append('file', docxBlob, 'document.docx');
+
+    response = await fetch('/api/convert-docx-to-pdf', {
+      method: 'POST',
+      body: formData
+    });
+
+    // 3. Fallback if hit 413 (Payload Too Large) and Supabase storagePath is available
+    if (response.status === 413 && options.fallbackStoragePath) {
+      console.warn('FormData payload terkena batas 413, beralih ke jalur Supabase Storage path:', options.fallbackStoragePath);
+      response = await fetch('/api/convert-docx-to-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          storagePath: options.fallbackStoragePath
+        })
+      });
+    }
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Gagal mengonversi ke PDF (status: ${response.status})`);
+  }
+
+  return await response.blob();
+}
+
+/**
+ * In-memory cache for rendered PDFs: (templateId_variablesHash) => Blob
+ */
+const pdfRenderCache = new Map();
+
+/**
+ * Clear rendered PDF cache if needed
+ */
+export function clearPdfRenderCache() {
+  pdfRenderCache.clear();
+}
+
+/**
+ * High level workflow: Injeksi template .docx master -> Konversi ke PDF -> Return PDF blob & blob URL
+ * Includes instant render cache if variable values have not changed.
+ */
+export async function generatePdfBlob({
+  template,
+  caseData,
+  formValues = {},
+  personnelList = []
+}) {
+  const docxRes = await generateDocxBlob({
+    template,
+    caseData,
+    formValues,
+    personnelList
+  });
+
+  if (!docxRes.hasPhysicalFile || !docxRes.blob) {
+    return {
+      hasPhysicalFile: false,
+      pdfBlob: null,
+      pdfBlobUrl: null,
+      docxBlob: null,
+      filename: null,
+      isCached: false
+    };
+  }
+
+  // Check cache: key by template ID / path + JSON of variables
+  const cacheKey = `${template.id || template.file_path}_${JSON.stringify(docxRes.dataMap)}`;
+  let pdfBlob = pdfRenderCache.get(cacheKey);
+  let isCached = false;
+
+  if (pdfBlob) {
+    isCached = true;
+  } else {
+    // Perform true file-to-file conversion
+    pdfBlob = await convertDocxToPdf(docxRes.blob, {
+      fallbackStoragePath: template?.file_path
+    });
+
+    // Save in cache (keep last 20 generated PDFs)
+    if (pdfRenderCache.size > 20) {
+      const firstKey = pdfRenderCache.keys().next().value;
+      pdfRenderCache.delete(firstKey);
+    }
+    pdfRenderCache.set(cacheKey, pdfBlob);
+  }
+
+  const pdfBlobUrl = URL.createObjectURL(pdfBlob);
+
+  return {
+    hasPhysicalFile: true,
+    pdfBlob,
+    pdfBlobUrl,
+    docxBlob: docxRes.blob,
+    filename: docxRes.filename.replace(/\.docx$/i, '.pdf'),
+    dataMap: docxRes.dataMap,
+    isCached
+  };
+}
+
 

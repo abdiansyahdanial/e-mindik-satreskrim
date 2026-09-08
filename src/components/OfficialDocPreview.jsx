@@ -1,4 +1,3 @@
-import 'docx-preview/dist/docx-preview.css';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Printer, 
@@ -9,11 +8,11 @@ import {
   Table, 
   Sparkles, 
   AlertCircle,
-  FileCheck
+  FileCheck,
+  ExternalLink
 } from 'lucide-react';
-import { renderAsync } from 'docx-preview';
 import { 
-  generateDocxBlob, 
+  generatePdfBlob, 
   generateAndDownloadDocx, 
   buildDocxDataMap 
 } from '../services/mindikGenerator';
@@ -26,15 +25,17 @@ export default function OfficialDocPreview({
   onSaveArchive,
   isSaved = false 
 }) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [hasPhysicalFile, setHasPhysicalFile] = useState(true);
-  const [renderError, setRenderError] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [downloadSuccessNotice, setDownloadSuccessNotice] = useState(null);
   const [showVariableMap, setShowVariableMap] = useState(false);
 
-  // Reference to the canvas container for docx-preview
-  const containerRef = useRef(null);
+  // References for memory management and debouncing
+  const prevPdfUrlRef = useRef(null);
+  const lastRenderedKeyRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
   // Dynamic variable map from active case & form values
@@ -44,70 +45,64 @@ export default function OfficialDocPreview({
     personnelList: personnel 
   }) : {};
 
-  // Instant local rendering flow: Master DOCX -> Injeksi variabel via Docxtemplater -> Render via docx-preview
-  const renderDocx = useCallback(async () => {
-    if (!template || !selectedCase) {
-      if (containerRef.current) containerRef.current.innerHTML = '';
-      return;
-    }
+  // Core update function: True file-to-file conversion with memory cache & instant fallback
+  const updatePreview = useCallback(async (isManual = false) => {
+    if (!template || !selectedCase) return;
 
     if (!template.file_path) {
       setHasPhysicalFile(false);
-      setRenderError(null);
-      if (containerRef.current) containerRef.current.innerHTML = '';
+      setErrorMessage(null);
+      return;
+    }
+
+    // Optimization: If variables and template haven't changed, skip conversion
+    const currentKey = `${template.id || template.file_path}_${JSON.stringify(formValues)}`;
+    if (!isManual && lastRenderedKeyRef.current === currentKey && prevPdfUrlRef.current) {
       return;
     }
 
     setHasPhysicalFile(true);
-    setIsLoading(true);
-    setRenderError(null);
+    setIsUpdating(true);
+    setErrorMessage(null);
 
     try {
-      // 1. Ambil template Word asli dari Supabase Storage & isi variabel {tag}
-      const res = await generateDocxBlob({
+      const res = await generatePdfBlob({
         template,
         caseData: selectedCase,
         formValues,
         personnelList: personnel
       });
 
-      if (!res.hasPhysicalFile || !res.blob) {
+      if (!res.hasPhysicalFile || !res.pdfBlobUrl) {
         setHasPhysicalFile(false);
-        if (containerRef.current) containerRef.current.innerHTML = '';
         return;
       }
 
-      // 2. Render instan lembar Word asli via docx-preview ke canvas container
-      if (res.blob && containerRef.current) {
-        containerRef.current.innerHTML = ''; // Bersihkan kanvas sebelumnya
-
-        await renderAsync(res.blob, containerRef.current, undefined, {
-          className: 'docx-preview-doc',
-          inWrapper: true,
-          ignoreWidth: false,
-          ignoreHeight: false,
-          ignoreFonts: false,
-          breakPages: true,
-          renderHeaders: true,
-          renderFooters: true,
-          renderFootnotes: true,
-          renderEndnotes: true,
-          useBase64URL: true,
-          experimental: true
-        });
+      // Seamless transition: Revoke old Object URL only after new PDF is ready
+      if (prevPdfUrlRef.current && prevPdfUrlRef.current !== res.pdfBlobUrl) {
+        URL.revokeObjectURL(prevPdfUrlRef.current);
       }
+
+      prevPdfUrlRef.current = res.pdfBlobUrl;
+      lastRenderedKeyRef.current = currentKey;
+      setPdfUrl(res.pdfBlobUrl);
     } catch (err) {
-      console.error('docx-preview render error:', err);
-      setRenderError(`Gagal membaca atau merender berkas Word: ${err.message}`);
+      console.error('PDF conversion error:', err);
+      setErrorMessage(`Gagal mengonversi berkas dokumen asli ke PDF: ${err.message}`);
     } finally {
-      setIsLoading(false);
+      setIsUpdating(false);
     }
   }, [template, selectedCase, formValues, personnel]);
 
-  // Debounce cepat (300ms) saat user mengetik di formulir agar pratinjau terasa instan (< 500ms)
+  // Live typing synchronization with 800ms debounce (keeps typing at 60 FPS)
   useEffect(() => {
     if (!template || !selectedCase) {
-      if (containerRef.current) containerRef.current.innerHTML = '';
+      if (prevPdfUrlRef.current) {
+        URL.revokeObjectURL(prevPdfUrlRef.current);
+        prevPdfUrlRef.current = null;
+      }
+      setPdfUrl(null);
+      lastRenderedKeyRef.current = null;
       return;
     }
 
@@ -116,15 +111,24 @@ export default function OfficialDocPreview({
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      renderDocx();
-    }, 300);
+      updatePreview(false);
+    }, 800);
 
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [template?.id, template?.file_path, selectedCase?.id, JSON.stringify(formValues), renderDocx]);
+  }, [template?.id, template?.file_path, selectedCase?.id, JSON.stringify(formValues), updatePreview]);
+
+  // Clean-up Object URL on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (prevPdfUrlRef.current) {
+        URL.revokeObjectURL(prevPdfUrlRef.current);
+      }
+    };
+  }, []);
 
   if (!selectedCase || !template) {
     return (
@@ -178,11 +182,11 @@ export default function OfficialDocPreview({
         gap: '12px',
         boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
       }}>
-        {/* Badges */}
+        {/* Status Badges */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span className="badge badge-green" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <FileCheck size={12} />
-            <span>DOKUMEN WORD ASLI (100% PERSIS)</span>
+            <span>DOKUMEN ASLI FISIK (PDF F4 POLRI)</span>
           </span>
           {template?.file_path ? (
             <span className="badge badge-purple" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -202,13 +206,13 @@ export default function OfficialDocPreview({
           {template?.file_path && (
             <button
               type="button"
-              onClick={renderDocx}
-              disabled={isLoading}
+              onClick={() => updatePreview(true)}
+              disabled={isUpdating}
               className="btn btn-secondary btn-sm"
-              title="Perbarui pratinjau dokumen Word langsung di browser"
+              title="Paksa pembaruan pratinjau PDF seketika tanpa menunggu debounce"
             >
-              <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
-              <span>{isLoading ? 'Merender...' : 'Segarkan'}</span>
+              <RefreshCw size={13} className={isUpdating ? 'animate-spin' : ''} />
+              <span>{isUpdating ? 'Memperbarui...' : 'Segarkan Pratinjau'}</span>
             </button>
           )}
 
@@ -265,15 +269,17 @@ export default function OfficialDocPreview({
             </button>
           )}
 
-          <button 
-            type="button"
-            onClick={() => window.print()}
-            className="btn btn-secondary btn-sm"
-            title="Cetak langsung layout Word asli atau Simpan ke PDF"
-          >
-            <Printer size={13} />
-            <span>Cetak / PDF</span>
-          </button>
+          {pdfUrl && (
+            <button 
+              type="button"
+              onClick={() => window.open(pdfUrl, '_blank')}
+              className="btn btn-secondary btn-sm"
+              title="Buka lembar PDF penuh di tab baru untuk dicetak"
+            >
+              <Printer size={13} />
+              <span>Cetak / PDF</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -297,7 +303,7 @@ export default function OfficialDocPreview({
       )}
 
       {/* Render Error Alert */}
-      {renderError && (
+      {errorMessage && (
         <div className="no-print" style={{
           padding: '10px 16px',
           borderRadius: 'var(--radius-md)',
@@ -310,7 +316,7 @@ export default function OfficialDocPreview({
           fontSize: '12px',
         }}>
           <AlertCircle size={16} color="var(--accent-red)" />
-          <span>{renderError}</span>
+          <span>{errorMessage}</span>
         </div>
       )}
 
@@ -329,7 +335,7 @@ export default function OfficialDocPreview({
               VARIABEL DINAMIS DOKUMEN SUPABASE (TOTAL: {Object.keys(currentDataMap).length})
             </span>
             <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-              Diinjeksikan langsung ke tag kurung kurawal template Word asli
+              Diinjeksikan langsung ke tag kurung kurawal template Word master asli
             </span>
           </div>
 
@@ -354,72 +360,128 @@ export default function OfficialDocPreview({
         </div>
       )}
 
-      {/* Main Word Canvas Container */}
-      <div 
-        className="docx-preview-container"
-        style={{
-          width: '100%',
-          minHeight: '750px',
+      {/* Main Document Display Canvas */}
+      {!hasPhysicalFile && template && !template.file_path ? (
+        <div style={{
+          padding: '60px 24px',
+          textAlign: 'center',
+          background: '#0F172A',
           borderRadius: 'var(--radius-lg)',
-          boxSizing: 'border-box',
-          position: 'relative'
-        }}
-      >
-        {/* Loading Spinner */}
-        {isLoading && (
-          <div style={{ 
-            padding: '80px 20px', 
-            textAlign: 'center', 
-            color: '#FFFFFF',
+          border: '1px solid #334155',
+          color: '#94A3B8'
+        }}>
+          <FileText size={48} style={{ color: '#F59E0B', margin: '0 auto 16px' }} />
+          <div style={{ fontWeight: 700, fontSize: '16px', color: '#FFFFFF', marginBottom: '8px' }}>
+            Master Template Word (.docx) Belum Tersedia
+          </div>
+          <p style={{ fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px' }}>
+            Template <strong>"{template.title}"</strong> belum ditautkan dengan file fisik <code>.docx</code> di Supabase Storage.
+          </p>
+          <div style={{ fontSize: '12px', color: '#64748B' }}>
+            Unggah file master template melalui menu <strong>Template Studio</strong> agar lembar dokumen dapat dikonversi ke PDF fisik kedinasan.
+          </div>
+        </div>
+      ) : !pdfUrl ? (
+        <div 
+          className="relative w-full h-full min-h-[85vh] bg-slate-900 rounded-lg overflow-hidden border border-slate-700 shadow-xl"
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '85vh',
+            minHeight: '85vh',
+            backgroundColor: '#0f172a',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            border: '1px solid #334155',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'center',
+            color: '#94a3b8',
             gap: '12px'
-          }}>
-            <RefreshCw size={32} className="animate-spin" style={{ color: 'var(--accent-cyan)' }} />
-            <div style={{ fontWeight: 700, fontSize: '14px' }}>
-              Merender Dokumen Word Asli...
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Memproses tata letak fisik, kop, logo, dan margin asli dari master file .docx
-            </div>
-          </div>
-        )}
-
-        {/* Empty state when template doesn't have physical .docx file yet */}
-        {!hasPhysicalFile && !isLoading && (
-          <div style={{
-            margin: 'auto',
-            padding: '40px 24px',
-            textAlign: 'center',
-            maxWidth: '520px',
-            color: '#94A3B8'
-          }}>
-            <FileText size={48} style={{ color: '#F59E0B', margin: '0 auto 16px' }} />
-            <div style={{ fontWeight: 700, fontSize: '16px', color: '#FFFFFF', marginBottom: '8px' }}>
-              Master Template Word (.docx) Belum Tersedia
-            </div>
-            <p style={{ fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px' }}>
-              Template <strong>"{template.title}"</strong> belum ditautkan dengan file fisik <code>.docx</code> di Supabase Storage.
-            </p>
-            <div style={{ fontSize: '12px', color: '#64748B' }}>
-              Unggah file master template melalui menu <strong>Template Studio</strong> agar lembar dokumen dapat dirender secara presisi menggunakan layout asli Microsoft Word.
-            </div>
-          </div>
-        )}
-
-        {/* Elemen Penampung Kanvas docx-preview */}
-        <div 
-          id="docx-render-container" 
-          ref={containerRef}
-          style={{
-            width: '100%',
-            display: hasPhysicalFile && !isLoading ? 'flex' : 'none',
-            flexDirection: 'column',
-            alignItems: 'center'
           }}
-        />
-      </div>
+        >
+          <div 
+            className="animate-spin"
+            style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid #3b82f6',
+              borderTopColor: 'transparent',
+              borderRadius: '50%'
+            }}
+          />
+          <div style={{ fontSize: '14px', fontWeight: 600, color: '#f8fafc' }}>
+            Memuat Dokumen Fisik Asli...
+          </div>
+          <div style={{ fontSize: '12px', color: '#64748b' }}>
+            Menginjeksi variabel perkara &rarr; Konversi ke format PDF F4 standar Polri
+          </div>
+        </div>
+      ) : (
+        /* Native PDF Iframe Display with Smooth Loading Overlay */
+        <div 
+          className="relative w-full h-full min-h-[85vh] bg-slate-900 rounded-lg overflow-hidden border border-slate-700 shadow-xl"
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '85vh',
+            minHeight: '85vh',
+            backgroundColor: '#0f172a',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            border: '1px solid #334155',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
+          }}
+        >
+          {isUpdating && (
+            <div 
+              className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-slate-800/90 text-blue-400 text-xs px-3 py-1.5 rounded-full border border-blue-500/30 shadow-lg backdrop-blur"
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                zIndex: 20,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                color: '#60a5fa',
+                fontSize: '12px',
+                padding: '6px 12px',
+                borderRadius: '9999px',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                backdropFilter: 'blur(4px)'
+              }}
+            >
+              <span 
+                className="w-2 h-2 rounded-full bg-blue-400 animate-ping"
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: '#60a5fa'
+                }}
+              />
+              Memperbarui pratinjau...
+            </div>
+          )}
+          <iframe
+            src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+            title="Live Preview Mindik Asli"
+            className="w-full h-full min-h-[85vh] border-0 bg-slate-800"
+            style={{
+              width: '100%',
+              height: '100%',
+              minHeight: '85vh',
+              border: 'none',
+              backgroundColor: '#1e293b'
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
