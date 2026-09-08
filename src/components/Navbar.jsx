@@ -15,13 +15,16 @@ export default function Navbar({
   searchQuery, 
   setSearchQuery,
   currentUserProfile = null,
-  userRole = 'super_admin',
-  onLogout
+  userRole = 'anggota',
+  onLogout,
+  onOpenUserManagement
 }) {
   const [timeStr, setTimeStr] = useState('');
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const isSuperAdmin = userRole === 'super_admin';
+  const isAdmin = userRole === 'admin';
+  const isAnggota = userRole === 'anggota' || (!isSuperAdmin && !isAdmin);
 
   // Clock WITA (UTC+8)
   useEffect(() => {
@@ -146,14 +149,42 @@ export default function Navbar({
           <span>Buat Mindik</span>
         </button>
 
+        {/* Khusus Super Admin: Tombol Kelola RBAC */}
+        {isSuperAdmin && onOpenUserManagement && (
+          <button
+            type="button"
+            onClick={onOpenUserManagement}
+            className="btn btn-secondary btn-sm"
+            style={{
+              borderColor: 'rgba(168, 85, 247, 0.4)',
+              color: '#C084FC',
+              background: 'rgba(168, 85, 247, 0.1)'
+            }}
+            title="Kelola Peran Akun (RBAC)"
+          >
+            <ShieldAlert size={14} />
+            <span>Kelola RBAC</span>
+          </button>
+        )}
+
         {/* Officer Active Session */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
           padding: '6px 12px',
-          background: isSuperAdmin ? 'rgba(0, 212, 255, 0.08)' : 'rgba(34, 197, 94, 0.08)',
-          border: `1px solid ${isSuperAdmin ? 'rgba(0, 212, 255, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`,
+          background: isSuperAdmin 
+            ? 'rgba(168, 85, 247, 0.1)' 
+            : isAdmin 
+            ? 'rgba(0, 212, 255, 0.08)' 
+            : 'rgba(34, 197, 94, 0.08)',
+          border: `1px solid ${
+            isSuperAdmin 
+              ? 'rgba(168, 85, 247, 0.4)' 
+              : isAdmin 
+              ? 'rgba(0, 212, 255, 0.3)' 
+              : 'rgba(34, 197, 94, 0.3)'
+          }`,
           borderRadius: 'var(--radius-lg)',
           marginLeft: '4px',
         }}>
@@ -162,6 +193,8 @@ export default function Navbar({
             height: '32px',
             borderRadius: '50%',
             background: isSuperAdmin 
+              ? 'linear-gradient(135deg, #A855F7 0%, #3B82F6 100%)' 
+              : isAdmin 
               ? 'linear-gradient(135deg, #00D4FF 0%, #3B82F6 100%)' 
               : 'linear-gradient(135deg, #22C55E 0%, #059669 100%)',
             display: 'flex',
@@ -177,11 +210,11 @@ export default function Navbar({
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
               {officerName}
             </div>
-            <div style={{ fontSize: '10px', color: isSuperAdmin ? 'var(--accent-cyan)' : 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '10px', color: isSuperAdmin ? '#C084FC' : isAdmin ? 'var(--accent-cyan)' : 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span>{officerJabatan}</span>
               <span className="mono" style={{ color: 'var(--text-muted)' }}>• {officerNrp}</span>
-              <span className={`badge ${isSuperAdmin ? 'badge-cyan' : 'badge-green'}`} style={{ fontSize: '8.5px', padding: '1px 4px' }}>
-                {isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN'}
+              <span className={`badge ${isSuperAdmin ? 'badge-purple' : isAdmin ? 'badge-cyan' : 'badge-green'}`} style={{ fontSize: '8.5px', padding: '1px 4px' }}>
+                {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
               </span>
             </div>
           </div>

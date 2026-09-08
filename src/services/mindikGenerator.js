@@ -1,7 +1,9 @@
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
-import { saveAs } from 'file-saver';
-import { supabase } from '../supabaseClient';
+import fileSaver from 'file-saver';
+const saveAs = fileSaver.saveAs || fileSaver;
+import mammoth from 'mammoth';
+import { supabase } from '../supabaseClient.js';
 
 /**
  * Format date into Indonesian locale string: '08 September 2026'
@@ -18,38 +20,63 @@ export function formatIndonesianDate(dateInput) {
 }
 
 /**
- * Fetch physical .docx file from Supabase Storage bucket 'docx-templates'
- * or directly via URL, and return an ArrayBuffer.
+ * Fetch physical .docx file from Supabase Storage.
+ * Supports both 'templates' and 'docx-templates' buckets, as well as subfolders.
  */
 export async function fetchDocxArrayBuffer(filePath) {
   if (!filePath) {
     throw new Error('Path template file di Supabase Storage tidak valid.');
   }
 
-  // 1. Try download via Supabase storage client
-  try {
-    const { data, error } = await supabase.storage
-      .from('docx-templates')
-      .download(filePath);
+  // Buckets to try in order of priority
+  const bucketsToTry = ['templates', 'docx-templates'];
+  
+  // Clean path candidates
+  const cleanPath = filePath.replace(/^\/+/, '');
+  const pathWithoutTemplatesPrefix = cleanPath.startsWith('templates/') ? cleanPath.replace(/^templates\//, '') : cleanPath;
+  const pathWithTemplatesPrefix = cleanPath.startsWith('templates/') ? cleanPath : `templates/${cleanPath}`;
 
-    if (!error && data) {
-      return await data.arrayBuffer();
+  const pathsToTry = [cleanPath, pathWithoutTemplatesPrefix, pathWithTemplatesPrefix];
+
+  for (const bucket of bucketsToTry) {
+    for (const testPath of pathsToTry) {
+      try {
+        const { data, error } = await supabase.storage.from(bucket).download(testPath);
+        if (!error && data) {
+          return await data.arrayBuffer();
+        }
+      } catch (e) {
+        // Continue trying
+      }
     }
-  } catch (err) {
-    console.warn('Direct storage download warning, trying public URL fallback:', err);
   }
 
-  // 2. Fallback via Public URL fetch
-  const { data: publicUrlData } = supabase.storage
-    .from('docx-templates')
-    .getPublicUrl(filePath);
-
-  const targetUrl = publicUrlData?.publicUrl || filePath;
-  const res = await fetch(targetUrl);
-  if (!res.ok) {
-    throw new Error(`Gagal mengunduh file template .docx dari Supabase (${res.status} ${res.statusText})`);
+  // Fallback: Try Public URL
+  for (const bucket of bucketsToTry) {
+    for (const testPath of pathsToTry) {
+      try {
+        const { data } = supabase.storage.from(bucket).getPublicUrl(testPath);
+        if (data?.publicUrl) {
+          const res = await fetch(data.publicUrl);
+          if (res.ok) {
+            return await res.arrayBuffer();
+          }
+        }
+      } catch (e) {
+        // Continue trying
+      }
+    }
   }
-  return await res.arrayBuffer();
+
+  // If filePath is a full HTTP URL
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    const res = await fetch(filePath);
+    if (res.ok) {
+      return await res.arrayBuffer();
+    }
+  }
+
+  throw new Error(`Gagal mengunduh file template .docx '${filePath}' dari Supabase Storage. Pastikan file tersimpan di bucket 'templates' atau 'docx-templates'.`);
 }
 
 /**
@@ -226,3 +253,82 @@ export async function generateAndDownloadDocx({
     dataMap
   };
 }
+
+/**
+ * Render physical .docx from Supabase Storage with dynamic case data,
+ * and parse the output directly to HTML using Mammoth for live preview.
+ */
+export async function renderDocxToHtml({
+  template,
+  caseData,
+  formValues = {},
+  personnelList = []
+}) {
+  if (!template) {
+    throw new Error('Template dokumen belum dipilih.');
+  }
+
+  // If no physical file on Supabase Storage
+  if (!template.file_path) {
+    return {
+      hasPhysicalFile: false,
+      html: null,
+      message: 'Template ini belum memiliki file master .docx di Supabase Storage.'
+    };
+  }
+
+  // 1. Fetch .docx ArrayBuffer
+  const arrayBuffer = await fetchDocxArrayBuffer(template.file_path);
+
+  // 2. Load into PizZip & clean delimiters
+  const zip = new PizZip(arrayBuffer);
+  normalizeDocxXml(zip);
+
+  // 3. Build data map
+  const dataMap = buildDocxDataMap({ caseData, formValues, personnelList });
+
+  // 4. Render placeholders
+  const doc = new Docxtemplater(zip, {
+    paragraphLoop: true,
+    linebreaks: true,
+    nullGetter: () => ''
+  });
+
+  doc.render(dataMap);
+
+  // 5. Generate rendered ArrayBuffer
+  const renderedBuffer = doc.getZip().generate({
+    type: 'arraybuffer'
+  });
+
+  // 6. Convert to HTML using Mammoth
+  const mammothOptions = {
+    styleMap: [
+      "p[style-name='Title'] => h1.police-doc-title:fresh",
+      "p[style-name='Subtitle'] => h2.police-doc-subtitle:fresh",
+      "p[style-name='Heading 1'] => h2:fresh",
+      "p[style-name='Heading 2'] => h3:fresh",
+      "table => table.mammoth-doc-table:fresh"
+    ]
+  };
+
+  const mammothInput = {
+    arrayBuffer: renderedBuffer,
+    buffer: typeof Buffer !== 'undefined' ? Buffer.from(renderedBuffer) : renderedBuffer
+  };
+
+  const result = await mammoth.convertToHtml(mammothInput, mammothOptions);
+
+  const cleanTitle = (template.title || 'Dokumen_Mindik').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const cleanNoLp = (caseData?.no_lp || 'LP').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `${cleanTitle}_${cleanNoLp}.docx`;
+
+  return {
+    hasPhysicalFile: true,
+    html: result.value,
+    messages: result.messages,
+    filename,
+    dataMap
+  };
+}
+

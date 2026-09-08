@@ -7,7 +7,14 @@ import {
   RefreshCw, 
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Edit3,
+  Trash2,
+  X,
+  FileText,
+  AlertTriangle,
+  Upload
 } from 'lucide-react';
 import { mockTemplates } from '../data/mockTemplates';
 import { mockPersonnel } from '../data/mockPersonnel';
@@ -22,8 +29,10 @@ export default function DocGeneratorView({
   initialTemplate = null,
   onSaveDocument,
   onOpenTemplateStudio,
-  userRole = 'admin'
+  userRole = 'anggota'
 }) {
+  const isSuperAdmin = userRole === 'super_admin';
+
   const [allTemplates, setAllTemplates] = useState(mockTemplates);
   const [selectedCaseId, setSelectedCaseId] = useState(initialCase ? initialCase.id : (cases[0]?.id || ''));
   const [selectedTemplateCode, setSelectedTemplateCode] = useState(
@@ -33,6 +42,24 @@ export default function DocGeneratorView({
   const [isSaved, setIsSaved] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatorNotice, setGeneratorNotice] = useState(null);
+
+  // Template Management Modal States (Khusus Super Admin)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [templateToEdit, setTemplateToEdit] = useState(null);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [isProcessingTemplate, setIsProcessingTemplate] = useState(false);
+
+  // Add Template Form State
+  const [newTitle, setNewTitle] = useState('');
+  const [newCode, setNewCode] = useState('');
+  const [newCategory, setNewCategory] = useState('SURAT PERINTAH');
+  const [newDescription, setNewDescription] = useState('');
+  const [newDocxFile, setNewDocxFile] = useState(null);
+
+  // Edit Template Form State
+  const [editTitle, setEditTitle] = useState('');
+  const [editCategory, setEditCategory] = useState('SURAT PERINTAH');
+  const [editDescription, setEditDescription] = useState('');
 
   const activePersonnel = personnel.length > 0 ? personnel : mockPersonnel;
 
@@ -44,7 +71,7 @@ export default function DocGeneratorView({
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         // Merge Supabase templates with mockTemplates (preferring Supabase ones)
         const merged = [...data];
         mockTemplates.forEach(mt => {
@@ -183,6 +210,207 @@ export default function DocGeneratorView({
     setIsSaved(true);
   };
 
+  // --- TEMPLATE MANAGEMENT ACTIONS (KHUSUS SUPER ADMIN) ---
+
+  // 1. Tambah Format Template Baru
+  const handleAddTemplate = async (e) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newCode.trim()) {
+      alert('Judul dan Kode Template wajib diisi!');
+      return;
+    }
+    if (!newDocxFile) {
+      alert('Silakan pilih file fisik .docx untuk template ini!');
+      return;
+    }
+
+    setIsProcessingTemplate(true);
+    try {
+      const cleanFileName = newDocxFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uniqueFileName = `${Date.now()}_${cleanFileName}`;
+      const storageFilePath = `templates/${uniqueFileName}`;
+
+      // Upload to Supabase Storage: try 'templates', fallback to 'docx-templates'
+      let uploadSuccess = false;
+      let finalFilePath = storageFilePath;
+
+      const { data: uploadData1, error: uploadErr1 } = await supabase.storage
+        .from('templates')
+        .upload(storageFilePath, newDocxFile, { upsert: true });
+
+      if (!uploadErr1 && uploadData1) {
+        uploadSuccess = true;
+        finalFilePath = uploadData1.path || storageFilePath;
+      } else {
+        // Try fallback to 'docx-templates'
+        const { data: uploadData2, error: uploadErr2 } = await supabase.storage
+          .from('docx-templates')
+          .upload(storageFilePath, newDocxFile, { upsert: true });
+
+        if (!uploadErr2 && uploadData2) {
+          uploadSuccess = true;
+          finalFilePath = uploadData2.path || storageFilePath;
+        } else {
+          throw new Error(uploadErr2?.message || uploadErr1?.message || 'Gagal mengunggah file ke Supabase Storage');
+        }
+      }
+
+      // Default dynamic fields
+      const defaultFields = [
+        { key: 'DOC_NO', label: 'Nomor Surat', type: 'text', placeholder: 'Sp.Doc/___/___/2026/Reskrim', required: true },
+        { key: 'DOC_DATE', label: 'Tanggal Surat', type: 'date', placeholder: '', required: true },
+        { key: 'DOC_LOCATION', label: 'Tempat Dikeluarkan', type: 'text', placeholder: 'Tirawuta', required: true },
+        { key: 'DOC_SIGNER_ATASAN_NAME', label: 'Atasan Penandatangan', type: 'select_personnel', role_filter: 'Kasat', required: true }
+      ];
+
+      // Save metadata to document_templates
+      const payload = {
+        title: newTitle.trim(),
+        code: newCode.trim().toUpperCase(),
+        category: newCategory,
+        description: newDescription.trim(),
+        file_path: finalFilePath,
+        dynamic_fields: defaultFields,
+        created_at: new Date().toISOString()
+      };
+
+      const { data: dbData, error: dbErr } = await supabase
+        .from('document_templates')
+        .insert([payload])
+        .select();
+
+      if (dbErr) throw dbErr;
+
+      setGeneratorNotice({
+        type: 'success',
+        message: `Format template '${newTitle}' berhasil ditambahkan ke Supabase!`
+      });
+
+      // Reset form
+      setNewTitle('');
+      setNewCode('');
+      setNewDescription('');
+      setNewDocxFile(null);
+      setIsAddModalOpen(false);
+
+      // Refresh list & select newly created template
+      await fetchTemplates();
+      setSelectedTemplateCode(payload.code);
+    } catch (err) {
+      console.error('Add template error:', err);
+      alert(`Gagal menambah template format: ${err.message}`);
+    } finally {
+      setIsProcessingTemplate(false);
+    }
+  };
+
+  // 2. Edit/Perubahan Format Template
+  const handleOpenEdit = (t, e) => {
+    e.stopPropagation();
+    setTemplateToEdit(t);
+    setEditTitle(t.title);
+    setEditCategory(t.category || 'SURAT PERINTAH');
+    setEditDescription(t.description || '');
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!templateToEdit || !editTitle.trim()) return;
+
+    setIsProcessingTemplate(true);
+    try {
+      if (templateToEdit.id) {
+        const { error } = await supabase
+          .from('document_templates')
+          .update({
+            title: editTitle.trim(),
+            category: editCategory,
+            description: editDescription.trim(),
+          })
+          .eq('id', templateToEdit.id);
+
+        if (error) throw error;
+      }
+
+      // Update in local state
+      setAllTemplates(prev => prev.map(t => {
+        if (t.code === templateToEdit.code) {
+          return {
+            ...t,
+            title: editTitle.trim(),
+            category: editCategory,
+            description: editDescription.trim()
+          };
+        }
+        return t;
+      }));
+
+      setGeneratorNotice({
+        type: 'success',
+        message: `Format template '${editTitle}' berhasil diperbarui!`
+      });
+
+      setTemplateToEdit(null);
+      await fetchTemplates();
+    } catch (err) {
+      console.error('Edit template error:', err);
+      alert(`Gagal memperbarui template: ${err.message}`);
+    } finally {
+      setIsProcessingTemplate(false);
+    }
+  };
+
+  // 3. Hapus Format Template
+  const handleOpenDelete = (t, e) => {
+    e.stopPropagation();
+    setTemplateToDelete(t);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!templateToDelete) return;
+
+    setIsProcessingTemplate(true);
+    try {
+      // Remove file from storage if present
+      if (templateToDelete.file_path) {
+        await supabase.storage.from('templates').remove([templateToDelete.file_path]).catch(() => {});
+        await supabase.storage.from('docx-templates').remove([templateToDelete.file_path]).catch(() => {});
+      }
+
+      // Remove row from document_templates if in DB
+      if (templateToDelete.id) {
+        const { error } = await supabase
+          .from('document_templates')
+          .delete()
+          .eq('id', templateToDelete.id);
+
+        if (error) throw error;
+      }
+
+      setAllTemplates(prev => prev.filter(t => t.code !== templateToDelete.code));
+
+      setGeneratorNotice({
+        type: 'success',
+        message: `Format template '${templateToDelete.title}' berhasil dihapus dari Supabase!`
+      });
+
+      // If the deleted template was selected, fallback to first available
+      if (selectedTemplateCode === templateToDelete.code) {
+        const remaining = allTemplates.filter(t => t.code !== templateToDelete.code);
+        if (remaining.length > 0) {
+          setSelectedTemplateCode(remaining[0].code);
+        }
+      }
+
+      setTemplateToDelete(null);
+    } catch (err) {
+      console.error('Delete template error:', err);
+      alert(`Gagal menghapus format template: ${err.message}`);
+    } finally {
+      setIsProcessingTemplate(false);
+    }
+  };
+
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Title & Banner */}
@@ -205,7 +433,7 @@ export default function DocGeneratorView({
             title="Muat ulang template dari Supabase"
           >
             <RefreshCw size={13} />
-            <span>Refresh Template Supabase</span>
+            <span>Refresh Template</span>
           </button>
         </div>
       </div>
@@ -280,27 +508,30 @@ export default function DocGeneratorView({
             )}
           </div>
 
-          {/* Step 2: Select Template */}
+          {/* Step 2: Select Template & Format Management (Khusus Super Admin) */}
           <div className="glass" style={{ padding: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
                 <span className="badge badge-cyan" style={{ fontSize: '10px', padding: '1px 5px' }}>2</span>
                 <span>PILIH FORMAT DOKUMEN MINDIK</span>
               </label>
-              {onOpenTemplateStudio && userRole === 'super_admin' && (
+
+              {/* KHUSUS SUPER ADMIN: Tombol Tambah Format */}
+              {isSuperAdmin && (
                 <button
                   type="button"
-                  onClick={onOpenTemplateStudio}
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '10px', padding: '2px 6px' }}
-                  title="Buka Admin Template Studio untuk upload .docx baru ke Supabase Storage"
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="btn btn-primary btn-sm"
+                  style={{ fontSize: '11px', padding: '4px 8px', gap: '4px' }}
+                  title="Tambah format template baru ke Supabase Storage (Khusus Super Admin)"
                 >
-                  + Upload .docx
+                  <Plus size={13} />
+                  <span>Tambah Format</span>
                 </button>
               )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto', paddingRight: '2px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '340px', overflowY: 'auto', paddingRight: '2px' }}>
               {allTemplates.map((t) => {
                 const isSelected = selectedTemplateCode === t.code;
                 const isCloud = Boolean(t.file_path);
@@ -318,9 +549,10 @@ export default function DocGeneratorView({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
+                      gap: '8px',
                     }}
                   >
-                    <div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span className={`badge ${t.category === 'SURAT PERINTAH' ? 'badge-red' : t.category === 'SURAT' ? 'badge-blue' : 'badge-green'}`} style={{ fontSize: '9px' }}>
                           {t.code}
@@ -328,15 +560,42 @@ export default function DocGeneratorView({
                         {isCloud && (
                           <span className="badge badge-purple" style={{ fontSize: '9px', display: 'flex', alignItems: 'center', gap: '3px' }}>
                             <Cloud size={10} />
-                            <span>SUPABASE STORAGE</span>
+                            <span>SUPABASE .DOCX</span>
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: '12.5px', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#FFF' : 'var(--text-primary)', marginTop: '4px' }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#FFF' : 'var(--text-primary)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {t.title}
                       </div>
                     </div>
-                    {isSelected && <ChevronRight size={16} color="var(--accent-cyan)" />}
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {/* KHUSUS SUPER ADMIN: Tombol Edit & Hapus Format */}
+                      {isSuperAdmin && (
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenEdit(t, e)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: '3px 6px', fontSize: '10px' }}
+                            title="Edit judul, kategori, atau deskripsi format template"
+                          >
+                            <Edit3 size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenDelete(t, e)}
+                            className="btn btn-danger btn-sm"
+                            style={{ padding: '3px 6px', fontSize: '10px' }}
+                            title="Hapus format template ini dari Supabase"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
+
+                      {isSelected && <ChevronRight size={16} color="var(--accent-cyan)" />}
+                    </div>
                   </div>
                 );
               })}
@@ -446,6 +705,325 @@ export default function DocGeneratorView({
           />
         </div>
       </div>
+
+      {/* --- MODAL 1: TAMBAH FORMAT TEMPLATE (.DOCX) (KHUSUS SUPER ADMIN) --- */}
+      {isAddModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsAddModalOpen(false)}>
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '520px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: 'rgba(0, 212, 255, 0.15)',
+                  border: '1px solid var(--accent-cyan)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Upload size={18} color="var(--accent-cyan)" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '16px', margin: 0 }}>Tambah Format Template .docx</h3>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Upload file template fisik ke Supabase Storage (bucket templates)
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsAddModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddTemplate}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Judul Format */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">
+                    Judul Format Dokumen <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Contoh: Surat Perintah Penyitaan"
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                {/* Kode Template & Kategori */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">
+                      Kode Unik <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newCode}
+                      onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                      placeholder="Contoh: SPRIN_SITA"
+                      className="form-input mono"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Kategori</label>
+                    <select
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="SURAT PERINTAH">SURAT PERINTAH</option>
+                      <option value="SURAT">SURAT</option>
+                      <option value="BERITA ACARA">BERITA ACARA</option>
+                      <option value="PENETAPAN">PENETAPAN</option>
+                      <option value="LAINNYA">LAINNYA</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Deskripsi */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Deskripsi Template</label>
+                  <textarea
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    placeholder="Deskripsi singkat peruntukan format dokumen..."
+                    className="form-textarea"
+                    style={{ minHeight: '60px' }}
+                  />
+                </div>
+
+                {/* File Upload Area */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">
+                    Pilih File Master Word (.docx) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  </label>
+                  <div 
+                    style={{
+                      border: '2px dashed var(--border-glass-hover)',
+                      borderRadius: 'var(--radius-lg)',
+                      padding: '16px',
+                      textAlign: 'center',
+                      background: newDocxFile ? 'rgba(0, 212, 255, 0.08)' : 'rgba(13, 21, 38, 0.4)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => document.getElementById('new-docx-input').click()}
+                  >
+                    <input
+                      id="new-docx-input"
+                      type="file"
+                      accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setNewDocxFile(e.target.files[0]);
+                        }
+                      }}
+                    />
+
+                    <FileText size={28} color={newDocxFile ? 'var(--accent-cyan)' : 'var(--text-secondary)'} style={{ margin: '0 auto 6px' }} />
+                    {newDocxFile ? (
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#FFF', fontSize: '12.5px' }}>{newDocxFile.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>{(newDocxFile.size / 1024).toFixed(1)} KB</div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        Klik di sini untuk memilih file .docx dari komputer Anda
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  onClick={() => setIsAddModalOpen(false)} 
+                  className="btn btn-secondary btn-sm"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isProcessingTemplate}
+                  className="btn btn-primary btn-sm"
+                >
+                  <Upload size={14} />
+                  <span>{isProcessingTemplate ? 'Mengunggah...' : 'Unggah & Simpan Format'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL 2: EDIT FORMAT TEMPLATE (KHUSUS SUPER ADMIN) --- */}
+      {templateToEdit && (
+        <div className="modal-backdrop" onClick={() => setTemplateToEdit(null)}>
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '480px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Edit3 size={18} color="var(--accent-cyan)" />
+                <h3 style={{ fontSize: '16px', margin: 0 }}>Edit Format Template</h3>
+              </div>
+              <button 
+                onClick={() => setTemplateToEdit(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Kode Template (Permanen)</label>
+                  <input
+                    type="text"
+                    value={templateToEdit.code}
+                    disabled
+                    className="form-input mono"
+                    style={{ opacity: 0.7 }}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Judul Format</label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Kategori</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="form-select"
+                  >
+                    <option value="SURAT PERINTAH">SURAT PERINTAH</option>
+                    <option value="SURAT">SURAT</option>
+                    <option value="BERITA ACARA">BERITA ACARA</option>
+                    <option value="PENETAPAN">PENETAPAN</option>
+                    <option value="LAINNYA">LAINNYA</option>
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Deskripsi</label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="form-textarea"
+                    style={{ minHeight: '60px' }}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  onClick={() => setTemplateToEdit(null)} 
+                  className="btn btn-secondary btn-sm"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isProcessingTemplate}
+                  className="btn btn-primary btn-sm"
+                >
+                  <span>{isProcessingTemplate ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL 3: KONFIRMASI HAPUS FORMAT (KHUSUS SUPER ADMIN) --- */}
+      {templateToDelete && (
+        <div className="modal-backdrop" onClick={() => setTemplateToDelete(null)}>
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '440px', borderColor: 'var(--accent-red)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ borderBottomColor: 'rgba(239, 68, 68, 0.3)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <AlertTriangle size={18} color="var(--accent-red)" />
+                <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--accent-red)' }}>
+                  Hapus Format Template
+                </h3>
+              </div>
+              <button 
+                onClick={() => setTemplateToDelete(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ fontSize: '13px', lineHeight: 1.5 }}>
+              <p style={{ margin: 0 }}>
+                Apakah Anda yakin ingin menghapus format template ini dari Supabase Storage dan database?
+              </p>
+              <div style={{
+                marginTop: '12px',
+                padding: '10px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <div style={{ fontWeight: 700, color: '#FFF' }}>{templateToDelete.title}</div>
+                <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                  Kode: {templateToDelete.code} • Kategori: {templateToDelete.category}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                onClick={() => setTemplateToDelete(null)} 
+                className="btn btn-secondary btn-sm"
+              >
+                Batal
+              </button>
+              <button 
+                type="button" 
+                disabled={isProcessingTemplate}
+                onClick={handleConfirmDelete}
+                className="btn btn-danger btn-sm"
+              >
+                <Trash2 size={14} />
+                <span>{isProcessingTemplate ? 'Menghapus...' : 'Ya, Hapus Format'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

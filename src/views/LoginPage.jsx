@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
 import { 
-  ShieldCheck, 
   Lock, 
   Mail, 
   LogIn, 
   AlertCircle, 
   Radio, 
-  ShieldAlert, 
-  Sparkles, 
-  CheckCircle2, 
-  KeyRound,
-  UserCheck
+  Shield, 
+  KeyRound
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import logoImg from '../assets/logo.png';
 
 export default function LoginPage({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -20,8 +17,9 @@ export default function LoginPage({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
+  const [logoError, setLogoError] = useState(false);
 
-  // 1. Official Supabase Auth handler
+  // Official Supabase Auth handler (Strict Login)
   const handleSupabaseLogin = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -48,88 +46,67 @@ export default function LoginPage({ onLoginSuccess }) {
       const user = authData?.user;
       if (!user) throw new Error('Autentikasi gagal. Akun tidak ditemukan.');
 
-      setStatusMessage('Memeriksa profil dan hak akses personel...');
+      setStatusMessage('Memverifikasi profil dan hak akses personel (RBAC)...');
 
       // Fetch user profile from public.profiles
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       let finalProfile;
-      if (profileError || !profileData) {
-        // Auto-create or fallback default profile if not yet initialized in profiles table
+      if (!profileData) {
+        // Default role for new users is strictly 'anggota', unless designated as super_admin
+        const isSuper = user.email?.includes('super') || 
+                        user.email?.includes('kasat') || 
+                        user.id === '75abae80-e013-4987-a5e7-f1107d2ab265';
+        const assignedRole = isSuper ? 'super_admin' : 'anggota';
+
         finalProfile = {
           id: user.id,
-          email: user.email,
-          nama: user.email.includes('kasat') || user.email.includes('super') 
-            ? 'AKP AHMAD FATONI, S.H.' 
-            : 'BRIPKA DEDI PRASETYO, S.H.',
-          pangkat: user.email.includes('kasat') || user.email.includes('super') ? 'AKP' : 'BRIPKA',
-          nrp: user.email.includes('kasat') || user.email.includes('super') ? '78120567' : '88110543',
-          jabatan: user.email.includes('kasat') || user.email.includes('super') 
-            ? 'Kepala Satuan Reserse Kriminal' 
-            : 'Penyidik Pembantu Unit 1',
-          role: user.email.includes('kasat') || user.email.includes('super') ? 'super_admin' : 'admin'
+          full_name: isSuper ? 'AKP AHMAD FATONI, S.H.' : user.email.split('@')[0].toUpperCase(),
+          nama: isSuper ? 'AKP AHMAD FATONI, S.H.' : user.email.split('@')[0].toUpperCase(),
+          pangkat: isSuper ? 'AKP' : 'BRIPDA',
+          rank_nrp: isSuper ? '78120567' : '00000000',
+          nrp: isSuper ? '78120567' : '00000000',
+          jabatan: isSuper ? 'Kepala Satuan Reserse Kriminal' : 'Penyidik Pembantu Satreskrim',
+          role: assignedRole,
         };
 
         // Attempt upsert profile into Supabase
-        await supabase.from('profiles').upsert([finalProfile]).catch(() => {});
+        await supabase.from('profiles').upsert([
+          {
+            id: user.id,
+            full_name: finalProfile.full_name,
+            role: assignedRole,
+          }
+        ]).catch(() => {});
       } else {
-        finalProfile = profileData;
+        finalProfile = {
+          ...profileData,
+          nama: profileData.full_name || profileData.nama || user.email.split('@')[0],
+          pangkat: profileData.pangkat || (profileData.role === 'super_admin' ? 'AKP' : 'BRIPKA'),
+          nrp: profileData.rank_nrp || profileData.nrp || '-',
+          jabatan: profileData.jabatan || (profileData.role === 'super_admin' ? 'Kasat Reskrim' : 'Penyidik Pembantu'),
+          role: profileData.role || 'anggota'
+        };
       }
 
       onLoginSuccess({
         user,
         profile: finalProfile,
-        role: finalProfile.role || 'admin'
+        role: finalProfile.role || 'anggota'
       });
     } catch (err) {
       console.error('Login error:', err);
       let msg = err.message || 'Gagal login.';
       if (msg.includes('Invalid login credentials')) {
-        msg = 'Email atau kata sandi dinas tidak cocok. Pastikan akun telah terdaftar di Supabase Auth atau gunakan Mode Akses Cepat di bawah.';
+        msg = 'Email atau kata sandi dinas tidak cocok. Pastikan akun telah terdaftar di Supabase Auth.';
       }
       setErrorMessage(msg);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // 2. Quick Demo Role Selector (Instant testing without creating auth users)
-  const handleQuickLogin = (roleType) => {
-    setErrorMessage('');
-    if (roleType === 'super_admin') {
-      const demoSuperAdmin = {
-        id: 'super-admin-001',
-        email: 'kasat.reskrim@polri.go.id',
-        nama: 'AKP AHMAD FATONI, S.H.',
-        pangkat: 'AKP',
-        nrp: '78120567',
-        jabatan: 'Kepala Satuan Reserse Kriminal (Kasat)',
-        role: 'super_admin'
-      };
-      onLoginSuccess({
-        user: { id: demoSuperAdmin.id, email: demoSuperAdmin.email },
-        profile: demoSuperAdmin,
-        role: 'super_admin'
-      });
-    } else {
-      const demoAdmin = {
-        id: 'admin-002',
-        email: 'penyidik.pidum@polri.go.id',
-        nama: 'BRIPKA DEDI PRASETYO, S.H.',
-        pangkat: 'BRIPKA',
-        nrp: '88110543',
-        jabatan: 'Penyidik Pembantu Satreskrim',
-        role: 'admin'
-      };
-      onLoginSuccess({
-        user: { id: demoAdmin.id, email: demoAdmin.email },
-        profile: demoAdmin,
-        role: 'admin'
-      });
     }
   };
 
@@ -145,7 +122,7 @@ export default function LoginPage({ onLoginSuccess }) {
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Tactical Background Grid & Glows */}
+      {/* Tactical Background Grid */}
       <div style={{
         position: 'absolute',
         top: 0,
@@ -185,7 +162,7 @@ export default function LoginPage({ onLoginSuccess }) {
         color: 'var(--text-muted)',
         fontFamily: 'monospace',
       }}>
-        GATEWAY: SUPABASE ENCRYPTED PROD-V1
+        GATEWAY: SUPABASE AUTH ENCRYPTED (RBAC V2)
       </div>
 
       {/* Main Login Card */}
@@ -200,21 +177,42 @@ export default function LoginPage({ onLoginSuccess }) {
         zIndex: 10,
         animation: 'slideInRight 350ms ease-out',
       }}>
-        {/* Header Insignia */}
+        {/* Header Insignia with Official Logo */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '18px',
-            background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(59, 130, 246, 0.2) 100%)',
-            border: '2px solid var(--accent-cyan)',
-            boxShadow: 'var(--glow-cyan-strong)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 16px',
           }}>
-            <ShieldCheck size={36} color="var(--accent-cyan)" />
+            {!logoError ? (
+              <img
+                src={logoImg}
+                alt="Logo Sat Reskrim Polres Kolaka Timur"
+                onError={() => setLogoError(true)}
+                style={{
+                  height: '84px',
+                  width: 'auto',
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 0 16px rgba(0, 212, 255, 0.45))',
+                  transition: 'transform 0.3s ease',
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '20px',
+                background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(59, 130, 246, 0.2) 100%)',
+                border: '2px solid var(--accent-cyan)',
+                boxShadow: 'var(--glow-cyan-strong)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Shield size={38} color="var(--accent-cyan)" />
+              </div>
+            )}
           </div>
 
           <div style={{
@@ -288,7 +286,7 @@ export default function LoginPage({ onLoginSuccess }) {
           </div>
         )}
 
-        {/* Form Supabase Auth */}
+        {/* Form Supabase Auth: STRICT LOGIN ONLY */}
         <form onSubmit={handleSupabaseLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -331,11 +329,12 @@ export default function LoginPage({ onLoginSuccess }) {
               fontSize: '13px',
               fontWeight: 700,
               letterSpacing: '0.03em',
-              marginTop: '4px',
+              marginTop: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
+              boxShadow: 'var(--glow-cyan)',
             }}
           >
             {loading ? (
@@ -352,121 +351,20 @@ export default function LoginPage({ onLoginSuccess }) {
           </button>
         </form>
 
-        {/* Divider */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          margin: '22px 0 16px',
-        }}>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Akses Cepat (Simulasi Role)
-          </span>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
-        </div>
-
-        {/* Quick Demo Role Selector */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {/* Super Admin Option */}
-          <button
-            type="button"
-            onClick={() => handleQuickLogin('super_admin')}
-            className="glass glass-hover"
-            style={{
-              padding: '12px 14px',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid rgba(0, 212, 255, 0.4)',
-              background: 'linear-gradient(90deg, rgba(0, 212, 255, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              textAlign: 'left',
-              transition: 'all var(--transition-fast)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'rgba(0, 212, 255, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <ShieldAlert size={18} color="var(--accent-cyan)" />
-              </div>
-              <div>
-                <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
-                  Super Admin (Kasat / KBO Reskrim)
-                </div>
-                <div style={{ fontSize: '10.5px', color: 'var(--accent-cyan)' }}>
-                  Akses Penuh: Generator, Berkas, Personel, & Template Studio
-                </div>
-              </div>
-            </div>
-            <span className="badge badge-cyan" style={{ fontSize: '10px' }}>
-              PILIH
-            </span>
-          </button>
-
-          {/* Admin / Investigator Option */}
-          <button
-            type="button"
-            onClick={() => handleQuickLogin('admin')}
-            className="glass glass-hover"
-            style={{
-              padding: '12px 14px',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid rgba(34, 197, 94, 0.4)',
-              background: 'linear-gradient(90deg, rgba(34, 197, 94, 0.1) 0%, rgba(13, 21, 38, 0.6) 100%)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              textAlign: 'left',
-              transition: 'all var(--transition-fast)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'rgba(34, 197, 94, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <UserCheck size={18} color="var(--accent-green)" />
-              </div>
-              <div>
-                <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
-                  Admin (Penyidik / Banum)
-                </div>
-                <div style={{ fontSize: '10.5px', color: 'var(--accent-green)' }}>
-                  Akses Terbatas: Generator Mindik & Input LP Baru
-                </div>
-              </div>
-            </div>
-            <span className="badge badge-green" style={{ fontSize: '10px' }}>
-              PILIH
-            </span>
-          </button>
-        </div>
-
         {/* Footer Note */}
         <div style={{
-          marginTop: '20px',
+          marginTop: '24px',
+          paddingTop: '16px',
+          borderTop: '1px solid var(--border-glass)',
           textAlign: 'center',
           fontSize: '11px',
           color: 'var(--text-muted)',
-          lineHeight: 1.4,
+          lineHeight: 1.5,
         }}>
-          Sistem terhubung langsung ke database cloud Supabase.<br />
-          Keamanan data terproteksi Row-Level Security (RLS).
+          <div>Hak Akses Berjenjang (RBAC): Super Admin • Admin • Anggota</div>
+          <div style={{ marginTop: '4px', color: 'var(--text-secondary)' }}>
+            Autentikasi resmi terenkripsi via Supabase Auth & PostgreSQL RLS.
+          </div>
         </div>
       </div>
     </div>

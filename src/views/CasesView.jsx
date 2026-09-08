@@ -25,7 +25,7 @@ export default function CasesView({
   const [caseToDelete, setCaseToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isSuperAdmin = userRole === 'super_admin';
+  const canDeleteCase = userRole === 'super_admin' || userRole === 'admin';
 
   const findPerson = (userId) => {
     return personnel.find(p => p.id === userId || p.nrp === userId) || getPersonnelById(userId);
@@ -228,12 +228,12 @@ export default function CasesView({
                           <span>Mindik</span>
                         </button>
 
-                        {/* HANYA BISA DILAKUKAN OLEH SUPER ADMIN */}
-                        {isSuperAdmin && (
+                        {/* HANYA BISA DILAKUKAN OLEH SUPER ADMIN & ADMIN */}
+                        {canDeleteCase && (
                           <button
                             onClick={() => setCaseToDelete(item)}
                             className="btn btn-danger btn-sm"
-                            title="Hapus Berkas Perkara dari Supabase (Khusus Super Admin)"
+                            title="Hapus Berkas Perkara dari Supabase (Super Admin & Admin)"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -248,7 +248,7 @@ export default function CasesView({
         </table>
       </div>
 
-      {/* Modal Konfirmasi Hapus Berkas Perkara (Khusus Super Admin) */}
+      {/* Modal Konfirmasi Hapus Berkas Perkara (Super Admin & Admin) */}
       {caseToDelete && (
         <div className="modal-backdrop" onClick={() => setCaseToDelete(null)}>
           <div 
@@ -275,7 +275,7 @@ export default function CasesView({
                     Hapus Berkas Perkara Pidana
                   </h3>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Otoritas Khusus Super Admin Satreskrim
+                    Otoritas Super Admin & Admin Satreskrim
                   </div>
                 </div>
               </div>

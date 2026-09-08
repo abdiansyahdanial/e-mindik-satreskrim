@@ -1,7 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { mockCases } from './data/mockCases';
-import { mockDocuments } from './data/mockDocuments';
-import { mockPersonnel } from './data/mockPersonnel';
 import { supabase } from './supabaseClient';
 import LoginPage from './views/LoginPage';
 import Sidebar from './components/Sidebar';
@@ -15,19 +12,20 @@ import AdminTemplateStudio from './views/AdminTemplateStudio';
 import CaseDetailModal from './components/CaseDetailModal';
 import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
+import UserManagementModal from './components/UserManagementModal';
 import { CheckCircle2, ShieldAlert, RefreshCw } from 'lucide-react';
 
 export default function App() {
-  // Authentication & Role State
+  // Authentication & Role State (3-tier: 'super_admin' | 'admin' | 'anggota')
   const [user, setUser] = useState(null);
-  const [userRole, setUserRole] = useState(null); // 'super_admin' | 'admin'
+  const [userRole, setUserRole] = useState(null);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
-  // Core Data States
-  const [cases, setCases] = useState(mockCases);
-  const [personnel, setPersonnel] = useState(mockPersonnel);
-  const [documents, setDocuments] = useState(mockDocuments);
+  // Core Data States - 100% PURE REAL-TIME SUPABASE (NO FALLBACK REVERT)
+  const [cases, setCases] = useState([]);
+  const [personnel, setPersonnel] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Modal States
@@ -36,6 +34,7 @@ export default function App() {
   const [templateForGenerator, setTemplateForGenerator] = useState(null);
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const [selectedDocForPreview, setSelectedDocForPreview] = useState(null);
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Toast Notification State
@@ -67,18 +66,30 @@ export default function App() {
             .maybeSingle();
 
           if (profile && isMounted) {
-            setCurrentUserProfile(profile);
-            setUserRole(profile.role || 'admin');
+            const resolvedRole = profile.role || 'anggota';
+            setCurrentUserProfile({
+              ...profile,
+              nama: profile.full_name || profile.nama || u.email.split('@')[0],
+              pangkat: profile.pangkat || (resolvedRole === 'super_admin' ? 'AKP' : 'BRIPKA'),
+              nrp: profile.rank_nrp || profile.nrp || '-',
+              jabatan: profile.jabatan || (resolvedRole === 'super_admin' ? 'Kasat Reskrim' : 'Penyidik Pembantu'),
+              role: resolvedRole
+            });
+            setUserRole(resolvedRole);
           } else if (isMounted) {
-            const isSuper = u.email?.includes('kasat') || u.email?.includes('super');
+            const isSuper = u.id === '75abae80-e013-4987-a5e7-f1107d2ab265' || 
+                            u.email?.includes('kasat') || 
+                            u.email?.includes('super');
             const fallbackProf = {
               id: u.id,
               email: u.email,
-              nama: isSuper ? 'AKP AHMAD FATONI, S.H.' : 'BRIPKA DEDI PRASETYO, S.H.',
-              pangkat: isSuper ? 'AKP' : 'BRIPKA',
-              nrp: isSuper ? '78120567' : '88110543',
-              jabatan: isSuper ? 'Kepala Satuan Reserse Kriminal (Kasat)' : 'Penyidik Pembantu Unit 1',
-              role: isSuper ? 'super_admin' : 'admin',
+              full_name: isSuper ? 'AKP AHMAD FATONI, S.H.' : u.email.split('@')[0].toUpperCase(),
+              nama: isSuper ? 'AKP AHMAD FATONI, S.H.' : u.email.split('@')[0].toUpperCase(),
+              pangkat: isSuper ? 'AKP' : 'BRIPDA',
+              rank_nrp: isSuper ? '78120567' : '00000000',
+              nrp: isSuper ? '78120567' : '00000000',
+              jabatan: isSuper ? 'Kepala Satuan Reserse Kriminal' : 'Penyidik Pembantu Satreskrim',
+              role: isSuper ? 'super_admin' : 'anggota',
             };
             setCurrentUserProfile(fallbackProf);
             setUserRole(fallbackProf.role);
@@ -110,59 +121,62 @@ export default function App() {
     };
   }, []);
 
-  // 2. Fetch Supabase Data (Cases, Personnel, Documents)
+  // 2. Fetch Supabase Data Purely (Cases, Personnel, Documents)
   useEffect(() => {
     if (!user) return;
 
     const loadSupabaseData = async () => {
-      // Cases
+      // 1. Cases: read pure real-time data from Supabase
       try {
         const { data: casesData, error: casesErr } = await supabase
           .from('cases')
           .select('*')
           .order('created_at', { ascending: false });
-        if (!casesErr && casesData && casesData.length > 0) {
+
+        if (!casesErr && casesData) {
           setCases(casesData);
         }
       } catch (e) {
-        console.warn('Cases sync fallback:', e);
+        console.warn('Cases sync error:', e);
       }
 
-      // Personnel
+      // 2. Personnel: read pure real-time data from Supabase
       try {
         const { data: persData, error: persErr } = await supabase
           .from('investigators')
           .select('*')
           .order('nama', { ascending: true });
-        if (!persErr && persData && persData.length > 0) {
+
+        if (!persErr && persData) {
           setPersonnel(persData);
         }
       } catch (e) {
-        console.warn('Personnel sync fallback:', e);
+        console.warn('Personnel sync error:', e);
       }
 
-      // Documents
+      // 3. Documents
       try {
         const { data: docData, error: docErr } = await supabase
           .from('documents')
           .select('*')
           .order('created_at', { ascending: false });
-        if (!docErr && docData && docData.length > 0) {
+
+        if (!docErr && docData) {
           setDocuments(docData);
         }
       } catch (e) {
-        console.warn('Documents sync fallback:', e);
+        console.warn('Documents sync error:', e);
       }
     };
 
     loadSupabaseData();
   }, [user]);
 
-  // 3. Protected Routes Guard for Admin vs Super Admin
+  // 3. Protected Routes Guard: Hanya Super Admin yang boleh akses Personel & Template Studio
   useEffect(() => {
-    if (userRole === 'admin' && (activeTab === 'personnel' || activeTab === 'admin-templates')) {
+    if (userRole && userRole !== 'super_admin' && (activeTab === 'personnel' || activeTab === 'admin-templates')) {
       setActiveTab('dashboard');
-      showToast('Akses dibatasi: Menu khusus Super Admin Satreskrim.');
+      showToast('Akses dibatasi: Menu ini hanya dapat diakses oleh Super Admin Satreskrim.');
     }
   }, [userRole, activeTab]);
 
@@ -172,7 +186,7 @@ export default function App() {
     setCurrentUserProfile(profile);
     setUserRole(role);
     setActiveTab('dashboard');
-    showToast(`Selamat bertugas, ${profile.pangkat} ${profile.nama} (${role === 'super_admin' ? 'SUPER ADMIN' : 'PENYIDIK / ADMIN'})`);
+    showToast(`Selamat bertugas, ${profile.pangkat || ''} ${profile.nama || profile.full_name || ''} (${role.toUpperCase()})`);
   };
 
   const handleLogout = async () => {
@@ -192,27 +206,40 @@ export default function App() {
     showToast(`Perkara ${newCase.no_lp} berhasil diregistrasi!`);
 
     try {
-      await supabase.from('cases').insert([newCase]);
+      const { error } = await supabase.from('cases').insert([newCase]);
+      if (error) {
+        console.error('Insert case error:', error);
+        alert(`Gagal menyimpan perkara ke database: ${error.message}`);
+      }
     } catch (err) {
       console.warn('Insert case notice:', err);
     }
   };
 
+  // Hapus Berkas Perkara: HANYA BOLEH UNTUK 'super_admin' DAN 'admin'
   const handleDeleteCase = async (caseId) => {
-    if (userRole !== 'super_admin') {
-      alert('Akses Ditolak: Hanya Super Admin (Kasat/Kaur) yang berhak menghapus berkas perkara!');
+    if (userRole !== 'super_admin' && userRole !== 'admin') {
+      alert('Akses Ditolak: Hanya Super Admin dan Admin yang berhak menghapus berkas perkara!');
       return;
     }
 
-    setCases((prev) => prev.filter((c) => c.id !== caseId));
-    setDocuments((prev) => prev.filter((d) => d.case_id !== caseId));
-    showToast('Berkas perkara dan riwayat mindik berhasil dihapus!');
-
     try {
-      await supabase.from('cases').delete().eq('id', caseId);
-      await supabase.from('documents').delete().eq('case_id', caseId);
+      const { error } = await supabase.from('cases').delete().eq('id', caseId);
+      if (error) {
+        console.error('Delete case error from Supabase:', error);
+        alert(`Gagal menghapus perkara dari database: ${error.message}`);
+        return;
+      }
+
+      await supabase.from('documents').delete().eq('case_id', caseId).catch(() => {});
+      
+      // Update state in memory after successful deletion
+      setCases((prev) => prev.filter((c) => c.id !== caseId));
+      setDocuments((prev) => prev.filter((d) => d.case_id !== caseId));
+      showToast('Berkas perkara dan riwayat mindik berhasil dihapus dari database Supabase!');
     } catch (err) {
-      console.warn('Delete case notice:', err);
+      console.error('Delete case exception:', err);
+      alert(`Terjadi kesalahan saat menghapus perkara: ${err.message}`);
     }
   };
 
@@ -228,22 +255,36 @@ export default function App() {
     showToast(`Personel ${newPerson.pangkat} ${newPerson.nama} berhasil ditambahkan!`);
 
     try {
-      await supabase.from('investigators').insert([personWithId]);
+      const { error } = await supabase.from('investigators').insert([personWithId]);
+      if (error) {
+        console.error('Insert investigator error:', error);
+        alert(`Gagal menyimpan personel ke database: ${error.message}`);
+      }
     } catch (err) {
       console.warn('Insert investigator notice:', err);
     }
   };
 
+  // Hapus Personel: HANYA BOLEH UNTUK 'super_admin'
   const handleDeletePersonnel = async (personId) => {
-    if (userRole !== 'super_admin') return;
-
-    setPersonnel((prev) => prev.filter((p) => p.id !== personId));
-    showToast('Personel penyidik berhasil dinonaktifkan/dihapus!');
+    if (userRole !== 'super_admin') {
+      alert('Akses Ditolak: Hanya Super Admin yang berhak menghapus personel!');
+      return;
+    }
 
     try {
-      await supabase.from('investigators').delete().eq('id', personId);
+      const { error } = await supabase.from('investigators').delete().eq('id', personId);
+      if (error) {
+        console.error('Delete investigator error from Supabase:', error);
+        alert(`Gagal menghapus personel dari database: ${error.message}`);
+        return;
+      }
+
+      setPersonnel((prev) => prev.filter((p) => p.id !== personId));
+      showToast('Personel penyidik berhasil dihapus dari database Supabase!');
     } catch (err) {
-      console.warn('Delete investigator notice:', err);
+      console.error('Delete investigator exception:', err);
+      alert(`Terjadi kesalahan saat menghapus personel: ${err.message}`);
     }
   };
 
@@ -286,7 +327,7 @@ export default function App() {
     );
   }
 
-  // Not authenticated -> Show Tactical Cyber LoginPage
+  // Not authenticated -> Show Strict LoginPage
   if (!user) {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
@@ -318,7 +359,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Sidebar Navigation with Role-based filtering */}
+      {/* Sidebar Navigation with 3-tier Role-based filtering */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -326,6 +367,7 @@ export default function App() {
         docCount={documents.length}
         personnelCount={personnel.length}
         userRole={userRole}
+        onOpenUserManagement={() => setIsUserManagementOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -341,6 +383,7 @@ export default function App() {
           currentUserProfile={currentUserProfile}
           userRole={userRole}
           onLogout={handleLogout}
+          onOpenUserManagement={() => setIsUserManagementOpen(true)}
         />
 
         <main className="main-content">
@@ -421,7 +464,7 @@ export default function App() {
         />
       )}
 
-      {/* New Case Registration Modal with dynamic personnel slot 1-5 */}
+      {/* New Case Registration Modal */}
       {isNewCaseModalOpen && (
         <NewCaseModal
           onClose={() => setIsNewCaseModalOpen(false)}
@@ -438,6 +481,13 @@ export default function App() {
           onClose={() => setSelectedDocForPreview(null)}
         />
       )}
+
+      {/* User / RBAC Role Management Modal (Khusus Super Admin) */}
+      <UserManagementModal
+        isOpen={isUserManagementOpen}
+        onClose={() => setIsUserManagementOpen(false)}
+        currentUserId={user?.id}
+      />
     </div>
   );
 }

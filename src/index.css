@@ -805,3 +805,80 @@ p {
   }
 }
 
+/* ============================================================
+   Genuine Mammoth .docx HTML Rendering Styles
+   ============================================================ */
+.docx-mammoth-content {
+  font-family: 'Bookman Old Style', 'Times New Roman', Georgia, serif;
+  font-size: 12pt;
+  line-height: 1.45;
+  color: #111827;
+  word-wrap: break-word;
+}
+
+.docx-mammoth-content p {
+  margin: 0 0 8px 0;
+  text-align: justify;
+}
+
+.docx-mammoth-content h1,
+.docx-mammoth-content h2,
+.docx-mammoth-content h3 {
+  color: #000;
+  margin: 12px 0 6px 0;
+  font-weight: 700;
+  text-align: center;
+}
+
+.docx-mammoth-content h1.police-doc-title {
+  text-transform: uppercase;
+  text-decoration: underline;
+  font-size: 14pt;
+  letter-spacing: 0.05em;
+}
+
+.docx-mammoth-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 11pt;
+}
+
+.docx-mammoth-content table td,
+.docx-mammoth-content table th {
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+.docx-mammoth-content table.mammoth-doc-table td,
+.docx-mammoth-content table.mammoth-doc-table th {
+  border: 1px solid #1F2937;
+}
+
+.docx-mammoth-content img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+}
+
+.docx-mammoth-content ol,
+.docx-mammoth-content ul {
+  padding-left: 24px;
+  margin: 6px 0;
+}
+
+.docx-mammoth-content li {
+  margin-bottom: 4px;
+  text-align: justify;
+}
+
+.docx-mammoth-content strong,
+.docx-mammoth-content b {
+  font-weight: 700;
+  color: #000;
+}
+
+.docx-mammoth-content u {
+  text-decoration: underline;
+}
+
