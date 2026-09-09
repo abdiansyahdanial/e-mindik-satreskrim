@@ -22,6 +22,8 @@ export default function OfficialDocPreview({
   template, 
   formValues = {}, 
   personnel = [],
+  activeSuspect = null,
+  suspectsList = [],
   onSaveArchive,
   isSaved = false 
 }) {
@@ -43,7 +45,8 @@ export default function OfficialDocPreview({
     selectedCase, 
     formValues, 
     template?.dynamic_fields, 
-    personnel
+    personnel,
+    { activeSuspect, suspectsList }
   ) : {};
 
   // Core update function: True file-to-file conversion with memory cache & instant fallback
@@ -57,7 +60,7 @@ export default function OfficialDocPreview({
     }
 
     // Optimization: If variables and template haven't changed, skip conversion
-    const currentKey = `${template.id || template.file_path}_${JSON.stringify(formValues)}`;
+    const currentKey = `${template.id || template.file_path}_${activeSuspect?.id || 'all'}_${JSON.stringify(formValues)}`;
     if (!isManual && lastRenderedKeyRef.current === currentKey && prevPdfUrlRef.current) {
       return;
     }
@@ -70,6 +73,9 @@ export default function OfficialDocPreview({
       const res = await generatePdfBlob({
         template,
         caseData: selectedCase,
+        activeCase: selectedCase,
+        activeSuspect,
+        suspectsList,
         formValues,
         personnelList: personnel
       });
@@ -93,7 +99,7 @@ export default function OfficialDocPreview({
     } finally {
       setIsUpdating(false);
     }
-  }, [template, selectedCase, formValues, personnel]);
+  }, [template, selectedCase, activeSuspect, suspectsList, formValues, personnel]);
 
   // Live typing synchronization with 800ms debounce (keeps typing at 60 FPS)
   useEffect(() => {
@@ -155,6 +161,9 @@ export default function OfficialDocPreview({
       const res = await generateAndDownloadDocx({
         template,
         caseData: selectedCase,
+        activeCase: selectedCase,
+        activeSuspect,
+        suspectsList,
         formValues,
         personnelList: personnel
       });

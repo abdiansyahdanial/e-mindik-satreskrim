@@ -219,3 +219,121 @@ VALUES
     '{"no_spdp": "B/28/VIII/2026/Reskrim", "no_sprin_kap": "", "no_sprin_han": "", "no_sp_tap_tsk": "S.Tap/15/VIII/2026/Reskrim", "no_sprin_gas": "Sp.Gas/34/VIII/2026/Reskrim", "no_sprin_sidik": "Sp.Sidik/39/VIII/2026/Reskrim"}'::jsonb
   )
 ON CONFLICT (no_lp) DO NOTHING;
+
+-- ==============================================================================
+-- 8. TABEL CASE_SUSPECTS (MULTI-TERSANGKA & RIWAYAT SURAT PERORANGAN)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.case_suspects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    case_id TEXT NOT NULL REFERENCES public.cases(id) ON DELETE CASCADE,
+    nama TEXT NOT NULL,
+    nik TEXT,
+    jenis_kelamin TEXT DEFAULT 'Laki-laki',
+    tempat_lahir TEXT,
+    tgl_lahir TEXT,
+    umur TEXT,
+    agama TEXT DEFAULT 'Islam',
+    pekerjaan TEXT DEFAULT 'Swasta',
+    kewarganegaraan TEXT DEFAULT 'Indonesia',
+    pendidikan TEXT DEFAULT 'SMA',
+    status_pernikahan TEXT DEFAULT 'Kawin',
+    alamat TEXT,
+    status TEXT DEFAULT 'tersangka' CHECK (status IN ('terlapor', 'tersangka')),
+    -- Riwayat Rujukan Surat Perorangan
+    no_sp_tap_tsk TEXT,
+    no_sprin_kap TEXT,
+    no_sprin_han TEXT,
+    no_panjang_han_kn TEXT,
+    no_sprin_han_kn TEXT,
+    no_tap_han_pn_1 TEXT,
+    no_sprin_han_pn_1 TEXT,
+    no_tap_han_pn_2 TEXT,
+    no_sprin_han_pn_2 TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.case_suspects ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Case suspects are viewable by all users" ON public.case_suspects;
+CREATE POLICY "Case suspects are viewable by all users" 
+ON public.case_suspects FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Case suspects can be inserted by all users" ON public.case_suspects;
+CREATE POLICY "Case suspects can be inserted by all users" 
+ON public.case_suspects FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Case suspects can be updated by all users" ON public.case_suspects;
+CREATE POLICY "Case suspects can be updated by all users" 
+ON public.case_suspects FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Case suspects can be deleted by all users" ON public.case_suspects;
+CREATE POLICY "Case suspects can be deleted by all users" 
+ON public.case_suspects FOR DELETE USING (true);
+
+-- ==============================================================================
+-- 9. MIGRASI KOLOM TABEL CASES (KONSISTENSI RANTAI RUJUKAN TINGKAT PERKARA)
+-- ==============================================================================
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS nomor_lp TEXT;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS tanggal_lp TEXT;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS nama_pelapor TEXT;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS nama_terlapor TEXT;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS dasar_pasal_uu TEXT;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS no_sprin_sidik TEXT DEFAULT NULL;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS no_spdp TEXT DEFAULT NULL;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS no_p21_kn TEXT DEFAULT NULL;
+
+-- Sync nomor_lp dari no_lp yang sudah ada
+UPDATE public.cases SET nomor_lp = no_lp WHERE nomor_lp IS NULL;
+UPDATE public.cases SET nama_pelapor = pelapor_name WHERE nama_pelapor IS NULL;
+UPDATE public.cases SET nama_terlapor = terlapor_name WHERE nama_terlapor IS NULL;
+UPDATE public.cases SET dasar_pasal_uu = pasal_uu WHERE dasar_pasal_uu IS NULL;
+
+-- Seed data awal tersangka untuk case-001 & case-002
+INSERT INTO public.case_suspects (
+  id, case_id, nama, nik, jenis_kelamin, tempat_lahir, tgl_lahir, umur,
+  agama, pekerjaan, kewarganegaraan, pendidikan, status_pernikahan, alamat,
+  status, no_sp_tap_tsk, no_sprin_kap, no_sprin_han
+)
+VALUES
+  (
+    'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d',
+    'case-001',
+    'Wayan Agus Setiawan',
+    '7405021204850002',
+    'Laki-laki',
+    'Lalingato',
+    '12 April 1988',
+    '38',
+    'Hindu',
+    'Petani / Pekebun',
+    'Indonesia',
+    'SMA',
+    'Kawin',
+    'Dusun II, Desa Lalingato, Kec. Tirawuta, Kab. Kolaka Timur',
+    'tersangka',
+    'S.Tap/12/VIII/2026/Reskrim',
+    'Sp.Kap/18/VIII/2026/Reskrim',
+    'Sp.Han/14/VIII/2026/Reskrim'
+  ),
+  (
+    'b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e',
+    'case-002',
+    'Lukman Syahputra',
+    '7405031908820001',
+    'Laki-laki',
+    'Kendari',
+    '19 Agustus 1982',
+    '44',
+    'Islam',
+    'Pedagang',
+    'Indonesia',
+    'S1',
+    'Kawin',
+    'Kel. Ladongi Jaya, Kec. Ladongi, Kab. Kolaka Timur',
+    'tersangka',
+    'S.Tap/15/VIII/2026/Reskrim',
+    '',
+    ''
+  )
+ON CONFLICT (id) DO NOTHING;
+

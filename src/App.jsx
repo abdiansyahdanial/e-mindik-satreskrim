@@ -203,7 +203,7 @@ export default function App() {
 
   const handleAddCase = async (newCase) => {
     setCases((prev) => [newCase, ...prev]);
-    showToast(`Perkara ${newCase.no_lp} berhasil diregistrasi!`);
+    showToast(`Perkara ${newCase.nomor_lp || newCase.no_lp} berhasil diregistrasi!`);
 
     try {
       const { error } = await supabase.from('cases').insert([newCase]);

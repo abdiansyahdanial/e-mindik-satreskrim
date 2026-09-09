@@ -77,12 +77,12 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
     setDynamicFields((prev) => [
       ...prev,
       {
-        id: Date.now() + Math.random(),
+        id: Date.now(),
         field_key: '',
         field_label: '',
         field_type: 'text',
         default_value: '',
-        is_required: false
+        is_required: false,
       }
     ]);
   };
@@ -243,27 +243,56 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
         is_required: Boolean(f.is_required)
       }));
 
-      // 3. Upsert into 'document_templates' table (mencegah error duplicate key violates unique constraint)
+      // 3. Upsert into 'document_templates' table berbasis ID (JANGAN menyisipkan updated_at karena tidak ada di skema tabel)
+      const cleanCode = code.trim().replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase();
       const payload = {
         title: title.trim(),
-        code: code.trim().replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase(),
+        code: cleanCode,
         category,
         description: description.trim(),
         file_path: finalFilePath,
-        dynamic_fields: cleanDynamicFields,
-        updated_at: new Date().toISOString()
+        dynamic_fields: cleanDynamicFields
       };
 
       if (editingTemplateId) {
         payload.id = editingTemplateId;
-      } else {
-        payload.created_at = new Date().toISOString();
       }
 
-      const { data: dbData, error: dbError } = await supabase
-        .from('document_templates')
-        .upsert([payload], { onConflict: editingTemplateId ? 'id' : 'code' })
-        .select();
+      let dbData, dbError;
+      if (editingTemplateId) {
+        // Mode edit: lakukan upsert berbasis id
+        const res = await supabase
+          .from('document_templates')
+          .upsert([payload], { onConflict: 'id' })
+          .select();
+        dbData = res.data;
+        dbError = res.error;
+      } else {
+        // Mode tambah baru: periksa apakah template dengan code tersebut sudah ada
+        const { data: existing } = await supabase
+          .from('document_templates')
+          .select('id')
+          .eq('code', cleanCode)
+          .maybeSingle();
+
+        if (existing?.id) {
+          payload.id = existing.id;
+          const res = await supabase
+            .from('document_templates')
+            .upsert([payload], { onConflict: 'id' })
+            .select();
+          dbData = res.data;
+          dbError = res.error;
+        } else {
+          payload.created_at = new Date().toISOString();
+          const res = await supabase
+            .from('document_templates')
+            .insert([payload])
+            .select();
+          dbData = res.data;
+          dbError = res.error;
+        }
+      }
 
       if (dbError) {
         console.error('Supabase DB Error:', dbError);

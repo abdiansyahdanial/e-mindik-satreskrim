@@ -43,6 +43,10 @@ export default function DocGeneratorView({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatorNotice, setGeneratorNotice] = useState(null);
 
+  // Multi-Tersangka States
+  const [caseSuspects, setCaseSuspects] = useState([]);
+  const [selectedSuspectId, setSelectedSuspectId] = useState('');
+
   // Template Management Modal States (Khusus Super Admin)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [templateToEdit, setTemplateToEdit] = useState(null);
@@ -93,7 +97,112 @@ export default function DocGeneratorView({
   const currentCase = cases.find(c => c.id === selectedCaseId) || cases[0];
   const currentTemplate = allTemplates.find(t => t.code === selectedTemplateCode) || allTemplates[0] || mockTemplates[0];
 
-  // Initialize or re-fill form defaults when case or template changes
+  // Helper identifikasi dokumen perorangan (1 surat untuk 1 tersangka) vs kolektif
+  const isIndividualDoc = (() => {
+    const c = (currentTemplate?.code || '').toUpperCase();
+    const t = (currentTemplate?.title || '').toUpperCase();
+    const cat = (currentTemplate?.category || '').toUpperCase();
+    if (c.includes('SIDIK') || c.includes('SPDP') || c.includes('GAS')) return false;
+    return (
+      c.includes('TAP_TSK') ||
+      c.includes('KAP') ||
+      c.includes('HAN') ||
+      c.includes('BA_') ||
+      c.includes('BAP') ||
+      t.includes('PENETAPAN TERSANGKA') ||
+      t.includes('PENANGKAPAN') ||
+      t.includes('PENAHANAN') ||
+      t.includes('BERITA ACARA') ||
+      cat === 'PENETAPAN' ||
+      cat === 'BERITA ACARA'
+    );
+  })();
+
+  // 2. Fetch Suspects for currentCase from Supabase (BAGIAN 3 & 4)
+  useEffect(() => {
+    if (!currentCase?.id) return;
+    const loadSuspects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('case_suspects')
+          .select('*')
+          .eq('case_id', currentCase.id)
+          .order('created_at', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          setCaseSuspects(data);
+          setSelectedSuspectId(prev => {
+            if (prev && data.some(s => s.id === prev)) return prev;
+            return data[0].id;
+          });
+        } else {
+          // Fallback ke person di caseItem
+          if (currentCase.person?.nama && currentCase.person.nama !== 'Dalam Penyelidikan') {
+            const fallback = {
+              id: 'legacy-suspect-1',
+              case_id: currentCase.id,
+              nama: currentCase.person.nama,
+              nik: currentCase.person.nik || '-',
+              jenis_kelamin: currentCase.person.gender || 'Laki-laki',
+              tempat_lahir: (currentCase.person.pob_dob || '').split(',')[0] || 'Kolaka Timur',
+              tgl_lahir: (currentCase.person.pob_dob || '').split(',')[1]?.trim() || '',
+              umur: currentCase.person.umur || '30',
+              agama: currentCase.person.agama || 'Islam',
+              pekerjaan: currentCase.person.pekerjaan || 'Swasta',
+              kewarganegaraan: currentCase.person.kewarganegaraan || 'Indonesia',
+              pendidikan: currentCase.person.pendidikan || 'SMA',
+              status_pernikahan: currentCase.person.marital_status || 'Kawin',
+              alamat: currentCase.person.alamat || currentCase.locus,
+              status: 'tersangka',
+              no_sp_tap_tsk: currentCase.references?.no_sp_tap_tsk || '',
+              no_sprin_kap: currentCase.references?.no_sprin_kap || '',
+              no_sprin_han: currentCase.references?.no_sprin_han || '',
+            };
+            setCaseSuspects([fallback]);
+            setSelectedSuspectId(fallback.id);
+          } else {
+            setCaseSuspects([]);
+            setSelectedSuspectId('');
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading case suspects:', e);
+      }
+    };
+
+    loadSuspects();
+  }, [currentCase?.id]);
+
+  const selectedSuspect = caseSuspects.find(s => s.id === selectedSuspectId) || caseSuspects[0] || null;
+
+  // Handler ganti tersangka pilihan
+  const handleSuspectChange = (suspectId) => {
+    setSelectedSuspectId(suspectId);
+    const found = caseSuspects.find(s => s.id === suspectId);
+    if (found) {
+      setFormValues(prev => ({
+        ...prev,
+        NO_SP_TAP_TSK: found.no_sp_tap_tsk || '',
+        no_sp_tap_tsk: found.no_sp_tap_tsk || '',
+        NO_SPRIN_KAP: found.no_sprin_kap || '',
+        no_sprin_kap: found.no_sprin_kap || '',
+        NO_SPRIN_HAN: found.no_sprin_han || '',
+        no_sprin_han: found.no_sprin_han || '',
+        NO_PANJANG_HAN_KN: found.no_panjang_han_kn || '',
+        no_panjang_han_kn: found.no_panjang_han_kn || '',
+        NAMA_TERLAPOR: found.nama || prev.NAMA_TERLAPOR || '',
+        nama_terlapor: found.nama || prev.nama_terlapor || '',
+        NIK: found.nik || '-',
+        nik: found.nik || '-',
+        JENIS_KELAMIN: found.jenis_kelamin || 'Laki-laki',
+        jenis_kelamin: found.jenis_kelamin || 'Laki-laki',
+        ALAMAT: found.alamat || prev.ALAMAT || '',
+        alamat: found.alamat || prev.alamat || '',
+      }));
+    }
+  };
+
+  // 3. Initialize or re-fill form defaults when case or template changes
   useEffect(() => {
     if (!currentTemplate || !currentCase) return;
 
@@ -123,7 +232,7 @@ export default function DocGeneratorView({
       const upperKey = cleanKey.toUpperCase();
       const defVal = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
 
-      // Determine default value based on standardized dictionary
+      // Tentukan nilai default sesuai kamus standar (tanpa string fallback bentrok)
       if (upperKey === 'TANGGAL_SURAT' || upperKey === 'DOC_DATE') {
         initial[cleanKey] = todayStr;
       } else if (upperKey === 'TEMPAT_SURAT' || upperKey === 'DOC_LOCATION') {
@@ -138,6 +247,12 @@ export default function DocGeneratorView({
         initial[cleanKey] = currentCase.penyidik_1_nama || defVal || '';
       } else if (upperKey === 'ATASAN_NAMA') {
         initial[cleanKey] = currentCase.kasat_nama || defVal || '';
+      } else if (upperKey === 'NO_SP_TAP_TSK' && selectedSuspect) {
+        initial[cleanKey] = selectedSuspect.no_sp_tap_tsk || '';
+      } else if (upperKey === 'NO_SPRIN_KAP' && selectedSuspect) {
+        initial[cleanKey] = selectedSuspect.no_sprin_kap || '';
+      } else if (upperKey === 'NO_SPRIN_HAN' && selectedSuspect) {
+        initial[cleanKey] = selectedSuspect.no_sprin_han || '';
       } else if (field.field_type === 'select_personnel' || field.type === 'select_personnel') {
         const filter = field.role_filter;
         const matched = activePersonnel.find(p => !filter || p.role === filter);
@@ -148,7 +263,7 @@ export default function DocGeneratorView({
     });
 
     setFormValues(prev => {
-      // Keep any user-typed inputs for matching keys
+      // Pertahankan input pengguna yang sudah diketik
       const merged = { ...initial };
       Object.keys(prev || {}).forEach(k => {
         const cleanK = k.replace(/[{}]/g, '').trim();
@@ -159,11 +274,71 @@ export default function DocGeneratorView({
       return merged;
     });
     setIsSaved(false);
-  }, [selectedCaseId, selectedTemplateCode, currentTemplate]);
+  }, [selectedCaseId, selectedTemplateCode, currentTemplate, selectedSuspectId]);
 
   const handleInputChange = (key, value) => {
     setFormValues(prev => ({ ...prev, [key]: value }));
     setIsSaved(false);
+  };
+
+  // BAGIAN 4.2: Penyimpanan Balik Nomor Otomatis (Auto-Save Reference)
+  const saveReferenceNumbers = async (enteredNo) => {
+    if (!enteredNo || !currentCase) return;
+    const tplCode = (currentTemplate?.code || '').toUpperCase();
+
+    // 1. Dokumen Tingkat Perkara
+    if (tplCode.includes('SIDIK')) {
+      currentCase.no_sprin_sidik = enteredNo;
+      try {
+        await supabase.from('cases').update({ no_sprin_sidik: enteredNo }).eq('id', currentCase.id);
+      } catch (e) {
+        console.warn('Auto-save no_sprin_sidik error:', e);
+      }
+    } else if (tplCode.includes('SPDP')) {
+      currentCase.no_spdp = enteredNo;
+      try {
+        await supabase.from('cases').update({ no_spdp: enteredNo }).eq('id', currentCase.id);
+      } catch (e) {
+        console.warn('Auto-save no_spdp error:', e);
+      }
+    } else if (tplCode.includes('P21')) {
+      currentCase.no_p21_kn = enteredNo;
+      try {
+        await supabase.from('cases').update({ no_p21_kn: enteredNo }).eq('id', currentCase.id);
+      } catch (e) {
+        console.warn('Auto-save no_p21_kn error:', e);
+      }
+    }
+
+    // 2. Dokumen Tingkat Perorangan (Tersangka Terpilih)
+    if (selectedSuspect?.id) {
+      let targetCol = null;
+      if (tplCode.includes('TAP_TSK')) {
+        targetCol = 'no_sp_tap_tsk';
+      } else if (tplCode.includes('KAP')) {
+        targetCol = 'no_sprin_kap';
+      } else if (tplCode.includes('HAN') && !tplCode.includes('PANJANG') && !tplCode.includes('KN') && !tplCode.includes('PN')) {
+        targetCol = 'no_sprin_han';
+      } else if (tplCode.includes('PANJANG_HAN_KN') || (tplCode.includes('PANJANG') && tplCode.includes('KN'))) {
+        targetCol = 'no_panjang_han_kn';
+      } else if (tplCode.includes('SPRIN_HAN_KN')) {
+        targetCol = 'no_sprin_han_kn';
+      } else if (tplCode.includes('TAP_HAN_PN_1')) {
+        targetCol = 'no_tap_han_pn_1';
+      } else if (tplCode.includes('SPRIN_HAN_PN_1')) {
+        targetCol = 'no_sprin_han_pn_1';
+      }
+
+      if (targetCol) {
+        selectedSuspect[targetCol] = enteredNo;
+        setCaseSuspects(prev => prev.map(s => s.id === selectedSuspect.id ? { ...s, [targetCol]: enteredNo } : s));
+        try {
+          await supabase.from('case_suspects').update({ [targetCol]: enteredNo }).eq('id', selectedSuspect.id);
+        } catch (e) {
+          console.warn(`Auto-save case_suspects ${targetCol} error:`, e);
+        }
+      }
+    }
   };
 
   // Main Generator action (Pizzip + Docxtemplater + Supabase Storage)
@@ -173,10 +348,18 @@ export default function DocGeneratorView({
     setIsGenerating(true);
     setGeneratorNotice(null);
 
+    const docNumber = formValues.NOMOR_SURAT || formValues.nomor_surat || formValues.DOC_NO || '';
+    if (docNumber) {
+      await saveReferenceNumbers(docNumber);
+    }
+
     try {
       const res = await generateAndDownloadDocx({
         template: currentTemplate,
         caseData: currentCase,
+        activeCase: currentCase,
+        activeSuspect: selectedSuspect,
+        suspectsList: caseSuspects,
         formValues,
         personnelList: activePersonnel
       });
@@ -199,8 +382,13 @@ export default function DocGeneratorView({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!currentCase || !currentTemplate) return;
+
+    const docNumber = formValues.NOMOR_SURAT || formValues.nomor_surat || formValues.DOC_NO || '';
+    if (docNumber) {
+      await saveReferenceNumbers(docNumber);
+    }
 
     const newDoc = {
       id: `doc-${Date.now().toString().slice(-6)}`,
@@ -208,9 +396,9 @@ export default function DocGeneratorView({
       template_id: currentTemplate.id,
       template_code: currentTemplate.code,
       doc_title: currentTemplate.title,
-      doc_number: formValues.DOC_NO || formValues['DOC_NO 1'] || 'Sp.Doc/01/IX/2026/Reskrim',
+      doc_number: docNumber || '-',
       meta_values: { ...formValues },
-      created_at: formValues.DOC_DATE || new Date().toISOString().split('T')[0],
+      created_at: formValues.TANGGAL_SURAT || formValues.tanggal_surat || formValues.DOC_DATE || new Date().toISOString().split('T')[0],
     };
 
     if (onSaveDocument) {
@@ -615,10 +803,102 @@ export default function DocGeneratorView({
 
           {/* Step 3: Dynamic Variables Form */}
           <div className="glass" style={{ padding: '16px' }}>
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-              <span className="badge badge-cyan" style={{ fontSize: '10px', padding: '1px 5px' }}>3</span>
-              <span>PARAMETER & VARIABEL DOKUMEN</span>
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                <span className="badge badge-cyan" style={{ fontSize: '10px', padding: '1px 5px' }}>3</span>
+                <span>PARAMETER & VARIABEL DOKUMEN</span>
+              </label>
+              {isIndividualDoc ? (
+                <span className="badge badge-red" style={{ fontSize: '9px' }}>DOKUMEN PERORANGAN</span>
+              ) : (
+                <span className="badge badge-cyan" style={{ fontSize: '9px' }}>DOKUMEN KOLEKTIF</span>
+              )}
+            </div>
+
+            {/* Selector Tersangka untuk Dokumen Perorangan (BAGIAN 4.1) */}
+            {isIndividualDoc && (
+              <div style={{
+                padding: '12px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '14px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ margin: 0, color: 'var(--accent-red)', fontWeight: 700, fontSize: '11.5px' }}>
+                    PILIH TERSANGKA (WAJIB) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  </label>
+                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                    1 Surat untuk 1 Tersangka
+                  </span>
+                </div>
+
+                {caseSuspects.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: '#FCA5A5', padding: '6px 0' }}>
+                    Belum ada tersangka ditetapkan pada perkara ini. Tetapkan tersangka di Detail Perkara.
+                  </div>
+                ) : (
+                  <select
+                    value={selectedSuspectId}
+                    onChange={(e) => handleSuspectChange(e.target.value)}
+                    className="form-select"
+                    style={{ borderColor: 'var(--accent-red)', fontWeight: 600 }}
+                  >
+                    {caseSuspects.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nama} (NIK: {s.nik || '-'}) {s.no_sp_tap_tsk ? `• SP.TAP.TSK: ${s.no_sp_tap_tsk}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {selectedSuspect && (
+                  <div style={{
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                    marginTop: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '3px',
+                    borderTop: '1px dashed rgba(239, 68, 68, 0.2)',
+                    paddingTop: '6px'
+                  }}>
+                    <div>Nama: <strong style={{ color: '#FFF' }}>{selectedSuspect.nama}</strong> | NIK: <strong style={{ color: '#FFF' }}>{selectedSuspect.nik || '-'}</strong></div>
+                    <div>TTL: <strong style={{ color: '#FFF' }}>{selectedSuspect.tempat_lahir || '-'}, {selectedSuspect.tgl_lahir || '-'}</strong></div>
+                    {selectedSuspect.no_sp_tap_tsk && (
+                      <div style={{ color: 'var(--accent-purple)' }}>
+                        Rujukan SP.TAP.TSK: <strong>{selectedSuspect.no_sp_tap_tsk}</strong> (Otomatis mengisi tag)
+                      </div>
+                    )}
+                    {selectedSuspect.no_sprin_kap && (
+                      <div style={{ color: 'var(--accent-amber)' }}>
+                        Rujukan SP.KAP: <strong>{selectedSuspect.no_sprin_kap}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Info Dokumen Kolektif */}
+            {!isIndividualDoc && caseSuspects.length > 0 && (
+              <div style={{
+                padding: '10px 12px',
+                background: 'rgba(0, 212, 255, 0.05)',
+                border: '1px solid rgba(0, 212, 255, 0.2)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '14px',
+                fontSize: '11px',
+                color: 'var(--text-secondary)'
+              }}>
+                <div style={{ color: 'var(--accent-cyan)', fontWeight: 600, marginBottom: '2px' }}>
+                  Multi-Tersangka Terhubung ({caseSuspects.length} orang):
+                </div>
+                <div>
+                  Format Word dapat merender loop tabel otomatis dengan <code className="mono">{'{#tersangka_list}...{/tersangka_list}'}</code> serta tag tunggal <code className="mono">{'{NAMA_TERLAPOR}'}</code>.
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {(Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 ? currentTemplate.dynamic_fields : [
@@ -746,6 +1026,8 @@ export default function DocGeneratorView({
             template={currentTemplate}
             formValues={formValues}
             personnel={activePersonnel}
+            activeSuspect={selectedSuspect}
+            suspectsList={caseSuspects}
             onSaveArchive={handleSave}
             isSaved={isSaved}
           />
