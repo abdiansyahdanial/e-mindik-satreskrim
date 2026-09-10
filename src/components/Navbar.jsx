@@ -54,12 +54,13 @@ export default function Navbar({
     return () => clearInterval(timer);
   }, []);
 
-  const officerName = currentUserProfile?.nama || (isSuperAdmin ? 'AKP AHMAD FATONI, S.H.' : 'BRIPKA DEDI PRASETYO, S.H.');
+  const officerName = currentUserProfile?.full_name || currentUserProfile?.nama || (isSuperAdmin ? 'Super Admin / Pengembang Web' : 'BRIPKA DEDI PRASETYO, S.H.');
   const officerPangkat = currentUserProfile?.pangkat || (isSuperAdmin ? 'AKP' : 'BRIPKA');
+  const officerNrp = currentUserProfile?.rank_nrp || currentUserProfile?.nrp || '-';
   const officerJabatan = isSuperAdmin 
     ? (currentUserProfile?.jabatan && currentUserProfile.jabatan !== 'Kasat Reskrim' && currentUserProfile.jabatan !== 'Kepala Satuan Reserse Kriminal' ? currentUserProfile.jabatan : 'ABDIANSYAH')
     : (currentUserProfile?.jabatan || 'Penyidik Pembantu');
-  const officerInitials = officerName.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const officerInitials = officerName ? officerName.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'P';
 
   return (
     <header className="app-navbar no-print" style={{

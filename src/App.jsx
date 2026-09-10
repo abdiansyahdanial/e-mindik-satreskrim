@@ -154,10 +154,10 @@ export default function App() {
         console.warn('Personnel sync error:', e);
       }
 
-      // 3. Documents
+      // 3. Document Templates (Master Mindik)
       try {
         const { data: docData, error: docErr } = await supabase
-          .from('documents')
+          .from('document_templates')
           .select('*')
           .order('created_at', { ascending: false });
 
@@ -165,7 +165,7 @@ export default function App() {
           setDocuments(docData);
         }
       } catch (e) {
-        console.warn('Documents sync error:', e);
+        console.warn('Document templates sync notice:', e);
       }
     };
 
@@ -225,8 +225,16 @@ export default function App() {
 
     try {
       // 1. Hapus relasi anak terlebih dahulu jika ada
-      await supabase.from('case_suspects').delete().eq('case_id', caseId);
-      await supabase.from('documents').delete().eq('case_id', caseId);
+      try {
+        await supabase.from('case_suspects').delete().eq('case_id', caseId);
+      } catch (csErr) {
+        console.warn('Delete case_suspects notice:', csErr);
+      }
+      try {
+        await supabase.from('documents').delete().eq('case_id', caseId);
+      } catch (docErr) {
+        console.warn('Delete documents notice:', docErr);
+      }
 
       // 2. Hapus berkas perkara utama
       const { error } = await supabase
