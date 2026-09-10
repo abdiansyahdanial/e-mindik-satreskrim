@@ -79,10 +79,10 @@ export default function DocGeneratorView({
         .select('*')
         .order('created_at', { ascending: false });
 
-      const deleted = getDeletedTemplateCodes();
-      const activeSupabase = (data || []).filter(st => !deleted.includes(st.code) && !deleted.includes(String(st.id)));
-      const merged = [...activeSupabase];
+      const supabaseData = data || [];
+      const merged = [...supabaseData];
 
+      const deleted = getDeletedTemplateCodes();
       mockTemplates.forEach(mt => {
         if (!deleted.includes(mt.code) && !deleted.includes(String(mt.id)) && !merged.some(st => st.code === mt.code)) {
           merged.push(mt);
@@ -873,7 +873,7 @@ export default function DocGeneratorView({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '340px', overflowY: 'auto', paddingRight: '2px' }}>
               {allTemplates.map((t) => {
                 const isSelected = selectedTemplateCode === t.code;
-                const isCloud = Boolean(t.file_path);
+                const isCloud = Boolean(t.file_path || t.file_url);
                 return (
                   <div
                     key={t.id || t.code}
@@ -894,7 +894,7 @@ export default function DocGeneratorView({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span className={`badge ${t.category === 'SURAT PERINTAH' ? 'badge-red' : t.category === 'SURAT' ? 'badge-blue' : 'badge-green'}`} style={{ fontSize: '9px' }}>
-                          {t.code}
+                          {t.code || '-'}
                         </span>
                         {isCloud && (
                           <span className="badge badge-purple" style={{ fontSize: '9px', display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -904,7 +904,7 @@ export default function DocGeneratorView({
                         )}
                       </div>
                       <div style={{ fontSize: '12.5px', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#FFF' : 'var(--text-primary)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {t.title}
+                        {t.title || t.name}
                       </div>
                     </div>
 

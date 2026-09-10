@@ -14,7 +14,8 @@ import {
   Edit3,
   XCircle,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Search
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { mockTemplates } from '../data/mockTemplates';
@@ -32,6 +33,10 @@ export default function AdminTemplateStudio({
   const [statusNotice, setStatusNotice] = useState(null);
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
+
+  // Search & Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Semua');
 
   // Edit mode states
   const [editingTemplateId, setEditingTemplateId] = useState(null);
@@ -54,8 +59,8 @@ export default function AdminTemplateStudio({
     { id: 5, field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false }
   ]);
 
-  // Load existing templates from Supabase
-  const fetchSupabaseTemplates = async () => {
+  // Load existing templates directly from Supabase
+  const fetchTemplates = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -63,27 +68,52 @@ export default function AdminTemplateStudio({
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching document_templates:', error);
-        setStatusNotice({
-          type: 'warning',
-          message: `Gagal membaca tabel 'document_templates': ${error.message}.`
-        });
-      } else {
-        const deleted = getDeletedTemplateCodes();
-        const activeTemplates = (data || []).filter(t => !deleted.includes(t.code) && !deleted.includes(String(t.id)));
-        setTemplates(activeTemplates);
-      }
+      if (error) throw error;
+      // Simpan langsung data Supabase ke state murni
+      setTemplates(data || []);
     } catch (err) {
-      console.error('Fetch error:', err);
+      console.error('Gagal fetch templates:', err);
+      setStatusNotice({
+        type: 'warning',
+        message: `Gagal membaca tabel 'document_templates': ${err.message || err}.`
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Alias untuk fungsi sinkronisasi manual
+  const fetchSupabaseTemplates = fetchTemplates;
+
   useEffect(() => {
-    fetchSupabaseTemplates();
+    fetchTemplates();
   }, []);
+
+  // Filter logika tampilan
+  const filteredTemplates = templates.filter((tpl) => {
+    // 1. Pastikan jika kategori yang dipilih adalah "Semua" / kosong, tampilkan seluruh item tanpa terkecuali
+    const matchesCategory =
+      !selectedCategory || selectedCategory === 'Semua' || tpl.category === selectedCategory;
+
+    // 2. Pastikan pengecekan pencarian (searchQuery) aman dari nilai null/undefined (gunakan optional chaining: tpl.title?.toLowerCase())
+    const q = searchQuery.trim().toLowerCase();
+    const itemTitle = (tpl.title || tpl.name || '').toLowerCase();
+    const itemCode = (tpl.code || '').toLowerCase();
+    const itemDesc = (tpl.description || '').toLowerCase();
+    const matchesSearch =
+      !q ||
+      tpl.title?.toLowerCase().includes(q) ||
+      tpl.name?.toLowerCase().includes(q) ||
+      itemTitle.includes(q) ||
+      itemCode.includes(q) ||
+      itemDesc.includes(q);
+
+    // 3. Jangan menyembunyikan template yang baru diunggah jika kolom opsional seperti is_active bernilai null/true
+    const matchesActive =
+      tpl.is_active === undefined || tpl.is_active === null || tpl.is_active === true;
+
+    return matchesCategory && matchesSearch && matchesActive;
+  });
 
   // Standard + Tambah Field
   const handleAddField = () => {
@@ -332,8 +362,8 @@ export default function AdminTemplateStudio({
       // Reset form
       handleCancelEdit();
       
-      // Refresh list
-      fetchSupabaseTemplates();
+      // Refresh list & state update otomatis dari database Supabase
+      await fetchTemplates();
 
       if (onTemplateSaved) {
         onTemplateSaved(dbData?.[0] || payload);
@@ -399,13 +429,12 @@ export default function AdminTemplateStudio({
     try {
       await deleteTemplateFromSupabase(templateToDelete);
 
-      // Perbarui state daftar template secara realtime
-      setTemplates((prev) => prev.filter((t) => t.id !== templateToDelete.id && t.code !== templateToDelete.code));
       setStatusNotice({
         type: 'success',
-        message: `Template '${templateToDelete.title}' berhasil dihapus secara permanen!`
+        message: `Template '${templateToDelete.title || templateToDelete.name}' berhasil dihapus secara permanen!`
       });
       setTemplateToDelete(null);
+      await fetchTemplates();
     } catch (err) {
       console.error('Gagal menghapus template:', err);
       alert(`Terjadi kesalahan saat menghapus template: ${err.message}`);
@@ -808,16 +837,78 @@ export default function AdminTemplateStudio({
         {/* Right Column: Existing Supabase Templates List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="glass" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Database size={18} color="var(--accent-green)" />
                 <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
                   Template Tersimpan di Supabase
                 </h3>
               </div>
-              <span className="badge badge-green">
-                {templates.length} Template Cloud
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {searchQuery || (selectedCategory && selectedCategory !== 'Semua') ? (
+                  <span className="badge badge-cyan" style={{ fontSize: '11px' }}>
+                    {filteredTemplates.length} dari {templates.length} Template
+                  </span>
+                ) : (
+                  <span className="badge badge-green" style={{ fontSize: '11px' }}>
+                    {templates.length} Template Cloud
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Toolbar Pencarian & Filter Kategori */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              marginBottom: '16px',
+              paddingBottom: '14px',
+              borderBottom: '1px solid var(--border-subtle)'
+            }}>
+              {/* Search Bar Input */}
+              <div style={{ position: 'relative', width: '100%' }}>
+                <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari judul, nama, kode, atau deskripsi template..."
+                  className="form-input"
+                  style={{ paddingLeft: '34px', fontSize: '12.5px', height: '36px' }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+                    title="Hapus pencarian"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Category Filter Pills */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {['Semua', 'SURAT PERINTAH', 'SURAT', 'BERITA ACARA', 'PENETAPAN', 'LAINNYA'].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`btn btn-sm ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{
+                      fontSize: '11px',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontWeight: selectedCategory === cat ? 700 : 500,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {isLoading ? (
@@ -841,118 +932,146 @@ export default function AdminTemplateStudio({
                   Gunakan form di sebelah kiri untuk mengunggah file master .docx pertama Anda.
                 </p>
               </div>
+            ) : filteredTemplates.length === 0 ? (
+              <div style={{
+                padding: '28px 16px',
+                textAlign: 'center',
+                background: 'var(--bg-tertiary)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px dashed var(--border-glass)',
+                color: 'var(--text-secondary)',
+              }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
+                  Tidak ada template yang cocok
+                </div>
+                <p style={{ fontSize: '12px', margin: '4px 0 12px', color: 'var(--text-secondary)' }}>
+                  Tidak ditemukan template dengan kategori &ldquo;{selectedCategory}&rdquo; {searchQuery ? `atau pencarian "${searchQuery}"` : ''}.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedCategory('Semua'); setSearchQuery(''); }}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '11px', margin: '0 auto' }}
+                >
+                  Reset Filter & Pencarian
+                </button>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {templates.map((tpl) => (
-                  <div
-                    key={tpl.id}
-                    style={{
-                      padding: '16px',
-                      background: editingTemplateId === tpl.id ? 'rgba(0, 212, 255, 0.08)' : 'var(--bg-secondary)',
-                      borderRadius: 'var(--radius-lg)',
-                      border: editingTemplateId === tpl.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px',
-                      transition: 'all var(--transition-fast)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="badge badge-cyan mono">{tpl.code}</span>
-                        <span className="badge badge-blue">{tpl.category}</span>
-                        {editingTemplateId === tpl.id && (
-                          <span className="badge badge-purple">SEDANG DIEDIT</span>
+                {filteredTemplates.map((tpl) => {
+                  const displayTitle = tpl.title || tpl.name || 'Tanpa Judul';
+                  const displayCategory = tpl.category || 'SURAT PERINTAH';
+                  return (
+                    <div
+                      key={tpl.id || tpl.code}
+                      style={{
+                        padding: '16px',
+                        background: editingTemplateId === tpl.id ? 'rgba(0, 212, 255, 0.08)' : 'var(--bg-secondary)',
+                        borderRadius: 'var(--radius-lg)',
+                        border: editingTemplateId === tpl.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        transition: 'all var(--transition-fast)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="badge badge-cyan mono">{tpl.code || '-'}</span>
+                          <span className="badge badge-blue">{displayCategory}</span>
+                          {editingTemplateId === tpl.id && (
+                            <span className="badge badge-purple">SEDANG DIEDIT</span>
+                          )}
+                        </div>
+                        <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {tpl.created_at ? new Date(tpl.created_at).toLocaleDateString('id-ID') : '-'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '14px', color: '#FFF' }}>
+                          {displayTitle}
+                        </div>
+                        {tpl.description && (
+                          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                            {tpl.description}
+                          </p>
                         )}
                       </div>
-                      <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {tpl.created_at ? new Date(tpl.created_at).toLocaleDateString('id-ID') : '-'}
-                      </span>
-                    </div>
 
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '14px', color: '#FFF' }}>
-                        {tpl.title}
-                      </div>
-                      {tpl.description && (
-                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                          {tpl.description}
-                        </p>
-                      )}
-                    </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingTop: '8px',
+                        borderTop: '1px solid var(--border-subtle)',
+                        fontSize: '11px',
+                        flexWrap: 'wrap',
+                        gap: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-secondary)' }}>
+                          <span className="mono">Storage: {tpl.file_path ? tpl.file_path.split('/').pop() : (tpl.file_url ? 'Direct URL' : 'No file')}</span>
+                          <span>•</span>
+                          <span>{Array.isArray(tpl.dynamic_fields) ? tpl.dynamic_fields.length : 0} Variabel Dinamis</span>
+                        </div>
 
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      paddingTop: '8px',
-                      borderTop: '1px solid var(--border-subtle)',
-                      fontSize: '11px',
-                      flexWrap: 'wrap',
-                      gap: '8px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-secondary)' }}>
-                        <span className="mono">Storage: {tpl.file_path ? tpl.file_path.split('/').pop() : 'No file'}</span>
-                        <span>•</span>
-                        <span>{Array.isArray(tpl.dynamic_fields) ? tpl.dynamic_fields.length : 0} Variabel Dinamis</span>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {/* Edit Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleEditTemplate(tpl)}
-                          className="btn btn-secondary btn-sm"
-                          style={{ gap: '4px', fontSize: '11.5px' }}
-                          title="Muat template ini ke form untuk diedit"
-                        >
-                          <Edit3 size={13} />
-                          <span>Edit</span>
-                        </button>
-
-                        {/* Download DOCX */}
-                        {tpl.file_path && (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {/* Edit Button */}
                           <button
                             type="button"
-                            onClick={() => handleDownloadDocx(tpl.file_path, tpl.title)}
+                            onClick={() => handleEditTemplate(tpl)}
                             className="btn btn-secondary btn-sm"
-                            title="Unduh file .docx dari Supabase Storage"
+                            style={{ gap: '4px', fontSize: '11.5px' }}
+                            title="Muat template ini ke form untuk diedit"
                           >
-                            <Download size={13} />
-                            <span>Unduh</span>
+                            <Edit3 size={13} />
+                            <span>Edit</span>
                           </button>
-                        )}
 
-                        {/* Gunakan di Generator */}
-                        {onSelectTemplateForGenerator && (
-                          <button
-                            type="button"
-                            onClick={() => onSelectTemplateForGenerator(tpl)}
-                            className="btn btn-primary btn-sm"
-                            title="Gunakan template ini di Generator Dokumen"
-                          >
-                            <Sparkles size={13} />
-                            <span>Gunakan</span>
-                          </button>
-                        )}
+                          {/* Download DOCX */}
+                          {(tpl.file_path || tpl.file_url) && (
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadDocx(tpl.file_path || tpl.file_url, displayTitle)}
+                              className="btn btn-secondary btn-sm"
+                              title="Unduh file .docx dari Supabase Storage"
+                            >
+                              <Download size={13} />
+                              <span>Unduh</span>
+                            </button>
+                          )}
 
-                        {/* Tombol Hapus: Khusus Super Admin */}
-                        {isSuperAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTemplate(tpl)}
-                            className="btn btn-danger btn-sm"
-                            style={{ gap: '4px', fontSize: '11.5px', background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)' }}
-                            title="Hapus Template secara Permanen (Khusus Super Admin)"
-                          >
-                            <Trash2 size={13} />
-                            <span>Hapus</span>
-                          </button>
-                        )}
+                          {/* Gunakan di Generator */}
+                          {onSelectTemplateForGenerator && (
+                            <button
+                              type="button"
+                              onClick={() => onSelectTemplateForGenerator(tpl)}
+                              className="btn btn-primary btn-sm"
+                              title="Gunakan template ini di Generator Dokumen"
+                            >
+                              <Sparkles size={13} />
+                              <span>Gunakan</span>
+                            </button>
+                          )}
+
+                          {/* Tombol Hapus: Khusus Super Admin */}
+                          {isSuperAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTemplate(tpl)}
+                              className="btn btn-danger btn-sm"
+                              style={{ gap: '4px', fontSize: '11.5px', background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                              title="Hapus Template secara Permanen (Khusus Super Admin)"
+                            >
+                              <Trash2 size={13} />
+                              <span>Hapus</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
