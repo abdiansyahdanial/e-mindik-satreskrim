@@ -42,13 +42,16 @@ export default function OfficialDocPreview({
   const lastRenderedKeyRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
+  const nomorSurat = formValues?.NOMOR_SURAT || formValues?.nomor_surat || '';
+  const tanggalSurat = formValues?.TANGGAL_SURAT || formValues?.tanggal_surat || '';
+
   // Dynamic variable map from active case & form values
   const currentDataMap = selectedCase ? buildMindikVariables(
     selectedCase, 
     formValues, 
     template?.dynamic_fields, 
     personnel,
-    { activeSuspect, suspectsList }
+    { activeSuspect, suspectsList, template }
   ) : {};
 
   // Core update function: True file-to-file conversion with memory cache & instant fallback
@@ -62,7 +65,7 @@ export default function OfficialDocPreview({
     }
 
     // Optimization: If variables and template haven't changed, skip conversion
-    const currentKey = `${template.id || template.file_path}_${activeSuspect?.id || 'all'}_${JSON.stringify(formValues)}`;
+    const currentKey = `${template.id || template.file_path}_${activeSuspect?.id || 'all'}_${activeSuspect?.nomor_sp_tap || ''}_${activeSuspect?.tanggal_sp_tap || ''}_${nomorSurat}_${tanggalSurat}_${JSON.stringify(formValues)}`;
     if (!isManual && lastRenderedKeyRef.current === currentKey && prevPdfUrlRef.current) {
       return;
     }
@@ -101,9 +104,9 @@ export default function OfficialDocPreview({
     } finally {
       setIsUpdating(false);
     }
-  }, [template, selectedCase, activeSuspect, suspectsList, formValues, personnel]);
+  }, [template, selectedCase, activeSuspect, suspectsList, formValues, personnel, nomorSurat, tanggalSurat]);
 
-  // Live typing synchronization with 800ms debounce (keeps typing at 60 FPS)
+  // Live synchronization: triggers instantly when selectedSuspect, nomorSurat, or tanggalSurat changes
   useEffect(() => {
     if (!template || !selectedCase) {
       if (prevPdfUrlRef.current) {
@@ -121,14 +124,26 @@ export default function OfficialDocPreview({
 
     debounceTimerRef.current = setTimeout(() => {
       updatePreview(false);
-    }, 800);
+    }, 350);
 
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [template?.id, template?.file_path, selectedCase?.id, JSON.stringify(formValues), updatePreview]);
+  }, [
+    template?.id, 
+    template?.file_path, 
+    selectedCase?.id, 
+    activeSuspect, 
+    activeSuspect?.id, 
+    activeSuspect?.nomor_sp_tap, 
+    activeSuspect?.tanggal_sp_tap, 
+    nomorSurat, 
+    tanggalSurat, 
+    JSON.stringify(formValues), 
+    updatePreview
+  ]);
 
   // Clean-up Object URL on unmount to prevent memory leaks
   useEffect(() => {

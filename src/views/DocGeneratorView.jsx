@@ -186,6 +186,38 @@ export default function DocGeneratorView({
 
   const selectedSuspect = caseSuspects.find(s => s.id === selectedSuspectId) || caseSuspects[0] || null;
 
+  // 1. Sinkronisasi Otomatis Saat Tersangka atau Format SP TAP Dipilih
+  useEffect(() => {
+    // Cek apakah format yang aktif adalah SP TAP TERSANGKA
+    const isSpTap = currentTemplate?.code === 'SP_TAP_TSK' || 
+                    (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') ||
+                    (currentTemplate?.name || '').toLowerCase().includes('tap') ||
+                    (currentTemplate?.title || '').toLowerCase().includes('tap') ||
+                    (currentTemplate?.title || '').toLowerCase().includes('penetapan tersangka');
+
+    if (isSpTap && selectedSuspect) {
+      const suspectNomor = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk;
+      const suspectTanggal = selectedSuspect.tanggal_sp_tap || selectedSuspect.tgl_sp_tap_tsk;
+
+      setFormValues(prev => {
+        const next = { ...prev };
+        if (suspectNomor) {
+          next.NOMOR_SURAT = suspectNomor;
+          next.nomor_surat = suspectNomor;
+          next.NO_SP_TAP_TSK = suspectNomor;
+          next.no_sp_tap_tsk = suspectNomor;
+        }
+        if (suspectTanggal) {
+          next.TANGGAL_SURAT = suspectTanggal;
+          next.tanggal_surat = suspectTanggal;
+          next.TGL_SP_TAP_TSK = suspectTanggal;
+          next.tgl_sp_tap_tsk = suspectTanggal;
+        }
+        return next;
+      });
+    }
+  }, [selectedSuspect, currentTemplate]);
+
   // Handler ganti tersangka pilihan
   const handleSuspectChange = (suspectId) => {
     setSelectedSuspectId(suspectId);
@@ -193,7 +225,11 @@ export default function DocGeneratorView({
     if (found) {
       const spTapNum = found.nomor_sp_tap || found.no_sp_tap_tsk || '';
       const spTapDate = found.tanggal_sp_tap || found.tgl_sp_tap_tsk || '';
-      const isTapTskDoc = (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
+      const isTapTskDoc = (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') || 
+                          currentTemplate?.code === 'SP_TAP_TSK' ||
+                          (currentTemplate?.title || '').toLowerCase().includes('tap') ||
+                          (currentTemplate?.title || '').toLowerCase().includes('penetapan tersangka') ||
+                          (currentTemplate?.name || '').toLowerCase().includes('tap');
 
       setFormValues(prev => ({
         ...prev,
@@ -202,10 +238,10 @@ export default function DocGeneratorView({
         TGL_SP_TAP_TSK: spTapDate,
         tgl_sp_tap_tsk: spTapDate,
         ...(isTapTskDoc ? {
-          NOMOR_SURAT: spTapNum || prev.NOMOR_SURAT || '',
-          nomor_surat: spTapNum || prev.nomor_surat || '',
-          TANGGAL_SURAT: spTapDate || prev.TANGGAL_SURAT || '',
-          tanggal_surat: spTapDate || prev.tanggal_surat || ''
+          NOMOR_SURAT: spTapNum || '',
+          nomor_surat: spTapNum || '',
+          TANGGAL_SURAT: spTapDate || '',
+          tanggal_surat: spTapDate || ''
         } : {}),
         NO_SPRIN_KAP: found.no_sprin_kap || '',
         no_sprin_kap: found.no_sprin_kap || '',
@@ -394,6 +430,20 @@ export default function DocGeneratorView({
           merged[cleanK] = prev[k];
         }
       });
+
+      // Jika dokumen adalah SP TAP TSK dan tersangka memiliki nomor/tanggal SP TAP, utamakan data tersangka
+      if (isTapTskDoc && selectedSuspect) {
+        const spTapNum = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk;
+        const spTapDate = selectedSuspect.tanggal_sp_tap || selectedSuspect.tgl_sp_tap_tsk;
+        if (spTapNum) {
+          merged['NOMOR_SURAT'] = spTapNum;
+          merged['nomor_surat'] = spTapNum;
+        }
+        if (spTapDate) {
+          merged['TANGGAL_SURAT'] = spTapDate;
+          merged['tanggal_surat'] = spTapDate;
+        }
+      }
       return merged;
     });
     setIsSaved(false);

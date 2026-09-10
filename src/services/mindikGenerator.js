@@ -201,10 +201,33 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     cleanInput[cleanKey] = formValues[k];
   });
 
-  // A. SURAT AKTIF
-  const nomorSurat = cleanInput.NOMOR_SURAT || cleanInput.doc_no || cleanInput.DOC_NO || cleanInput.nomor_surat || '';
+  // A. SURAT AKTIF & LOGIKA EFEKTIF FORMAT SP TAP TERSANGKA
+  const selectedTemplate = (arg1 && (arg1.template || arg1.selectedTemplate)) || activeCase?.template || null;
+  const tplCode = (selectedTemplate?.code || cleanInput.TEMPLATE_CODE || cleanInput.template_code || '').toUpperCase();
+  const tplName = (selectedTemplate?.name || selectedTemplate?.title || cleanInput.TEMPLATE_TITLE || cleanInput.template_title || '').toLowerCase();
+
+  const isSpTap = selectedTemplate?.code === 'SP_TAP_TSK' || 
+                  tplCode.includes('TAP_TSK') ||
+                  tplName.includes('tap') ||
+                  tplName.includes('penetapan tersangka');
+
+  const rawNomorSurat = cleanInput.NOMOR_SURAT || cleanInput.doc_no || cleanInput.DOC_NO || cleanInput.nomor_surat || '';
   const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.DOC_DATE || cleanInput.tanggal_surat || cleanInput.doc_date || new Date().toISOString().split('T')[0];
-  const tanggalSurat = formatTanggalIndonesia(rawTanggalSurat);
+
+  const suspectNomorSpTap = activeSuspect?.nomor_sp_tap || activeSuspect?.no_sp_tap_tsk || '';
+  const suspectTanggalSpTap = activeSuspect?.tanggal_sp_tap || activeSuspect?.tgl_sp_tap_tsk || '';
+
+  // Gunakan nomor_sp_tap jika SP TAP, pertahankan alur dokumen lain seperti semula
+  const effectiveNomorSurat = isSpTap 
+    ? (suspectNomorSpTap || rawNomorSurat)
+    : rawNomorSurat;
+
+  const effectiveTanggalSurat = isSpTap 
+    ? (suspectTanggalSpTap || rawTanggalSurat)
+    : rawTanggalSurat;
+
+  const nomorSurat = effectiveNomorSurat;
+  const tanggalSurat = formatTanggalIndonesia(effectiveTanggalSurat);
   const tempatSurat = cleanInput.TEMPAT_SURAT || cleanInput.tempat_surat || cleanInput.DOC_LOCATION || 'Tirawuta';
   const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || '';
   const alamatTujuan = cleanInput.ALAMAT_TUJUAN || cleanInput.alamat_tujuan || cleanInput.DOC_TARGET_ADDR || '';
@@ -228,8 +251,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const tglP21Kn = formatTanggalIndonesia(rawTglP21Kn);
 
   // C. RUJUKAN TINGKAT TERSANGKA (dari activeSuspect / input form)
-  const noSpTapTsk = cleanInput.NO_SP_TAP_TSK || cleanInput.no_sp_tap_tsk || activeSuspect?.no_sp_tap_tsk || '';
-  const rawTglSpTapTsk = cleanInput.TGL_SP_TAP_TSK || cleanInput.tgl_sp_tap_tsk || cleanInput.TANGGAL_SP_TAP_TSK || cleanInput.tanggal_sp_tap_tsk || activeSuspect?.tgl_sp_tap_tsk || activeCase?.tgl_sp_tap_tsk || activeCase?.tanggal_penetapan || '';
+  const noSpTapTsk = cleanInput.NO_SP_TAP_TSK || cleanInput.no_sp_tap_tsk || suspectNomorSpTap || '';
+  const rawTglSpTapTsk = cleanInput.TGL_SP_TAP_TSK || cleanInput.tgl_sp_tap_tsk || cleanInput.TANGGAL_SP_TAP_TSK || cleanInput.tanggal_sp_tap_tsk || suspectTanggalSpTap || activeCase?.tgl_sp_tap_tsk || activeCase?.tanggal_penetapan || '';
   const tglSpTapTsk = formatTanggalIndonesia(rawTglSpTapTsk);
 
   const noSprinKap = cleanInput.NO_SPRIN_KAP || cleanInput.no_sprin_kap || activeSuspect?.no_sprin_kap || '';
@@ -798,12 +821,14 @@ export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig
 
   const activeSuspect = options.activeSuspect || lpData.activeSuspect || lpData.person || null;
   const suspectsList = options.suspectsList || lpData.suspectsList || (activeSuspect ? [activeSuspect] : []);
+  const template = options.template || options.selectedTemplate || lpData.template || null;
 
   return buildMindikPayload({
     activeCase,
     activeSuspect,
     suspectsList,
-    formValues
+    formValues,
+    template
   });
 }
 
@@ -893,7 +918,8 @@ export async function generateAndDownloadDocx({
   // 3. Prepare data map
   const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
     activeSuspect,
-    suspectsList
+    suspectsList,
+    template
   });
 
   // 4. Compile with Docxtemplater
@@ -965,7 +991,8 @@ export async function renderDocxToHtml({
   // 3. Build data map
   const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
     activeSuspect,
-    suspectsList
+    suspectsList,
+    template
   });
 
   // 4. Render placeholders
@@ -1053,7 +1080,8 @@ export async function generateDocxBlob({
   // 3. Build data map
   const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
     activeSuspect,
-    suspectsList
+    suspectsList,
+    template
   });
 
   // 4. Render placeholders
