@@ -110,10 +110,14 @@ CREATE TABLE IF NOT EXISTS public.document_templates (
     code TEXT NOT NULL UNIQUE,
     category TEXT NOT NULL DEFAULT 'SURAT PERINTAH',
     file_path TEXT,
+    file_url TEXT,
     description TEXT,
     dynamic_fields JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Pastikan kolom file_url ada jika tabel sudah dibuat sebelumnya
+ALTER TABLE public.document_templates ADD COLUMN IF NOT EXISTS file_url TEXT;
 
 ALTER TABLE public.document_templates ENABLE ROW LEVEL SECURITY;
 

@@ -571,34 +571,28 @@ export default function DocGeneratorView({
 
     setIsProcessingTemplate(true);
     try {
-      const cleanFileName = newDocxFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const uniqueFileName = `${Date.now()}_${cleanFileName}`;
-      const storageFilePath = `templates/${uniqueFileName}`;
+      const fileExt = newDocxFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const filePath = `mindik/${fileName}`;
 
-      // Upload to Supabase Storage: try 'templates', fallback to 'docx-templates'
-      let uploadSuccess = false;
-      let finalFilePath = storageFilePath;
-
-      const { data: uploadData1, error: uploadErr1 } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('templates')
-        .upload(storageFilePath, newDocxFile, { upsert: true });
+        .upload(filePath, newDocxFile, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-      if (!uploadErr1 && uploadData1) {
-        uploadSuccess = true;
-        finalFilePath = uploadData1.path || storageFilePath;
-      } else {
-        // Try fallback to 'docx-templates'
-        const { data: uploadData2, error: uploadErr2 } = await supabase.storage
-          .from('docx-templates')
-          .upload(storageFilePath, newDocxFile, { upsert: true });
-
-        if (!uploadErr2 && uploadData2) {
-          uploadSuccess = true;
-          finalFilePath = uploadData2.path || storageFilePath;
-        } else {
-          throw new Error(uploadErr2?.message || uploadErr1?.message || 'Gagal mengunggah file ke Supabase Storage');
-        }
+      if (uploadError) {
+        console.error("Detail Storage Error:", uploadError);
+        throw new Error(`Gagal upload file template: ${uploadError.message}`);
       }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('templates')
+        .getPublicUrl(filePath);
+
+      const fileUrl = publicUrlData?.publicUrl;
+      const finalFilePath = uploadData?.path || filePath;
 
       // Default dynamic fields (Standard Indonesian)
       const defaultFields = [
@@ -617,14 +611,26 @@ export default function DocGeneratorView({
         category: newCategory,
         description: newDescription.trim(),
         file_path: finalFilePath,
+        file_url: fileUrl || '',
         dynamic_fields: defaultFields,
         created_at: new Date().toISOString()
       };
 
-      const { data: dbData, error: dbErr } = await supabase
+      let { data: dbData, error: dbErr } = await supabase
         .from('document_templates')
         .upsert([payload], { onConflict: 'code' })
         .select();
+
+      if (dbErr && dbErr.message && dbErr.message.includes('file_url')) {
+        console.warn('Kolom file_url belum ada di Supabase, menyimpan tanpa file_url...');
+        delete payload.file_url;
+        const resRetry = await supabase
+          .from('document_templates')
+          .upsert([payload], { onConflict: 'code' })
+          .select();
+        dbData = resRetry.data;
+        dbErr = resRetry.error;
+      }
 
       if (dbErr) throw dbErr;
 

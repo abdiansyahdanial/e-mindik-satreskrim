@@ -73,6 +73,20 @@ export async function fetchDocxArrayBuffer(filePath) {
     return cached.slice(0); // cloned buffer
   }
 
+  // If filePath is a direct HTTP/HTTPS URL
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    try {
+      const res = await fetch(filePath);
+      if (res.ok) {
+        const ab = await res.arrayBuffer();
+        templateBufferCache.set(filePath, ab);
+        return ab.slice(0);
+      }
+    } catch (e) {
+      console.warn('Fetch from direct URL failed, continuing with storage paths:', e);
+    }
+  }
+
   // Buckets to try in order of priority
   const bucketsToTry = ['templates', 'docx-templates'];
   

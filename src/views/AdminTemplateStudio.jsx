@@ -36,6 +36,7 @@ export default function AdminTemplateStudio({
   // Edit mode states
   const [editingTemplateId, setEditingTemplateId] = useState(null);
   const [existingFilePath, setExistingFilePath] = useState(null);
+  const [existingFileUrl, setExistingFileUrl] = useState(null);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -157,6 +158,7 @@ export default function AdminTemplateStudio({
     setCategory(tpl.category || 'SURAT PERINTAH');
     setDescription(tpl.description || '');
     setExistingFilePath(tpl.file_path || '');
+    setExistingFileUrl(tpl.file_url || '');
     setDocxFile(null);
 
     const normFields = (Array.isArray(tpl.dynamic_fields) ? tpl.dynamic_fields : []).map((f, i) => ({
@@ -184,6 +186,7 @@ export default function AdminTemplateStudio({
   const handleCancelEdit = () => {
     setEditingTemplateId(null);
     setExistingFilePath(null);
+    setExistingFileUrl(null);
     setTitle('');
     setCode('');
     setCategory('SURAT PERINTAH');
@@ -215,34 +218,34 @@ export default function AdminTemplateStudio({
 
     try {
       let finalFilePath = existingFilePath || '';
+      let finalFileUrl = existingFileUrl || '';
 
       // 1. Upload .docx file jika ada file fisik baru dipilih
       if (docxFile) {
-        const cleanFileName = docxFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const uniqueFileName = `${Date.now()}_${cleanFileName}`;
-        const storageFilePath = `templates/${uniqueFileName}`;
+        const fileExt = docxFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        const filePath = `mindik/${fileName}`;
 
-        const { data: storageUpload, error: storageError } = await supabase.storage
-          .from('docx-templates')
-          .upload(storageFilePath, docxFile, {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('templates')
+          .upload(filePath, docxFile, {
             cacheControl: '3600',
-            upsert: true,
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            upsert: true
           });
 
-        if (storageError) {
-          console.warn('Upload to docx-templates failed, trying templates bucket:', storageError.message);
-          const { data: upload2, error: error2 } = await supabase.storage
-            .from('templates')
-            .upload(storageFilePath, docxFile, { upsert: true });
-
-          if (error2) {
-            throw new Error(`Gagal upload ke storage: ${storageError.message}`);
-          }
-          finalFilePath = upload2?.path || storageFilePath;
-        } else {
-          finalFilePath = storageUpload?.path || storageFilePath;
+        if (uploadError) {
+          console.error("Detail Storage Error:", uploadError);
+          throw new Error(`Gagal upload file template: ${uploadError.message}`);
         }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('templates')
+          .getPublicUrl(filePath);
+
+        const fileUrl = publicUrlData?.publicUrl;
+
+        finalFilePath = uploadData?.path || filePath;
+        finalFileUrl = fileUrl || '';
       }
 
       // 2. Normalisasi Dynamic Fields ke format baku
@@ -263,6 +266,7 @@ export default function AdminTemplateStudio({
         category,
         description: description.trim(),
         file_path: finalFilePath,
+        file_url: finalFileUrl,
         dynamic_fields: cleanDynamicFields
       };
 
@@ -271,39 +275,48 @@ export default function AdminTemplateStudio({
       }
 
       let dbData, dbError;
-      if (editingTemplateId) {
-        // Mode edit: lakukan upsert berbasis id
-        const res = await supabase
-          .from('document_templates')
-          .upsert([payload], { onConflict: 'id' })
-          .select();
-        dbData = res.data;
-        dbError = res.error;
-      } else {
-        // Mode tambah baru: periksa apakah template dengan code tersebut sudah ada
-        const { data: existing } = await supabase
-          .from('document_templates')
-          .select('id')
-          .eq('code', cleanCode)
-          .maybeSingle();
-
-        if (existing?.id) {
-          payload.id = existing.id;
-          const res = await supabase
+      const executeUpsert = async (dataPayload) => {
+        if (editingTemplateId) {
+          // Mode edit: lakukan upsert berbasis id
+          return await supabase
             .from('document_templates')
-            .upsert([payload], { onConflict: 'id' })
+            .upsert([dataPayload], { onConflict: 'id' })
             .select();
-          dbData = res.data;
-          dbError = res.error;
         } else {
-          payload.created_at = new Date().toISOString();
-          const res = await supabase
+          // Mode tambah baru: periksa apakah template dengan code tersebut sudah ada
+          const { data: existing } = await supabase
             .from('document_templates')
-            .insert([payload])
-            .select();
-          dbData = res.data;
-          dbError = res.error;
+            .select('id')
+            .eq('code', cleanCode)
+            .maybeSingle();
+
+          if (existing?.id) {
+            dataPayload.id = existing.id;
+            return await supabase
+              .from('document_templates')
+              .upsert([dataPayload], { onConflict: 'id' })
+              .select();
+          } else {
+            dataPayload.created_at = new Date().toISOString();
+            return await supabase
+              .from('document_templates')
+              .insert([dataPayload])
+              .select();
+          }
         }
+      };
+
+      const res = await executeUpsert(payload);
+      dbData = res.data;
+      dbError = res.error;
+
+      // Fallback jika tabel document_templates belum memiliki kolom file_url
+      if (dbError && dbError.message && dbError.message.includes('file_url')) {
+        console.warn('Kolom file_url belum ada di Supabase, mencoba simpan tanpa kolom file_url...');
+        delete payload.file_url;
+        const retryRes = await executeUpsert(payload);
+        dbData = retryRes.data;
+        dbError = retryRes.error;
       }
 
       if (dbError) {
@@ -339,12 +352,12 @@ export default function AdminTemplateStudio({
   // Download template .docx file from Supabase Storage
   const handleDownloadDocx = async (filePath, templateTitle) => {
     try {
-      let bucket = 'docx-templates';
+      let bucket = 'templates';
       let cleanPath = filePath.replace(/^\/+/, '');
       
       let { data, error } = await supabase.storage.from(bucket).download(cleanPath);
       if (error) {
-        bucket = 'templates';
+        bucket = 'docx-templates';
         const res2 = await supabase.storage.from(bucket).download(cleanPath);
         data = res2.data;
         error = res2.error;
