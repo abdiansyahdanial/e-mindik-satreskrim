@@ -72,7 +72,7 @@ export default function App() {
               nama: profile.full_name || profile.nama || u.email.split('@')[0],
               pangkat: profile.pangkat || (resolvedRole === 'super_admin' ? 'AKP' : 'BRIPKA'),
               nrp: profile.rank_nrp || profile.nrp || '-',
-              jabatan: profile.jabatan || (resolvedRole === 'super_admin' ? 'Kasat Reskrim' : 'Penyidik Pembantu'),
+              jabatan: (resolvedRole === 'super_admin') ? 'ABDIANSYAH' : (profile.jabatan || 'Penyidik Pembantu'),
               role: resolvedRole
             });
             setUserRole(resolvedRole);
@@ -88,7 +88,7 @@ export default function App() {
               pangkat: isSuper ? 'AKP' : 'BRIPDA',
               rank_nrp: isSuper ? '78120567' : '00000000',
               nrp: isSuper ? '78120567' : '00000000',
-              jabatan: isSuper ? 'Kepala Satuan Reserse Kriminal' : 'Penyidik Pembantu Satreskrim',
+              jabatan: isSuper ? 'ABDIANSYAH' : 'Penyidik Pembantu Satreskrim',
               role: isSuper ? 'super_admin' : 'anggota',
             };
             setCurrentUserProfile(fallbackProf);
@@ -244,6 +244,14 @@ export default function App() {
       console.error('Gagal menghapus perkara:', err);
       alert(`Terjadi kesalahan saat menghapus perkara: ${err.message}`);
     }
+  };
+
+  const handleUpdateCase = (updatedCase) => {
+    setCases((prev) => prev.map((c) => (c.id === updatedCase.id ? { ...c, ...updatedCase } : c)));
+    if (selectedCaseForDetail && selectedCaseForDetail.id === updatedCase.id) {
+      setSelectedCaseForDetail((prev) => ({ ...prev, ...updatedCase }));
+    }
+    showToast(`Data perkara ${updatedCase.nomor_lp || updatedCase.no_lp} berhasil diperbarui!`);
   };
 
   const handleAddPersonnel = async (newPerson) => {
@@ -410,6 +418,7 @@ export default function App() {
               onNewCase={() => setIsNewCaseModalOpen(true)}
               onGenerateDocForCase={(c) => handleOpenGeneratorForCase(c)}
               onDeleteCase={handleDeleteCase}
+              onUpdateCase={handleUpdateCase}
             />
           )}
 
@@ -445,6 +454,7 @@ export default function App() {
 
           {activeTab === 'admin-templates' && userRole === 'super_admin' && (
             <AdminTemplateStudio
+              userRole={userRole}
               onTemplateSaved={(newTpl) => {
                 showToast(`Template ${newTpl.title} berhasil diunggah ke Supabase!`);
               }}
@@ -463,6 +473,7 @@ export default function App() {
           caseItem={selectedCaseForDetail}
           onClose={() => setSelectedCaseForDetail(null)}
           onGenerateDocForCase={(c) => handleOpenGeneratorForCase(c)}
+          onUpdateCase={handleUpdateCase}
           caseDocuments={documents.filter((d) => d.case_id === selectedCaseForDetail.id)}
         />
       )}

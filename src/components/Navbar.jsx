@@ -56,8 +56,9 @@ export default function Navbar({
 
   const officerName = currentUserProfile?.nama || (isSuperAdmin ? 'AKP AHMAD FATONI, S.H.' : 'BRIPKA DEDI PRASETYO, S.H.');
   const officerPangkat = currentUserProfile?.pangkat || (isSuperAdmin ? 'AKP' : 'BRIPKA');
-  const officerNrp = currentUserProfile?.nrp || (isSuperAdmin ? '78120567' : '88110543');
-  const officerJabatan = currentUserProfile?.jabatan || (isSuperAdmin ? 'Kasat Reskrim' : 'Penyidik Pembantu');
+  const officerJabatan = isSuperAdmin 
+    ? (currentUserProfile?.jabatan && currentUserProfile.jabatan !== 'Kasat Reskrim' && currentUserProfile.jabatan !== 'Kepala Satuan Reserse Kriminal' ? currentUserProfile.jabatan : 'ABDIANSYAH')
+    : (currentUserProfile?.jabatan || 'Penyidik Pembantu');
   const officerInitials = officerName.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
   return (

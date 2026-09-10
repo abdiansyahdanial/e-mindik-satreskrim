@@ -12,16 +12,25 @@ import {
   RefreshCw,
   Sparkles,
   Edit3,
-  XCircle
+  XCircle,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { mockTemplates } from '../data/mockTemplates';
 
-export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateForGenerator }) {
+export default function AdminTemplateStudio({ 
+  onTemplateSaved, 
+  onSelectTemplateForGenerator,
+  userRole = 'super_admin'
+}) {
+  const isSuperAdmin = userRole === 'super_admin';
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [statusNotice, setStatusNotice] = useState(null);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
 
   // Edit mode states
   const [editingTemplateId, setEditingTemplateId] = useState(null);
@@ -357,22 +366,51 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
     }
   };
 
-  // Delete template
-  const handleDeleteTemplate = async (id, filePath) => {
-    if (!window.confirm('Hapus template ini dari Supabase?')) return;
+  // Trigger modal konfirmasi hapus template (khusus Super Admin)
+  const handleDeleteTemplate = (tpl) => {
+    if (!isSuperAdmin) {
+      alert('Akses Ditolak: Hanya Super Admin yang berhak menghapus template dokumen!');
+      return;
+    }
+    setTemplateToDelete(tpl);
+  };
+
+  // Konfirmasi & Penghapusan permanen dari Supabase
+  const confirmDeleteTemplate = async () => {
+    if (!templateToDelete) return;
+    setIsDeletingTemplate(true);
 
     try {
-      if (filePath) {
-        await supabase.storage.from('docx-templates').remove([filePath]);
-        await supabase.storage.from('templates').remove([filePath]);
+      // Hapus file master dari Supabase Storage jika ada
+      if (templateToDelete.file_path) {
+        try {
+          await supabase.storage.from('docx-templates').remove([templateToDelete.file_path]);
+          await supabase.storage.from('templates').remove([templateToDelete.file_path]);
+        } catch (storageErr) {
+          console.warn('Hapus file master storage notice:', storageErr);
+        }
       }
-      const { error } = await supabase.from('document_templates').delete().eq('id', id);
+
+      // Hapus baris dari tabel document_templates berdasarkan id
+      const { error } = await supabase
+        .from('document_templates')
+        .delete()
+        .eq('id', templateToDelete.id);
+
       if (error) throw error;
 
-      setStatusNotice({ type: 'success', message: 'Template berhasil dihapus dari Supabase.' });
-      fetchSupabaseTemplates();
+      // Perbarui state daftar template secara realtime
+      setTemplates((prev) => prev.filter((t) => t.id !== templateToDelete.id));
+      setStatusNotice({
+        type: 'success',
+        message: `Template '${templateToDelete.title}' berhasil dihapus secara permanen dari Supabase!`
+      });
+      setTemplateToDelete(null);
     } catch (err) {
-      alert(`Gagal menghapus: ${err.message}`);
+      console.error('Gagal menghapus template:', err);
+      alert(`Terjadi kesalahan saat menghapus template: ${err.message}`);
+    } finally {
+      setIsDeletingTemplate(false);
     }
   };
 
@@ -898,15 +936,19 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
                           </button>
                         )}
 
-                        {/* Delete */}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTemplate(tpl.id, tpl.file_path)}
-                          className="btn btn-danger btn-sm"
-                          title="Hapus dari Supabase"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {/* Tombol Hapus: Khusus Super Admin */}
+                        {isSuperAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTemplate(tpl)}
+                            className="btn btn-danger btn-sm"
+                            style={{ gap: '4px', fontSize: '11.5px', background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                            title="Hapus Template secara Permanen (Khusus Super Admin)"
+                          >
+                            <Trash2 size={13} />
+                            <span>Hapus</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -916,6 +958,122 @@ export default function AdminTemplateStudio({ onTemplateSaved, onSelectTemplateF
           </div>
         </div>
       </div>
+
+      {/* Modal Konfirmasi Hapus Template Permanen */}
+      {templateToDelete && (
+        <div className="modal-backdrop" onClick={() => !isDeletingTemplate && setTemplateToDelete(null)}>
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '460px' }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid var(--accent-red)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Trash2 size={20} color="var(--accent-red)" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>Hapus Template Permanen</h3>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Konfirmasi Hak Akses Super Admin
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                disabled={isDeletingTemplate}
+                onClick={() => setTemplateToDelete(null)} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
+                Apakah Anda yakin ingin menghapus template ini secara permanen?
+              </p>
+
+              <div style={{
+                padding: '12px 14px',
+                background: 'var(--bg-tertiary)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-glass)'
+              }}>
+                <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '13.5px' }}>
+                  {templateToDelete.title}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <span className="badge badge-cyan mono">{templateToDelete.code}</span>
+                  <span className="badge badge-blue">{templateToDelete.category}</span>
+                </div>
+                {templateToDelete.file_path && (
+                  <div className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                    File: {templateToDelete.file_path.split('/').pop()}
+                  </div>
+                )}
+              </div>
+
+              <div style={{
+                padding: '10px 12px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                fontSize: '11.5px',
+                color: '#FCA5A5'
+              }}>
+                <AlertTriangle size={15} color="var(--accent-red)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>
+                  Tindakan ini tidak dapat dibatalkan. Baris template pada tabel Supabase <code>document_templates</code> beserta file master Word akan dihapus permanen.
+                </span>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setTemplateToDelete(null)}
+                className="btn btn-secondary btn-sm"
+                disabled={isDeletingTemplate}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTemplate}
+                className="btn btn-danger btn-sm"
+                disabled={isDeletingTemplate}
+                style={{ gap: '6px' }}
+              >
+                {isDeletingTemplate ? (
+                  <>
+                    <RefreshCw size={14} className="animate-pulse" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Hapus Permanen</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

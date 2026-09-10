@@ -7,9 +7,11 @@ import {
   Eye,
   Trash2,
   AlertTriangle,
-  X
+  X,
+  Edit3
 } from 'lucide-react';
 import { getPersonnelById } from '../data/mockPersonnel';
+import CaseEditModal from '../components/CaseEditModal';
 
 export default function CasesView({ 
   cases = [], 
@@ -17,12 +19,14 @@ export default function CasesView({
   onNewCase, 
   onGenerateDocForCase,
   onDeleteCase,
+  onUpdateCase,
   userRole = 'admin',
   personnel = []
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [caseToDelete, setCaseToDelete] = useState(null);
+  const [caseToEdit, setCaseToEdit] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const canDeleteCase = userRole === 'super_admin' || userRole === 'admin';
@@ -220,6 +224,15 @@ export default function CasesView({
                         </button>
 
                         <button
+                          onClick={() => setCaseToEdit(item)}
+                          className="btn btn-secondary btn-sm"
+                          title="Edit Data Berkas Perkara"
+                        >
+                          <Edit3 size={13} />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
                           onClick={() => onGenerateDocForCase(item)}
                           className="btn btn-primary btn-sm"
                           title="Buat Dokumen Mindik"
@@ -336,6 +349,18 @@ export default function CasesView({
             </div>
           </div>
         </div>
+      )}
+      {/* Edit Case Modal */}
+      {caseToEdit && (
+        <CaseEditModal
+          isOpen={Boolean(caseToEdit)}
+          caseItem={caseToEdit}
+          onClose={() => setCaseToEdit(null)}
+          onSaveSuccess={(updated) => {
+            if (onUpdateCase) onUpdateCase(updated);
+            setCaseToEdit(null);
+          }}
+        />
       )}
     </div>
   );

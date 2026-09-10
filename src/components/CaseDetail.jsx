@@ -13,20 +13,24 @@ import {
   AlertCircle,
   Clock,
   Briefcase,
-  Home
+  Home,
+  Edit3
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { getPersonnelById } from '../data/mockPersonnel';
+import CaseEditModal from './CaseEditModal';
 
 export default function CaseDetail({ 
   caseItem, 
   onClose, 
   onGenerateDocForCase, 
+  onUpdateCase,
   caseDocuments = [] 
 }) {
   const [suspects, setSuspects] = useState([]);
   const [isLoadingSuspects, setIsLoadingSuspects] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [submittingSuspect, setSubmittingSuspect] = useState(false);
   const [notice, setNotice] = useState(null);
 
@@ -229,18 +233,32 @@ export default function CaseDetail({
             </div>
           </div>
 
-          <button 
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              padding: '6px',
-            }}
-          >
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="btn btn-secondary btn-sm"
+              style={{ gap: '6px', fontSize: '12px', padding: '6px 12px' }}
+              title="Edit Data Berkas Perkara"
+            >
+              <Edit3 size={14} color="var(--accent-cyan)" />
+              <span>Edit Perkara</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                padding: '6px',
+              }}
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -838,6 +856,18 @@ export default function CaseDetail({
             </form>
           </div>
         </div>
+      )}
+      {/* Modal Edit Berkas Perkara */}
+      {isEditModalOpen && (
+        <CaseEditModal
+          isOpen={isEditModalOpen}
+          caseItem={caseItem}
+          onClose={() => setIsEditModalOpen(false)}
+          onSaveSuccess={(updated) => {
+            if (onUpdateCase) onUpdateCase(updated);
+            setIsEditModalOpen(false);
+          }}
+        />
       )}
     </div>
   );

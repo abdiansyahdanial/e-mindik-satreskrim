@@ -572,8 +572,12 @@ export default function DocGeneratorView({
     try {
       // Remove file from storage if present
       if (templateToDelete.file_path) {
-        await supabase.storage.from('templates').remove([templateToDelete.file_path]).catch(() => {});
-        await supabase.storage.from('docx-templates').remove([templateToDelete.file_path]).catch(() => {});
+        try {
+          await supabase.storage.from('templates').remove([templateToDelete.file_path]);
+          await supabase.storage.from('docx-templates').remove([templateToDelete.file_path]);
+        } catch (storageErr) {
+          console.warn('Storage delete warning:', storageErr);
+        }
       }
 
       // Remove row from document_templates if in DB

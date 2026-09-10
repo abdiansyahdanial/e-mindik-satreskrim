@@ -88,7 +88,7 @@ export default function LoginPage({ onLoginSuccess }) {
           nama: profileData.full_name || profileData.nama || user.email.split('@')[0],
           pangkat: profileData.pangkat || (profileData.role === 'super_admin' ? 'AKP' : 'BRIPKA'),
           nrp: profileData.rank_nrp || profileData.nrp || '-',
-          jabatan: profileData.jabatan || (profileData.role === 'super_admin' ? 'Kasat Reskrim' : 'Penyidik Pembantu'),
+          jabatan: (profileData.role === 'super_admin') ? 'ABDIANSYAH' : (profileData.jabatan || 'Penyidik Pembantu'),
           role: profileData.role || 'anggota'
         };
       }
