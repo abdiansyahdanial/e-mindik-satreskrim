@@ -571,9 +571,9 @@ export default function DocGeneratorView({
 
     setIsProcessingTemplate(true);
     try {
-      const fileExt = newDocxFile.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-      const filePath = `mindik/${fileName}`;
+      const fileExt = newDocxFile.name.split('.').pop().toLowerCase();
+      const safeFileName = `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `mindik/${safeFileName}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('templates')
@@ -583,8 +583,8 @@ export default function DocGeneratorView({
         });
 
       if (uploadError) {
-        console.error("Detail Storage Error:", uploadError);
-        throw new Error(`Gagal upload file template: ${uploadError.message}`);
+        console.error("Storage upload error:", uploadError);
+        throw new Error(`Upload gagal: ${uploadError.message}`);
       }
 
       const { data: publicUrlData } = supabase.storage
@@ -742,6 +742,7 @@ export default function DocGeneratorView({
       }
 
       setTemplateToDelete(null);
+      await fetchTemplates();
     } catch (err) {
       console.error('Delete template error:', err);
       alert(`Gagal menghapus format template: ${err.message}`);

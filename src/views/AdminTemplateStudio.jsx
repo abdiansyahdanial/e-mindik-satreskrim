@@ -19,7 +19,12 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { mockTemplates } from '../data/mockTemplates';
-import { deleteTemplateFromSupabase, getDeletedTemplateCodes } from '../utils/templateHelper';
+import { 
+  deleteTemplateFromSupabase, 
+  getDeletedTemplateCodes,
+  extractStoragePath,
+  removeStorageFileSafely
+} from '../utils/templateHelper';
 
 export default function AdminTemplateStudio({ 
   onTemplateSaved, 
@@ -252,9 +257,14 @@ export default function AdminTemplateStudio({
 
       // 1. Upload .docx file jika ada file fisik baru dipilih
       if (docxFile) {
-        const fileExt = docxFile.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-        const filePath = `mindik/${fileName}`;
+        // Jika sedang edit dan mengganti file fisik, hapus file lama di storage terlebih dahulu
+        if (editingTemplateId && (existingFilePath || existingFileUrl)) {
+          await removeStorageFileSafely(existingFilePath || existingFileUrl);
+        }
+
+        const fileExt = docxFile.name.split('.').pop().toLowerCase();
+        const safeFileName = `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+        const filePath = `mindik/${safeFileName}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('templates')
@@ -264,8 +274,8 @@ export default function AdminTemplateStudio({
           });
 
         if (uploadError) {
-          console.error("Detail Storage Error:", uploadError);
-          throw new Error(`Gagal upload file template: ${uploadError.message}`);
+          console.error("Storage upload error:", uploadError);
+          throw new Error(`Upload gagal: ${uploadError.message}`);
         }
 
         const { data: publicUrlData } = supabase.storage
@@ -427,6 +437,19 @@ export default function AdminTemplateStudio({
     setIsDeletingTemplate(true);
 
     try {
+      // 1. Ambil URL file dari template.file_url / template.file_path dan ekstrak path storage
+      const storagePath = extractStoragePath(templateToDelete.file_url) || extractStoragePath(templateToDelete.file_path);
+
+      // 2. Hapus fisik file di storage terlebih dahulu secara aman
+      if (storagePath) {
+        try {
+          await supabase.storage.from('templates').remove([storagePath]);
+        } catch (storageErr) {
+          console.warn('Gagal menghapus file storage (diabaikan agar proses database tetap lanjut):', storageErr);
+        }
+      }
+
+      // 3. Hapus baris dari tabel database document_templates
       await deleteTemplateFromSupabase(templateToDelete);
 
       setStatusNotice({
@@ -434,6 +457,8 @@ export default function AdminTemplateStudio({
         message: `Template '${templateToDelete.title || templateToDelete.name}' berhasil dihapus secara permanen!`
       });
       setTemplateToDelete(null);
+
+      // 4. Panggil await fetchTemplates() agar daftar di layar web langsung terbarui
       await fetchTemplates();
     } catch (err) {
       console.error('Gagal menghapus template:', err);
