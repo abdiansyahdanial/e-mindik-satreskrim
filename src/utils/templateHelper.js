@@ -43,8 +43,11 @@ export const extractStoragePath = (filePathOrUrl) => {
     str = str.split('/docx-templates/').pop();
   }
   
-  // Bersihkan query string dan leading slash
+  // Bersihkan query string dan leading slash serta decode URI
   str = str.split('?')[0].replace(/^\/+/, '');
+  try {
+    str = decodeURIComponent(str);
+  } catch (e) {}
   return str || null;
 };
 

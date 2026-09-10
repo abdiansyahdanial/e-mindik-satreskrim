@@ -266,7 +266,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   // E. IDENTITAS PIHAK
   const namaPelapor = cleanInput.NAMA_PELAPOR || cleanInput.nama_pelapor || activeCase?.nama_pelapor || activeCase?.pelapor_name || '';
-  const namaTerlapor = cleanInput.NAMA_TERLAPOR || cleanInput.nama_terlapor || activeSuspect?.nama || activeCase?.nama_terlapor || activeCase?.terlapor_name || '';
+  // NAMA_TERLAPOR murni mengambil dari Laporan Polisi (LP), tidak tertukar dengan nama tersangka
+  const namaTerlapor = cleanInput.NAMA_TERLAPOR || cleanInput.nama_terlapor || activeCase?.nama_terlapor || activeCase?.terlapor_name || activeCase?.terlapor || '';
   const nik = cleanInput.NIK || cleanInput.nik || activeSuspect?.nik || '';
   const jenisKelamin = cleanInput.JENIS_KELAMIN || cleanInput.jenis_kelamin || activeSuspect?.jenis_kelamin || '';
   const rawTglLahirSuspect = activeSuspect?.tgl_lahir || activeSuspect?.tanggal_lahir || '';
@@ -540,28 +541,152 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     TGL_LAHIR: formattedTglLahirSuspect,
     tgl_lahir: formattedTglLahirSuspect,
 
-    // Dukungan Multi-Tersangka (Array Perulangan Dokumen Kolektif, misal SPDP)
-    tersangka_list: (suspectsList || []).map((s, idx) => {
-      const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
-      const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
-      return {
-        no: idx + 1,
-        nama: s.nama || '',
-        nik: s.nik || '',
-        jenis_kelamin: s.jenis_kelamin || '',
-        ttl: (s.tempat_lahir && sTglLahir) ? `${s.tempat_lahir}, ${formattedSTglLahir}` : (s.ttl || s.pob_dob || ''),
-        tempat_lahir: s.tempat_lahir || '',
-        tgl_lahir: formattedSTglLahir,
-        umur: s.umur ? (String(s.umur).includes('Tahun') ? String(s.umur) : `${s.umur} Tahun`) : '',
-        agama: s.agama || '',
-        pekerjaan: s.pekerjaan || '',
-        pendidikan: s.pendidikan || '',
-        kewarganegaraan: s.kewarganegaraan || 'Indonesia',
-        status_kawin: s.status_pernikahan || s.marital_status || '',
-        alamat: s.alamat || ''
-      };
-    }),
+    // Dukungan Multi-Tersangka & Terlapor (Array Perulangan Dokumen Kolektif, misal SPDP)
+    tersangka_list: (Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : (activeSuspect ? [activeSuspect] : []))
+      .filter((s) => s.status === 'tersangka' || !s.status)
+      .map((s, idx) => {
+        const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
+        const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
+        return {
+          no: idx + 1,
+          nama: s.nama || '',
+          nik: s.nik || '',
+          jenis_kelamin: s.jenis_kelamin || '',
+          ttl: (s.tempat_lahir && sTglLahir) ? `${s.tempat_lahir}, ${formattedSTglLahir}` : (s.ttl || s.pob_dob || s.tempat_lahir || ''),
+          tempat_lahir: s.tempat_lahir || '',
+          tgl_lahir: formattedSTglLahir,
+          umur: s.umur ? (String(s.umur).includes('Tahun') ? String(s.umur) : `${s.umur} Tahun`) : '',
+          agama: s.agama || '',
+          pekerjaan: s.pekerjaan || '',
+          pendidikan: s.pendidikan || '',
+          kewarganegaraan: s.kewarganegaraan || 'Indonesia',
+          status_kawin: s.status_pernikahan || s.marital_status || '',
+          alamat: s.alamat || '',
+          nomor_sp_tap: s.nomor_sp_tap || s.no_sp_tap_tsk || '',
+          tanggal_sp_tap: formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk || '')
+        };
+      }),
+
+    terlapor_list: (Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : [])
+      .filter((s) => s.status === 'terlapor')
+      .map((s, idx) => {
+        const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
+        const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
+        return {
+          no: idx + 1,
+          nama: s.nama || '',
+          nik: s.nik || '',
+          jenis_kelamin: s.jenis_kelamin || '',
+          ttl: (s.tempat_lahir && sTglLahir) ? `${s.tempat_lahir}, ${formattedSTglLahir}` : (s.ttl || s.pob_dob || s.tempat_lahir || ''),
+          tempat_lahir: s.tempat_lahir || '',
+          tgl_lahir: formattedSTglLahir,
+          umur: s.umur ? (String(s.umur).includes('Tahun') ? String(s.umur) : `${s.umur} Tahun`) : '',
+          agama: s.agama || '',
+          pekerjaan: s.pekerjaan || '',
+          pendidikan: s.pendidikan || '',
+          kewarganegaraan: s.kewarganegaraan || 'Indonesia',
+          status_kawin: s.status_pernikahan || s.marital_status || '',
+          alamat: s.alamat || ''
+        };
+      })
   };
+
+  // PISAHKAN DAFTAR SUBJEK UNTUK TAG INDIVIDUAL TSK_1..5 DAN TERLAPOR_1..5
+  const allSubjek = Array.isArray(suspectsList) && suspectsList.length > 0 
+    ? suspectsList 
+    : (activeSuspect ? [activeSuspect] : []);
+
+  const tersangkaList = allSubjek.filter((s) => s.status === 'tersangka' || !s.status);
+  const terlaporList = allSubjek.filter((s) => s.status === 'terlapor');
+
+  // Jika belum ada terlapor terdaftar di case_suspects tapi ada di LP
+  if (terlaporList.length === 0 && namaTerlapor) {
+    terlaporList.push({ nama: namaTerlapor });
+  }
+
+  // Tag Mandiri Tersangka 1 s/d 5
+  for (let i = 1; i <= 5; i++) {
+    const s = tersangkaList[i - 1] || {};
+    const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
+    const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
+    const sTtl = (s.tempat_lahir && sTglLahir) 
+      ? `${s.tempat_lahir}, ${formattedSTglLahir}` 
+      : (s.ttl || s.pob_dob || s.tempat_lahir || '');
+    const sUmur = s.umur ? (String(s.umur).includes('Tahun') ? String(s.umur) : `${s.umur} Tahun`) : '';
+    const sNomorSpTap = s.nomor_sp_tap || s.no_sp_tap_tsk || '';
+    const sTglSpTap = formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk || '');
+
+    baseMap[`TSK_${i}_NAMA`] = s.nama || '';
+    baseMap[`tsk_${i}_nama`] = s.nama || '';
+    baseMap[`TSK_${i}_NIK`] = s.nik || '';
+    baseMap[`tsk_${i}_nik`] = s.nik || '';
+    baseMap[`TSK_${i}_JK`] = s.jenis_kelamin || '';
+    baseMap[`tsk_${i}_jk`] = s.jenis_kelamin || '';
+    baseMap[`TSK_${i}_TEMPAT_LAHIR`] = s.tempat_lahir || '';
+    baseMap[`tsk_${i}_tempat_lahir`] = s.tempat_lahir || '';
+    baseMap[`TSK_${i}_TGL_LAHIR`] = formattedSTglLahir;
+    baseMap[`tsk_${i}_tgl_lahir`] = formattedSTglLahir;
+    baseMap[`TSK_${i}_TTL`] = sTtl;
+    baseMap[`tsk_${i}_ttl`] = sTtl;
+    baseMap[`TSK_${i}_UMUR`] = sUmur;
+    baseMap[`tsk_${i}_umur`] = sUmur;
+    baseMap[`TSK_${i}_PEKERJAAN`] = s.pekerjaan || '';
+    baseMap[`tsk_${i}_pekerjaan`] = s.pekerjaan || '';
+    baseMap[`TSK_${i}_KEWARGANEGARAAN`] = s.kewarganegaraan || (s.nama ? 'Indonesia' : '');
+    baseMap[`tsk_${i}_kewarganegaraan`] = s.kewarganegaraan || (s.nama ? 'Indonesia' : '');
+    baseMap[`TSK_${i}_PENDIDIKAN`] = s.pendidikan || '';
+    baseMap[`tsk_${i}_pendidikan`] = s.pendidikan || '';
+    baseMap[`TSK_${i}_AGAMA`] = s.agama || '';
+    baseMap[`tsk_${i}_agama`] = s.agama || '';
+    baseMap[`TSK_${i}_STATUS_NIKAH`] = s.status_pernikahan || s.marital_status || '';
+    baseMap[`tsk_${i}_status_nikah`] = s.status_pernikahan || s.marital_status || '';
+    baseMap[`TSK_${i}_ALAMAT`] = s.alamat || '';
+    baseMap[`tsk_${i}_alamat`] = s.alamat || '';
+    baseMap[`TSK_${i}_NOMOR_SP_TAP`] = sNomorSpTap;
+    baseMap[`tsk_${i}_nomor_sp_tap`] = sNomorSpTap;
+    baseMap[`TSK_${i}_NO_SP_TAP`] = sNomorSpTap;
+    baseMap[`tsk_${i}_no_sp_tap`] = sNomorSpTap;
+    baseMap[`TSK_${i}_TGL_SP_TAP`] = sTglSpTap;
+    baseMap[`tsk_${i}_tgl_sp_tap`] = sTglSpTap;
+  }
+
+  // Tag Mandiri Terlapor 1 s/d 5
+  for (let i = 1; i <= 5; i++) {
+    const t = terlaporList[i - 1] || {};
+    const tTglLahir = t.tgl_lahir || t.tanggal_lahir || '';
+    const formattedTTglLahir = formatTanggalIndonesia(tTglLahir);
+    const tTtl = (t.tempat_lahir && tTglLahir) 
+      ? `${t.tempat_lahir}, ${formattedTTglLahir}` 
+      : (t.ttl || t.pob_dob || t.tempat_lahir || '');
+    const tUmur = t.umur ? (String(t.umur).includes('Tahun') ? String(t.umur) : `${t.umur} Tahun`) : '';
+
+    baseMap[`TERLAPOR_${i}_NAMA`] = t.nama || '';
+    baseMap[`terlapor_${i}_nama`] = t.nama || '';
+    baseMap[`TERLAPOR_${i}_NIK`] = t.nik || '';
+    baseMap[`terlapor_${i}_nik`] = t.nik || '';
+    baseMap[`TERLAPOR_${i}_JK`] = t.jenis_kelamin || '';
+    baseMap[`terlapor_${i}_jk`] = t.jenis_kelamin || '';
+    baseMap[`TERLAPOR_${i}_TEMPAT_LAHIR`] = t.tempat_lahir || '';
+    baseMap[`terlapor_${i}_tempat_lahir`] = t.tempat_lahir || '';
+    baseMap[`TERLAPOR_${i}_TGL_LAHIR`] = formattedTTglLahir;
+    baseMap[`terlapor_${i}_tgl_lahir`] = formattedTTglLahir;
+    baseMap[`TERLAPOR_${i}_TTL`] = tTtl;
+    baseMap[`terlapor_${i}_ttl`] = tTtl;
+    baseMap[`TERLAPOR_${i}_UMUR`] = tUmur;
+    baseMap[`terlapor_${i}_umur`] = tUmur;
+    baseMap[`TERLAPOR_${i}_PEKERJAAN`] = t.pekerjaan || '';
+    baseMap[`terlapor_${i}_pekerjaan`] = t.pekerjaan || '';
+    baseMap[`TERLAPOR_${i}_KEWARGANEGARAAN`] = t.kewarganegaraan || (t.nama ? 'Indonesia' : '');
+    baseMap[`terlapor_${i}_kewarganegaraan`] = t.kewarganegaraan || (t.nama ? 'Indonesia' : '');
+    baseMap[`TERLAPOR_${i}_PENDIDIKAN`] = t.pendidikan || '';
+    baseMap[`terlapor_${i}_pendidikan`] = t.pendidikan || '';
+    baseMap[`TERLAPOR_${i}_AGAMA`] = t.agama || '';
+    baseMap[`terlapor_${i}_agama`] = t.agama || '';
+    baseMap[`TERLAPOR_${i}_STATUS_NIKAH`] = t.status_pernikahan || t.marital_status || '';
+    baseMap[`terlapor_${i}_status_nikah`] = t.status_pernikahan || t.marital_status || '';
+    baseMap[`TERLAPOR_${i}_ALAMAT`] = t.alamat || '';
+    baseMap[`terlapor_${i}_alamat`] = t.alamat || '';
+  }
 
   // Timpa dengan custom field manual form dinamis jika ada
   const finalPayload = { ...baseMap };

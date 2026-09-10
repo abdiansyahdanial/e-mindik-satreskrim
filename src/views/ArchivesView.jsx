@@ -4,14 +4,18 @@ import {
   Search, 
   Eye,
   FileText,
-  FolderOpen
+  FolderOpen,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { mockTemplates } from '../data/mockTemplates';
 import { formatTanggalIndonesia } from '../utils/mindikGenerator';
 
-export default function ArchivesView({ documents = [], cases = [], onPreviewDoc }) {
+export default function ArchivesView({ documents = [], cases = [], onPreviewDoc, onDeleteDoc }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [docToDelete, setDocToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const safeDocs = Array.isArray(documents) ? documents : [];
   const safeCases = Array.isArray(cases) ? cases : [];
@@ -173,15 +177,33 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc 
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        onClick={() => onPreviewDoc && onPreviewDoc(doc)}
-                        className="btn btn-secondary btn-sm"
-                        title="Buka Pratinjau Dokumen"
-                      >
-                        <Eye size={14} />
-                        <span>Lihat Dokumen</span>
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => onPreviewDoc && onPreviewDoc(doc)}
+                          className="btn btn-secondary btn-sm"
+                          title="Buka Pratinjau Dokumen"
+                        >
+                          <Eye size={14} />
+                          <span>Lihat Dokumen</span>
+                        </button>
+
+                        {onDeleteDoc && (
+                          <button
+                            type="button"
+                            onClick={() => setDocToDelete(doc)}
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              color: 'var(--accent-red)',
+                              borderColor: 'rgba(239, 68, 68, 0.3)'
+                            }}
+                            title="Hapus Dokumen Fisik & Data dari Arsip"
+                          >
+                            <Trash2 size={14} />
+                            <span>Hapus</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -190,6 +212,96 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc 
           </tbody>
         </table>
       </div>
+
+      {/* Modal Konfirmasi Hapus Dokumen Arsip */}
+      {docToDelete && (
+        <div 
+          className="modal-backdrop" 
+          style={{ zIndex: 1200 }} 
+          onClick={() => !isDeleting && setDocToDelete(null)}
+        >
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '480px', border: '1px solid var(--accent-red)' }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid var(--accent-red)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <AlertTriangle size={18} color="var(--accent-red)" />
+                </div>
+                <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700, color: 'var(--accent-red)' }}>
+                  Konfirmasi Hapus Dokumen Arsip
+                </h3>
+              </div>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                Apakah Anda yakin ingin menghapus arsip dokumen berikut?
+              </p>
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.8)',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(255, 255, 255, 0.08)'
+              }}>
+                <div style={{ fontWeight: 700, color: '#FFF' }}>
+                  {docToDelete.doc_title || docToDelete.title || 'Dokumen Administrasi Penyidikan'}
+                </div>
+                <div className="mono" style={{ fontSize: '11.5px', color: 'var(--accent-cyan)', marginTop: '4px' }}>
+                  No: {docToDelete.doc_number || docToDelete.nomor_surat || '-'}
+                </div>
+              </div>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '12px' }}>
+                Tindakan ini akan menghapus data riwayat dan file fisik (.docx) dari Supabase Storage secara permanen.
+              </p>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                onClick={() => setDocToDelete(null)} 
+                disabled={isDeleting}
+                className="btn btn-secondary btn-sm"
+              >
+                Batal
+              </button>
+              <button 
+                type="button" 
+                onClick={async () => {
+                  if (!onDeleteDoc) return;
+                  setIsDeleting(true);
+                  try {
+                    await onDeleteDoc(docToDelete);
+                    setDocToDelete(null);
+                  } catch (err) {
+                    console.error('Error deleting doc:', err);
+                    alert(`Gagal menghapus dokumen: ${err.message}`);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }} 
+                disabled={isDeleting}
+                className="btn btn-primary btn-sm" 
+                style={{ background: 'var(--accent-red)' }}
+              >
+                <Trash2 size={14} />
+                <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus Dokumen'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

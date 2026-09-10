@@ -191,18 +191,33 @@ export default function DocGeneratorView({
     setSelectedSuspectId(suspectId);
     const found = caseSuspects.find(s => s.id === suspectId);
     if (found) {
+      const spTapNum = found.nomor_sp_tap || found.no_sp_tap_tsk || '';
+      const spTapDate = found.tanggal_sp_tap || found.tgl_sp_tap_tsk || '';
+      const isTapTskDoc = (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
+
       setFormValues(prev => ({
         ...prev,
-        NO_SP_TAP_TSK: found.no_sp_tap_tsk || '',
-        no_sp_tap_tsk: found.no_sp_tap_tsk || '',
+        NO_SP_TAP_TSK: spTapNum,
+        no_sp_tap_tsk: spTapNum,
+        TGL_SP_TAP_TSK: spTapDate,
+        tgl_sp_tap_tsk: spTapDate,
+        ...(isTapTskDoc ? {
+          NOMOR_SURAT: spTapNum || prev.NOMOR_SURAT || '',
+          nomor_surat: spTapNum || prev.nomor_surat || '',
+          TANGGAL_SURAT: spTapDate || prev.TANGGAL_SURAT || '',
+          tanggal_surat: spTapDate || prev.tanggal_surat || ''
+        } : {}),
         NO_SPRIN_KAP: found.no_sprin_kap || '',
         no_sprin_kap: found.no_sprin_kap || '',
         NO_SPRIN_HAN: found.no_sprin_han || '',
         no_sprin_han: found.no_sprin_han || '',
         NO_PANJANG_HAN_KN: found.no_panjang_han_kn || '',
         no_panjang_han_kn: found.no_panjang_han_kn || '',
-        NAMA_TERLAPOR: found.nama || prev.NAMA_TERLAPOR || '',
-        nama_terlapor: found.nama || prev.nama_terlapor || '',
+        NAMA_TERSANGKA: found.nama || '',
+        nama_tersangka: found.nama || '',
+        // NAMA_TERLAPOR tetap murni dari data Laporan Polisi (LP) awal
+        NAMA_TERLAPOR: currentCase.nama_terlapor || currentCase.terlapor_name || currentCase.terlapor || '',
+        nama_terlapor: currentCase.nama_terlapor || currentCase.terlapor_name || currentCase.terlapor || '',
         NIK: found.nik || '-',
         nik: found.nik || '-',
         JENIS_KELAMIN: found.jenis_kelamin || 'Laki-laki',
@@ -219,6 +234,7 @@ export default function DocGeneratorView({
 
     const initial = {};
     const todayStr = new Date().toISOString().split('T')[0];
+    const isTapTskDoc = (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
 
     // Rantai Rujukan Baku dari Perkara (Chain of Reference)
     initial['NOMOR_LP'] = currentCase.nomor_lp || currentCase.no_lp || '';
@@ -234,11 +250,18 @@ export default function DocGeneratorView({
     initial['TANGGAL_SPDP'] = initial['TGL_SPDP'];
 
     if (selectedSuspect) {
-      initial['NO_SP_TAP_TSK'] = selectedSuspect.no_sp_tap_tsk || '';
-      initial['TGL_SP_TAP_TSK'] = selectedSuspect.tgl_sp_tap_tsk || '';
+      const spTapNum = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk || '';
+      const spTapDate = selectedSuspect.tanggal_sp_tap || selectedSuspect.tgl_sp_tap_tsk || '';
+      initial['NO_SP_TAP_TSK'] = spTapNum;
+      initial['TGL_SP_TAP_TSK'] = spTapDate;
       initial['NO_SPRIN_KAP'] = selectedSuspect.no_sprin_kap || '';
       initial['NO_SPRIN_HAN'] = selectedSuspect.no_sprin_han || '';
       initial['TGL_SPRIN_HAN'] = selectedSuspect.tgl_sprin_han || '';
+
+      if (isTapTskDoc) {
+        if (spTapNum) initial['NOMOR_SURAT'] = spTapNum;
+        if (spTapDate) initial['TANGGAL_SURAT'] = spTapDate;
+      }
     }
 
     // Otomatisasi Penandatangan Mindik dari Data Perkara Aktif
@@ -447,7 +470,7 @@ export default function DocGeneratorView({
     if (selectedSuspect?.id) {
       let targetColNo = null;
       let targetColDate = null;
-      if (tplCode.includes('TAP_TSK')) {
+      if (tplCode.includes('TAP_TSK') || tplCode.includes('PENETAPAN TERSANGKA') || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA')) {
         targetColNo = 'no_sp_tap_tsk';
         targetColDate = 'tgl_sp_tap_tsk';
       } else if (tplCode.includes('KAP')) {
@@ -470,10 +493,20 @@ export default function DocGeneratorView({
       if (targetColNo && enteredNo) {
         selectedSuspect[targetColNo] = enteredNo;
         suspectUpdates[targetColNo] = enteredNo;
+        if (targetColNo === 'no_sp_tap_tsk') {
+          selectedSuspect.nomor_sp_tap = enteredNo;
+          suspectUpdates.nomor_sp_tap = enteredNo;
+          selectedSuspect.status = 'tersangka';
+          suspectUpdates.status = 'tersangka';
+        }
       }
       if (targetColDate && docDate) {
         selectedSuspect[targetColDate] = docDate;
         suspectUpdates[targetColDate] = docDate;
+        if (targetColDate === 'tgl_sp_tap_tsk') {
+          selectedSuspect.tanggal_sp_tap = docDate;
+          suspectUpdates.tanggal_sp_tap = docDate;
+        }
       }
 
       if (Object.keys(suspectUpdates).length > 0) {

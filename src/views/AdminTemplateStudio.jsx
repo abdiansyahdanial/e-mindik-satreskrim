@@ -437,19 +437,29 @@ export default function AdminTemplateStudio({
     setIsDeletingTemplate(true);
 
     try {
-      // 1. Ambil URL file dari template.file_url / template.file_path dan ekstrak path storage
-      const storagePath = extractStoragePath(templateToDelete.file_url) || extractStoragePath(templateToDelete.file_path);
-
-      // 2. Hapus fisik file di storage terlebih dahulu secara aman
-      if (storagePath) {
-        try {
-          await supabase.storage.from('templates').remove([storagePath]);
-        } catch (storageErr) {
-          console.warn('Gagal menghapus file storage (diabaikan agar proses database tetap lanjut):', storageErr);
+      // 1. Ekstrak dan hapus file fisik di storage terlebih dahulu secara aman
+      if (templateToDelete.file_url) {
+        const urlParts = templateToDelete.file_url.split('/templates/');
+        if (urlParts.length > 1) {
+          const storagePath = decodeURIComponent(urlParts[1].split('?')[0]);
+          try {
+            await supabase.storage.from('templates').remove([storagePath]);
+          } catch (storageErr) {
+            console.warn('Gagal menghapus file storage (diabaikan agar proses database tetap lanjut):', storageErr);
+          }
+        }
+      } else if (templateToDelete.file_path) {
+        const storagePath = extractStoragePath(templateToDelete.file_path);
+        if (storagePath) {
+          try {
+            await supabase.storage.from('templates').remove([storagePath]);
+          } catch (storageErr) {
+            console.warn('Gagal menghapus file storage (diabaikan agar proses database tetap lanjut):', storageErr);
+          }
         }
       }
 
-      // 3. Hapus baris dari tabel database document_templates
+      // 2. Hapus baris dari tabel database document_templates
       await deleteTemplateFromSupabase(templateToDelete);
 
       setStatusNotice({
@@ -458,7 +468,7 @@ export default function AdminTemplateStudio({
       });
       setTemplateToDelete(null);
 
-      // 4. Panggil await fetchTemplates() agar daftar di layar web langsung terbarui
+      // 3. Panggil await fetchTemplates() agar daftar di layar web langsung terbarui
       await fetchTemplates();
     } catch (err) {
       console.error('Gagal menghapus template:', err);

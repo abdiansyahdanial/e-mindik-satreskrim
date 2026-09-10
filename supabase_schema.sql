@@ -275,8 +275,19 @@ CREATE POLICY "Case suspects can be deleted by all users"
 ON public.case_suspects FOR DELETE USING (true);
 
 -- ==============================================================================
--- 9. MIGRASI KOLOM TABEL CASES (KONSISTENSI RANTAI RUJUKAN TINGKAT PERKARA)
+-- 9. MIGRASI KOLOM TABEL CASES & CASE_SUSPECTS
 -- ==============================================================================
+ALTER TABLE public.case_suspects ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'tersangka' CHECK (status IN ('terlapor', 'tersangka'));
+ALTER TABLE public.case_suspects ADD COLUMN IF NOT EXISTS nomor_sp_tap TEXT;
+ALTER TABLE public.case_suspects ADD COLUMN IF NOT EXISTS tanggal_sp_tap TEXT;
+ALTER TABLE public.case_suspects ADD COLUMN IF NOT EXISTS tgl_sp_tap_tsk TEXT;
+
+-- Sinkronisasi no_sp_tap_tsk dan nomor_sp_tap jika salah satu terisi
+UPDATE public.case_suspects SET nomor_sp_tap = no_sp_tap_tsk WHERE nomor_sp_tap IS NULL AND no_sp_tap_tsk IS NOT NULL;
+UPDATE public.case_suspects SET no_sp_tap_tsk = nomor_sp_tap WHERE no_sp_tap_tsk IS NULL AND nomor_sp_tap IS NOT NULL;
+UPDATE public.case_suspects SET tanggal_sp_tap = tgl_sp_tap_tsk WHERE tanggal_sp_tap IS NULL AND tgl_sp_tap_tsk IS NOT NULL;
+UPDATE public.case_suspects SET tgl_sp_tap_tsk = tanggal_sp_tap WHERE tgl_sp_tap_tsk IS NULL AND tanggal_sp_tap IS NOT NULL;
+
 ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS nomor_lp TEXT;
 ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS tanggal_lp TEXT;
 ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS nama_pelapor TEXT;

@@ -328,6 +328,58 @@ export default function App() {
     }
   };
 
+  const handleDeleteDocument = async (doc) => {
+    if (!doc) return;
+
+    // 1. Hapus file fisik dari Supabase Storage jika ada
+    const fileUrl = doc.file_url || doc.storage_path || doc.url || '';
+    if (fileUrl) {
+      try {
+        let bucket = 'documents';
+        let path = '';
+
+        if (fileUrl.includes('/documents/')) {
+          bucket = 'documents';
+          path = decodeURIComponent(fileUrl.split('/documents/')[1]?.split('?')[0] || '');
+        } else if (fileUrl.includes('/templates/')) {
+          bucket = 'templates';
+          path = decodeURIComponent(fileUrl.split('/templates/')[1]?.split('?')[0] || '');
+        } else if (!fileUrl.startsWith('http')) {
+          path = fileUrl;
+        }
+
+        if (path) {
+          const { error: storageErr } = await supabase.storage.from(bucket).remove([path]);
+          if (storageErr) {
+            console.warn(`Gagal hapus file fisik storage [${bucket}/${path}]:`, storageErr.message);
+          }
+        }
+      } catch (stErr) {
+        console.warn('Physical file deletion error:', stErr);
+      }
+    }
+
+    // 2. Hapus baris dokumen dari tabel Supabase
+    try {
+      if (doc.id && !String(doc.id).startsWith('doc-')) {
+        await supabase.from('documents').delete().eq('id', doc.id);
+      }
+    } catch (dbErr) {
+      console.warn('Delete document database row error:', dbErr);
+    }
+
+    // 3. Update state dokumen lokal & localStorage
+    setDocuments((prev) => {
+      const updated = prev.filter((d) => d.id !== doc.id);
+      try {
+        localStorage.setItem('emindik_archive_documents', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    showToast(`Dokumen '${doc.doc_title || doc.title || 'Mindik'}' berhasil dihapus dari arsip!`);
+  };
+
   const handleOpenGeneratorForCase = (caseItem) => {
     setCaseForGenerator(caseItem);
     setActiveTab('generator');
@@ -457,6 +509,7 @@ export default function App() {
               documents={documents}
               cases={cases}
               onPreviewDoc={(doc) => setSelectedDocForPreview(doc)}
+              onDeleteDoc={handleDeleteDocument}
             />
           )}
 

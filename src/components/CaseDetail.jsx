@@ -14,11 +14,14 @@ import {
   Clock,
   Briefcase,
   Home,
-  Edit3
+  Edit3,
+  Trash2,
+  UserCheck
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { getPersonnelById } from '../data/mockPersonnel';
 import CaseEditModal from './CaseEditModal';
+import { formatTanggalIndonesia } from '../utils/mindikGenerator';
 
 export default function CaseDetail({ 
   caseItem, 
@@ -32,11 +35,13 @@ export default function CaseDetail({
   const [isLoadingSuspects, setIsLoadingSuspects] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSuspect, setEditingSuspect] = useState(null);
+  const [subjekTab, setSubjekTab] = useState('all'); // 'all' | 'tersangka' | 'terlapor'
   const [submittingSuspect, setSubmittingSuspect] = useState(false);
   const [notice, setNotice] = useState(null);
 
-  // Form penetapan tersangka baru
-  const [suspectForm, setSuspectForm] = useState({
+  // Form penetapan tersangka / penambahan subjek baru
+  const defaultSuspectForm = {
     nama: caseItem?.nama_terlapor || caseItem?.terlapor_name || '',
     nik: '',
     jenis_kelamin: 'Laki-laki',
@@ -49,8 +54,26 @@ export default function CaseDetail({
     pendidikan: 'SMA',
     status_pernikahan: 'Kawin',
     alamat: caseItem?.locus || '',
-    no_sp_tap_tsk: `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`
-  });
+    status: 'tersangka', // 'tersangka' | 'terlapor'
+    nomor_sp_tap: `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`,
+    tanggal_sp_tap: new Date().toISOString().split('T')[0],
+    no_sp_tap_tsk: `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`,
+    tgl_sp_tap_tsk: new Date().toISOString().split('T')[0]
+  };
+
+  const [suspectForm, setSuspectForm] = useState(defaultSuspectForm);
+
+  const resetSuspectForm = (targetStatus = 'tersangka') => {
+    setSuspectForm({
+      ...defaultSuspectForm,
+      nama: '',
+      status: targetStatus,
+      nomor_sp_tap: targetStatus === 'tersangka' ? `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim` : '',
+      tanggal_sp_tap: targetStatus === 'tersangka' ? new Date().toISOString().split('T')[0] : '',
+      no_sp_tap_tsk: targetStatus === 'tersangka' ? `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim` : '',
+      tgl_sp_tap_tsk: targetStatus === 'tersangka' ? new Date().toISOString().split('T')[0] : ''
+    });
+  };
 
   // Fetch suspects from Supabase
   const fetchSuspects = async () => {
@@ -84,7 +107,10 @@ export default function CaseDetail({
             status_pernikahan: caseItem.person.marital_status || 'Kawin',
             alamat: caseItem.person.alamat || caseItem.locus,
             status: 'tersangka',
+            nomor_sp_tap: caseItem.references?.no_sp_tap_tsk || '',
+            tanggal_sp_tap: caseItem.references?.tgl_sp_tap_tsk || '',
             no_sp_tap_tsk: caseItem.references?.no_sp_tap_tsk || '',
+            tgl_sp_tap_tsk: caseItem.references?.tgl_sp_tap_tsk || '',
             no_sprin_kap: caseItem.references?.no_sprin_kap || '',
             no_sprin_han: caseItem.references?.no_sprin_han || '',
           };
@@ -108,6 +134,12 @@ export default function CaseDetail({
     const { name, value } = e.target;
     setSuspectForm((prev) => {
       const updated = { ...prev, [name]: value };
+      // Sinkronisasi alias no_sp_tap_tsk <-> nomor_sp_tap
+      if (name === 'nomor_sp_tap') updated.no_sp_tap_tsk = value;
+      if (name === 'no_sp_tap_tsk') updated.nomor_sp_tap = value;
+      if (name === 'tanggal_sp_tap') updated.tgl_sp_tap_tsk = value;
+      if (name === 'tgl_sp_tap_tsk') updated.tanggal_sp_tap = value;
+
       // Hitung umur otomatis jika tgl_lahir diubah
       if (name === 'tgl_lahir' && value) {
         const birthYear = new Date(value).getFullYear();
@@ -123,12 +155,16 @@ export default function CaseDetail({
   const handleAddSuspect = async (e) => {
     e.preventDefault();
     if (!suspectForm.nama.trim()) {
-      alert('Nama Tersangka wajib diisi.');
+      alert('Nama subjek wajib diisi.');
       return;
     }
 
     setSubmittingSuspect(true);
     setNotice(null);
+
+    const isTsk = (suspectForm.status || 'tersangka') === 'tersangka';
+    const nomorSpTap = (suspectForm.nomor_sp_tap || suspectForm.no_sp_tap_tsk || '').trim();
+    const tanggalSpTap = (suspectForm.tanggal_sp_tap || suspectForm.tgl_sp_tap_tsk || '');
 
     const payload = {
       case_id: caseItem.id,
@@ -144,8 +180,11 @@ export default function CaseDetail({
       pendidikan: suspectForm.pendidikan,
       status_pernikahan: suspectForm.status_pernikahan,
       alamat: suspectForm.alamat.trim(),
-      status: 'tersangka',
-      no_sp_tap_tsk: suspectForm.no_sp_tap_tsk.trim(),
+      status: suspectForm.status || 'tersangka',
+      nomor_sp_tap: isTsk ? nomorSpTap : '',
+      tanggal_sp_tap: isTsk ? tanggalSpTap : '',
+      no_sp_tap_tsk: isTsk ? nomorSpTap : '',
+      tgl_sp_tap_tsk: isTsk ? tanggalSpTap : '',
       created_at: new Date().toISOString()
     };
 
@@ -157,43 +196,116 @@ export default function CaseDetail({
 
       if (error) {
         console.warn('Gagal menyimpan ke tabel case_suspects Supabase:', error.message);
-        // Simpan ke local state jika tabel belum dimigrasi di remote
         const localSuspect = { ...payload, id: `suspect-${Date.now()}` };
         setSuspects((prev) => [...prev, localSuspect]);
         setNotice({
           type: 'success',
-          message: `Tersangka '${payload.nama}' berhasil ditetapkan (Tersimpan di sesi aktif)!`
+          message: `${isTsk ? 'Tersangka' : 'Terlapor'} '${payload.nama}' berhasil ditambahkan (Sesi aktif)!`
         });
       } else {
         const savedSuspect = data?.[0] || payload;
         setSuspects((prev) => [...prev, savedSuspect]);
         setNotice({
           type: 'success',
-          message: `Berhasil! Tersangka '${payload.nama}' resmi ditetapkan dengan Surat Nomor: ${payload.no_sp_tap_tsk}`
+          message: `Berhasil! ${isTsk ? 'Tersangka' : 'Terlapor'} '${payload.nama}' berhasil disimpan.`
         });
       }
 
       setIsModalOpen(false);
-      // Reset form
-      setSuspectForm({
-        nama: '',
-        nik: '',
-        jenis_kelamin: 'Laki-laki',
-        tempat_lahir: 'Kolaka Timur',
-        tgl_lahir: '1990-01-01',
-        umur: '36',
-        agama: 'Islam',
-        pekerjaan: 'Swasta',
-        kewarganegaraan: 'Indonesia',
-        pendidikan: 'SMA',
-        status_pernikahan: 'Kawin',
-        alamat: caseItem?.locus || '',
-        no_sp_tap_tsk: `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`
-      });
+      resetSuspectForm();
     } catch (err) {
-      alert(`Terjadi kesalahan: ${err.message}`);
+      console.error('Error adding suspect:', err);
+      alert(`Gagal menambahkan: ${err.message}`);
     } finally {
       setSubmittingSuspect(false);
+    }
+  };
+
+  const handleSaveEditSuspect = async (e) => {
+    e.preventDefault();
+    if (!editingSuspect || !editingSuspect.nama?.trim()) {
+      alert('Nama subjek wajib diisi.');
+      return;
+    }
+
+    setSubmittingSuspect(true);
+    const isTsk = (editingSuspect.status || 'tersangka') === 'tersangka';
+    const nomorSpTap = (editingSuspect.nomor_sp_tap || editingSuspect.no_sp_tap_tsk || '').trim();
+    const tanggalSpTap = (editingSuspect.tanggal_sp_tap || editingSuspect.tgl_sp_tap_tsk || '');
+
+    const updates = {
+      nama: editingSuspect.nama.trim(),
+      nik: editingSuspect.nik?.trim() || '-',
+      jenis_kelamin: editingSuspect.jenis_kelamin || 'Laki-laki',
+      tempat_lahir: editingSuspect.tempat_lahir?.trim() || '',
+      tgl_lahir: editingSuspect.tgl_lahir || '',
+      umur: editingSuspect.umur ? `${editingSuspect.umur}` : '-',
+      agama: editingSuspect.agama || 'Islam',
+      pekerjaan: editingSuspect.pekerjaan?.trim() || '',
+      kewarganegaraan: editingSuspect.kewarganegaraan?.trim() || 'Indonesia',
+      pendidikan: editingSuspect.pendidikan || 'SMA',
+      status_pernikahan: editingSuspect.status_pernikahan || 'Kawin',
+      alamat: editingSuspect.alamat?.trim() || '',
+      status: editingSuspect.status || 'tersangka',
+      nomor_sp_tap: isTsk ? nomorSpTap : '',
+      tanggal_sp_tap: isTsk ? tanggalSpTap : '',
+      no_sp_tap_tsk: isTsk ? nomorSpTap : '',
+      tgl_sp_tap_tsk: isTsk ? tanggalSpTap : '',
+    };
+
+    try {
+      const isRealId = editingSuspect.id && !String(editingSuspect.id).startsWith('legacy-') && !String(editingSuspect.id).startsWith('suspect-');
+      if (isRealId) {
+        const { error } = await supabase
+          .from('case_suspects')
+          .update(updates)
+          .eq('id', editingSuspect.id);
+
+        if (error) {
+          console.warn('Update case_suspects notice:', error.message);
+        }
+      }
+
+      setSuspects((prev) => prev.map((s) => s.id === editingSuspect.id ? { ...s, ...updates } : s));
+      setNotice({
+        type: 'success',
+        message: `Data ${isTsk ? 'Tersangka' : 'Terlapor'} '${updates.nama}' berhasil diperbarui!`
+      });
+      setEditingSuspect(null);
+    } catch (err) {
+      console.error('Error updating suspect:', err);
+      alert(`Gagal memperbarui data: ${err.message}`);
+    } finally {
+      setSubmittingSuspect(false);
+    }
+  };
+
+  const handlePromoteToSuspect = (subject) => {
+    setEditingSuspect({
+      ...subject,
+      status: 'tersangka',
+      nomor_sp_tap: subject.nomor_sp_tap || subject.no_sp_tap_tsk || `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`,
+      tanggal_sp_tap: subject.tanggal_sp_tap || subject.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleDeleteSuspect = async (subject) => {
+    const isTsk = subject.status === 'tersangka';
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus data ${isTsk ? 'Tersangka' : 'Terlapor'} '${subject.nama}' dari berkas perkara ini?`)) return;
+
+    try {
+      const isRealId = subject.id && !String(subject.id).startsWith('legacy-') && !String(subject.id).startsWith('suspect-');
+      if (isRealId) {
+        await supabase.from('case_suspects').delete().eq('id', subject.id);
+      }
+      setSuspects((prev) => prev.filter((s) => s.id !== subject.id));
+      setNotice({
+        type: 'success',
+        message: `Data '${subject.nama}' berhasil dihapus dari berkas perkara!`
+      });
+    } catch (err) {
+      console.error('Error deleting subject:', err);
+      alert(`Gagal menghapus: ${err.message}`);
     }
   };
 
@@ -345,149 +457,318 @@ export default function CaseDetail({
             </div>
           </div>
 
-          {/* SECTION TERSANGKA (BAGIAN 3: RELASI DATA TERSANGKA BERJENJANG) */}
-          <div style={{
-            padding: '16px',
-            background: 'rgba(239, 68, 68, 0.03)',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
-            borderRadius: 'var(--radius-lg)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShieldAlert size={18} color="var(--accent-red)" />
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-red)', textTransform: 'uppercase' }}>
-                    Daftar Tersangka Resmi ({suspects.length})
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Identitas yuridis sah berdasarkan Gelar Perkara & Surat Penetapan Tersangka (SP.TAP.TSK)
-                  </div>
-                </div>
-              </div>
+          {/* SECTION MANAJEMEN SUBJEK PERKARA (TERLAPOR & TERSANGKA) */}
+          {(() => {
+            const tersangkaCount = suspects.filter(s => (s.status === 'tersangka' || !s.status)).length;
+            const terlaporCount = suspects.filter(s => s.status === 'terlapor').length;
+            const filteredSubjects = suspects.filter(s => {
+              if (subjekTab === 'tersangka') return s.status === 'tersangka' || !s.status;
+              if (subjekTab === 'terlapor') return s.status === 'terlapor';
+              return true;
+            });
 
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(true)}
-                className="btn btn-primary btn-sm"
-                style={{
-                  background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
-                  boxShadow: '0 2px 10px rgba(239, 68, 68, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <UserPlus size={14} />
-                <span>+ Tetapkan Tersangka</span>
-              </button>
-            </div>
-
-            {suspects.length === 0 ? (
+            return (
               <div style={{
-                padding: '24px',
-                textAlign: 'center',
-                background: 'rgba(15, 23, 42, 0.6)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px dashed rgba(239, 68, 68, 0.25)',
-                color: 'var(--text-secondary)',
-                fontSize: '12.5px'
+                padding: '16px',
+                background: 'rgba(239, 68, 68, 0.03)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: 'var(--radius-lg)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
               }}>
-                <ShieldAlert size={28} color="var(--accent-red)" style={{ margin: '0 auto 8px', opacity: 0.6 }} />
-                <div>Belum ada pihak yang ditetapkan sebagai tersangka pada perkara ini.</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Klik tombol <strong>"+ Tetapkan Tersangka"</strong> setelah pelaksanaan gelar penetapan tersangka.
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldAlert size={18} color="var(--accent-red)" />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-red)', textTransform: 'uppercase' }}>
+                        Manajemen Subjek Perkara ({suspects.length})
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        Identitas yuridis Terlapor (calon tersangka) dan Tersangka Resmi (SP.TAP.TSK)
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetSuspectForm('terlapor');
+                        setIsModalOpen(true);
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        borderColor: 'rgba(245, 158, 11, 0.4)',
+                        color: '#F59E0B',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <UserPlus size={14} />
+                      <span>+ Tambah Terlapor</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetSuspectForm('tersangka');
+                        setIsModalOpen(true);
+                      }}
+                      className="btn btn-primary btn-sm"
+                      style={{
+                        background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
+                        boxShadow: '0 2px 10px rgba(239, 68, 68, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <UserPlus size={14} />
+                      <span>+ Tetapkan Tersangka</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {suspects.map((s, idx) => (
-                  <div 
-                    key={s.id || idx}
-                    style={{
-                      padding: '14px',
-                      background: 'rgba(15, 23, 42, 0.7)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: 'var(--radius-md)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px'
+
+                {/* Filter Tabs Subjek */}
+                <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setSubjekTab('all')}
+                    className={`btn btn-xs ${subjekTab === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: '11px', borderRadius: '20px', padding: '3px 10px' }}
+                  >
+                    Semua Subjek ({suspects.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubjekTab('tersangka')}
+                    className={`btn btn-xs ${subjekTab === 'tersangka' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ 
+                      fontSize: '11px', 
+                      borderRadius: '20px', 
+                      padding: '3px 10px',
+                      background: subjekTab === 'tersangka' ? 'var(--accent-red)' : undefined
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span className="badge badge-red" style={{ fontSize: '11px' }}>
-                          TERSANGKA {idx + 1}
-                        </span>
-                        <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFF' }}>
-                          {s.nama}
-                        </span>
-                        <span className="mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          (NIK: {s.nik || '-'})
-                        </span>
-                      </div>
+                    Tersangka Resmi ({tersangkaCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubjekTab('terlapor')}
+                    className={`btn btn-xs ${subjekTab === 'terlapor' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ 
+                      fontSize: '11px', 
+                      borderRadius: '20px', 
+                      padding: '3px 10px',
+                      borderColor: subjekTab === 'terlapor' ? '#F59E0B' : undefined,
+                      color: subjekTab === 'terlapor' ? '#FFF' : undefined,
+                      background: subjekTab === 'terlapor' ? '#D97706' : undefined
+                    }}
+                  >
+                    Terlapor ({terlaporCount})
+                  </button>
+                </div>
 
-                      {s.no_sp_tap_tsk && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>SP.TAP.TSK:</span>
-                          <span className="badge badge-purple mono" style={{ fontSize: '11px' }}>
-                            {s.no_sp_tap_tsk}
-                          </span>
-                        </div>
-                      )}
+                {filteredSubjects.length === 0 ? (
+                  <div style={{
+                    padding: '24px',
+                    textAlign: 'center',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px dashed rgba(239, 68, 68, 0.25)',
+                    color: 'var(--text-secondary)',
+                    fontSize: '12.5px'
+                  }}>
+                    <ShieldAlert size={28} color="var(--accent-red)" style={{ margin: '0 auto 8px', opacity: 0.6 }} />
+                    <div>
+                      {subjekTab === 'tersangka' 
+                        ? 'Belum ada pihak yang ditetapkan sebagai tersangka pada perkara ini.'
+                        : subjekTab === 'terlapor'
+                        ? 'Belum ada data Terlapor yang tercatat.'
+                        : 'Belum ada subjek perkara (terlapor maupun tersangka) yang tercatat.'}
                     </div>
-
-                    {/* Detail Yuridis */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                      gap: '6px 16px',
-                      fontSize: '11.5px',
-                      color: 'var(--text-secondary)',
-                      background: 'rgba(0, 0, 0, 0.2)',
-                      padding: '8px 12px',
-                      borderRadius: 'var(--radius-sm)'
-                    }}>
-                      <div>TTL: <strong style={{ color: '#FFF' }}>{s.tempat_lahir || '-'}, {s.tgl_lahir || '-'}</strong> ({s.umur ? (String(s.umur).includes('Tahun') ? s.umur : `${s.umur} Thn`) : '-'})</div>
-                      <div>Jenis Kelamin: <strong style={{ color: '#FFF' }}>{s.jenis_kelamin || 'Laki-laki'}</strong></div>
-                      <div>Agama: <strong style={{ color: '#FFF' }}>{s.agama || 'Islam'}</strong></div>
-                      <div>Pekerjaan: <strong style={{ color: '#FFF' }}>{s.pekerjaan || '-'}</strong></div>
-                      <div>Pendidikan: <strong style={{ color: '#FFF' }}>{s.pendidikan || 'SMA'}</strong></div>
-                      <div>Status Kawin: <strong style={{ color: '#FFF' }}>{s.status_pernikahan || '-'}</strong></div>
-                      <div style={{ gridColumn: '1 / -1' }}>Alamat: <strong style={{ color: '#FFF' }}>{s.alamat || '-'}</strong></div>
-                    </div>
-
-                    {/* Riwayat Surat Perorangan */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '11px' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Rantai Surat Perorangan:</span>
-                      {s.no_sprin_kap && (
-                        <span className="badge badge-amber mono" title="Nomor SP.KAP">
-                          SP.KAP: {s.no_sprin_kap}
-                        </span>
-                      )}
-                      {s.no_sprin_han && (
-                        <span className="badge badge-red mono" title="Nomor SP.HAN">
-                          SP.HAN: {s.no_sprin_han}
-                        </span>
-                      )}
-                      {s.no_panjang_han_kn && (
-                        <span className="badge badge-blue mono" title="Perpanjangan Tahanan Kejaksaan">
-                          PANJANG.HAN: {s.no_panjang_han_kn}
-                        </span>
-                      )}
-                      {!s.no_sprin_kap && !s.no_sprin_han && (
-                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          Belum diterbitkan penangkapan/penahanan
-                        </span>
-                      )}
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Gunakan tombol <strong>"+ Tambah Terlapor"</strong> atau <strong>"+ Tetapkan Tersangka"</strong> di atas.
                     </div>
                   </div>
-                ))}
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {filteredSubjects.map((s, idx) => {
+                      const isTsk = (s.status === 'tersangka' || !s.status);
+                      const spTapNum = s.nomor_sp_tap || s.no_sp_tap_tsk;
+                      const spTapDate = s.tanggal_sp_tap || s.tgl_sp_tap_tsk;
+
+                      return (
+                        <div 
+                          key={s.id || idx}
+                          style={{
+                            padding: '14px',
+                            background: 'rgba(15, 23, 42, 0.7)',
+                            border: isTsk ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+                            borderRadius: 'var(--radius-md)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <span 
+                                className={`badge ${isTsk ? 'badge-red' : 'badge-amber'}`} 
+                                style={{ fontSize: '11px', fontWeight: 700 }}
+                              >
+                                {isTsk ? `TERSANGKA ${idx + 1}` : `TERLAPOR ${idx + 1}`}
+                              </span>
+                              <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFF' }}>
+                                {s.nama}
+                              </span>
+                              <span className="mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                (NIK: {s.nik || '-'})
+                              </span>
+                            </div>
+
+                            {/* Tombol aksi promote / edit / delete */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {!isTsk && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePromoteToSuspect(s)}
+                                  className="btn btn-xs"
+                                  style={{
+                                    background: 'rgba(16, 185, 129, 0.15)',
+                                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                                    color: '#10B981',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '3px 8px',
+                                    fontSize: '11px'
+                                  }}
+                                  title="Tetapkan Terlapor ini Menjadi Tersangka Resmi"
+                                >
+                                  <UserCheck size={13} />
+                                  <span>Tetapkan Sebagai Tersangka</span>
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => setEditingSuspect({ ...s })}
+                                className="btn btn-secondary btn-xs"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '3px 8px',
+                                  fontSize: '11px'
+                                }}
+                                title="Edit Identitas & Data SP.TAP"
+                              >
+                                <Edit3 size={13} />
+                                <span>Edit</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSuspect(s)}
+                                className="btn btn-secondary btn-xs"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '3px 8px',
+                                  fontSize: '11px',
+                                  color: 'var(--accent-red)',
+                                  borderColor: 'rgba(239, 68, 68, 0.3)'
+                                }}
+                                title="Hapus Data Subjek"
+                              >
+                                <Trash2 size={13} />
+                                <span>Hapus</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Info SP.TAP untuk Tersangka */}
+                          {isTsk && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              background: 'rgba(239, 68, 68, 0.08)',
+                              padding: '6px 10px',
+                              borderRadius: 'var(--radius-sm)',
+                              border: '1px solid rgba(239, 68, 68, 0.15)',
+                              fontSize: '11px'
+                            }}>
+                              <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>SP.TAP.TSK:</span>
+                              <span className="mono badge badge-purple" style={{ fontSize: '11px' }}>
+                                {spTapNum || 'Belum diisi'}
+                              </span>
+                              {spTapDate && (
+                                <span className="mono" style={{ color: 'var(--text-secondary)' }}>
+                                  Tgl: {spTapDate}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Detail Yuridis */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                            gap: '6px 16px',
+                            fontSize: '11.5px',
+                            color: 'var(--text-secondary)',
+                            background: 'rgba(0, 0, 0, 0.2)',
+                            padding: '8px 12px',
+                            borderRadius: 'var(--radius-sm)'
+                          }}>
+                            <div>TTL: <strong style={{ color: '#FFF' }}>{s.tempat_lahir || '-'}, {s.tgl_lahir || '-'}</strong> ({s.umur ? (String(s.umur).includes('Tahun') ? s.umur : `${s.umur} Thn`) : '-'})</div>
+                            <div>Jenis Kelamin: <strong style={{ color: '#FFF' }}>{s.jenis_kelamin || 'Laki-laki'}</strong></div>
+                            <div>Agama: <strong style={{ color: '#FFF' }}>{s.agama || 'Islam'}</strong></div>
+                            <div>Pekerjaan: <strong style={{ color: '#FFF' }}>{s.pekerjaan || '-'}</strong></div>
+                            <div>Pendidikan: <strong style={{ color: '#FFF' }}>{s.pendidikan || 'SMA'}</strong></div>
+                            <div>Status Kawin: <strong style={{ color: '#FFF' }}>{s.status_pernikahan || '-'}</strong></div>
+                            <div style={{ gridColumn: '1 / -1' }}>Alamat: <strong style={{ color: '#FFF' }}>{s.alamat || '-'}</strong></div>
+                          </div>
+
+                          {/* Riwayat Rantai Surat Perorangan jika Tersangka */}
+                          {isTsk && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '11px' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>Rantai Surat Perorangan:</span>
+                              {s.no_sprin_kap && (
+                                <span className="badge badge-amber mono" title="Nomor SP.KAP">
+                                  SP.KAP: {s.no_sprin_kap}
+                                </span>
+                              )}
+                              {s.no_sprin_han && (
+                                <span className="badge badge-red mono" title="Nomor SP.HAN">
+                                  SP.HAN: {s.no_sprin_han}
+                                </span>
+                              )}
+                              {s.no_panjang_han_kn && (
+                                <span className="badge badge-blue mono" title="Perpanjangan Tahanan Kejaksaan">
+                                  PANJANG.HAN: {s.no_panjang_han_kn}
+                                </span>
+                              )}
+                              {!s.no_sprin_kap && !s.no_sprin_han && (
+                                <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                  Belum diterbitkan penangkapan/penahanan
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Pejabat & Tim Penyidik Penanggung Jawab */}
           <div style={{
@@ -649,7 +930,7 @@ export default function CaseDetail({
         </div>
       </div>
 
-      {/* MODAL INPUT PENETAPAN TERSANGKA BARU */}
+      {/* MODAL INPUT SUBJEK BARU (TERLAPOR ATAU TERSANGKA) */}
       {isModalOpen && (
         <div 
           className="modal-backdrop" 
@@ -658,7 +939,10 @@ export default function CaseDetail({
         >
           <div 
             className="modal-content" 
-            style={{ maxWidth: '680px', border: '1px solid var(--accent-red)' }}
+            style={{ 
+              maxWidth: '680px', 
+              border: suspectForm.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)' 
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -667,18 +951,20 @@ export default function CaseDetail({
                   width: '36px',
                   height: '36px',
                   borderRadius: '8px',
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid var(--accent-red)',
+                  background: suspectForm.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  border: suspectForm.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <UserPlus size={18} color="var(--accent-red)" />
+                  {suspectForm.status === 'terlapor' ? <User size={18} color="#F59E0B" /> : <UserPlus size={18} color="var(--accent-red)" />}
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>Penetapan Tersangka Baru (SP.TAP.TSK)</h3>
+                  <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>
+                    {suspectForm.status === 'terlapor' ? 'Tambah Data Terlapor' : 'Penetapan Tersangka Baru (SP.TAP.TSK)'}
+                  </h3>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Input identitas yuridis lengkap tersangka untuk perkara {caseItem.nomor_lp || caseItem.no_lp}
+                    Input identitas yuridis untuk perkara {caseItem.nomor_lp || caseItem.no_lp}
                   </div>
                 </div>
               </div>
@@ -693,37 +979,120 @@ export default function CaseDetail({
 
             <form onSubmit={handleAddSuspect}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '68vh', overflowY: 'auto' }}>
-                {/* Nomor Surat Penetapan Tersangka */}
+                {/* Status Subjek Switcher */}
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
-                    Nomor Surat Penetapan Tersangka (SP.TAP.TSK) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  <label className="form-label" style={{ fontWeight: 700 }}>
+                    Status Yuridis Subjek <span style={{ color: 'var(--accent-red)' }}>*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="no_sp_tap_tsk"
-                    value={suspectForm.no_sp_tap_tsk}
-                    onChange={handleInputChange}
-                    placeholder="Contoh: S.Tap/12/VIII/2026/Reskrim"
-                    className="form-input mono"
-                    required
-                  />
-                  <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                    Nomor ini otomatis menjadi rantai rujukan ({'{NO_SP_TAP_TSK}'}) saat membuat SP.KAP dan SP.HAN berikutnya.
-                  </span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <label style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: suspectForm.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-elevated)',
+                      border: suspectForm.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--border-glass)',
+                      cursor: 'pointer'
+                    }}>
+                      <input 
+                        type="radio" 
+                        name="status" 
+                        value="terlapor" 
+                        checked={suspectForm.status === 'terlapor'} 
+                        onChange={handleInputChange} 
+                      />
+                      <div>
+                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: suspectForm.status === 'terlapor' ? '#F59E0B' : 'inherit' }}>
+                          Terlapor
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Calon tersangka / pihak terlapor dalam LP</div>
+                      </div>
+                    </label>
+
+                    <label style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: suspectForm.status === 'tersangka' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-elevated)',
+                      border: suspectForm.status === 'tersangka' ? '1px solid var(--accent-red)' : '1px solid var(--border-glass)',
+                      cursor: 'pointer'
+                    }}>
+                      <input 
+                        type="radio" 
+                        name="status" 
+                        value="tersangka" 
+                        checked={suspectForm.status === 'tersangka'} 
+                        onChange={handleInputChange} 
+                      />
+                      <div>
+                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: suspectForm.status === 'tersangka' ? 'var(--accent-red)' : 'inherit' }}>
+                          Tersangka Resmi
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Telah terbit Surat Penetapan Tersangka</div>
+                      </div>
+                    </label>
+                  </div>
                 </div>
+
+                {/* Nomor & Tanggal Surat Penetapan Tersangka (Hanya jika status Tersangka) */}
+                {suspectForm.status === 'tersangka' && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.4fr 1fr',
+                    gap: '12px',
+                    padding: '10px 12px',
+                    background: 'rgba(239, 68, 68, 0.06)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)'
+                  }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
+                        Nomor SP.TAP.TSK <span style={{ color: 'var(--accent-red)' }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="nomor_sp_tap"
+                        value={suspectForm.nomor_sp_tap}
+                        onChange={handleInputChange}
+                        placeholder="Contoh: S.Tap/12/VIII/2026/Reskrim"
+                        className="form-input mono"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
+                        Tanggal SP.TAP.TSK <span style={{ color: 'var(--accent-red)' }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="tanggal_sp_tap"
+                        value={suspectForm.tanggal_sp_tap}
+                        onChange={handleInputChange}
+                        className="form-input mono"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Nama Lengkap & NIK */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">
-                      Nama Lengkap Tersangka <span style={{ color: 'var(--accent-red)' }}>*</span>
+                      Nama Lengkap <span style={{ color: 'var(--accent-red)' }}>*</span>
                     </label>
                     <input
                       type="text"
                       name="nama"
                       value={suspectForm.nama}
                       onChange={handleInputChange}
-                      placeholder="Nama lengkap sesuai KTP..."
+                      placeholder="Nama lengkap sesuai identitas..."
                       className="form-input"
                       required
                     />
@@ -879,7 +1248,7 @@ export default function CaseDetail({
                     name="alamat"
                     value={suspectForm.alamat}
                     onChange={handleInputChange}
-                    placeholder="Alamat domisili tersangka..."
+                    placeholder="Alamat domisili lengkap..."
                     className="form-textarea"
                     style={{ minHeight: '60px' }}
                   />
@@ -890,15 +1259,371 @@ export default function CaseDetail({
                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary btn-sm">
                   Batal
                 </button>
-                <button type="submit" disabled={submittingSuspect} className="btn btn-primary btn-sm" style={{ background: 'var(--accent-red)' }}>
+                <button 
+                  type="submit" 
+                  disabled={submittingSuspect} 
+                  className="btn btn-primary btn-sm" 
+                  style={{ background: suspectForm.status === 'terlapor' ? '#D97706' : 'var(--accent-red)' }}
+                >
                   <FileCheck2 size={14} />
-                  <span>{submittingSuspect ? 'Menyimpan...' : 'Simpan & Tetapkan Tersangka'}</span>
+                  <span>
+                    {submittingSuspect 
+                      ? 'Menyimpan...' 
+                      : suspectForm.status === 'terlapor' 
+                      ? 'Simpan Data Terlapor' 
+                      : 'Simpan & Tetapkan Tersangka'}
+                  </span>
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* MODAL EDIT DATA SUBJEK (TERLAPOR ATAU TERSANGKA) */}
+      {editingSuspect && (
+        <div 
+          className="modal-backdrop" 
+          style={{ zIndex: 1100 }}
+          onClick={() => setEditingSuspect(null)}
+        >
+          <div 
+            className="modal-content" 
+            style={{ 
+              maxWidth: '680px', 
+              border: editingSuspect.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)' 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: editingSuspect.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  border: editingSuspect.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Edit3 size={18} color={editingSuspect.status === 'terlapor' ? '#F59E0B' : 'var(--accent-red)'} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>
+                    {editingSuspect.status === 'terlapor' ? 'Edit Data Terlapor' : 'Edit Data Tersangka (SP.TAP.TSK)'}
+                  </h3>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Perbarui identitas yuridis subjek perkara
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setEditingSuspect(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditSuspect}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '68vh', overflowY: 'auto' }}>
+                {/* Status Switcher */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 700 }}>
+                    Status Yuridis Subjek <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <label style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: editingSuspect.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-elevated)',
+                      border: editingSuspect.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--border-glass)',
+                      cursor: 'pointer'
+                    }}>
+                      <input 
+                        type="radio" 
+                        name="edit_status" 
+                        value="terlapor" 
+                        checked={editingSuspect.status === 'terlapor'} 
+                        onChange={() => setEditingSuspect(prev => ({ ...prev, status: 'terlapor' }))} 
+                      />
+                      <div>
+                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: editingSuspect.status === 'terlapor' ? '#F59E0B' : 'inherit' }}>
+                          Terlapor
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Calon tersangka / pihak terlapor</div>
+                      </div>
+                    </label>
+
+                    <label style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: editingSuspect.status === 'tersangka' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-elevated)',
+                      border: editingSuspect.status === 'tersangka' ? '1px solid var(--accent-red)' : '1px solid var(--border-glass)',
+                      cursor: 'pointer'
+                    }}>
+                      <input 
+                        type="radio" 
+                        name="edit_status" 
+                        value="tersangka" 
+                        checked={editingSuspect.status === 'tersangka'} 
+                        onChange={() => setEditingSuspect(prev => ({ 
+                          ...prev, 
+                          status: 'tersangka',
+                          nomor_sp_tap: prev.nomor_sp_tap || prev.no_sp_tap_tsk || `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`,
+                          tanggal_sp_tap: prev.tanggal_sp_tap || prev.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0]
+                        }))} 
+                      />
+                      <div>
+                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: editingSuspect.status === 'tersangka' ? 'var(--accent-red)' : 'inherit' }}>
+                          Tersangka Resmi
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Telah terbit Surat Penetapan Tersangka</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Nomor & Tanggal SP.TAP.TSK */}
+                {editingSuspect.status === 'tersangka' && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.4fr 1fr',
+                    gap: '12px',
+                    padding: '10px 12px',
+                    background: 'rgba(239, 68, 68, 0.06)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)'
+                  }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
+                        Nomor SP.TAP.TSK <span style={{ color: 'var(--accent-red)' }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingSuspect.nomor_sp_tap || editingSuspect.no_sp_tap_tsk || ''}
+                        onChange={(e) => setEditingSuspect(prev => ({ 
+                          ...prev, 
+                          nomor_sp_tap: e.target.value,
+                          no_sp_tap_tsk: e.target.value 
+                        }))}
+                        placeholder="Contoh: S.Tap/12/VIII/2026/Reskrim"
+                        className="form-input mono"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
+                        Tanggal SP.TAP.TSK <span style={{ color: 'var(--accent-red)' }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={editingSuspect.tanggal_sp_tap || editingSuspect.tgl_sp_tap_tsk || ''}
+                        onChange={(e) => setEditingSuspect(prev => ({ 
+                          ...prev, 
+                          tanggal_sp_tap: e.target.value,
+                          tgl_sp_tap_tsk: e.target.value 
+                        }))}
+                        className="form-input mono"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Nama & NIK */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">
+                      Nama Lengkap <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editingSuspect.nama || ''}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, nama: e.target.value }))}
+                      placeholder="Nama lengkap sesuai identitas..."
+                      className="form-input"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">NIK (Nomor Induk Kependudukan)</label>
+                    <input
+                      type="text"
+                      value={editingSuspect.nik || ''}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, nik: e.target.value }))}
+                      placeholder="16 digit NIK..."
+                      className="form-input mono"
+                    />
+                  </div>
+                </div>
+
+                {/* TTL, Umur, Jenis Kelamin */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.8fr 1fr', gap: '10px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Tempat Lahir</label>
+                    <input
+                      type="text"
+                      value={editingSuspect.tempat_lahir || ''}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, tempat_lahir: e.target.value }))}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Tanggal Lahir</label>
+                    <input
+                      type="date"
+                      value={editingSuspect.tgl_lahir || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const birthYear = new Date(val).getFullYear();
+                        const currentYear = new Date().getFullYear();
+                        const calculatedAge = !isNaN(birthYear) ? String(Math.max(1, currentYear - birthYear)) : editingSuspect.umur;
+                        setEditingSuspect(prev => ({ ...prev, tgl_lahir: val, umur: calculatedAge }));
+                      }}
+                      className="form-input mono"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Umur (Thn)</label>
+                    <input
+                      type="text"
+                      value={editingSuspect.umur || ''}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, umur: e.target.value }))}
+                      className="form-input mono"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Jenis Kelamin</label>
+                    <select
+                      value={editingSuspect.jenis_kelamin || 'Laki-laki'}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, jenis_kelamin: e.target.value }))}
+                      className="form-select"
+                    >
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Agama, Pekerjaan, Kewarganegaraan */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Agama</label>
+                    <select
+                      value={editingSuspect.agama || 'Islam'}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, agama: e.target.value }))}
+                      className="form-select"
+                    >
+                      <option value="Islam">Islam</option>
+                      <option value="Kristen">Kristen</option>
+                      <option value="Katolik">Katolik</option>
+                      <option value="Hindu">Hindu</option>
+                      <option value="Buddha">Buddha</option>
+                      <option value="Konghucu">Konghucu</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Pekerjaan</label>
+                    <input
+                      type="text"
+                      value={editingSuspect.pekerjaan || ''}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, pekerjaan: e.target.value }))}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Kewarganegaraan</label>
+                    <input
+                      type="text"
+                      value={editingSuspect.kewarganegaraan || 'Indonesia'}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, kewarganegaraan: e.target.value }))}
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Pendidikan & Status Nikah */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Pendidikan Terakhir</label>
+                    <select
+                      value={editingSuspect.pendidikan || 'SMA'}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, pendidikan: e.target.value }))}
+                      className="form-select"
+                    >
+                      <option value="SD">SD</option>
+                      <option value="SMP">SMP</option>
+                      <option value="SMA">SMA / Sederajat</option>
+                      <option value="D3">Diploma (D3)</option>
+                      <option value="S1">Sarjana (S1)</option>
+                      <option value="S2">Magister (S2)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Status Pernikahan</label>
+                    <select
+                      value={editingSuspect.status_pernikahan || 'Kawin'}
+                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, status_pernikahan: e.target.value }))}
+                      className="form-select"
+                    >
+                      <option value="Belum Kawin">Belum Kawin</option>
+                      <option value="Kawin">Kawin</option>
+                      <option value="Cerai Hidup">Cerai Hidup</option>
+                      <option value="Cerai Mati">Cerai Mati</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Alamat */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Alamat Tempat Tinggal Lengkap</label>
+                  <textarea
+                    value={editingSuspect.alamat || ''}
+                    onChange={(e) => setEditingSuspect(prev => ({ ...prev, alamat: e.target.value }))}
+                    className="form-textarea"
+                    style={{ minHeight: '60px' }}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" onClick={() => setEditingSuspect(null)} className="btn btn-secondary btn-sm">
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submittingSuspect} 
+                  className="btn btn-primary btn-sm" 
+                  style={{ background: editingSuspect.status === 'terlapor' ? '#D97706' : 'var(--accent-red)' }}
+                >
+                  <FileCheck2 size={14} />
+                  <span>{submittingSuspect ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal Edit Berkas Perkara */}
       {isEditModalOpen && (
         <CaseEditModal
