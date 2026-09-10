@@ -25,7 +25,8 @@ export default function CaseDetail({
   onClose, 
   onGenerateDocForCase, 
   onUpdateCase,
-  caseDocuments = [] 
+  caseDocuments = [],
+  personnel = []
 }) {
   const [suspects, setSuspects] = useState([]);
   const [isLoadingSuspects, setIsLoadingSuspects] = useState(false);
@@ -488,41 +489,82 @@ export default function CaseDetail({
             )}
           </div>
 
-          {/* Tim Penyidik Ditugaskan */}
+          {/* Pejabat & Tim Penyidik Penanggung Jawab */}
           <div style={{
             padding: '14px 16px',
             background: 'rgba(19, 29, 53, 0.4)',
             border: '1px solid var(--border-glass)',
             borderRadius: 'var(--radius-lg)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <Users size={16} color="var(--accent-green)" />
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-green)', textTransform: 'uppercase' }}>
-                Penyidik Penanggung Jawab
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={16} color="var(--accent-cyan)" />
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
+                Pejabat & Tim Penyidik Penanggung Jawab
               </span>
             </div>
+
+            {/* Kasat Reskrim */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {caseItem.investigators?.map((inv, idx) => {
-                const person = getPersonnelById(inv.user_id) || inv;
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 12px',
+                background: 'rgba(0, 212, 255, 0.08)',
+                border: '1px solid rgba(0, 212, 255, 0.3)',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <span className="badge badge-blue" style={{ fontSize: '10px' }}>
+                  KASAT RESKRIM
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFF' }}>
+                  {caseItem.kasat_nama || 'Belum diisi'}
+                </span>
+                {caseItem.kasat_pangkat && (
+                  <span className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>
+                    ({caseItem.kasat_pangkat} / NRP: {caseItem.kasat_nrp || '-'})
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Tim Penyidik 1 s.d. 5 */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {[1, 2, 3, 4, 5].map((slot) => {
+                const nama = caseItem[`penyidik_${slot}_nama`] || caseItem.investigators?.[slot - 1]?.nama;
+                const pangkat = caseItem[`penyidik_${slot}_pangkat`] || caseItem.investigators?.[slot - 1]?.pangkat;
+                const nrp = caseItem[`penyidik_${slot}_nrp`] || caseItem.investigators?.[slot - 1]?.nrp;
+                const jabatan = caseItem[`penyidik_${slot}_jabatan`] || caseItem.investigators?.[slot - 1]?.jabatan;
+
+                if (!nama) return null;
+
                 return (
-                  <div key={idx} style={{
+                  <div key={slot} style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
                     padding: '6px 12px',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border-glass)',
+                    background: slot === 1 ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-elevated)',
+                    border: slot === 1 ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border-glass)',
                     borderRadius: 'var(--radius-md)',
                   }}>
-                    <span className="badge badge-green" style={{ fontSize: '10px' }}>
-                      Penyidik {inv.role_order || idx + 1}
+                    <span className={slot === 1 ? 'badge badge-green' : 'badge badge-gray'} style={{ fontSize: '10px' }}>
+                      {slot === 1 ? 'Kanit / P1' : `Penyidik ${slot}`}
                     </span>
                     <span style={{ fontSize: '13px', fontWeight: 500 }}>
-                      {person.nama}
+                      {nama}
                     </span>
                     <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      ({person.pangkat || 'Penyidik'})
+                      ({pangkat || '-'} {nrp ? `NRP: ${nrp}` : ''})
                     </span>
+                    {jabatan && (
+                      <span style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                        [{jabatan}]
+                      </span>
+                    )}
                   </div>
                 );
               })}
@@ -862,6 +904,7 @@ export default function CaseDetail({
         <CaseEditModal
           isOpen={isEditModalOpen}
           caseItem={caseItem}
+          personnel={personnel}
           onClose={() => setIsEditModalOpen(false)}
           onSaveSuccess={(updated) => {
             if (onUpdateCase) onUpdateCase(updated);

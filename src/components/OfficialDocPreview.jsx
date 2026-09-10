@@ -334,6 +334,36 @@ export default function OfficialDocPreview({
             )}
           </div>
         )}
+
+        {/* Pejabat & Penandatangan Strip */}
+        {selectedCase && (currentDataMap?.ATASAN_NAMA || currentDataMap?.PENYIDIK_1_NAMA) && (
+          <div style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontSize: '11px',
+            color: 'var(--text-secondary)',
+            borderTop: '1px dashed rgba(255, 255, 255, 0.08)',
+            paddingTop: '6px',
+            marginTop: '2px',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{ color: '#93C5FD', fontWeight: 700 }}>PENANDATANGAN OTOMATIS:</span>
+            {currentDataMap.ATASAN_NAMA && (
+              <span>Kasat: <strong style={{ color: '#fff' }}>{currentDataMap.ATASAN_PANGKAT} {currentDataMap.ATASAN_NAMA}</strong> {currentDataMap.ATASAN_NRP ? `(NRP: ${currentDataMap.ATASAN_NRP})` : ''}</span>
+            )}
+            {currentDataMap.PENYIDIK_1_NAMA && (
+              <span>Kanit/P1: <strong style={{ color: '#fff' }}>{currentDataMap.PENYIDIK_1_PANGKAT} {currentDataMap.PENYIDIK_1_NAMA}</strong> {currentDataMap.PENYIDIK_1_NRP ? `(NRP: ${currentDataMap.PENYIDIK_1_NRP})` : ''}</span>
+            )}
+            {currentDataMap.PENYIDIK_2_NAMA && (
+              <span>P2: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_2_NAMA}</strong></span>
+            )}
+            {currentDataMap.PENYIDIK_3_NAMA && (
+              <span>P3: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_3_NAMA}</strong></span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Success Notice */}

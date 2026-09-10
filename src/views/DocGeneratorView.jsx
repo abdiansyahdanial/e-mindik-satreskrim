@@ -241,6 +241,23 @@ export default function DocGeneratorView({
       initial['TGL_SPRIN_HAN'] = selectedSuspect.tgl_sprin_han || '';
     }
 
+    // Otomatisasi Penandatangan Mindik dari Data Perkara Aktif
+    initial['ATASAN_NAMA'] = currentCase.kasat_nama || '';
+    initial['ATASAN_PANGKAT'] = currentCase.kasat_pangkat || '';
+    initial['ATASAN_NRP'] = currentCase.kasat_nrp || '';
+
+    initial['PENYIDIK_NAMA'] = currentCase.penyidik_1_nama || '';
+    initial['PENYIDIK_PANGKAT'] = currentCase.penyidik_1_pangkat || '';
+    initial['PENYIDIK_NRP'] = currentCase.penyidik_1_nrp || '';
+    initial['PENYIDIK_JABATAN'] = currentCase.penyidik_1_jabatan || '';
+
+    for (let i = 1; i <= 5; i++) {
+      initial[`PENYIDIK_${i}_NAMA`] = currentCase[`penyidik_${i}_nama`] || '';
+      initial[`PENYIDIK_${i}_PANGKAT`] = currentCase[`penyidik_${i}_pangkat`] || '';
+      initial[`PENYIDIK_${i}_NRP`] = currentCase[`penyidik_${i}_nrp`] || '';
+      initial[`PENYIDIK_${i}_JABATAN`] = currentCase[`penyidik_${i}_jabatan`] || '';
+    }
+
     const defaultDocFields = [
       { field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
       { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: todayStr, is_required: true },
@@ -250,14 +267,15 @@ export default function DocGeneratorView({
       { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
       { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
       { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
-      { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
-      { field_key: 'PENYIDIK_NAMA', field_label: 'Nama Penyidik', field_type: 'text', default_value: '', is_required: false },
-      { field_key: 'ATASAN_NAMA', field_label: 'Nama Atasan / Kasat', field_type: 'text', default_value: '', is_required: false }
+      { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false }
     ];
 
     let fields = Array.isArray(currentTemplate.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
       ? [...currentTemplate.dynamic_fields] 
       : defaultDocFields;
+
+    // Hapus referensi ATASAN_JABATAN karena jabatan Kasat tercetak permanen di template
+    fields = fields.filter(f => (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase() !== 'ATASAN_JABATAN');
 
     // Jika dokumen SP.Sidik tapi template dynamic_fields belum memiliki field TGL_SPRIN_SIDIK, sisipkan
     if (isSidikDoc && !fields.some(f => (f.field_key || f.key || '').toUpperCase().includes('TGL_SPRIN_SIDIK'))) {
@@ -303,8 +321,28 @@ export default function DocGeneratorView({
         initial[cleanKey] = defVal || 'Jl. Dr. Sutomo No. 5, Kolaka';
       } else if (upperKey === 'PENYIDIK_NAMA') {
         initial[cleanKey] = currentCase.penyidik_1_nama || defVal || '';
+      } else if (upperKey === 'PENYIDIK_PANGKAT') {
+        initial[cleanKey] = currentCase.penyidik_1_pangkat || defVal || '';
+      } else if (upperKey === 'PENYIDIK_NRP') {
+        initial[cleanKey] = currentCase.penyidik_1_nrp || defVal || '';
+      } else if (upperKey === 'PENYIDIK_JABATAN') {
+        initial[cleanKey] = currentCase.penyidik_1_jabatan || defVal || '';
       } else if (upperKey === 'ATASAN_NAMA') {
         initial[cleanKey] = currentCase.kasat_nama || defVal || '';
+      } else if (upperKey === 'ATASAN_PANGKAT') {
+        initial[cleanKey] = currentCase.kasat_pangkat || defVal || '';
+      } else if (upperKey === 'ATASAN_NRP') {
+        initial[cleanKey] = currentCase.kasat_nrp || defVal || '';
+      } else if (upperKey.startsWith('PENYIDIK_')) {
+        // Otomatis sinkronkan slot PENYIDIK_1..5
+        const slotMatch = upperKey.match(/^PENYIDIK_([1-5])_(NAMA|PANGKAT|NRP|JABATAN)$/);
+        if (slotMatch) {
+          const sNum = slotMatch[1];
+          const sProp = slotMatch[2].toLowerCase();
+          initial[cleanKey] = currentCase[`penyidik_${sNum}_${sProp}`] || defVal || '';
+        } else {
+          initial[cleanKey] = defVal || '';
+        }
       } else if (upperKey === 'NO_SP_TAP_TSK' && selectedSuspect) {
         initial[cleanKey] = selectedSuspect.no_sp_tap_tsk || '';
       } else if (upperKey === 'TGL_SP_TAP_TSK' && selectedSuspect) {
@@ -1072,6 +1110,7 @@ export default function DocGeneratorView({
                     is_required: true
                   });
                 }
+                dynamicList = dynamicList.filter(f => (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase() !== 'ATASAN_JABATAN');
                 return dynamicList;
               })().map((field, idx) => {
                 const fieldKey = (field.field_key || field.key || `FIELD_${idx}`).replace(/[{}]/g, '').trim();

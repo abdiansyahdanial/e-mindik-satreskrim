@@ -275,15 +275,42 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const alamat = cleanInput.ALAMAT || cleanInput.alamat || activeSuspect?.alamat || activeCase?.alamat_tersangka || '';
 
   // F. PENYIDIK & PEJABAT
-  const penyidikNama = cleanInput.PENYIDIK_NAMA || cleanInput.penyidik_nama || activeCase?.penyidik_1_nama || '';
-  const penyidikPangkat = cleanInput.PENYIDIK_PANGKAT || cleanInput.penyidik_pangkat || activeCase?.penyidik_1_pangkat || '';
-  const penyidikNrp = cleanInput.PENYIDIK_NRP || cleanInput.penyidik_nrp || activeCase?.penyidik_1_nrp || '';
-  const penyidikJabatan = cleanInput.PENYIDIK_JABATAN || cleanInput.penyidik_jabatan || activeCase?.penyidik_1_jabatan || 'PENYIDIK PEMBANTU';
-  const penyidik2Nama = cleanInput.PENYIDIK_2_NAMA || cleanInput.penyidik_2_nama || activeCase?.penyidik_2_nama || '';
+  // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama)
   const atasanNama = cleanInput.ATASAN_NAMA || cleanInput.atasan_nama || activeCase?.kasat_nama || '';
   const atasanPangkat = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.kasat_pangkat || '';
   const atasanNrp = cleanInput.ATASAN_NRP || cleanInput.atasan_nrp || activeCase?.kasat_nrp || '';
-  const atasanJabatan = cleanInput.ATASAN_JABATAN || cleanInput.atasan_jabatan || activeCase?.kasat_jabatan || 'KASAT RESKRIM';
+
+  // Tanda Tangan Kanit / Yang Menerima Perintah / Pemeriksa BA (Penyidik 1)
+  const penyidikNama = cleanInput.PENYIDIK_NAMA || cleanInput.penyidik_nama || activeCase?.penyidik_1_nama || '';
+  const penyidikPangkat = cleanInput.PENYIDIK_PANGKAT || cleanInput.penyidik_pangkat || activeCase?.penyidik_1_pangkat || '';
+  const penyidikNrp = cleanInput.PENYIDIK_NRP || cleanInput.penyidik_nrp || activeCase?.penyidik_1_nrp || '';
+  const penyidikJabatan = cleanInput.PENYIDIK_JABATAN || cleanInput.penyidik_jabatan || activeCase?.penyidik_1_jabatan || '';
+
+  // Daftar Tim Penerima Perintah (Untuk Badan Surat Perintah Personel 1 s.d. 5)
+  const penyidik1Nama = cleanInput.PENYIDIK_1_NAMA || cleanInput.penyidik_1_nama || activeCase?.penyidik_1_nama || penyidikNama || '';
+  const penyidik1Pangkat = cleanInput.PENYIDIK_1_PANGKAT || cleanInput.penyidik_1_pangkat || activeCase?.penyidik_1_pangkat || penyidikPangkat || '';
+  const penyidik1Nrp = cleanInput.PENYIDIK_1_NRP || cleanInput.penyidik_1_nrp || activeCase?.penyidik_1_nrp || penyidikNrp || '';
+  const penyidik1Jabatan = cleanInput.PENYIDIK_1_JABATAN || cleanInput.penyidik_1_jabatan || activeCase?.penyidik_1_jabatan || penyidikJabatan || '';
+
+  const penyidik2Nama = cleanInput.PENYIDIK_2_NAMA || cleanInput.penyidik_2_nama || activeCase?.penyidik_2_nama || '';
+  const penyidik2Pangkat = cleanInput.PENYIDIK_2_PANGKAT || cleanInput.penyidik_2_pangkat || activeCase?.penyidik_2_pangkat || '';
+  const penyidik2Nrp = cleanInput.PENYIDIK_2_NRP || cleanInput.penyidik_2_nrp || activeCase?.penyidik_2_nrp || '';
+  const penyidik2Jabatan = cleanInput.PENYIDIK_2_JABATAN || cleanInput.penyidik_2_jabatan || activeCase?.penyidik_2_jabatan || '';
+
+  const penyidik3Nama = cleanInput.PENYIDIK_3_NAMA || cleanInput.penyidik_3_nama || activeCase?.penyidik_3_nama || '';
+  const penyidik3Pangkat = cleanInput.PENYIDIK_3_PANGKAT || cleanInput.penyidik_3_pangkat || activeCase?.penyidik_3_pangkat || '';
+  const penyidik3Nrp = cleanInput.PENYIDIK_3_NRP || cleanInput.penyidik_3_nrp || activeCase?.penyidik_3_nrp || '';
+  const penyidik3Jabatan = cleanInput.PENYIDIK_3_JABATAN || cleanInput.penyidik_3_jabatan || activeCase?.penyidik_3_jabatan || '';
+
+  const penyidik4Nama = cleanInput.PENYIDIK_4_NAMA || cleanInput.penyidik_4_nama || activeCase?.penyidik_4_nama || '';
+  const penyidik4Pangkat = cleanInput.PENYIDIK_4_PANGKAT || cleanInput.penyidik_4_pangkat || activeCase?.penyidik_4_pangkat || '';
+  const penyidik4Nrp = cleanInput.PENYIDIK_4_NRP || cleanInput.penyidik_4_nrp || activeCase?.penyidik_4_nrp || '';
+  const penyidik4Jabatan = cleanInput.PENYIDIK_4_JABATAN || cleanInput.penyidik_4_jabatan || activeCase?.penyidik_4_jabatan || '';
+
+  const penyidik5Nama = cleanInput.PENYIDIK_5_NAMA || cleanInput.penyidik_5_nama || activeCase?.penyidik_5_nama || '';
+  const penyidik5Pangkat = cleanInput.PENYIDIK_5_PANGKAT || cleanInput.penyidik_5_pangkat || activeCase?.penyidik_5_pangkat || '';
+  const penyidik5Nrp = cleanInput.PENYIDIK_5_NRP || cleanInput.penyidik_5_nrp || activeCase?.penyidik_5_nrp || '';
+  const penyidik5Jabatan = cleanInput.PENYIDIK_5_JABATAN || cleanInput.penyidik_5_jabatan || activeCase?.penyidik_5_jabatan || '';
 
   const baseMap = {
     // A. SURAT AKTIF (Resmi UPPERCASE)
@@ -343,15 +370,42 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     ALAMAT: alamat,
 
     // F. PENYIDIK & PEJABAT (Resmi UPPERCASE)
+    // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama)
+    ATASAN_NAMA: atasanNama,
+    ATASAN_PANGKAT: atasanPangkat,
+    ATASAN_NRP: atasanNrp,
+
+    // Tanda Tangan Kanit / Yang Menerima Perintah / Pemeriksa BA
     PENYIDIK_NAMA: penyidikNama,
     PENYIDIK_PANGKAT: penyidikPangkat,
     PENYIDIK_NRP: penyidikNrp,
     PENYIDIK_JABATAN: penyidikJabatan,
+
+    // Daftar Tim Penerima Perintah (Personel 1 s.d. 5)
+    PENYIDIK_1_NAMA: penyidik1Nama,
+    PENYIDIK_1_PANGKAT: penyidik1Pangkat,
+    PENYIDIK_1_NRP: penyidik1Nrp,
+    PENYIDIK_1_JABATAN: penyidik1Jabatan,
+
     PENYIDIK_2_NAMA: penyidik2Nama,
-    ATASAN_NAMA: atasanNama,
-    ATASAN_PANGKAT: atasanPangkat,
-    ATASAN_NRP: atasanNrp,
-    ATASAN_JABATAN: atasanJabatan,
+    PENYIDIK_2_PANGKAT: penyidik2Pangkat,
+    PENYIDIK_2_NRP: penyidik2Nrp,
+    PENYIDIK_2_JABATAN: penyidik2Jabatan,
+
+    PENYIDIK_3_NAMA: penyidik3Nama,
+    PENYIDIK_3_PANGKAT: penyidik3Pangkat,
+    PENYIDIK_3_NRP: penyidik3Nrp,
+    PENYIDIK_3_JABATAN: penyidik3Jabatan,
+
+    PENYIDIK_4_NAMA: penyidik4Nama,
+    PENYIDIK_4_PANGKAT: penyidik4Pangkat,
+    PENYIDIK_4_NRP: penyidik4Nrp,
+    PENYIDIK_4_JABATAN: penyidik4Jabatan,
+
+    PENYIDIK_5_NAMA: penyidik5Nama,
+    PENYIDIK_5_PANGKAT: penyidik5Pangkat,
+    PENYIDIK_5_NRP: penyidik5Nrp,
+    PENYIDIK_5_JABATAN: penyidik5Jabatan,
 
     // Aliases lowercase & format pendukung untuk kompatibilitas template fleksibel
     nomor_surat: nomorSurat,
@@ -425,15 +479,40 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     status_kawin: statusKawin,
     alamat: alamat,
 
+    // Lowercase Aliases
+    atasan_nama: atasanNama,
+    atasan_pangkat: atasanPangkat,
+    atasan_nrp: atasanNrp,
+
     penyidik_nama: penyidikNama,
     penyidik_pangkat: penyidikPangkat,
     penyidik_nrp: penyidikNrp,
     penyidik_jabatan: penyidikJabatan,
+
+    penyidik_1_nama: penyidik1Nama,
+    penyidik_1_pangkat: penyidik1Pangkat,
+    penyidik_1_nrp: penyidik1Nrp,
+    penyidik_1_jabatan: penyidik1Jabatan,
+
     penyidik_2_nama: penyidik2Nama,
-    atasan_nama: atasanNama,
-    atasan_pangkat: atasanPangkat,
-    atasan_nrp: atasanNrp,
-    atasan_jabatan: atasanJabatan,
+    penyidik_2_pangkat: penyidik2Pangkat,
+    penyidik_2_nrp: penyidik2Nrp,
+    penyidik_2_jabatan: penyidik2Jabatan,
+
+    penyidik_3_nama: penyidik3Nama,
+    penyidik_3_pangkat: penyidik3Pangkat,
+    penyidik_3_nrp: penyidik3Nrp,
+    penyidik_3_jabatan: penyidik3Jabatan,
+
+    penyidik_4_nama: penyidik4Nama,
+    penyidik_4_pangkat: penyidik4Pangkat,
+    penyidik_4_nrp: penyidik4Nrp,
+    penyidik_4_jabatan: penyidik4Jabatan,
+
+    penyidik_5_nama: penyidik5Nama,
+    penyidik_5_pangkat: penyidik5Pangkat,
+    penyidik_5_nrp: penyidik5Nrp,
+    penyidik_5_jabatan: penyidik5Jabatan,
 
     // Legacy Aliases
     DOC_NO: nomorSurat,
@@ -551,27 +630,30 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig = [], personnelList = [], options = {}) {
   const activeCase = { ...lpData };
 
-  // Sync investigator fields if not directly present on activeCase
-  if (!activeCase.penyidik_1_nama && Array.isArray(lpData.investigators) && lpData.investigators[0]) {
-    const inv1 = lpData.investigators[0];
-    const found = (personnelList || []).find(p => p.id === inv1.user_id || p.nrp === inv1.nrp) || inv1;
-    activeCase.penyidik_1_nama = found.nama || inv1.nama;
-    activeCase.penyidik_1_pangkat = found.pangkat || inv1.pangkat;
-    activeCase.penyidik_1_nrp = found.nrp || inv1.nrp;
-    activeCase.penyidik_1_jabatan = found.jabatan || inv1.jabatan;
+  // Sync investigator fields 1-5 if not directly present on activeCase
+  for (let i = 1; i <= 5; i++) {
+    const keyNama = `penyidik_${i}_nama`;
+    const keyPangkat = `penyidik_${i}_pangkat`;
+    const keyNrp = `penyidik_${i}_nrp`;
+    const keyJabatan = `penyidik_${i}_jabatan`;
+
+    if (!activeCase[keyNama] && Array.isArray(lpData.investigators) && lpData.investigators[i - 1]) {
+      const inv = lpData.investigators[i - 1];
+      const found = (personnelList || []).find(p => p.id === inv.user_id || p.nrp === inv.nrp) || inv;
+      activeCase[keyNama] = found.nama || inv.nama || '';
+      activeCase[keyPangkat] = found.pangkat || inv.pangkat || '';
+      activeCase[keyNrp] = found.nrp || inv.nrp || '';
+      activeCase[keyJabatan] = found.jabatan || inv.jabatan || (i === 1 ? 'Kanit' : 'Penyidik Pembantu');
+    }
   }
-  if (!activeCase.penyidik_2_nama && Array.isArray(lpData.investigators) && lpData.investigators[1]) {
-    const inv2 = lpData.investigators[1];
-    const found2 = (personnelList || []).find(p => p.id === inv2.user_id || p.nrp === inv2.nrp) || inv2;
-    activeCase.penyidik_2_nama = found2.nama || inv2.nama;
-  }
+
+  // Sync Kasat Reskrim if not present
   if (!activeCase.kasat_nama) {
-    const kasat = (personnelList || []).find(p => p.role === 'Kasat') || (personnelList || [])[0];
+    const kasat = (personnelList || []).find(p => p.role === 'Kasat' || (p.jabatan || '').toUpperCase().includes('KASAT')) || (personnelList || [])[0];
     if (kasat) {
-      activeCase.kasat_nama = kasat.nama;
-      activeCase.kasat_pangkat = kasat.pangkat;
-      activeCase.kasat_nrp = kasat.nrp;
-      activeCase.kasat_jabatan = kasat.jabatan || 'KASAT RESKRIM';
+      activeCase.kasat_nama = kasat.nama || '';
+      activeCase.kasat_pangkat = kasat.pangkat || '';
+      activeCase.kasat_nrp = kasat.nrp || '';
     }
   }
 

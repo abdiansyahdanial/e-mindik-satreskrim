@@ -355,6 +355,7 @@ export default function CasesView({
         <CaseEditModal
           isOpen={Boolean(caseToEdit)}
           caseItem={caseToEdit}
+          personnel={personnel}
           onClose={() => setCaseToEdit(null)}
           onSaveSuccess={(updated) => {
             if (onUpdateCase) onUpdateCase(updated);

@@ -489,6 +489,7 @@ export default function App() {
       {selectedCaseForDetail && (
         <CaseDetailModal
           caseItem={selectedCaseForDetail}
+          personnel={personnel}
           onClose={() => setSelectedCaseForDetail(null)}
           onGenerateDocForCase={(c) => handleOpenGeneratorForCase(c)}
           onUpdateCase={handleUpdateCase}
