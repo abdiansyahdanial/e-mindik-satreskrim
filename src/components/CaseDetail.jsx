@@ -29,13 +29,33 @@ export default function CaseDetail({
   onGenerateDocForCase, 
   onUpdateCase,
   caseDocuments = [],
-  personnel = []
+  personnel = [],
+  fetchCaseDetail,
+  loadData
 }) {
   const [suspects, setSuspects] = useState([]);
   const [isLoadingSuspects, setIsLoadingSuspects] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingSuspect, setEditingSuspect] = useState(null);
+  const [formData, setFormData] = useState({
+    nama: '',
+    nik: '',
+    tempat_lahir: '',
+    tanggal_lahir: '',
+    tgl_lahir: '',
+    umur: '',
+    jenis_kelamin: 'Laki-laki',
+    pekerjaan: '',
+    kewarganegaraan: 'Indonesia',
+    pendidikan: 'SMA',
+    agama: 'Islam',
+    status_pernikahan: 'Kawin',
+    alamat: '',
+    status: 'tersangka',
+    nomor_sp_tap: '',
+    tanggal_sp_tap: ''
+  });
   const [subjekTab, setSubjekTab] = useState('all'); // 'all' | 'tersangka' | 'terlapor'
   const [submittingSuspect, setSubmittingSuspect] = useState(false);
   const [notice, setNotice] = useState(null);
@@ -172,8 +192,8 @@ export default function CaseDetail({
       nik: suspectForm.nik.trim() || '-',
       jenis_kelamin: suspectForm.jenis_kelamin,
       tempat_lahir: suspectForm.tempat_lahir.trim(),
-      tgl_lahir: suspectForm.tgl_lahir,
-      umur: suspectForm.umur ? `${suspectForm.umur}` : '-',
+      tgl_lahir: suspectForm.tgl_lahir ? suspectForm.tgl_lahir : null,
+      umur: suspectForm.umur ? `${suspectForm.umur}` : null,
       agama: suspectForm.agama,
       pekerjaan: suspectForm.pekerjaan.trim(),
       kewarganegaraan: suspectForm.kewarganegaraan.trim(),
@@ -181,10 +201,10 @@ export default function CaseDetail({
       status_pernikahan: suspectForm.status_pernikahan,
       alamat: suspectForm.alamat.trim(),
       status: suspectForm.status || 'tersangka',
-      nomor_sp_tap: isTsk ? nomorSpTap : '',
-      tanggal_sp_tap: isTsk ? tanggalSpTap : '',
-      no_sp_tap_tsk: isTsk ? nomorSpTap : '',
-      tgl_sp_tap_tsk: isTsk ? tanggalSpTap : '',
+      status_subjek: suspectForm.status || 'tersangka',
+      nomor_sp_tap: isTsk && nomorSpTap ? nomorSpTap : null,
+      no_sp_tap_tsk: isTsk && nomorSpTap ? nomorSpTap : null,
+      tanggal_sp_tap: isTsk && tanggalSpTap ? tanggalSpTap : null,
       created_at: new Date().toISOString()
     };
 
@@ -211,6 +231,7 @@ export default function CaseDetail({
         });
       }
 
+      await fetchSuspects();
       setIsModalOpen(false);
       resetSuspectForm();
     } catch (err) {
@@ -221,72 +242,157 @@ export default function CaseDetail({
     }
   };
 
-  const handleSaveEditSuspect = async (e) => {
-    e.preventDefault();
-    if (!editingSuspect || !editingSuspect.nama?.trim()) {
-      alert('Nama subjek wajib diisi.');
-      return;
-    }
+  const handleOpenEditSuspect = (suspect) => {
+    setEditingSuspect(suspect);
+    setFormData({
+      nama: suspect.nama || '',
+      nik: suspect.nik || '',
+      tempat_lahir: suspect.tempat_lahir || '',
+      tanggal_lahir: suspect.tanggal_lahir || suspect.tgl_lahir || '',
+      tgl_lahir: suspect.tanggal_lahir || suspect.tgl_lahir || '',
+      umur: suspect.umur || '',
+      jenis_kelamin: suspect.jenis_kelamin || 'Laki-laki',
+      pekerjaan: suspect.pekerjaan || '',
+      kewarganegaraan: suspect.kewarganegaraan || 'Indonesia',
+      pendidikan: suspect.pendidikan || 'SMA',
+      agama: suspect.agama || 'Islam',
+      status_pernikahan: suspect.status_pernikahan || 'Kawin',
+      alamat: suspect.alamat || '',
+      status: suspect.status || 'tersangka',
+      nomor_sp_tap: suspect.nomor_sp_tap || suspect.no_sp_tap_tsk || '',
+      tanggal_sp_tap: suspect.tanggal_sp_tap || suspect.tgl_sp_tap_tsk || ''
+    });
+  };
 
-    setSubmittingSuspect(true);
-    const isTsk = (editingSuspect.status || 'tersangka') === 'tersangka';
-    const nomorSpTap = (editingSuspect.nomor_sp_tap || editingSuspect.no_sp_tap_tsk || '').trim();
-    const tanggalSpTap = (editingSuspect.tanggal_sp_tap || editingSuspect.tgl_sp_tap_tsk || '');
+  const handlePromoteToSuspect = (subject) => {
+    setEditingSuspect(subject);
+    setFormData({
+      nama: subject.nama || '',
+      nik: subject.nik || '',
+      tempat_lahir: subject.tempat_lahir || '',
+      tanggal_lahir: subject.tanggal_lahir || subject.tgl_lahir || '',
+      tgl_lahir: subject.tanggal_lahir || subject.tgl_lahir || '',
+      umur: subject.umur || '',
+      jenis_kelamin: subject.jenis_kelamin || 'Laki-laki',
+      pekerjaan: subject.pekerjaan || '',
+      kewarganegaraan: subject.kewarganegaraan || 'Indonesia',
+      pendidikan: subject.pendidikan || 'SMA',
+      agama: subject.agama || 'Islam',
+      status_pernikahan: subject.status_pernikahan || 'Kawin',
+      alamat: subject.alamat || '',
+      status: 'tersangka',
+      nomor_sp_tap: subject.nomor_sp_tap || subject.no_sp_tap_tsk || `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`,
+      tanggal_sp_tap: subject.tanggal_sp_tap || subject.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0]
+    });
+  };
 
-    const updates = {
-      nama: editingSuspect.nama.trim(),
-      nik: editingSuspect.nik?.trim() || '-',
-      jenis_kelamin: editingSuspect.jenis_kelamin || 'Laki-laki',
-      tempat_lahir: editingSuspect.tempat_lahir?.trim() || '',
-      tgl_lahir: editingSuspect.tgl_lahir || '',
-      umur: editingSuspect.umur ? `${editingSuspect.umur}` : '-',
-      agama: editingSuspect.agama || 'Islam',
-      pekerjaan: editingSuspect.pekerjaan?.trim() || '',
-      kewarganegaraan: editingSuspect.kewarganegaraan?.trim() || 'Indonesia',
-      pendidikan: editingSuspect.pendidikan || 'SMA',
-      status_pernikahan: editingSuspect.status_pernikahan || 'Kawin',
-      alamat: editingSuspect.alamat?.trim() || '',
-      status: editingSuspect.status || 'tersangka',
-      nomor_sp_tap: isTsk ? nomorSpTap : '',
-      tanggal_sp_tap: isTsk ? tanggalSpTap : '',
-      no_sp_tap_tsk: isTsk ? nomorSpTap : '',
-      tgl_sp_tap_tsk: isTsk ? tanggalSpTap : '',
-    };
-
+  const handleUpdateSuspect = async (suspectId) => {
     try {
-      const isRealId = editingSuspect.id && !String(editingSuspect.id).startsWith('legacy-') && !String(editingSuspect.id).startsWith('suspect-');
-      if (isRealId) {
-        const { error } = await supabase
-          .from('case_suspects')
-          .update(updates)
-          .eq('id', editingSuspect.id);
-
-        if (error) {
-          console.warn('Update case_suspects notice:', error.message);
-        }
+      if (!formData.nama?.trim()) {
+        alert('Nama subjek wajib diisi.');
+        return;
       }
 
-      setSuspects((prev) => prev.map((s) => s.id === editingSuspect.id ? { ...s, ...updates } : s));
+      setSubmittingSuspect(true);
+      const isTsk = (formData.status || 'tersangka') === 'tersangka';
+      const birthDate = formData.tanggal_lahir || formData.tgl_lahir || null;
+
+      const payload = {
+        nama: formData.nama.trim(),
+        nik: formData.nik?.trim() || '-',
+        tempat_lahir: formData.tempat_lahir?.trim() || '',
+        tgl_lahir: birthDate ? birthDate : null,
+        umur: formData.umur ? String(formData.umur).trim() : null,
+        jenis_kelamin: formData.jenis_kelamin || 'Laki-laki',
+        pekerjaan: formData.pekerjaan?.trim() || '',
+        kewarganegaraan: formData.kewarganegaraan?.trim() || 'Indonesia',
+        pendidikan: formData.pendidikan || 'SMA',
+        agama: formData.agama || 'Islam',
+        status_pernikahan: formData.status_pernikahan || 'Kawin',
+        alamat: formData.alamat?.trim() || '',
+        status: formData.status || 'tersangka',
+        status_subjek: formData.status || 'tersangka',
+        nomor_sp_tap: isTsk && formData.nomor_sp_tap ? formData.nomor_sp_tap.trim() : null,
+        no_sp_tap_tsk: isTsk && formData.nomor_sp_tap ? formData.nomor_sp_tap.trim() : null,
+        tanggal_sp_tap: isTsk && formData.tanggal_sp_tap ? formData.tanggal_sp_tap : null
+      };
+
+      const isRealId = suspectId && !String(suspectId).startsWith('legacy-') && !String(suspectId).startsWith('suspect-');
+
+      if (isRealId) {
+        let updatePayload = { ...payload };
+        let { error } = await supabase
+          .from('case_suspects')
+          .update(updatePayload)
+          .eq('id', suspectId);
+
+        // Fallback jika ada kolom yang tidak ditemukan di schema cache
+        if (error && error.message && error.message.includes("Could not find the '")) {
+          const match = error.message.match(/Could not find the '([^']+)' column/);
+          if (match && match[1]) {
+            delete updatePayload[match[1]];
+            const retry = await supabase
+              .from('case_suspects')
+              .update(updatePayload)
+              .eq('id', suspectId);
+            error = retry.error;
+          }
+        }
+
+        if (error) throw error;
+      } else {
+        const insertPayload = {
+          ...payload,
+          case_id: caseItem.id,
+          created_at: new Date().toISOString()
+        };
+        const { error } = await supabase
+          .from('case_suspects')
+          .insert([insertPayload]);
+        
+        if (error) throw error;
+      }
+
+      // Muat ulang data tersangka dan perkara agar UI langsung ter-update
+      await fetchSuspects();
+
+      if (typeof fetchCaseDetail === 'function') {
+        await fetchCaseDetail();
+      } else if (typeof loadData === 'function') {
+        await loadData();
+      }
+
+      if (onUpdateCase && caseItem) {
+        const updatedRef = {
+          ...(caseItem.references || {}),
+          no_sp_tap_tsk: payload.no_sp_tap_tsk,
+          tgl_sp_tap_tsk: payload.tanggal_sp_tap
+        };
+        onUpdateCase({
+          ...caseItem,
+          references: updatedRef
+        });
+      }
+
       setNotice({
         type: 'success',
-        message: `Data ${isTsk ? 'Tersangka' : 'Terlapor'} '${updates.nama}' berhasil diperbarui!`
+        message: `Data ${isTsk ? 'Tersangka' : 'Terlapor'} '${payload.nama}' berhasil diperbarui!`
       });
+
       setEditingSuspect(null);
     } catch (err) {
-      console.error('Error updating suspect:', err);
-      alert(`Gagal memperbarui data: ${err.message}`);
+      console.error("Gagal update data tersangka:", err);
+      alert(`Gagal menyimpan perubahan: ${err.message}`);
     } finally {
       setSubmittingSuspect(false);
     }
   };
 
-  const handlePromoteToSuspect = (subject) => {
-    setEditingSuspect({
-      ...subject,
-      status: 'tersangka',
-      nomor_sp_tap: subject.nomor_sp_tap || subject.no_sp_tap_tsk || `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`,
-      tanggal_sp_tap: subject.tanggal_sp_tap || subject.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0]
-    });
+  const handleSaveEditSuspect = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (editingSuspect) {
+      await handleUpdateSuspect(editingSuspect.id);
+    }
   };
 
   const handleDeleteSuspect = async (subject) => {
@@ -655,7 +761,7 @@ export default function CaseDetail({
 
                               <button
                                 type="button"
-                                onClick={() => setEditingSuspect({ ...s })}
+                                onClick={() => handleOpenEditSuspect(s)}
                                 className="btn btn-secondary btn-xs"
                                 style={{
                                   display: 'flex',
@@ -1291,7 +1397,7 @@ export default function CaseDetail({
             className="modal-content" 
             style={{ 
               maxWidth: '680px', 
-              border: editingSuspect.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)' 
+              border: formData.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)' 
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1301,17 +1407,17 @@ export default function CaseDetail({
                   width: '36px',
                   height: '36px',
                   borderRadius: '8px',
-                  background: editingSuspect.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                  border: editingSuspect.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)',
+                  background: formData.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  border: formData.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Edit3 size={18} color={editingSuspect.status === 'terlapor' ? '#F59E0B' : 'var(--accent-red)'} />
+                  <Edit3 size={18} color={formData.status === 'terlapor' ? '#F59E0B' : 'var(--accent-red)'} />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>
-                    {editingSuspect.status === 'terlapor' ? 'Edit Data Terlapor' : 'Edit Data Tersangka (SP.TAP.TSK)'}
+                    {formData.status === 'terlapor' ? 'Edit Data Terlapor' : 'Edit Data Tersangka (SP.TAP.TSK)'}
                   </h3>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                     Perbarui identitas yuridis subjek perkara
@@ -1320,6 +1426,7 @@ export default function CaseDetail({
               </div>
 
               <button 
+                type="button"
                 onClick={() => setEditingSuspect(null)}
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
               >
@@ -1342,19 +1449,19 @@ export default function CaseDetail({
                       gap: '8px',
                       padding: '8px 12px',
                       borderRadius: 'var(--radius-md)',
-                      background: editingSuspect.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-elevated)',
-                      border: editingSuspect.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--border-glass)',
+                      background: formData.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-elevated)',
+                      border: formData.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--border-glass)',
                       cursor: 'pointer'
                     }}>
                       <input 
                         type="radio" 
                         name="edit_status" 
                         value="terlapor" 
-                        checked={editingSuspect.status === 'terlapor'} 
-                        onChange={() => setEditingSuspect(prev => ({ ...prev, status: 'terlapor' }))} 
+                        checked={formData.status === 'terlapor'} 
+                        onChange={() => setFormData(prev => ({ ...prev, status: 'terlapor' }))} 
                       />
                       <div>
-                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: editingSuspect.status === 'terlapor' ? '#F59E0B' : 'inherit' }}>
+                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: formData.status === 'terlapor' ? '#F59E0B' : 'inherit' }}>
                           Terlapor
                         </div>
                         <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Calon tersangka / pihak terlapor</div>
@@ -1368,24 +1475,24 @@ export default function CaseDetail({
                       gap: '8px',
                       padding: '8px 12px',
                       borderRadius: 'var(--radius-md)',
-                      background: editingSuspect.status === 'tersangka' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-elevated)',
-                      border: editingSuspect.status === 'tersangka' ? '1px solid var(--accent-red)' : '1px solid var(--border-glass)',
+                      background: formData.status === 'tersangka' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-elevated)',
+                      border: formData.status === 'tersangka' ? '1px solid var(--accent-red)' : '1px solid var(--border-glass)',
                       cursor: 'pointer'
                     }}>
                       <input 
                         type="radio" 
                         name="edit_status" 
                         value="tersangka" 
-                        checked={editingSuspect.status === 'tersangka'} 
-                        onChange={() => setEditingSuspect(prev => ({ 
+                        checked={formData.status === 'tersangka'} 
+                        onChange={() => setFormData(prev => ({ 
                           ...prev, 
                           status: 'tersangka',
-                          nomor_sp_tap: prev.nomor_sp_tap || prev.no_sp_tap_tsk || `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`,
-                          tanggal_sp_tap: prev.tanggal_sp_tap || prev.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0]
+                          nomor_sp_tap: prev.nomor_sp_tap || `S.Tap/${Math.floor(Math.random() * 50 + 10)}/IX/2026/Reskrim`,
+                          tanggal_sp_tap: prev.tanggal_sp_tap || new Date().toISOString().split('T')[0]
                         }))} 
                       />
                       <div>
-                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: editingSuspect.status === 'tersangka' ? 'var(--accent-red)' : 'inherit' }}>
+                        <div style={{ fontSize: '12.5px', fontWeight: 600, color: formData.status === 'tersangka' ? 'var(--accent-red)' : 'inherit' }}>
                           Tersangka Resmi
                         </div>
                         <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Telah terbit Surat Penetapan Tersangka</div>
@@ -1395,7 +1502,7 @@ export default function CaseDetail({
                 </div>
 
                 {/* Nomor & Tanggal SP.TAP.TSK */}
-                {editingSuspect.status === 'tersangka' && (
+                {formData.status === 'tersangka' && (
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: '1.4fr 1fr',
@@ -1407,17 +1514,13 @@ export default function CaseDetail({
                   }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label" style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
-                        Nomor SP.TAP.TSK <span style={{ color: 'var(--accent-red)' }}>*</span>
+                        Nomor Surat Penetapan Tersangka (SP.TAP.TSK) <span style={{ color: 'var(--accent-red)' }}>*</span>
                       </label>
                       <input
                         type="text"
-                        value={editingSuspect.nomor_sp_tap || editingSuspect.no_sp_tap_tsk || ''}
-                        onChange={(e) => setEditingSuspect(prev => ({ 
-                          ...prev, 
-                          nomor_sp_tap: e.target.value,
-                          no_sp_tap_tsk: e.target.value 
-                        }))}
-                        placeholder="Contoh: S.Tap/12/VIII/2026/Reskrim"
+                        value={formData.nomor_sp_tap}
+                        onChange={(e) => setFormData(prev => ({ ...prev, nomor_sp_tap: e.target.value }))}
+                        placeholder="Contoh: S.Tap.Tsk/123/IX/RES.1.2./2026/Satreskrim"
                         className="form-input mono"
                         required
                       />
@@ -1425,16 +1528,12 @@ export default function CaseDetail({
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label" style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
-                        Tanggal SP.TAP.TSK <span style={{ color: 'var(--accent-red)' }}>*</span>
+                        Tanggal Surat Penetapan Tersangka <span style={{ color: 'var(--accent-red)' }}>*</span>
                       </label>
                       <input
                         type="date"
-                        value={editingSuspect.tanggal_sp_tap || editingSuspect.tgl_sp_tap_tsk || ''}
-                        onChange={(e) => setEditingSuspect(prev => ({ 
-                          ...prev, 
-                          tanggal_sp_tap: e.target.value,
-                          tgl_sp_tap_tsk: e.target.value 
-                        }))}
+                        value={formData.tanggal_sp_tap}
+                        onChange={(e) => setFormData(prev => ({ ...prev, tanggal_sp_tap: e.target.value }))}
                         className="form-input mono"
                         required
                       />
@@ -1450,8 +1549,8 @@ export default function CaseDetail({
                     </label>
                     <input
                       type="text"
-                      value={editingSuspect.nama || ''}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, nama: e.target.value }))}
+                      value={formData.nama}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nama: e.target.value }))}
                       placeholder="Nama lengkap sesuai identitas..."
                       className="form-input"
                       required
@@ -1462,8 +1561,8 @@ export default function CaseDetail({
                     <label className="form-label">NIK (Nomor Induk Kependudukan)</label>
                     <input
                       type="text"
-                      value={editingSuspect.nik || ''}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, nik: e.target.value }))}
+                      value={formData.nik}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nik: e.target.value }))}
                       placeholder="16 digit NIK..."
                       className="form-input mono"
                     />
@@ -1476,8 +1575,8 @@ export default function CaseDetail({
                     <label className="form-label">Tempat Lahir</label>
                     <input
                       type="text"
-                      value={editingSuspect.tempat_lahir || ''}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, tempat_lahir: e.target.value }))}
+                      value={formData.tempat_lahir}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tempat_lahir: e.target.value }))}
                       className="form-input"
                     />
                   </div>
@@ -1486,13 +1585,13 @@ export default function CaseDetail({
                     <label className="form-label">Tanggal Lahir</label>
                     <input
                       type="date"
-                      value={editingSuspect.tgl_lahir || ''}
+                      value={formData.tanggal_lahir || formData.tgl_lahir || ''}
                       onChange={(e) => {
                         const val = e.target.value;
                         const birthYear = new Date(val).getFullYear();
                         const currentYear = new Date().getFullYear();
-                        const calculatedAge = !isNaN(birthYear) ? String(Math.max(1, currentYear - birthYear)) : editingSuspect.umur;
-                        setEditingSuspect(prev => ({ ...prev, tgl_lahir: val, umur: calculatedAge }));
+                        const calculatedAge = !isNaN(birthYear) ? String(Math.max(1, currentYear - birthYear)) : formData.umur;
+                        setFormData(prev => ({ ...prev, tanggal_lahir: val, tgl_lahir: val, umur: calculatedAge }));
                       }}
                       className="form-input mono"
                     />
@@ -1502,8 +1601,8 @@ export default function CaseDetail({
                     <label className="form-label">Umur (Thn)</label>
                     <input
                       type="text"
-                      value={editingSuspect.umur || ''}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, umur: e.target.value }))}
+                      value={formData.umur}
+                      onChange={(e) => setFormData(prev => ({ ...prev, umur: e.target.value }))}
                       className="form-input mono"
                     />
                   </div>
@@ -1511,8 +1610,8 @@ export default function CaseDetail({
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Jenis Kelamin</label>
                     <select
-                      value={editingSuspect.jenis_kelamin || 'Laki-laki'}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, jenis_kelamin: e.target.value }))}
+                      value={formData.jenis_kelamin || 'Laki-laki'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, jenis_kelamin: e.target.value }))}
                       className="form-select"
                     >
                       <option value="Laki-laki">Laki-laki</option>
@@ -1526,8 +1625,8 @@ export default function CaseDetail({
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Agama</label>
                     <select
-                      value={editingSuspect.agama || 'Islam'}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, agama: e.target.value }))}
+                      value={formData.agama || 'Islam'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, agama: e.target.value }))}
                       className="form-select"
                     >
                       <option value="Islam">Islam</option>
@@ -1543,8 +1642,8 @@ export default function CaseDetail({
                     <label className="form-label">Pekerjaan</label>
                     <input
                       type="text"
-                      value={editingSuspect.pekerjaan || ''}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, pekerjaan: e.target.value }))}
+                      value={formData.pekerjaan}
+                      onChange={(e) => setFormData(prev => ({ ...prev, pekerjaan: e.target.value }))}
                       className="form-input"
                     />
                   </div>
@@ -1553,8 +1652,8 @@ export default function CaseDetail({
                     <label className="form-label">Kewarganegaraan</label>
                     <input
                       type="text"
-                      value={editingSuspect.kewarganegaraan || 'Indonesia'}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, kewarganegaraan: e.target.value }))}
+                      value={formData.kewarganegaraan || 'Indonesia'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, kewarganegaraan: e.target.value }))}
                       className="form-input"
                     />
                   </div>
@@ -1565,8 +1664,8 @@ export default function CaseDetail({
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Pendidikan Terakhir</label>
                     <select
-                      value={editingSuspect.pendidikan || 'SMA'}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, pendidikan: e.target.value }))}
+                      value={formData.pendidikan || 'SMA'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, pendidikan: e.target.value }))}
                       className="form-select"
                     >
                       <option value="SD">SD</option>
@@ -1581,8 +1680,8 @@ export default function CaseDetail({
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Status Pernikahan</label>
                     <select
-                      value={editingSuspect.status_pernikahan || 'Kawin'}
-                      onChange={(e) => setEditingSuspect(prev => ({ ...prev, status_pernikahan: e.target.value }))}
+                      value={formData.status_pernikahan || 'Kawin'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, status_pernikahan: e.target.value }))}
                       className="form-select"
                     >
                       <option value="Belum Kawin">Belum Kawin</option>
@@ -1597,8 +1696,8 @@ export default function CaseDetail({
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Alamat Tempat Tinggal Lengkap</label>
                   <textarea
-                    value={editingSuspect.alamat || ''}
-                    onChange={(e) => setEditingSuspect(prev => ({ ...prev, alamat: e.target.value }))}
+                    value={formData.alamat}
+                    onChange={(e) => setFormData(prev => ({ ...prev, alamat: e.target.value }))}
                     className="form-textarea"
                     style={{ minHeight: '60px' }}
                   />
@@ -1613,7 +1712,7 @@ export default function CaseDetail({
                   type="submit" 
                   disabled={submittingSuspect} 
                   className="btn btn-primary btn-sm" 
-                  style={{ background: editingSuspect.status === 'terlapor' ? '#D97706' : 'var(--accent-red)' }}
+                  style={{ background: formData.status === 'terlapor' ? '#D97706' : 'var(--accent-red)' }}
                 >
                   <FileCheck2 size={14} />
                   <span>{submittingSuspect ? 'Menyimpan...' : 'Simpan Perubahan'}</span>

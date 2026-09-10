@@ -472,7 +472,7 @@ export default function DocGeneratorView({
       let targetColDate = null;
       if (tplCode.includes('TAP_TSK') || tplCode.includes('PENETAPAN TERSANGKA') || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA')) {
         targetColNo = 'no_sp_tap_tsk';
-        targetColDate = 'tgl_sp_tap_tsk';
+        targetColDate = 'tanggal_sp_tap';
       } else if (tplCode.includes('KAP')) {
         targetColNo = 'no_sprin_kap';
         targetColDate = 'tgl_sprin_kap';
@@ -503,9 +503,10 @@ export default function DocGeneratorView({
       if (targetColDate && docDate) {
         selectedSuspect[targetColDate] = docDate;
         suspectUpdates[targetColDate] = docDate;
-        if (targetColDate === 'tgl_sp_tap_tsk') {
-          selectedSuspect.tanggal_sp_tap = docDate;
+        if (targetColDate === 'tanggal_sp_tap') {
+          selectedSuspect.tgl_sp_tap_tsk = docDate;
           suspectUpdates.tanggal_sp_tap = docDate;
+          delete suspectUpdates.tgl_sp_tap_tsk;
         }
       }
 
