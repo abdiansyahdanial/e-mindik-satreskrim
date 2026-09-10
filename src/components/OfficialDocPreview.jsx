@@ -15,6 +15,7 @@ import {
   generatePdfBlob, 
   generateAndDownloadDocx, 
   buildMindikVariables,
+  buildMindikPayload,
   formatTanggalIndonesia
 } from '../utils/mindikGenerator';
 
@@ -297,6 +298,42 @@ export default function OfficialDocPreview({
             </button>
           )}
         </div>
+
+        {/* Chain of Reference Strip */}
+        {selectedCase && (currentDataMap?.NOMOR_LP || currentDataMap?.NO_SPRIN_SIDIK) && (
+          <div style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            fontSize: '11px',
+            color: 'var(--text-secondary)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            paddingTop: '8px',
+            marginTop: '2px',
+            flexWrap: 'wrap'
+          }}>
+            <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>RANTAI RUJUKAN:</span>
+            {currentDataMap.NOMOR_LP && (
+              <span>LP: <strong style={{ color: '#fff' }}>{currentDataMap.NOMOR_LP}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TANGGAL_LP || '-'}</span>)</span>
+            )}
+            {currentDataMap.NO_SPRIN_SIDIK && (
+              <span>SP.Sidik: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_SIDIK}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPRIN_SIDIK || '-'}</span>)</span>
+            )}
+            {currentDataMap.NO_SPDP && (
+              <span>SPDP: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPDP}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPDP || '-'}</span>)</span>
+            )}
+            {currentDataMap.NO_SP_TAP_TSK && (
+              <span>SP.Tap.Tsk: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SP_TAP_TSK}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SP_TAP_TSK || '-'}</span>)</span>
+            )}
+            {currentDataMap.NO_SPRIN_HAN && (
+              <span>SP.Han: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_HAN}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPRIN_HAN || '-'}</span>)</span>
+            )}
+            {currentDataMap.NO_P21_KN && (
+              <span>P-21: <strong style={{ color: '#fff' }}>{currentDataMap.NO_P21_KN}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_P21_KN || '-'}</span>)</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Success Notice */}

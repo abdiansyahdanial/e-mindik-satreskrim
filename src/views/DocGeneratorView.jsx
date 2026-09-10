@@ -21,7 +21,7 @@ import { mockPersonnel } from '../data/mockPersonnel';
 import { supabase } from '../supabaseClient';
 import { deleteTemplateFromSupabase, getDeletedTemplateCodes } from '../utils/templateHelper';
 import OfficialDocPreview from '../components/OfficialDocPreview';
-import { generateAndDownloadDocx } from '../services/mindikGenerator';
+import { generateAndDownloadDocx, formatTanggalIndonesia } from '../services/mindikGenerator';
 
 export default function DocGeneratorView({ 
   cases = [], 
@@ -122,6 +122,13 @@ export default function DocGeneratorView({
     );
   })();
 
+  // Helper identifikasi dokumen SP.Sidik
+  const isSidikDoc = (() => {
+    const c = (currentTemplate?.code || '').toUpperCase();
+    const t = (currentTemplate?.title || '').toUpperCase();
+    return c.includes('SIDIK') || t.includes('PENYIDIKAN');
+  })();
+
   // 2. Fetch Suspects for currentCase from Supabase (BAGIAN 3 & 4)
   useEffect(() => {
     if (!currentCase?.id) return;
@@ -213,9 +220,33 @@ export default function DocGeneratorView({
     const initial = {};
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // Rantai Rujukan Baku dari Perkara (Chain of Reference)
+    initial['NOMOR_LP'] = currentCase.nomor_lp || currentCase.no_lp || '';
+    initial['TANGGAL_LP'] = currentCase.tanggal_lp || currentCase.sprin_date || '';
+    initial['TGL_LP'] = initial['TANGGAL_LP'];
+
+    initial['NO_SPRIN_SIDIK'] = currentCase.no_sprin_sidik || '';
+    initial['TGL_SPRIN_SIDIK'] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSidikDoc ? todayStr : '');
+    initial['TANGGAL_SPRIN_SIDIK'] = initial['TGL_SPRIN_SIDIK'];
+
+    initial['NO_SPDP'] = currentCase.no_spdp || '';
+    initial['TGL_SPDP'] = currentCase.tgl_spdp || '';
+    initial['TANGGAL_SPDP'] = initial['TGL_SPDP'];
+
+    if (selectedSuspect) {
+      initial['NO_SP_TAP_TSK'] = selectedSuspect.no_sp_tap_tsk || '';
+      initial['TGL_SP_TAP_TSK'] = selectedSuspect.tgl_sp_tap_tsk || '';
+      initial['NO_SPRIN_KAP'] = selectedSuspect.no_sprin_kap || '';
+      initial['NO_SPRIN_HAN'] = selectedSuspect.no_sprin_han || '';
+      initial['TGL_SPRIN_HAN'] = selectedSuspect.tgl_sprin_han || '';
+    }
+
     const defaultDocFields = [
       { field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
-      { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
+      { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: todayStr, is_required: true },
+      ...(isSidikDoc ? [
+        { field_key: 'TGL_SPRIN_SIDIK', field_label: 'Tanggal Penetapan SP.Sidik', field_type: 'date', default_value: currentCase.tgl_sprin_sidik || currentCase.sprin_date || todayStr, is_required: true }
+      ] : []),
       { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
       { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
       { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
@@ -224,9 +255,20 @@ export default function DocGeneratorView({
       { field_key: 'ATASAN_NAMA', field_label: 'Nama Atasan / Kasat', field_type: 'text', default_value: '', is_required: false }
     ];
 
-    const fields = Array.isArray(currentTemplate.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
-      ? currentTemplate.dynamic_fields 
+    let fields = Array.isArray(currentTemplate.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
+      ? [...currentTemplate.dynamic_fields] 
       : defaultDocFields;
+
+    // Jika dokumen SP.Sidik tapi template dynamic_fields belum memiliki field TGL_SPRIN_SIDIK, sisipkan
+    if (isSidikDoc && !fields.some(f => (f.field_key || f.key || '').toUpperCase().includes('TGL_SPRIN_SIDIK'))) {
+      fields.splice(2, 0, {
+        field_key: 'TGL_SPRIN_SIDIK',
+        field_label: 'Tanggal Penetapan SP.Sidik',
+        field_type: 'date',
+        default_value: currentCase.tgl_sprin_sidik || currentCase.sprin_date || todayStr,
+        is_required: true
+      });
+    }
 
     fields.forEach((field) => {
       const rawKey = field.field_key || field.key || '';
@@ -239,6 +281,18 @@ export default function DocGeneratorView({
       // Tentukan nilai default sesuai kamus standar (tanpa string fallback bentrok)
       if (upperKey === 'TANGGAL_SURAT' || upperKey === 'DOC_DATE') {
         initial[cleanKey] = todayStr;
+      } else if (upperKey === 'TGL_SPRIN_SIDIK' || upperKey === 'TANGGAL_SPRIN_SIDIK') {
+        initial[cleanKey] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSidikDoc ? todayStr : '');
+      } else if (upperKey === 'NO_SPRIN_SIDIK') {
+        initial[cleanKey] = currentCase.no_sprin_sidik || '';
+      } else if (upperKey === 'NOMOR_LP' || upperKey === 'NO_LP') {
+        initial[cleanKey] = currentCase.nomor_lp || currentCase.no_lp || '';
+      } else if (upperKey === 'TANGGAL_LP' || upperKey === 'TGL_LP') {
+        initial[cleanKey] = currentCase.tanggal_lp || currentCase.sprin_date || '';
+      } else if (upperKey === 'NO_SPDP') {
+        initial[cleanKey] = currentCase.no_spdp || '';
+      } else if (upperKey === 'TGL_SPDP' || upperKey === 'TANGGAL_SPDP') {
+        initial[cleanKey] = currentCase.tgl_spdp || '';
       } else if (upperKey === 'TEMPAT_SURAT' || upperKey === 'DOC_LOCATION') {
         initial[cleanKey] = defVal || 'Tirawuta';
       } else if (upperKey === 'MASA_BERLAKU' || upperKey === 'DOC_VALIDITY') {
@@ -253,10 +307,14 @@ export default function DocGeneratorView({
         initial[cleanKey] = currentCase.kasat_nama || defVal || '';
       } else if (upperKey === 'NO_SP_TAP_TSK' && selectedSuspect) {
         initial[cleanKey] = selectedSuspect.no_sp_tap_tsk || '';
+      } else if (upperKey === 'TGL_SP_TAP_TSK' && selectedSuspect) {
+        initial[cleanKey] = selectedSuspect.tgl_sp_tap_tsk || '';
       } else if (upperKey === 'NO_SPRIN_KAP' && selectedSuspect) {
         initial[cleanKey] = selectedSuspect.no_sprin_kap || '';
       } else if (upperKey === 'NO_SPRIN_HAN' && selectedSuspect) {
         initial[cleanKey] = selectedSuspect.no_sprin_han || '';
+      } else if (upperKey === 'TGL_SPRIN_HAN' && selectedSuspect) {
+        initial[cleanKey] = selectedSuspect.tgl_sprin_han || '';
       } else if (field.field_type === 'select_personnel' || field.type === 'select_personnel') {
         const filter = field.role_filter;
         const matched = activePersonnel.find(p => !filter || p.role === filter);
@@ -278,35 +336,68 @@ export default function DocGeneratorView({
       return merged;
     });
     setIsSaved(false);
-  }, [selectedCaseId, selectedTemplateCode, currentTemplate, selectedSuspectId]);
+  }, [selectedCaseId, selectedTemplateCode, currentTemplate, selectedSuspectId, isSidikDoc]);
 
   const handleInputChange = (key, value) => {
-    setFormValues(prev => ({ ...prev, [key]: value }));
+    setFormValues(prev => {
+      const next = { ...prev, [key]: value };
+      
+      // Jika dokumen yang sedang dibuat adalah SP.Sidik, sinkronkan tanggal penetapan SP.Sidik
+      if (isSidikDoc) {
+        if (key === 'TGL_SPRIN_SIDIK' || key === 'tgl_sprin_sidik') {
+          currentCase.tgl_sprin_sidik = value;
+          currentCase.sprin_date = value;
+          supabase.from('cases').update({ tgl_sprin_sidik: value, sprin_date: value }).eq('id', currentCase.id).catch(() => {});
+        } else if ((key === 'TANGGAL_SURAT' || key === 'DOC_DATE') && !prev.TGL_SPRIN_SIDIK) {
+          next.TGL_SPRIN_SIDIK = value;
+          currentCase.tgl_sprin_sidik = value;
+          currentCase.sprin_date = value;
+          supabase.from('cases').update({ tgl_sprin_sidik: value, sprin_date: value }).eq('id', currentCase.id).catch(() => {});
+        }
+      }
+      return next;
+    });
     setIsSaved(false);
   };
 
-  // BAGIAN 4.2: Penyimpanan Balik Nomor Otomatis (Auto-Save Reference)
-  const saveReferenceNumbers = async (enteredNo) => {
-    if (!enteredNo || !currentCase) return;
+  // BAGIAN 4.2: Penyimpanan Balik Nomor Otomatis & Rantai Rujukan Tanggal
+  const saveReferenceNumbers = async (enteredNo, enteredDate) => {
+    if (!currentCase) return;
     const tplCode = (currentTemplate?.code || '').toUpperCase();
+    const docDate = enteredDate || formValues.TGL_SPRIN_SIDIK || formValues.tgl_sprin_sidik || formValues.TANGGAL_SURAT || formValues.DOC_DATE;
 
     // 1. Dokumen Tingkat Perkara
-    if (tplCode.includes('SIDIK')) {
-      currentCase.no_sprin_sidik = enteredNo;
+    if (isSidikDoc) {
+      if (enteredNo) currentCase.no_sprin_sidik = enteredNo;
+      if (docDate) {
+        currentCase.tgl_sprin_sidik = docDate;
+        currentCase.sprin_date = docDate;
+      }
       try {
-        await supabase.from('cases').update({ no_sprin_sidik: enteredNo }).eq('id', currentCase.id);
+        const updateObj = {};
+        if (enteredNo) updateObj.no_sprin_sidik = enteredNo;
+        if (docDate) {
+          updateObj.tgl_sprin_sidik = docDate;
+          updateObj.sprin_date = docDate;
+        }
+        await supabase.from('cases').update(updateObj).eq('id', currentCase.id);
       } catch (e) {
-        console.warn('Auto-save no_sprin_sidik error:', e);
+        console.warn('Auto-save no_sprin_sidik & tgl_sprin_sidik error:', e);
       }
     } else if (tplCode.includes('SPDP')) {
-      currentCase.no_spdp = enteredNo;
+      const spdpDate = formValues.TGL_SPDP || formValues.TANGGAL_SURAT || formValues.DOC_DATE;
+      if (enteredNo) currentCase.no_spdp = enteredNo;
+      if (spdpDate) currentCase.tgl_spdp = spdpDate;
       try {
-        await supabase.from('cases').update({ no_spdp: enteredNo }).eq('id', currentCase.id);
+        const updateObj = {};
+        if (enteredNo) updateObj.no_spdp = enteredNo;
+        if (spdpDate) updateObj.tgl_spdp = spdpDate;
+        await supabase.from('cases').update(updateObj).eq('id', currentCase.id);
       } catch (e) {
         console.warn('Auto-save no_spdp error:', e);
       }
     } else if (tplCode.includes('P21')) {
-      currentCase.no_p21_kn = enteredNo;
+      if (enteredNo) currentCase.no_p21_kn = enteredNo;
       try {
         await supabase.from('cases').update({ no_p21_kn: enteredNo }).eq('id', currentCase.id);
       } catch (e) {
@@ -316,30 +407,43 @@ export default function DocGeneratorView({
 
     // 2. Dokumen Tingkat Perorangan (Tersangka Terpilih)
     if (selectedSuspect?.id) {
-      let targetCol = null;
+      let targetColNo = null;
+      let targetColDate = null;
       if (tplCode.includes('TAP_TSK')) {
-        targetCol = 'no_sp_tap_tsk';
+        targetColNo = 'no_sp_tap_tsk';
+        targetColDate = 'tgl_sp_tap_tsk';
       } else if (tplCode.includes('KAP')) {
-        targetCol = 'no_sprin_kap';
+        targetColNo = 'no_sprin_kap';
+        targetColDate = 'tgl_sprin_kap';
       } else if (tplCode.includes('HAN') && !tplCode.includes('PANJANG') && !tplCode.includes('KN') && !tplCode.includes('PN')) {
-        targetCol = 'no_sprin_han';
+        targetColNo = 'no_sprin_han';
+        targetColDate = 'tgl_sprin_han';
       } else if (tplCode.includes('PANJANG_HAN_KN') || (tplCode.includes('PANJANG') && tplCode.includes('KN'))) {
-        targetCol = 'no_panjang_han_kn';
+        targetColNo = 'no_panjang_han_kn';
       } else if (tplCode.includes('SPRIN_HAN_KN')) {
-        targetCol = 'no_sprin_han_kn';
+        targetColNo = 'no_sprin_han_kn';
       } else if (tplCode.includes('TAP_HAN_PN_1')) {
-        targetCol = 'no_tap_han_pn_1';
+        targetColNo = 'no_tap_han_pn_1';
       } else if (tplCode.includes('SPRIN_HAN_PN_1')) {
-        targetCol = 'no_sprin_han_pn_1';
+        targetColNo = 'no_sprin_han_pn_1';
       }
 
-      if (targetCol) {
-        selectedSuspect[targetCol] = enteredNo;
-        setCaseSuspects(prev => prev.map(s => s.id === selectedSuspect.id ? { ...s, [targetCol]: enteredNo } : s));
+      const suspectUpdates = {};
+      if (targetColNo && enteredNo) {
+        selectedSuspect[targetColNo] = enteredNo;
+        suspectUpdates[targetColNo] = enteredNo;
+      }
+      if (targetColDate && docDate) {
+        selectedSuspect[targetColDate] = docDate;
+        suspectUpdates[targetColDate] = docDate;
+      }
+
+      if (Object.keys(suspectUpdates).length > 0) {
+        setCaseSuspects(prev => prev.map(s => s.id === selectedSuspect.id ? { ...s, ...suspectUpdates } : s));
         try {
-          await supabase.from('case_suspects').update({ [targetCol]: enteredNo }).eq('id', selectedSuspect.id);
+          await supabase.from('case_suspects').update(suspectUpdates).eq('id', selectedSuspect.id);
         } catch (e) {
-          console.warn(`Auto-save case_suspects ${targetCol} error:`, e);
+          console.warn(`Auto-save case_suspects error:`, e);
         }
       }
     }
@@ -353,8 +457,9 @@ export default function DocGeneratorView({
     setGeneratorNotice(null);
 
     const docNumber = formValues.NOMOR_SURAT || formValues.nomor_surat || formValues.DOC_NO || '';
-    if (docNumber) {
-      await saveReferenceNumbers(docNumber);
+    const docDate = formValues.TGL_SPRIN_SIDIK || formValues.TANGGAL_SURAT || formValues.DOC_DATE || '';
+    if (docNumber || docDate) {
+      await saveReferenceNumbers(docNumber, docDate);
     }
 
     try {
@@ -390,8 +495,9 @@ export default function DocGeneratorView({
     if (!currentCase || !currentTemplate) return;
 
     const docNumber = formValues.NOMOR_SURAT || formValues.nomor_surat || formValues.DOC_NO || '';
-    if (docNumber) {
-      await saveReferenceNumbers(docNumber);
+    const docDate = formValues.TGL_SPRIN_SIDIK || formValues.TANGGAL_SURAT || formValues.DOC_DATE || '';
+    if (docNumber || docDate) {
+      await saveReferenceNumbers(docNumber, docDate);
     }
 
     const newDoc = {
@@ -890,15 +996,84 @@ export default function DocGeneratorView({
               </div>
             )}
 
+            {/* Rantai Rujukan Perkara (Chain of Reference) */}
+            {currentCase && (
+              <div style={{
+                padding: '10px 12px',
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '14px',
+                fontSize: '11px',
+                lineHeight: '1.5'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--accent-cyan)', fontWeight: 700, letterSpacing: '0.3px' }}>
+                    RANTAI RUJUKAN PERKARA (CHAIN OF REFERENCE)
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                    Tag Terisolasi Mandiri
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', color: 'var(--text-secondary)' }}>
+                  <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan LP (Tag: {'{NOMOR_LP}'}):</div>
+                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.nomor_lp || currentCase.no_lp || '-'}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                      Tgl ({'{TANGGAL_LP}'}): {formatTanggalIndonesia(currentCase.tanggal_lp || currentCase.sprin_date) || '-'}
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Sidik (Tag: {'{NO_SPRIN_SIDIK}'}):</div>
+                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_sprin_sidik || (isSidikDoc ? '(Sedang dibuat)' : '-')}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                      Tgl ({'{TGL_SPRIN_SIDIK}'}): {formatTanggalIndonesia(formValues.TGL_SPRIN_SIDIK || currentCase.tgl_sprin_sidik || currentCase.sprin_date) || '-'}
+                    </div>
+                  </div>
+                  {currentCase.no_spdp && (
+                    <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
+                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SPDP (Tag: {'{NO_SPDP}'}):</div>
+                      <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_spdp}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                        Tgl ({'{TGL_SPDP}'}): {formatTanggalIndonesia(currentCase.tgl_spdp) || '-'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#94A3B8', marginTop: '6px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '4px' }}>
+                  {isSidikDoc ? (
+                    <span>Dokumen ini adalah <strong>SP.Sidik</strong>. Tanggal penetapan yang Anda simpan otomatis menjadi rujukan untuk SPDP & dokumen turunan berikutnya.</span>
+                  ) : (
+                    <span>Dokumen turunan ini otomatis membaca nomor & tanggal SP.Sidik dari perkara tanpa menimpa <code>{'{TANGGAL_SURAT}'}</code> aktif.</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {(Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 ? currentTemplate.dynamic_fields : [
-                { field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
-                { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
-                { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
-                { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
-                { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
-                { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
-              ]).map((field, idx) => {
+              {(() => {
+                let dynamicList = Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
+                  ? [...currentTemplate.dynamic_fields] 
+                  : [
+                    { field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
+                    { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
+                    { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
+                    { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
+                    { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
+                    { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
+                  ];
+
+                if (isSidikDoc && !dynamicList.some(f => (f.field_key || f.key || '').toUpperCase().includes('TGL_SPRIN_SIDIK'))) {
+                  dynamicList.splice(2, 0, {
+                    field_key: 'TGL_SPRIN_SIDIK',
+                    field_label: 'Tanggal Penetapan SP.Sidik',
+                    field_type: 'date',
+                    default_value: currentCase?.tgl_sprin_sidik || currentCase?.sprin_date || '',
+                    is_required: true
+                  });
+                }
+                return dynamicList;
+              })().map((field, idx) => {
                 const fieldKey = (field.field_key || field.key || `FIELD_${idx}`).replace(/[{}]/g, '').trim();
                 const fieldLabel = field.field_label || field.label || fieldKey;
                 const fieldType = field.field_type || field.type || 'text';

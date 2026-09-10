@@ -150,198 +150,327 @@ function normalizeDocxXml(zip) {
 }
 
 /**
- * STANDAR KAMUS VARIABEL MINDIK (BAGIAN 5 STANDARISASI ARSITEKTUR)
- * Pemetaan variabel Docxtemplater baku dengan dukungan huruf besar (UPPERCASE)
- * dan huruf kecil (lowercase), rujukan perkara, rujukan tersangka, dan multi-tersangka.
+ * STANDAR KAMUS PEMETAAN VARIABEL MINDIK RESMI SAT RESKRIM POLRES KOLAKA TIMUR
+ * 
+ * Memetakan SELURUH tag standar resmi secara konsisten (A. Surat Aktif, B. Rujukan Perkara,
+ * C. Rujukan Tersangka, D. Unsur Yuridis & Perkara, E. Identitas Pihak, F. Penyidik & Pejabat).
+ * 
+ * Mendukung pemanggilan fleksibel:
+ * - Positional: buildMindikPayload(activeCase, activeSuspect, cleanInput, suspectsList)
+ * - Object: buildMindikPayload({ activeCase, activeSuspect, suspectsList, formValues })
  */
-export function buildMindikPayload({ activeCase = {}, activeSuspect = {}, suspectsList = [], formValues = {} }) {
-  // 1. Bersihkan tanda kurung kurawal jika ada user yang mengetik { } di form
+export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = {}, maybeSuspectsList = []) {
+  let activeCase = {};
+  let activeSuspect = null;
+  let suspectsList = [];
+  let formValues = {};
+
+  // Deteksi fleksibel parameter object vs positional
+  if (arg1 && (arg1.activeCase !== undefined || arg1.formValues !== undefined || arg1.activeSuspect !== undefined || arg1.suspectsList !== undefined)) {
+    activeCase = arg1.activeCase || {};
+    activeSuspect = arg1.activeSuspect || null;
+    suspectsList = arg1.suspectsList || [];
+    formValues = arg1.formValues || {};
+  } else {
+    activeCase = arg1 || {};
+    activeSuspect = maybeSuspect || null;
+    formValues = maybeInput || {};
+    suspectsList = Array.isArray(maybeSuspectsList) && maybeSuspectsList.length > 0
+      ? maybeSuspectsList
+      : (activeSuspect ? [activeSuspect] : (activeCase.suspectsList || []));
+  }
+
+  // Bersihkan tanda kurung kurawal jika ada user yang mengetik { } di form
   const cleanInput = {};
   Object.keys(formValues || {}).forEach((k) => {
     const cleanKey = k.replace(/[{}]/g, '').trim();
     cleanInput[cleanKey] = formValues[k];
   });
 
-  const nomorSuratBaru = cleanInput.NOMOR_SURAT || cleanInput.nomor_surat || cleanInput.DOC_NO || '';
+  // A. SURAT AKTIF
+  const nomorSurat = cleanInput.NOMOR_SURAT || cleanInput.doc_no || cleanInput.DOC_NO || cleanInput.nomor_surat || '';
+  const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.DOC_DATE || cleanInput.tanggal_surat || cleanInput.doc_date || new Date().toISOString().split('T')[0];
+  const tanggalSurat = formatTanggalIndonesia(rawTanggalSurat);
   const tempatSurat = cleanInput.TEMPAT_SURAT || cleanInput.tempat_surat || cleanInput.DOC_LOCATION || 'Tirawuta';
+  const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || '';
+  const alamatTujuan = cleanInput.ALAMAT_TUJUAN || cleanInput.alamat_tujuan || cleanInput.DOC_TARGET_ADDR || '';
+  const masaBerlaku = cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '';
 
-  // Format tanggal surat resmi
-  const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.tanggal_surat || cleanInput.DOC_DATE || cleanInput.doc_date || new Date().toISOString().split('T')[0];
-  const formattedTanggalSurat = formatTanggalIndonesia(rawTanggalSurat);
+  // B. RUJUKAN TINGKAT PERKARA (dari activeCase / input form)
+  const nomorLp = cleanInput.NOMOR_LP || cleanInput.nomor_lp || activeCase?.nomor_lp || activeCase?.no_lp || '';
+  const rawTanggalLp = cleanInput.TANGGAL_LP || cleanInput.tanggal_lp || cleanInput.TGL_LP || cleanInput.tgl_lp || activeCase?.tanggal_lp || activeCase?.sprin_date || '';
+  const tanggalLp = formatTanggalIndonesia(rawTanggalLp);
 
-  const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || 'Kepala Kejaksaan Negeri Kolaka';
-  const alamatTujuan = cleanInput.ALAMAT_TUJUAN || cleanInput.alamat_tujuan || cleanInput.DOC_TARGET_ADDR || 'Jl. Dr. Sutomo No. 5, Kolaka';
-  const masaBerlaku = cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '30 (tiga puluh) hari';
+  const noSprinSidik = cleanInput.NO_SPRIN_SIDIK || cleanInput.no_sprin_sidik || activeCase?.no_sprin_sidik || '';
+  const rawTglSprinSidik = cleanInput.TGL_SPRIN_SIDIK || cleanInput.tgl_sprin_sidik || cleanInput.TANGGAL_SPRIN_SIDIK || cleanInput.tanggal_sprin_sidik || activeCase?.tgl_sprin_sidik || activeCase?.sprin_date || '';
+  const tglSprinSidik = formatTanggalIndonesia(rawTglSprinSidik);
 
-  // Format tanggal-tanggal turunan perkara
-  const rawTanggalLp = cleanInput.TANGGAL_LP || cleanInput.tanggal_lp || activeCase.tanggal_lp || activeCase.sprin_date || '';
-  const formattedTanggalLp = formatTanggalIndonesia(rawTanggalLp);
+  const noSpdp = cleanInput.NO_SPDP || cleanInput.no_spdp || activeCase?.no_spdp || '';
+  const rawTglSpdp = cleanInput.TGL_SPDP || cleanInput.tgl_spdp || cleanInput.TANGGAL_SPDP || cleanInput.tanggal_spdp || activeCase?.tgl_spdp || '';
+  const tglSpdp = formatTanggalIndonesia(rawTglSpdp);
 
-  const rawTanggalPenetapan = cleanInput.TANGGAL_PENETAPAN || cleanInput.tanggal_penetapan || activeCase.tanggal_penetapan || '';
-  const formattedTanggalPenetapan = formatTanggalIndonesia(rawTanggalPenetapan);
+  const noP21Kn = cleanInput.NO_P21_KN || cleanInput.no_p21_kn || activeCase?.no_p21_kn || '';
+  const rawTglP21Kn = cleanInput.TGL_P21_KN || cleanInput.tgl_p21_kn || activeCase?.tgl_p21_kn || '';
+  const tglP21Kn = formatTanggalIndonesia(rawTglP21Kn);
 
-  const rawTanggalKejadian = cleanInput.TANGGAL_KEJADIAN || cleanInput.tanggal_kejadian || activeCase.tanggal_kejadian || activeCase.tgl_kejadian || '';
-  const formattedTanggalKejadian = formatTanggalIndonesia(rawTanggalKejadian);
+  // C. RUJUKAN TINGKAT TERSANGKA (dari activeSuspect / input form)
+  const noSpTapTsk = cleanInput.NO_SP_TAP_TSK || cleanInput.no_sp_tap_tsk || activeSuspect?.no_sp_tap_tsk || '';
+  const rawTglSpTapTsk = cleanInput.TGL_SP_TAP_TSK || cleanInput.tgl_sp_tap_tsk || cleanInput.TANGGAL_SP_TAP_TSK || cleanInput.tanggal_sp_tap_tsk || activeSuspect?.tgl_sp_tap_tsk || activeCase?.tgl_sp_tap_tsk || activeCase?.tanggal_penetapan || '';
+  const tglSpTapTsk = formatTanggalIndonesia(rawTglSpTapTsk);
 
-  const rawSprinDate = activeCase.sprin_date || '';
-  const formattedSprinDate = formatTanggalIndonesia(rawSprinDate);
+  const noSprinKap = cleanInput.NO_SPRIN_KAP || cleanInput.no_sprin_kap || activeSuspect?.no_sprin_kap || '';
+  const rawTglSprinKap = cleanInput.TGL_SPRIN_KAP || cleanInput.tgl_sprin_kap || cleanInput.TANGGAL_SPRIN_KAP || cleanInput.tanggal_sprin_kap || activeSuspect?.tgl_sprin_kap || '';
+  const tglSprinKap = formatTanggalIndonesia(rawTglSprinKap);
 
-  const suspect = activeSuspect || {};
-  const namaTsk = suspect.nama || activeCase.nama_terlapor || activeCase.terlapor_name || '';
-  const rawTglLahirSuspect = suspect.tgl_lahir || suspect.tanggal_lahir || '';
+  const noSprinHan = cleanInput.NO_SPRIN_HAN || cleanInput.no_sprin_han || activeSuspect?.no_sprin_han || '';
+  const rawTglSprinHan = cleanInput.TGL_SPRIN_HAN || cleanInput.tgl_sprin_han || cleanInput.TANGGAL_SPRIN_HAN || cleanInput.tanggal_sprin_han || activeSuspect?.tgl_sprin_han || '';
+  const tglSprinHan = formatTanggalIndonesia(rawTglSprinHan);
+
+  const noPanjangHanKn = cleanInput.NO_PANJANG_HAN_KN || cleanInput.no_panjang_han_kn || activeSuspect?.no_panjang_han_kn || '';
+  const rawTglPanjangHanKn = cleanInput.TGL_PANJANG_HAN_KN || cleanInput.tgl_panjang_han_kn || activeSuspect?.tgl_panjang_han_kn || '';
+  const tglPanjangHanKn = formatTanggalIndonesia(rawTglPanjangHanKn);
+
+  const noSprinHanKn = cleanInput.NO_SPRIN_HAN_KN || cleanInput.no_sprin_han_kn || activeSuspect?.no_sprin_han_kn || '';
+  const rawTglSprinHanKn = cleanInput.TGL_SPRIN_HAN_KN || cleanInput.tgl_sprin_han_kn || activeSuspect?.tgl_sprin_han_kn || '';
+  const tglSprinHanKn = formatTanggalIndonesia(rawTglSprinHanKn);
+
+  const noTapHanPn1 = cleanInput.NO_TAP_HAN_PN_1 || cleanInput.no_tap_han_pn_1 || activeSuspect?.no_tap_han_pn_1 || '';
+  const rawTglTapHanPn1 = cleanInput.TGL_TAP_HAN_PN_1 || cleanInput.tgl_tap_han_pn_1 || activeSuspect?.tgl_tap_han_pn_1 || '';
+  const tglTapHanPn1 = formatTanggalIndonesia(rawTglTapHanPn1);
+
+  const noTapHanPn2 = cleanInput.NO_TAP_HAN_PN_2 || cleanInput.no_tap_han_pn_2 || activeSuspect?.no_tap_han_pn_2 || '';
+  const rawTglTapHanPn2 = cleanInput.TGL_TAP_HAN_PN_2 || cleanInput.tgl_tap_han_pn_2 || activeSuspect?.tgl_tap_han_pn_2 || '';
+  const tglTapHanPn2 = formatTanggalIndonesia(rawTglTapHanPn2);
+
+  // D. UNSUR YURIDIS & PERKARA
+  const dasarPasalUu = cleanInput.DASAR_PASAL_UU || cleanInput.dasar_pasal_uu || activeCase?.dasar_pasal_uu || activeCase?.pasal_uu || '';
+  const pasal = cleanInput.PASAL || cleanInput.pasal || activeCase?.pasal || '';
+  const tindakPidana = cleanInput.TINDAK_PIDANA || cleanInput.tindak_pidana || activeCase?.tindak_pidana || '';
+  const tempatKejadian = cleanInput.TEMPAT_KEJADIAN || cleanInput.tempat_kejadian || activeCase?.locus || '';
+  const waktuKejadian = cleanInput.WAKTU_KEJADIAN || cleanInput.waktu_kejadian || activeCase?.tempus || '';
+  const statusKasus = cleanInput.STATUS_KASUS || cleanInput.status_kasus || activeCase?.status_kasus || activeCase?.status || 'PENYIDIKAN';
+
+  // E. IDENTITAS PIHAK
+  const namaPelapor = cleanInput.NAMA_PELAPOR || cleanInput.nama_pelapor || activeCase?.nama_pelapor || activeCase?.pelapor_name || '';
+  const namaTerlapor = cleanInput.NAMA_TERLAPOR || cleanInput.nama_terlapor || activeSuspect?.nama || activeCase?.nama_terlapor || activeCase?.terlapor_name || '';
+  const nik = cleanInput.NIK || cleanInput.nik || activeSuspect?.nik || '';
+  const jenisKelamin = cleanInput.JENIS_KELAMIN || cleanInput.jenis_kelamin || activeSuspect?.jenis_kelamin || '';
+  const rawTglLahirSuspect = activeSuspect?.tgl_lahir || activeSuspect?.tanggal_lahir || '';
   const formattedTglLahirSuspect = formatTanggalIndonesia(rawTglLahirSuspect);
+  const ttl = cleanInput.TTL || cleanInput.ttl || (
+    (activeSuspect?.tempat_lahir && rawTglLahirSuspect)
+      ? `${activeSuspect.tempat_lahir}, ${formattedTglLahirSuspect}`
+      : (activeSuspect?.ttl || activeSuspect?.pob_dob || '')
+  );
+  const umur = cleanInput.UMUR || cleanInput.umur || (
+    activeSuspect?.umur
+      ? (String(activeSuspect.umur).includes('Tahun') ? String(activeSuspect.umur) : `${activeSuspect.umur} Tahun`)
+      : ''
+  );
+  const agama = cleanInput.AGAMA || cleanInput.agama || activeSuspect?.agama || '';
+  const pekerjaan = cleanInput.PEKERJAAN || cleanInput.pekerjaan || activeSuspect?.pekerjaan || '';
+  const kewarganegaraan = cleanInput.KEWARGANEGARAAN || cleanInput.kewarganegaraan || activeSuspect?.kewarganegaraan || 'Indonesia';
+  const pendidikan = cleanInput.PENDIDIKAN || cleanInput.pendidikan || activeSuspect?.pendidikan || '';
+  const statusKawin = cleanInput.STATUS_KAWIN || cleanInput.status_kawin || activeSuspect?.status_pernikahan || activeSuspect?.marital_status || '';
+  const alamat = cleanInput.ALAMAT || cleanInput.alamat || activeSuspect?.alamat || activeCase?.alamat_tersangka || '';
+
+  // F. PENYIDIK & PEJABAT
+  const penyidikNama = cleanInput.PENYIDIK_NAMA || cleanInput.penyidik_nama || activeCase?.penyidik_1_nama || '';
+  const penyidikPangkat = cleanInput.PENYIDIK_PANGKAT || cleanInput.penyidik_pangkat || activeCase?.penyidik_1_pangkat || '';
+  const penyidikNrp = cleanInput.PENYIDIK_NRP || cleanInput.penyidik_nrp || activeCase?.penyidik_1_nrp || '';
+  const penyidikJabatan = cleanInput.PENYIDIK_JABATAN || cleanInput.penyidik_jabatan || activeCase?.penyidik_1_jabatan || 'PENYIDIK PEMBANTU';
+  const penyidik2Nama = cleanInput.PENYIDIK_2_NAMA || cleanInput.penyidik_2_nama || activeCase?.penyidik_2_nama || '';
+  const atasanNama = cleanInput.ATASAN_NAMA || cleanInput.atasan_nama || activeCase?.kasat_nama || '';
+  const atasanPangkat = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.kasat_pangkat || '';
+  const atasanNrp = cleanInput.ATASAN_NRP || cleanInput.atasan_nrp || activeCase?.kasat_nrp || '';
+  const atasanJabatan = cleanInput.ATASAN_JABATAN || cleanInput.atasan_jabatan || activeCase?.kasat_jabatan || 'KASAT RESKRIM';
 
   const baseMap = {
-    // 1. Administrasi & Nomor Dokumen Aktif Hari Ini
-    NOMOR_SURAT: nomorSuratBaru,
-    nomor_surat: nomorSuratBaru,
+    // A. SURAT AKTIF (Resmi UPPERCASE)
+    NOMOR_SURAT: nomorSurat,
+    TANGGAL_SURAT: tanggalSurat,
     TEMPAT_SURAT: tempatSurat,
-    tempat_surat: tempatSurat,
-    TANGGAL_SURAT: formattedTanggalSurat,
-    tanggal_surat: formattedTanggalSurat,
-    DOC_DATE: formattedTanggalSurat,
-    doc_date: formattedTanggalSurat,
     TUJUAN_SURAT: tujuanSurat,
-    tujuan_surat: tujuanSurat,
     ALAMAT_TUJUAN: alamatTujuan,
-    alamat_tujuan: alamatTujuan,
     MASA_BERLAKU: masaBerlaku,
+
+    // B. RUJUKAN TINGKAT PERKARA (Resmi UPPERCASE)
+    NOMOR_LP: nomorLp,
+    TANGGAL_LP: tanggalLp,
+    NO_SPRIN_SIDIK: noSprinSidik,
+    TGL_SPRIN_SIDIK: tglSprinSidik,
+    NO_SPDP: noSpdp,
+    TGL_SPDP: tglSpdp,
+    NO_P21_KN: noP21Kn,
+    TGL_P21_KN: tglP21Kn,
+
+    // C. RUJUKAN TINGKAT TERSANGKA (Resmi UPPERCASE)
+    NO_SP_TAP_TSK: noSpTapTsk,
+    TGL_SP_TAP_TSK: tglSpTapTsk,
+    NO_SPRIN_KAP: noSprinKap,
+    TGL_SPRIN_KAP: tglSprinKap,
+    NO_SPRIN_HAN: noSprinHan,
+    TGL_SPRIN_HAN: tglSprinHan,
+    NO_PANJANG_HAN_KN: noPanjangHanKn,
+    TGL_PANJANG_HAN_KN: tglPanjangHanKn,
+    NO_SPRIN_HAN_KN: noSprinHanKn,
+    TGL_SPRIN_HAN_KN: tglSprinHanKn,
+    NO_TAP_HAN_PN_1: noTapHanPn1,
+    TGL_TAP_HAN_PN_1: tglTapHanPn1,
+    NO_TAP_HAN_PN_2: noTapHanPn2,
+    TGL_TAP_HAN_PN_2: tglTapHanPn2,
+
+    // D. UNSUR YURIDIS & PERKARA (Resmi UPPERCASE)
+    DASAR_PASAL_UU: dasarPasalUu,
+    PASAL: pasal,
+    TINDAK_PIDANA: tindakPidana,
+    TEMPAT_KEJADIAN: tempatKejadian,
+    WAKTU_KEJADIAN: waktuKejadian,
+    STATUS_KASUS: statusKasus,
+
+    // E. IDENTITAS PIHAK (Resmi UPPERCASE)
+    NAMA_PELAPOR: namaPelapor,
+    NAMA_TERLAPOR: namaTerlapor,
+    NIK: nik,
+    JENIS_KELAMIN: jenisKelamin,
+    TTL: ttl,
+    UMUR: umur,
+    AGAMA: agama,
+    PEKERJAAN: pekerjaan,
+    KEWARGANEGARAAN: kewarganegaraan,
+    PENDIDIKAN: pendidikan,
+    STATUS_KAWIN: statusKawin,
+    ALAMAT: alamat,
+
+    // F. PENYIDIK & PEJABAT (Resmi UPPERCASE)
+    PENYIDIK_NAMA: penyidikNama,
+    PENYIDIK_PANGKAT: penyidikPangkat,
+    PENYIDIK_NRP: penyidikNrp,
+    PENYIDIK_JABATAN: penyidikJabatan,
+    PENYIDIK_2_NAMA: penyidik2Nama,
+    ATASAN_NAMA: atasanNama,
+    ATASAN_PANGKAT: atasanPangkat,
+    ATASAN_NRP: atasanNrp,
+    ATASAN_JABATAN: atasanJabatan,
+
+    // Aliases lowercase & format pendukung untuk kompatibilitas template fleksibel
+    nomor_surat: nomorSurat,
+    tanggal_surat: tanggalSurat,
+    tempat_surat: tempatSurat,
+    tujuan_surat: tujuanSurat,
+    alamat_tujuan: alamatTujuan,
     masa_berlaku: masaBerlaku,
 
-    // 2. Rujukan Surat Tingkat Perkara (Otomatis dari tabel cases)
-    NOMOR_LP: activeCase.nomor_lp || activeCase.no_lp || '',
-    nomor_lp: activeCase.nomor_lp || activeCase.no_lp || '',
-    TANGGAL_LP: formattedTanggalLp,
-    tanggal_lp: formattedTanggalLp,
-    NO_SPRIN_SIDIK: activeCase.no_sprin_sidik || '',
-    no_sprin_sidik: activeCase.no_sprin_sidik || '',
-    TANGGAL_SPRIN_SIDIK: formattedSprinDate,
-    tanggal_sprin_sidik: formattedSprinDate,
-    NO_SPDP: activeCase.no_spdp || '',
-    no_spdp: activeCase.no_spdp || '',
-    NO_P21_KN: activeCase.no_p21_kn || '',
-    no_p21_kn: activeCase.no_p21_kn || '',
-    TANGGAL_PENETAPAN: formattedTanggalPenetapan,
-    tanggal_penetapan: formattedTanggalPenetapan,
+    nomor_lp: nomorLp,
+    tanggal_lp: tanggalLp,
+    TGL_LP: tanggalLp,
+    tgl_lp: tanggalLp,
 
-    // 3. Rujukan Surat Tingkat Tersangka / Individu (Otomatis dari tabel case_suspects)
-    NO_SP_TAP_TSK: suspect.no_sp_tap_tsk || '',
-    no_sp_tap_tsk: suspect.no_sp_tap_tsk || '',
-    NO_SPRIN_KAP: suspect.no_sprin_kap || '',
-    no_sprin_kap: suspect.no_sprin_kap || '',
-    NO_SPRIN_HAN: suspect.no_sprin_han || '',
-    no_sprin_han: suspect.no_sprin_han || '',
-    NO_PANJANG_HAN_KN: suspect.no_panjang_han_kn || '',
-    no_panjang_han_kn: suspect.no_panjang_han_kn || '',
-    NO_SPRIN_HAN_KN: suspect.no_sprin_han_kn || '',
-    no_sprin_han_kn: suspect.no_sprin_han_kn || '',
-    NO_TAP_HAN_PN_1: suspect.no_tap_han_pn_1 || '',
-    no_tap_han_pn_1: suspect.no_tap_han_pn_1 || '',
-    NO_SPRIN_HAN_PN_1: suspect.no_sprin_han_pn_1 || '',
-    no_sprin_han_pn_1: suspect.no_sprin_han_pn_1 || '',
-    NO_TAP_HAN_PN_2: suspect.no_tap_han_pn_2 || '',
-    no_tap_han_pn_2: suspect.no_tap_han_pn_2 || '',
-    NO_SPRIN_HAN_PN_2: suspect.no_sprin_han_pn_2 || '',
-    no_sprin_han_pn_2: suspect.no_sprin_han_pn_2 || '',
+    no_sprin_sidik: noSprinSidik,
+    tgl_sprin_sidik: tglSprinSidik,
+    TANGGAL_SPRIN_SIDIK: tglSprinSidik,
+    tanggal_sprin_sidik: tglSprinSidik,
 
-    // 4. Unsur Yuridis Perkara
-    DASAR_PASAL_UU: activeCase.dasar_pasal_uu || activeCase.pasal_uu || '',
-    dasar_pasal_uu: activeCase.dasar_pasal_uu || activeCase.pasal_uu || '',
-    PASAL: activeCase.pasal || '',
-    pasal: activeCase.pasal || '',
-    TINDAK_PIDANA: activeCase.tindak_pidana || '',
-    tindak_pidana: activeCase.tindak_pidana || '',
-    TEMPAT_KEJADIAN: activeCase.locus || '',
-    tempat_kejadian: activeCase.locus || '',
-    WAKTU_KEJADIAN: activeCase.tempus || '',
-    waktu_kejadian: activeCase.tempus || '',
-    TANGGAL_KEJADIAN: formattedTanggalKejadian,
-    tanggal_kejadian: formattedTanggalKejadian,
-    STATUS_KASUS: activeCase.status || 'DALAM PROSES PENYIDIKAN',
-    status_kasus: activeCase.status || 'DALAM PROSES PENYIDIKAN',
+    no_spdp: noSpdp,
+    tgl_spdp: tglSpdp,
+    TANGGAL_SPDP: tglSpdp,
+    tanggal_spdp: tglSpdp,
 
-    // 5. Identitas Pihak Terlibat
-    NAMA_PELAPOR: activeCase.nama_pelapor || activeCase.pelapor_name || '',
-    nama_pelapor: activeCase.nama_pelapor || activeCase.pelapor_name || '',
-    NAMA_TERLAPOR: namaTsk,
-    nama_terlapor: namaTsk,
-    NIK: suspect.nik || '-',
-    nik: suspect.nik || '-',
-    JENIS_KELAMIN: suspect.jenis_kelamin || 'Laki-laki',
-    jenis_kelamin: suspect.jenis_kelamin || 'Laki-laki',
-    TTL: (suspect.tempat_lahir && rawTglLahirSuspect) ? `${suspect.tempat_lahir}, ${formattedTglLahirSuspect}` : (suspect.ttl || suspect.pob_dob || '-'),
-    ttl: (suspect.tempat_lahir && rawTglLahirSuspect) ? `${suspect.tempat_lahir}, ${formattedTglLahirSuspect}` : (suspect.ttl || suspect.pob_dob || '-'),
-    TEMPAT_LAHIR: suspect.tempat_lahir || '',
-    tempat_lahir: suspect.tempat_lahir || '',
+    no_p21_kn: noP21Kn,
+    tgl_p21_kn: tglP21Kn,
+
+    no_sp_tap_tsk: noSpTapTsk,
+    tgl_sp_tap_tsk: tglSpTapTsk,
+    TANGGAL_SP_TAP_TSK: tglSpTapTsk,
+    tanggal_sp_tap_tsk: tglSpTapTsk,
+    TANGGAL_PENETAPAN: tglSpTapTsk,
+    tanggal_penetapan: tglSpTapTsk,
+
+    no_sprin_kap: noSprinKap,
+    tgl_sprin_kap: tglSprinKap,
+    TANGGAL_SPRIN_KAP: tglSprinKap,
+    tanggal_sprin_kap: tglSprinKap,
+
+    no_sprin_han: noSprinHan,
+    tgl_sprin_han: tglSprinHan,
+    TANGGAL_SPRIN_HAN: tglSprinHan,
+    tanggal_sprin_han: tglSprinHan,
+
+    no_panjang_han_kn: noPanjangHanKn,
+    tgl_panjang_han_kn: tglPanjangHanKn,
+    no_sprin_han_kn: noSprinHanKn,
+    tgl_sprin_han_kn: tglSprinHanKn,
+    no_tap_han_pn_1: noTapHanPn1,
+    tgl_tap_han_pn_1: tglTapHanPn1,
+    no_tap_han_pn_2: noTapHanPn2,
+    tgl_tap_han_pn_2: tglTapHanPn2,
+
+    dasar_pasal_uu: dasarPasalUu,
+    pasal: pasal,
+    tindak_pidana: tindakPidana,
+    tempat_kejadian: tempatKejadian,
+    waktu_kejadian: waktuKejadian,
+    status_kasus: statusKasus,
+
+    nama_pelapor: namaPelapor,
+    nama_terlapor: namaTerlapor,
+    nik: nik,
+    jenis_kelamin: jenisKelamin,
+    ttl: ttl,
+    umur: umur,
+    agama: agama,
+    pekerjaan: pekerjaan,
+    kewarganegaraan: kewarganegaraan,
+    pendidikan: pendidikan,
+    status_kawin: statusKawin,
+    alamat: alamat,
+
+    penyidik_nama: penyidikNama,
+    penyidik_pangkat: penyidikPangkat,
+    penyidik_nrp: penyidikNrp,
+    penyidik_jabatan: penyidikJabatan,
+    penyidik_2_nama: penyidik2Nama,
+    atasan_nama: atasanNama,
+    atasan_pangkat: atasanPangkat,
+    atasan_nrp: atasanNrp,
+    atasan_jabatan: atasanJabatan,
+
+    // Legacy Aliases
+    DOC_NO: nomorSurat,
+    doc_no: nomorSurat,
+    DOC_LOCATION: tempatSurat,
+    doc_location: tempatSurat,
+    DOC_DATE: tanggalSurat,
+    doc_date: tanggalSurat,
+    TEMPAT_LAHIR: activeSuspect?.tempat_lahir || '',
+    tempat_lahir: activeSuspect?.tempat_lahir || '',
     TGL_LAHIR: formattedTglLahirSuspect,
     tgl_lahir: formattedTglLahirSuspect,
-    UMUR: suspect.umur ? (String(suspect.umur).includes('Tahun') ? suspect.umur : `${suspect.umur} Tahun`) : '-',
-    umur: suspect.umur ? (String(suspect.umur).includes('Tahun') ? suspect.umur : `${suspect.umur} Tahun`) : '-',
-    AGAMA: suspect.agama || 'Islam',
-    agama: suspect.agama || 'Islam',
-    PEKERJAAN: suspect.pekerjaan || 'Swasta',
-    pekerjaan: suspect.pekerjaan || 'Swasta',
-    KEWARGANEGARAAN: suspect.kewarganegaraan || 'Indonesia',
-    kewarganegaraan: suspect.kewarganegaraan || 'Indonesia',
-    PENDIDIKAN: suspect.pendidikan || 'SMA',
-    pendidikan: suspect.pendidikan || 'SMA',
-    STATUS_KAWIN: suspect.status_pernikahan || suspect.marital_status || 'Kawin',
-    status_kawin: suspect.status_pernikahan || suspect.marital_status || 'Kawin',
-    ALAMAT: suspect.alamat || activeCase.alamat_tersangka || activeCase.locus || '',
-    alamat: suspect.alamat || activeCase.alamat_tersangka || activeCase.locus || '',
 
-    // 6. Penyidik & Pejabat
-    PENYIDIK_NAMA: activeCase.penyidik_1_nama || cleanInput.PENYIDIK_NAMA || '',
-    penyidik_nama: activeCase.penyidik_1_nama || cleanInput.PENYIDIK_NAMA || '',
-    PENYIDIK_PANGKAT: activeCase.penyidik_1_pangkat || '',
-    penyidik_pangkat: activeCase.penyidik_1_pangkat || '',
-    PENYIDIK_NRP: activeCase.penyidik_1_nrp || '',
-    penyidik_nrp: activeCase.penyidik_1_nrp || '',
-    PENYIDIK_JABATAN: activeCase.penyidik_1_jabatan || 'PENYIDIK PEMBANTU',
-    penyidik_jabatan: activeCase.penyidik_1_jabatan || 'PENYIDIK PEMBANTU',
-    PENYIDIK_2_NAMA: activeCase.penyidik_2_nama || cleanInput.PENYIDIK_2_NAMA || '',
-    penyidik_2_nama: activeCase.penyidik_2_nama || cleanInput.PENYIDIK_2_NAMA || '',
-    ATASAN_NAMA: activeCase.kasat_nama || cleanInput.ATASAN_NAMA || '',
-    atasan_nama: activeCase.kasat_nama || cleanInput.ATASAN_NAMA || '',
-    ATASAN_PANGKAT: activeCase.kasat_pangkat || '',
-    atasan_pangkat: activeCase.kasat_pangkat || '',
-    ATASAN_NRP: activeCase.kasat_nrp || '',
-    atasan_nrp: activeCase.kasat_nrp || '',
-    ATASAN_JABATAN: activeCase.kasat_jabatan || 'KASAT RESKRIM',
-    atasan_jabatan: activeCase.kasat_jabatan || 'KASAT RESKRIM',
-
-    // 7. Dukungan Multi-Tersangka (Array Perulangan Dokumen Kolektif)
+    // Dukungan Multi-Tersangka (Array Perulangan Dokumen Kolektif, misal SPDP)
     tersangka_list: (suspectsList || []).map((s, idx) => {
       const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
       const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
       return {
         no: idx + 1,
-        nama: s.nama,
-        nik: s.nik || '-',
-        jenis_kelamin: s.jenis_kelamin || 'Laki-laki',
-        ttl: (s.tempat_lahir && sTglLahir) ? `${s.tempat_lahir}, ${formattedSTglLahir}` : (s.ttl || s.pob_dob || '-'),
+        nama: s.nama || '',
+        nik: s.nik || '',
+        jenis_kelamin: s.jenis_kelamin || '',
+        ttl: (s.tempat_lahir && sTglLahir) ? `${s.tempat_lahir}, ${formattedSTglLahir}` : (s.ttl || s.pob_dob || ''),
         tempat_lahir: s.tempat_lahir || '',
         tgl_lahir: formattedSTglLahir,
-        umur: s.umur ? (String(s.umur).includes('Tahun') ? s.umur : `${s.umur} Tahun`) : '-',
-        agama: s.agama || 'Islam',
-        pekerjaan: s.pekerjaan || 'Swasta',
-        pendidikan: s.pendidikan || 'SMA',
+        umur: s.umur ? (String(s.umur).includes('Tahun') ? String(s.umur) : `${s.umur} Tahun`) : '',
+        agama: s.agama || '',
+        pekerjaan: s.pekerjaan || '',
+        pendidikan: s.pendidikan || '',
         kewarganegaraan: s.kewarganegaraan || 'Indonesia',
-        status_kawin: s.status_pernikahan || s.marital_status || 'Kawin',
-        alamat: s.alamat || '-'
+        status_kawin: s.status_pernikahan || s.marital_status || '',
+        alamat: s.alamat || ''
       };
     }),
-
-    // Legacy Aliases
-    DOC_NO: nomorSuratBaru,
-    doc_no: nomorSuratBaru,
-    DOC_LOCATION: tempatSurat,
-    doc_location: tempatSurat,
-    DOC_DATE: formattedTanggalSurat,
-    doc_date: formattedTanggalSurat,
   };
 
-  // 8. Timpa dengan custom field manual form dinamis
+  // Timpa dengan custom field manual form dinamis jika ada
   const finalPayload = { ...baseMap };
   Object.keys(cleanInput).forEach((key) => {
     let val = cleanInput[key];
@@ -354,13 +483,59 @@ export function buildMindikPayload({ activeCase = {}, activeSuspect = {}, suspec
     finalPayload[key.toLowerCase()] = val;
   });
 
-  // Pastikan variabel tanggal surat utama selalu terformat teks Indonesia resmi
-  finalPayload.TANGGAL_SURAT = formattedTanggalSurat;
-  finalPayload.tanggal_surat = formattedTanggalSurat;
-  finalPayload.DOC_DATE = formattedTanggalSurat;
-  finalPayload.doc_date = formattedTanggalSurat;
+  // Pastikan variabel tanggal surat utama aktif tetap terformat teks resmi
+  finalPayload.TANGGAL_SURAT = tanggalSurat;
+  finalPayload.tanggal_surat = tanggalSurat;
+  finalPayload.DOC_DATE = tanggalSurat;
+  finalPayload.doc_date = tanggalSurat;
 
-  // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined'
+  // Pastikan rantai rujukan mandiri (Chain of Reference) selalu terformat teks resmi
+  finalPayload.TANGGAL_LP = tanggalLp;
+  finalPayload.tanggal_lp = tanggalLp;
+  finalPayload.TGL_LP = tanggalLp;
+  finalPayload.tgl_lp = tanggalLp;
+
+  finalPayload.TGL_SPRIN_SIDIK = tglSprinSidik;
+  finalPayload.tgl_sprin_sidik = tglSprinSidik;
+  finalPayload.TANGGAL_SPRIN_SIDIK = tglSprinSidik;
+  finalPayload.tanggal_sprin_sidik = tglSprinSidik;
+
+  finalPayload.TGL_SPDP = tglSpdp;
+  finalPayload.tgl_spdp = tglSpdp;
+  finalPayload.TANGGAL_SPDP = tglSpdp;
+  finalPayload.tanggal_spdp = tglSpdp;
+
+  finalPayload.TGL_P21_KN = tglP21Kn;
+  finalPayload.tgl_p21_kn = tglP21Kn;
+
+  finalPayload.TGL_SP_TAP_TSK = tglSpTapTsk;
+  finalPayload.tgl_sp_tap_tsk = tglSpTapTsk;
+  finalPayload.TANGGAL_SP_TAP_TSK = tglSpTapTsk;
+  finalPayload.tanggal_sp_tap_tsk = tglSpTapTsk;
+
+  finalPayload.TGL_SPRIN_KAP = tglSprinKap;
+  finalPayload.tgl_sprin_kap = tglSprinKap;
+  finalPayload.TANGGAL_SPRIN_KAP = tglSprinKap;
+  finalPayload.tanggal_sprin_kap = tglSprinKap;
+
+  finalPayload.TGL_SPRIN_HAN = tglSprinHan;
+  finalPayload.tgl_sprin_han = tglSprinHan;
+  finalPayload.TANGGAL_SPRIN_HAN = tglSprinHan;
+  finalPayload.tanggal_sprin_han = tglSprinHan;
+
+  finalPayload.TGL_PANJANG_HAN_KN = tglPanjangHanKn;
+  finalPayload.tgl_panjang_han_kn = tglPanjangHanKn;
+
+  finalPayload.TGL_SPRIN_HAN_KN = tglSprinHanKn;
+  finalPayload.tgl_sprin_han_kn = tglSprinHanKn;
+
+  finalPayload.TGL_TAP_HAN_PN_1 = tglTapHanPn1;
+  finalPayload.tgl_tap_han_pn_1 = tglTapHanPn1;
+
+  finalPayload.TGL_TAP_HAN_PN_2 = tglTapHanPn2;
+  finalPayload.tgl_tap_han_pn_2 = tglTapHanPn2;
+
+  // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined' di dokumen Word
   Object.keys(finalPayload).forEach((k) => {
     if (finalPayload[k] === null || finalPayload[k] === undefined || finalPayload[k] === 'null' || finalPayload[k] === 'undefined') {
       finalPayload[k] = '';
