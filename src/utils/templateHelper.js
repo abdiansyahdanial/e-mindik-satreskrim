@@ -117,3 +117,42 @@ export const deleteTemplateFromSupabase = async (template) => {
   // 3. Mark as deleted so mock data does not re-inject
   markTemplateAsDeleted(template);
 };
+
+/**
+ * DAFTAR LENGKAP 24 KODE TEMPLATE PERORANGAN (WAJIB DROPDOWN TERSANGKA)
+ */
+export const INDIVIDUAL_TSK_DOCS = [
+  'SPRIN_BAWA_TSK_DAN_BA',
+  'SP_TAP_TSK',
+  'PEMBERITAHUAN_TAP_TSK_KE_TSK',
+  'PEMBERITAHUAN_TAP_TSK_KE_JPU',
+  'SPDP_TSK',
+  'SPRIN_KAP_DAN_BA',
+  'SPRIN_GAS_KAP',
+  'SPRIN_BAWA_TSK_LEWAT_MASA_KAP',
+  'BA_BERITAHU_HAK_TSK',
+  'SPRIN_LEPAS_KAP_DAN_BA',
+  'SPRIN_HAN_DAN_BA',
+  'SURAT_MINTA_PERPANJANG_HAN_40_HARI_KN',
+  'SPRIN_PERPANJANG_HAN_40_HARI_KN_DAN_BA',
+  'SURAT_MINTA_PERPANJANG_HAN_30_HARI_1_KPN',
+  'SPRIN_PERPANJANG_HAN_30_HARI_1_KPN_DAN_BA',
+  'SURAT_MINTA_PERPANJANG_HAN_30_HARI_2_KPN',
+  'SPRIN_PERPANJANG_HAN_30_HARI_2_KPN_DAN_BA',
+  'SPRIN_KELUAR_HAN_DAN_BA',
+  'PENGANTAR_BP_TAHAP_1',
+  'TANDA_TERIMA_BP_TAHAP_1',
+  'PENGANTAR_BP_KEMBALI_P19',
+  'TANDA_TERIMA_KEMBALI_BP_P19',
+  'PENGANTAR_KIRIM_TSK_BB_TAHAP_2',
+  'BA_KIRIM_TSK_BB_TAHAP_2'
+];
+
+/**
+ * Evaluasi apakah template termasuk dalam whitelist 24 dokumen perorangan
+ */
+export const isIndividualSuspectDoc = (template) => {
+  if (!template) return false;
+  const code = (typeof template === 'string' ? template : (template.code || '')).toUpperCase().trim();
+  return INDIVIDUAL_TSK_DOCS.includes(code);
+};

@@ -19,7 +19,12 @@ import {
 import { mockTemplates } from '../data/mockTemplates';
 import { mockPersonnel } from '../data/mockPersonnel';
 import { supabase } from '../supabaseClient';
-import { deleteTemplateFromSupabase, getDeletedTemplateCodes } from '../utils/templateHelper';
+import { 
+  deleteTemplateFromSupabase, 
+  getDeletedTemplateCodes, 
+  INDIVIDUAL_TSK_DOCS, 
+  isIndividualSuspectDoc 
+} from '../utils/templateHelper';
 import OfficialDocPreview from '../components/OfficialDocPreview';
 import { generateAndDownloadDocx, formatTanggalIndonesia } from '../services/mindikGenerator';
 
@@ -101,26 +106,82 @@ export default function DocGeneratorView({
   const currentCase = cases.find(c => c.id === selectedCaseId) || cases[0];
   const currentTemplate = allTemplates.find(t => t.code === selectedTemplateCode) || allTemplates[0] || mockTemplates[0];
 
-  // Helper identifikasi dokumen perorangan (1 surat untuk 1 tersangka) vs kolektif
-  const isIndividualDoc = (() => {
-    const c = (currentTemplate?.code || '').toUpperCase();
-    const t = (currentTemplate?.title || '').toUpperCase();
-    const cat = (currentTemplate?.category || '').toUpperCase();
-    if (c.includes('SIDIK') || c.includes('SPDP') || c.includes('GAS')) return false;
-    return (
-      c.includes('TAP_TSK') ||
-      c.includes('KAP') ||
-      c.includes('HAN') ||
-      c.includes('BA_') ||
-      c.includes('BAP') ||
-      t.includes('PENETAPAN TERSANGKA') ||
-      t.includes('PENANGKAPAN') ||
-      t.includes('PENAHANAN') ||
-      t.includes('BERITA ACARA') ||
-      cat === 'PENETAPAN' ||
-      cat === 'BERITA ACARA'
-    );
-  })();
+  // Helper identifikasi dokumen perorangan (1 surat untuk 1 tersangka) dari whitelist 24 dokumen resmi
+  const isIndividualDoc = isIndividualSuspectDoc(currentTemplate);
+
+  // Helper sinkronisasi nilai profil tersangka ke variabel tunggal template mindik
+  const syncSuspectValues = (suspect, isSpTap = false) => {
+    if (!suspect) return {};
+    const spTapNum = suspect.nomor_sp_tap || suspect.no_sp_tap_tsk || '';
+    const spTapDate = suspect.tanggal_sp_tap || suspect.tgl_sp_tap_tsk || '';
+    const rawTglLahir = suspect.tgl_lahir || suspect.tanggal_lahir || '';
+    const formattedTglLahir = formatTanggalIndonesia(rawTglLahir);
+    const tempatLahir = suspect.tempat_lahir || '';
+    const ttl = (tempatLahir && formattedTglLahir)
+      ? `${tempatLahir}, ${formattedTglLahir}`
+      : (suspect.ttl || suspect.pob_dob || tempatLahir || '');
+
+    const rawUmur = suspect.umur || '';
+    const umur = rawUmur
+      ? (String(rawUmur).includes('Tahun') ? String(rawUmur) : `${rawUmur} Tahun`)
+      : '';
+
+    const values = {
+      NAMA_TERSANGKA: suspect.nama || '',
+      nama_tersangka: suspect.nama || '',
+      NIK: suspect.nik || '-',
+      nik: suspect.nik || '-',
+      TEMPAT_LAHIR: tempatLahir,
+      tempat_lahir: tempatLahir,
+      TGL_LAHIR: formattedTglLahir,
+      tgl_lahir: formattedTglLahir,
+      TTL: ttl,
+      ttl: ttl,
+      UMUR: umur,
+      umur: umur,
+      JENIS_KELAMIN: suspect.jenis_kelamin || 'Laki-laki',
+      jenis_kelamin: suspect.jenis_kelamin || 'Laki-laki',
+      AGAMA: suspect.agama || '',
+      agama: suspect.agama || '',
+      PEKERJAAN: suspect.pekerjaan || '',
+      pekerjaan: suspect.pekerjaan || '',
+      KEWARGANEGARAAN: suspect.kewarganegaraan || 'Indonesia',
+      kewarganegaraan: suspect.kewarganegaraan || 'Indonesia',
+      PENDIDIKAN: suspect.pendidikan || '',
+      pendidikan: suspect.pendidikan || '',
+      STATUS_KAWIN: suspect.status_pernikahan || suspect.status_kawin || suspect.marital_status || '',
+      status_kawin: suspect.status_pernikahan || suspect.status_kawin || suspect.marital_status || '',
+      ALAMAT: suspect.alamat || '',
+      alamat: suspect.alamat || '',
+
+      // Rujukan tingkat tersangka
+      NO_SP_TAP_TSK: spTapNum,
+      no_sp_tap_tsk: spTapNum,
+      TGL_SP_TAP_TSK: spTapDate,
+      tgl_sp_tap_tsk: spTapDate,
+      NO_SPRIN_KAP: suspect.no_sprin_kap || '',
+      no_sprin_kap: suspect.no_sprin_kap || '',
+      NO_SPRIN_HAN: suspect.no_sprin_han || '',
+      no_sprin_han: suspect.no_sprin_han || '',
+      NO_PANJANG_HAN_KN: suspect.no_panjang_han_kn || '',
+      no_panjang_han_kn: suspect.no_panjang_han_kn || '',
+    };
+
+    // Khusus SP_TAP_TSK, sinkronkan nomor dan tanggal surat dari selectedSuspect
+    // Untuk template perorangan lainnya, pertahankan penomoran surat aktif default-nya
+    if (isSpTap) {
+      if (spTapNum) {
+        values.NOMOR_SURAT = spTapNum;
+        values.nomor_surat = spTapNum;
+      }
+      if (spTapDate) {
+        values.TANGGAL_SURAT = spTapDate;
+        values.tanggal_surat = spTapDate;
+      }
+    }
+
+    return values;
+  };
 
   // Helper identifikasi dokumen SP.Sidik
   const isSidikDoc = (() => {
@@ -186,80 +247,59 @@ export default function DocGeneratorView({
 
   const selectedSuspect = caseSuspects.find(s => s.id === selectedSuspectId) || caseSuspects[0] || null;
 
-  // 1. Sinkronisasi Otomatis Saat Tersangka atau Format SP TAP Dipilih
+  // Pastikan jika dokumen perorangan aktif dan belum ada tersangka terpilih, tetapkan tersangka pertama (suspects[0])
   useEffect(() => {
-    // Cek apakah format yang aktif adalah SP TAP TERSANGKA
+    if (isIndividualDoc && caseSuspects.length > 0) {
+      if (!selectedSuspectId || !caseSuspects.some(s => s.id === selectedSuspectId)) {
+        setSelectedSuspectId(caseSuspects[0].id);
+      }
+    }
+  }, [isIndividualDoc, caseSuspects, selectedSuspectId]);
+
+  // 1. Sinkronisasi Otomatis Saat Tersangka atau Format Berubah
+  useEffect(() => {
+    if (!selectedSuspect) return;
+
     const isSpTap = currentTemplate?.code === 'SP_TAP_TSK' || 
                     (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') ||
                     (currentTemplate?.name || '').toLowerCase().includes('tap') ||
                     (currentTemplate?.title || '').toLowerCase().includes('tap') ||
                     (currentTemplate?.title || '').toLowerCase().includes('penetapan tersangka');
+    const isIndiv = isIndividualDoc;
 
-    if (isSpTap && selectedSuspect) {
-      const suspectNomor = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk;
-      const suspectTanggal = selectedSuspect.tanggal_sp_tap || selectedSuspect.tgl_sp_tap_tsk;
-
-      setFormValues(prev => {
-        const next = { ...prev };
-        if (suspectNomor) {
-          next.NOMOR_SURAT = suspectNomor;
-          next.nomor_surat = suspectNomor;
-          next.NO_SP_TAP_TSK = suspectNomor;
-          next.no_sp_tap_tsk = suspectNomor;
-        }
-        if (suspectTanggal) {
-          next.TANGGAL_SURAT = suspectTanggal;
-          next.tanggal_surat = suspectTanggal;
-          next.TGL_SP_TAP_TSK = suspectTanggal;
-          next.tgl_sp_tap_tsk = suspectTanggal;
-        }
-        return next;
-      });
+    if (isIndiv || isSpTap) {
+      const suspectFields = syncSuspectValues(selectedSuspect, isSpTap);
+      setFormValues(prev => ({
+        ...prev,
+        ...suspectFields,
+        ALAMAT: selectedSuspect.alamat || prev.ALAMAT || prev.alamat || '',
+        alamat: selectedSuspect.alamat || prev.ALAMAT || prev.alamat || '',
+        NAMA_TERLAPOR: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.NAMA_TERLAPOR || '',
+        nama_terlapor: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.nama_terlapor || '',
+      }));
     }
-  }, [selectedSuspect, currentTemplate]);
+  }, [selectedSuspect, currentTemplate, isIndividualDoc]);
 
   // Handler ganti tersangka pilihan
   const handleSuspectChange = (suspectId) => {
     setSelectedSuspectId(suspectId);
     const found = caseSuspects.find(s => s.id === suspectId);
     if (found) {
-      const spTapNum = found.nomor_sp_tap || found.no_sp_tap_tsk || '';
-      const spTapDate = found.tanggal_sp_tap || found.tgl_sp_tap_tsk || '';
-      const isTapTskDoc = (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') || 
-                          currentTemplate?.code === 'SP_TAP_TSK' ||
-                          (currentTemplate?.title || '').toLowerCase().includes('tap') ||
-                          (currentTemplate?.title || '').toLowerCase().includes('penetapan tersangka') ||
-                          (currentTemplate?.name || '').toLowerCase().includes('tap');
+      const isSpTap = (currentTemplate?.code || '').toUpperCase().trim() === 'SP_TAP_TSK' || 
+                      (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') ||
+                      (currentTemplate?.title || '').toLowerCase().includes('tap') ||
+                      (currentTemplate?.title || '').toLowerCase().includes('penetapan tersangka') ||
+                      (currentTemplate?.name || '').toLowerCase().includes('tap');
+      const suspectFields = syncSuspectValues(found, isSpTap);
 
       setFormValues(prev => ({
         ...prev,
-        NO_SP_TAP_TSK: spTapNum,
-        no_sp_tap_tsk: spTapNum,
-        TGL_SP_TAP_TSK: spTapDate,
-        tgl_sp_tap_tsk: spTapDate,
-        ...(isTapTskDoc ? {
-          NOMOR_SURAT: spTapNum || '',
-          nomor_surat: spTapNum || '',
-          TANGGAL_SURAT: spTapDate || '',
-          tanggal_surat: spTapDate || ''
-        } : {}),
-        NO_SPRIN_KAP: found.no_sprin_kap || '',
-        no_sprin_kap: found.no_sprin_kap || '',
-        NO_SPRIN_HAN: found.no_sprin_han || '',
-        no_sprin_han: found.no_sprin_han || '',
-        NO_PANJANG_HAN_KN: found.no_panjang_han_kn || '',
-        no_panjang_han_kn: found.no_panjang_han_kn || '',
-        NAMA_TERSANGKA: found.nama || '',
-        nama_tersangka: found.nama || '',
+        ...suspectFields,
+        ALAMAT: found.alamat || prev.ALAMAT || prev.alamat || '',
+        alamat: found.alamat || prev.ALAMAT || prev.alamat || '',
         // NAMA_TERLAPOR tetap murni dari data Laporan Polisi (LP) awal
-        NAMA_TERLAPOR: currentCase.nama_terlapor || currentCase.terlapor_name || currentCase.terlapor || '',
-        nama_terlapor: currentCase.nama_terlapor || currentCase.terlapor_name || currentCase.terlapor || '',
-        NIK: found.nik || '-',
-        nik: found.nik || '-',
-        JENIS_KELAMIN: found.jenis_kelamin || 'Laki-laki',
-        jenis_kelamin: found.jenis_kelamin || 'Laki-laki',
-        ALAMAT: found.alamat || prev.ALAMAT || '',
-        alamat: found.alamat || prev.alamat || '',
+        NAMA_TERLAPOR: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.NAMA_TERLAPOR || '',
+        nama_terlapor: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.nama_terlapor || '',
       }));
     }
   };
@@ -286,18 +326,8 @@ export default function DocGeneratorView({
     initial['TANGGAL_SPDP'] = initial['TGL_SPDP'];
 
     if (selectedSuspect) {
-      const spTapNum = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk || '';
-      const spTapDate = selectedSuspect.tanggal_sp_tap || selectedSuspect.tgl_sp_tap_tsk || '';
-      initial['NO_SP_TAP_TSK'] = spTapNum;
-      initial['TGL_SP_TAP_TSK'] = spTapDate;
-      initial['NO_SPRIN_KAP'] = selectedSuspect.no_sprin_kap || '';
-      initial['NO_SPRIN_HAN'] = selectedSuspect.no_sprin_han || '';
-      initial['TGL_SPRIN_HAN'] = selectedSuspect.tgl_sprin_han || '';
-
-      if (isTapTskDoc) {
-        if (spTapNum) initial['NOMOR_SURAT'] = spTapNum;
-        if (spTapDate) initial['TANGGAL_SURAT'] = spTapDate;
-      }
+      const suspectFields = syncSuspectValues(selectedSuspect, isTapTskDoc);
+      Object.assign(initial, suspectFields);
     }
 
     // Otomatisasi Penandatangan Mindik dari Data Perkara Aktif

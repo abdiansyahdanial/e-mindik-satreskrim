@@ -65,7 +65,7 @@ export default function OfficialDocPreview({
     }
 
     // Optimization: If variables and template haven't changed, skip conversion
-    const currentKey = `${template.id || template.file_path}_${activeSuspect?.id || 'all'}_${activeSuspect?.nomor_sp_tap || ''}_${activeSuspect?.tanggal_sp_tap || ''}_${nomorSurat}_${tanggalSurat}_${JSON.stringify(formValues)}`;
+    const currentKey = `${template.id || template.file_path}_${activeSuspect?.id || 'all'}_${activeSuspect?.nama || ''}_${activeSuspect?.nik || ''}_${activeSuspect?.nomor_sp_tap || ''}_${activeSuspect?.tanggal_sp_tap || ''}_${nomorSurat}_${tanggalSurat}_${JSON.stringify(formValues)}`;
     if (!isManual && lastRenderedKeyRef.current === currentKey && prevPdfUrlRef.current) {
       return;
     }
@@ -137,6 +137,8 @@ export default function OfficialDocPreview({
     selectedCase?.id, 
     activeSuspect, 
     activeSuspect?.id, 
+    activeSuspect?.nama,
+    activeSuspect?.nik,
     activeSuspect?.nomor_sp_tap, 
     activeSuspect?.tanggal_sp_tap, 
     nomorSurat, 

@@ -291,25 +291,26 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const namaPelapor = cleanInput.NAMA_PELAPOR || cleanInput.nama_pelapor || activeCase?.nama_pelapor || activeCase?.pelapor_name || '';
   // NAMA_TERLAPOR murni mengambil dari Laporan Polisi (LP), tidak tertukar dengan nama tersangka
   const namaTerlapor = cleanInput.NAMA_TERLAPOR || cleanInput.nama_terlapor || activeCase?.nama_terlapor || activeCase?.terlapor_name || activeCase?.terlapor || '';
+  const namaTersangka = cleanInput.NAMA_TERSANGKA || cleanInput.nama_tersangka || activeSuspect?.nama || '';
   const nik = cleanInput.NIK || cleanInput.nik || activeSuspect?.nik || '';
-  const jenisKelamin = cleanInput.JENIS_KELAMIN || cleanInput.jenis_kelamin || activeSuspect?.jenis_kelamin || '';
-  const rawTglLahirSuspect = activeSuspect?.tgl_lahir || activeSuspect?.tanggal_lahir || '';
+  const jenisKelamin = cleanInput.JENIS_KELAMIN || cleanInput.jenis_kelamin || activeSuspect?.jenis_kelamin || 'Laki-laki';
+  const tempatLahir = cleanInput.TEMPAT_LAHIR || cleanInput.tempat_lahir || activeSuspect?.tempat_lahir || '';
+  const rawTglLahirSuspect = cleanInput.TGL_LAHIR || cleanInput.tgl_lahir || activeSuspect?.tgl_lahir || activeSuspect?.tanggal_lahir || '';
   const formattedTglLahirSuspect = formatTanggalIndonesia(rawTglLahirSuspect);
   const ttl = cleanInput.TTL || cleanInput.ttl || (
-    (activeSuspect?.tempat_lahir && rawTglLahirSuspect)
-      ? `${activeSuspect.tempat_lahir}, ${formattedTglLahirSuspect}`
-      : (activeSuspect?.ttl || activeSuspect?.pob_dob || '')
+    (tempatLahir && rawTglLahirSuspect)
+      ? `${tempatLahir}, ${formattedTglLahirSuspect}`
+      : (activeSuspect?.ttl || activeSuspect?.pob_dob || tempatLahir || '')
   );
-  const umur = cleanInput.UMUR || cleanInput.umur || (
-    activeSuspect?.umur
-      ? (String(activeSuspect.umur).includes('Tahun') ? String(activeSuspect.umur) : `${activeSuspect.umur} Tahun`)
-      : ''
-  );
+  const rawUmur = cleanInput.UMUR || cleanInput.umur || activeSuspect?.umur || '';
+  const umur = rawUmur
+    ? (String(rawUmur).includes('Tahun') ? String(rawUmur) : `${rawUmur} Tahun`)
+    : '';
   const agama = cleanInput.AGAMA || cleanInput.agama || activeSuspect?.agama || '';
   const pekerjaan = cleanInput.PEKERJAAN || cleanInput.pekerjaan || activeSuspect?.pekerjaan || '';
   const kewarganegaraan = cleanInput.KEWARGANEGARAAN || cleanInput.kewarganegaraan || activeSuspect?.kewarganegaraan || 'Indonesia';
   const pendidikan = cleanInput.PENDIDIKAN || cleanInput.pendidikan || activeSuspect?.pendidikan || '';
-  const statusKawin = cleanInput.STATUS_KAWIN || cleanInput.status_kawin || activeSuspect?.status_pernikahan || activeSuspect?.marital_status || '';
+  const statusKawin = cleanInput.STATUS_KAWIN || cleanInput.status_kawin || activeSuspect?.status_pernikahan || activeSuspect?.status_kawin || activeSuspect?.marital_status || '';
   const alamat = cleanInput.ALAMAT || cleanInput.alamat || activeSuspect?.alamat || activeCase?.alamat_tersangka || '';
 
   // F. PENYIDIK & PEJABAT
@@ -394,10 +395,13 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     STATUS_KASUS: statusKasus,
 
     // E. IDENTITAS PIHAK (Resmi UPPERCASE)
+    NAMA_TERSANGKA: namaTersangka,
     NAMA_PELAPOR: namaPelapor,
     NAMA_TERLAPOR: namaTerlapor,
     NIK: nik,
     JENIS_KELAMIN: jenisKelamin,
+    TEMPAT_LAHIR: tempatLahir,
+    TGL_LAHIR: formattedTglLahirSuspect,
     TTL: ttl,
     UMUR: umur,
     AGAMA: agama,
@@ -504,10 +508,13 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     waktu_kejadian: waktuKejadian,
     status_kasus: statusKasus,
 
+    nama_tersangka: namaTersangka,
     nama_pelapor: namaPelapor,
     nama_terlapor: namaTerlapor,
     nik: nik,
     jenis_kelamin: jenisKelamin,
+    tempat_lahir: tempatLahir,
+    tgl_lahir: formattedTglLahirSuspect,
     ttl: ttl,
     umur: umur,
     agama: agama,
