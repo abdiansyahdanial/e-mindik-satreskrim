@@ -7,6 +7,7 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { mockTemplates } from '../data/mockTemplates';
+import { formatTanggalIndonesia } from '../utils/mindikGenerator';
 
 export default function ArchivesView({ documents = [], cases = [], onPreviewDoc }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,9 +133,7 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc 
               filteredDocs.map((doc, idx) => {
                 const relatedCase = safeCases.find((c) => c.id === doc?.case_id);
                 const displayDate = doc?.created_at
-                  ? (String(doc.created_at).includes('T')
-                      ? new Date(doc.created_at).toLocaleDateString('id-ID')
-                      : doc.created_at)
+                  ? formatTanggalIndonesia(doc.created_at)
                   : '-';
 
                 return (

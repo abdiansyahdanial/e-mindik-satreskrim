@@ -14,7 +14,8 @@ import {
 import { 
   generatePdfBlob, 
   generateAndDownloadDocx, 
-  buildMindikVariables 
+  buildMindikVariables,
+  formatTanggalIndonesia
 } from '../utils/mindikGenerator';
 
 export default function OfficialDocPreview({ 
@@ -206,6 +207,11 @@ export default function OfficialDocPreview({
           ) : (
             <span className="badge badge-amber" style={{ fontSize: '10px' }}>
               BELUM ADA MASTER FILE .DOCX
+            </span>
+          )}
+          {currentDataMap?.TANGGAL_SURAT && (
+            <span className="badge badge-blue" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }} title="Tanggal resmi surat">
+              <span>{currentDataMap.TEMPAT_SURAT || 'Tirawuta'}, {currentDataMap.TANGGAL_SURAT}</span>
             </span>
           )}
         </div>

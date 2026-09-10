@@ -19,6 +19,35 @@ export function formatIndonesianDate(dateInput) {
   }).format(d);
 }
 
+/**
+ * Konversi string tanggal (misal ISO '2026-09-10') ke format teks bahasa Indonesia resmi: '10 September 2026'.
+ * Menangani teks yang sudah terformat agar tidak rusak dan aman untuk input manual maupun date picker HTML.
+ */
+export function formatTanggalIndonesia(dateStr) {
+  if (!dateStr) return '';
+  if (typeof dateStr !== 'string') {
+    try {
+      dateStr = String(dateStr);
+    } catch {
+      return '';
+    }
+  }
+  // Tangani jika format sudah berupa teks (bukan YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr;
+
+  const bulanIndo = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  const parts = dateStr.split('T')[0].split('-');
+  const tahun = parts[0];
+  const bulan = bulanIndo[parseInt(parts[1], 10) - 1];
+  const hari = parseInt(parts[2], 10).toString();
+
+  return `${hari} ${bulan} ${tahun}`;
+}
+
 // In-memory cache for master .docx buffers from Supabase Storage
 const templateBufferCache = new Map();
 
@@ -135,13 +164,32 @@ export function buildMindikPayload({ activeCase = {}, activeSuspect = {}, suspec
 
   const nomorSuratBaru = cleanInput.NOMOR_SURAT || cleanInput.nomor_surat || cleanInput.DOC_NO || '';
   const tempatSurat = cleanInput.TEMPAT_SURAT || cleanInput.tempat_surat || cleanInput.DOC_LOCATION || 'Tirawuta';
-  const tanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.tanggal_surat || cleanInput.DOC_DATE || '';
+
+  // Format tanggal surat resmi
+  const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.tanggal_surat || cleanInput.DOC_DATE || cleanInput.doc_date || new Date().toISOString().split('T')[0];
+  const formattedTanggalSurat = formatTanggalIndonesia(rawTanggalSurat);
+
   const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || 'Kepala Kejaksaan Negeri Kolaka';
   const alamatTujuan = cleanInput.ALAMAT_TUJUAN || cleanInput.alamat_tujuan || cleanInput.DOC_TARGET_ADDR || 'Jl. Dr. Sutomo No. 5, Kolaka';
   const masaBerlaku = cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '30 (tiga puluh) hari';
 
+  // Format tanggal-tanggal turunan perkara
+  const rawTanggalLp = cleanInput.TANGGAL_LP || cleanInput.tanggal_lp || activeCase.tanggal_lp || activeCase.sprin_date || '';
+  const formattedTanggalLp = formatTanggalIndonesia(rawTanggalLp);
+
+  const rawTanggalPenetapan = cleanInput.TANGGAL_PENETAPAN || cleanInput.tanggal_penetapan || activeCase.tanggal_penetapan || '';
+  const formattedTanggalPenetapan = formatTanggalIndonesia(rawTanggalPenetapan);
+
+  const rawTanggalKejadian = cleanInput.TANGGAL_KEJADIAN || cleanInput.tanggal_kejadian || activeCase.tanggal_kejadian || activeCase.tgl_kejadian || '';
+  const formattedTanggalKejadian = formatTanggalIndonesia(rawTanggalKejadian);
+
+  const rawSprinDate = activeCase.sprin_date || '';
+  const formattedSprinDate = formatTanggalIndonesia(rawSprinDate);
+
   const suspect = activeSuspect || {};
   const namaTsk = suspect.nama || activeCase.nama_terlapor || activeCase.terlapor_name || '';
+  const rawTglLahirSuspect = suspect.tgl_lahir || suspect.tanggal_lahir || '';
+  const formattedTglLahirSuspect = formatTanggalIndonesia(rawTglLahirSuspect);
 
   const baseMap = {
     // 1. Administrasi & Nomor Dokumen Aktif Hari Ini
@@ -149,8 +197,10 @@ export function buildMindikPayload({ activeCase = {}, activeSuspect = {}, suspec
     nomor_surat: nomorSuratBaru,
     TEMPAT_SURAT: tempatSurat,
     tempat_surat: tempatSurat,
-    TANGGAL_SURAT: tanggalSurat,
-    tanggal_surat: tanggalSurat,
+    TANGGAL_SURAT: formattedTanggalSurat,
+    tanggal_surat: formattedTanggalSurat,
+    DOC_DATE: formattedTanggalSurat,
+    doc_date: formattedTanggalSurat,
     TUJUAN_SURAT: tujuanSurat,
     tujuan_surat: tujuanSurat,
     ALAMAT_TUJUAN: alamatTujuan,
@@ -161,12 +211,18 @@ export function buildMindikPayload({ activeCase = {}, activeSuspect = {}, suspec
     // 2. Rujukan Surat Tingkat Perkara (Otomatis dari tabel cases)
     NOMOR_LP: activeCase.nomor_lp || activeCase.no_lp || '',
     nomor_lp: activeCase.nomor_lp || activeCase.no_lp || '',
+    TANGGAL_LP: formattedTanggalLp,
+    tanggal_lp: formattedTanggalLp,
     NO_SPRIN_SIDIK: activeCase.no_sprin_sidik || '',
     no_sprin_sidik: activeCase.no_sprin_sidik || '',
+    TANGGAL_SPRIN_SIDIK: formattedSprinDate,
+    tanggal_sprin_sidik: formattedSprinDate,
     NO_SPDP: activeCase.no_spdp || '',
     no_spdp: activeCase.no_spdp || '',
     NO_P21_KN: activeCase.no_p21_kn || '',
     no_p21_kn: activeCase.no_p21_kn || '',
+    TANGGAL_PENETAPAN: formattedTanggalPenetapan,
+    tanggal_penetapan: formattedTanggalPenetapan,
 
     // 3. Rujukan Surat Tingkat Tersangka / Individu (Otomatis dari tabel case_suspects)
     NO_SP_TAP_TSK: suspect.no_sp_tap_tsk || '',
@@ -199,6 +255,8 @@ export function buildMindikPayload({ activeCase = {}, activeSuspect = {}, suspec
     tempat_kejadian: activeCase.locus || '',
     WAKTU_KEJADIAN: activeCase.tempus || '',
     waktu_kejadian: activeCase.tempus || '',
+    TANGGAL_KEJADIAN: formattedTanggalKejadian,
+    tanggal_kejadian: formattedTanggalKejadian,
     STATUS_KASUS: activeCase.status || 'DALAM PROSES PENYIDIKAN',
     status_kasus: activeCase.status || 'DALAM PROSES PENYIDIKAN',
 
@@ -211,8 +269,12 @@ export function buildMindikPayload({ activeCase = {}, activeSuspect = {}, suspec
     nik: suspect.nik || '-',
     JENIS_KELAMIN: suspect.jenis_kelamin || 'Laki-laki',
     jenis_kelamin: suspect.jenis_kelamin || 'Laki-laki',
-    TTL: (suspect.tempat_lahir && suspect.tgl_lahir) ? `${suspect.tempat_lahir}, ${suspect.tgl_lahir}` : (suspect.ttl || suspect.pob_dob || '-'),
-    ttl: (suspect.tempat_lahir && suspect.tgl_lahir) ? `${suspect.tempat_lahir}, ${suspect.tgl_lahir}` : (suspect.ttl || suspect.pob_dob || '-'),
+    TTL: (suspect.tempat_lahir && rawTglLahirSuspect) ? `${suspect.tempat_lahir}, ${formattedTglLahirSuspect}` : (suspect.ttl || suspect.pob_dob || '-'),
+    ttl: (suspect.tempat_lahir && rawTglLahirSuspect) ? `${suspect.tempat_lahir}, ${formattedTglLahirSuspect}` : (suspect.ttl || suspect.pob_dob || '-'),
+    TEMPAT_LAHIR: suspect.tempat_lahir || '',
+    tempat_lahir: suspect.tempat_lahir || '',
+    TGL_LAHIR: formattedTglLahirSuspect,
+    tgl_lahir: formattedTglLahirSuspect,
     UMUR: suspect.umur ? (String(suspect.umur).includes('Tahun') ? suspect.umur : `${suspect.umur} Tahun`) : '-',
     umur: suspect.umur ? (String(suspect.umur).includes('Tahun') ? suspect.umur : `${suspect.umur} Tahun`) : '-',
     AGAMA: suspect.agama || 'Islam',
@@ -249,37 +311,54 @@ export function buildMindikPayload({ activeCase = {}, activeSuspect = {}, suspec
     atasan_jabatan: activeCase.kasat_jabatan || 'KASAT RESKRIM',
 
     // 7. Dukungan Multi-Tersangka (Array Perulangan Dokumen Kolektif)
-    tersangka_list: (suspectsList || []).map((s, idx) => ({
-      no: idx + 1,
-      nama: s.nama,
-      nik: s.nik || '-',
-      jenis_kelamin: s.jenis_kelamin || 'Laki-laki',
-      ttl: (s.tempat_lahir && s.tgl_lahir) ? `${s.tempat_lahir}, ${s.tgl_lahir}` : (s.ttl || s.pob_dob || '-'),
-      umur: s.umur ? (String(s.umur).includes('Tahun') ? s.umur : `${s.umur} Tahun`) : '-',
-      agama: s.agama || 'Islam',
-      pekerjaan: s.pekerjaan || 'Swasta',
-      pendidikan: s.pendidikan || 'SMA',
-      kewarganegaraan: s.kewarganegaraan || 'Indonesia',
-      status_kawin: s.status_pernikahan || s.marital_status || 'Kawin',
-      alamat: s.alamat || '-'
-    })),
+    tersangka_list: (suspectsList || []).map((s, idx) => {
+      const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
+      const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
+      return {
+        no: idx + 1,
+        nama: s.nama,
+        nik: s.nik || '-',
+        jenis_kelamin: s.jenis_kelamin || 'Laki-laki',
+        ttl: (s.tempat_lahir && sTglLahir) ? `${s.tempat_lahir}, ${formattedSTglLahir}` : (s.ttl || s.pob_dob || '-'),
+        tempat_lahir: s.tempat_lahir || '',
+        tgl_lahir: formattedSTglLahir,
+        umur: s.umur ? (String(s.umur).includes('Tahun') ? s.umur : `${s.umur} Tahun`) : '-',
+        agama: s.agama || 'Islam',
+        pekerjaan: s.pekerjaan || 'Swasta',
+        pendidikan: s.pendidikan || 'SMA',
+        kewarganegaraan: s.kewarganegaraan || 'Indonesia',
+        status_kawin: s.status_pernikahan || s.marital_status || 'Kawin',
+        alamat: s.alamat || '-'
+      };
+    }),
 
     // Legacy Aliases
     DOC_NO: nomorSuratBaru,
     doc_no: nomorSuratBaru,
     DOC_LOCATION: tempatSurat,
     doc_location: tempatSurat,
-    DOC_DATE: tanggalSurat,
-    doc_date: tanggalSurat,
+    DOC_DATE: formattedTanggalSurat,
+    doc_date: formattedTanggalSurat,
   };
 
   // 8. Timpa dengan custom field manual form dinamis
   const finalPayload = { ...baseMap };
   Object.keys(cleanInput).forEach((key) => {
-    finalPayload[key] = cleanInput[key];
-    finalPayload[key.toUpperCase()] = cleanInput[key];
-    finalPayload[key.toLowerCase()] = cleanInput[key];
+    let val = cleanInput[key];
+    // Jika nilai input berupa format tanggal ISO YYYY-MM-DD, format ke teks Indonesia resmi
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+      val = formatTanggalIndonesia(val);
+    }
+    finalPayload[key] = val;
+    finalPayload[key.toUpperCase()] = val;
+    finalPayload[key.toLowerCase()] = val;
   });
+
+  // Pastikan variabel tanggal surat utama selalu terformat teks Indonesia resmi
+  finalPayload.TANGGAL_SURAT = formattedTanggalSurat;
+  finalPayload.tanggal_surat = formattedTanggalSurat;
+  finalPayload.DOC_DATE = formattedTanggalSurat;
+  finalPayload.doc_date = formattedTanggalSurat;
 
   // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined'
   Object.keys(finalPayload).forEach((k) => {
