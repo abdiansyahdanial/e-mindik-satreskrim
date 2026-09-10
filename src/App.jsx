@@ -13,6 +13,7 @@ import CaseDetailModal from './components/CaseDetailModal';
 import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
 import UserManagementModal from './components/UserManagementModal';
+import { mockDocuments } from './data/mockDocuments';
 import { CheckCircle2, ShieldAlert, RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -25,7 +26,16 @@ export default function App() {
   // Core Data States - 100% PURE REAL-TIME SUPABASE (NO FALLBACK REVERT)
   const [cases, setCases] = useState([]);
   const [personnel, setPersonnel] = useState([]);
-  const [documents, setDocuments] = useState([]);
+  const [documents, setDocuments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('emindik_archive_documents');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return mockDocuments;
+  });
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Modal States
@@ -153,20 +163,6 @@ export default function App() {
       } catch (e) {
         console.warn('Personnel sync error:', e);
       }
-
-      // 3. Document Templates (Master Mindik)
-      try {
-        const { data: docData, error: docErr } = await supabase
-          .from('document_templates')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!docErr && docData) {
-          setDocuments(docData);
-        }
-      } catch (e) {
-        console.warn('Document templates sync notice:', e);
-      }
     };
 
     loadSupabaseData();
@@ -246,7 +242,13 @@ export default function App() {
       
       // Update state in memory after successful deletion
       setCases((prev) => prev.filter((c) => c.id !== caseId));
-      setDocuments((prev) => prev.filter((d) => d.case_id !== caseId));
+      setDocuments((prev) => {
+        const updated = prev.filter((d) => d.case_id !== caseId);
+        try {
+          localStorage.setItem('emindik_archive_documents', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       showToast('Berkas perkara dan riwayat mindik berhasil dihapus dari database Supabase!');
     } catch (err) {
       console.error('Gagal menghapus perkara:', err);
@@ -308,7 +310,15 @@ export default function App() {
   };
 
   const handleSaveDocument = async (newDoc) => {
-    setDocuments((prev) => [newDoc, ...prev]);
+    setDocuments((prev) => {
+      const updated = [newDoc, ...prev];
+      try {
+        localStorage.setItem('emindik_archive_documents', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('LocalStorage save error:', err);
+      }
+      return updated;
+    });
     showToast(`Dokumen ${newDoc.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
 
     try {

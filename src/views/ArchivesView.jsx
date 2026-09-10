@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { 
   Archive, 
   Search, 
-  Eye
+  Eye,
+  FileText,
+  FolderOpen
 } from 'lucide-react';
 import { mockTemplates } from '../data/mockTemplates';
 
@@ -10,26 +12,47 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc 
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  const filteredDocs = documents.filter((doc) => {
-    const template = mockTemplates.find(t => t.id === doc.template_id || t.code === doc.template_code);
-    const relatedCase = cases.find(c => c.id === doc.case_id);
+  const safeDocs = Array.isArray(documents) ? documents : [];
+  const safeCases = Array.isArray(cases) ? cases : [];
 
-    const matchesSearch = 
-      doc.doc_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doc.doc_number && doc.doc_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (relatedCase && relatedCase.no_lp.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (relatedCase && relatedCase.terlapor_name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredDocs = safeDocs.filter((doc) => {
+    if (!doc) return false;
+    try {
+      const template = mockTemplates.find(
+        (t) => t.id === doc.template_id || t.code === (doc.template_code || doc.code)
+      );
+      const relatedCase = safeCases.find((c) => c.id === doc.case_id);
 
-    const matchesCategory = 
-      categoryFilter === 'all' || 
-      (template && template.category === categoryFilter);
+      const docTitle = String(doc.doc_title || doc.title || '').toLowerCase();
+      const docNumber = String(doc.doc_number || doc.nomor_surat || '').toLowerCase();
+      const caseNo = String(relatedCase?.nomor_lp || relatedCase?.no_lp || '').toLowerCase();
+      const caseTsk = String(
+        relatedCase?.nama_terlapor || 
+        relatedCase?.terlapor_name || 
+        relatedCase?.person?.nama || 
+        ''
+      ).toLowerCase();
+      const query = (searchTerm || '').trim().toLowerCase();
 
-    return matchesSearch && matchesCategory;
+      const matchesSearch = !query || 
+        docTitle.includes(query) || 
+        docNumber.includes(query) || 
+        caseNo.includes(query) || 
+        caseTsk.includes(query);
+
+      const docCat = template?.category || doc.category;
+      const matchesCategory = categoryFilter === 'all' || docCat === categoryFilter;
+
+      return matchesSearch && matchesCategory;
+    } catch (err) {
+      console.warn('Filter archive document error:', err);
+      return false;
+    }
   });
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Title */}
+      {/* Header & Title */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -77,7 +100,7 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc 
         </div>
       </div>
 
-      {/* Table */}
+      {/* Documents Table */}
       <div className="table-container">
         <table className="tactical-table">
           <thead>
@@ -93,34 +116,52 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc 
           <tbody>
             {filteredDocs.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>
-                  Tidak ada arsip dokumen yang sesuai.
+                <td colSpan="6" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                    <FolderOpen size={40} color="var(--accent-cyan)" style={{ opacity: 0.6 }} />
+                    <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
+                      Belum Ada Arsip Dokumen
+                    </div>
+                    <p style={{ fontSize: '12px', margin: 0, maxWidth: '380px', lineHeight: 1.4 }}>
+                      Dokumen administrasi penyidikan yang digenerate akan otomatis tercatat dan tersimpan di sini.
+                    </p>
+                  </div>
                 </td>
               </tr>
             ) : (
-              filteredDocs.map((doc) => {
-                const relatedCase = cases.find(c => c.id === doc.case_id);
+              filteredDocs.map((doc, idx) => {
+                const relatedCase = safeCases.find((c) => c.id === doc?.case_id);
+                const displayDate = doc?.created_at
+                  ? (String(doc.created_at).includes('T')
+                      ? new Date(doc.created_at).toLocaleDateString('id-ID')
+                      : doc.created_at)
+                  : '-';
+
                 return (
-                  <tr key={doc.id}>
+                  <tr key={doc?.id || `doc-${idx}`}>
                     <td>
-                      <span className="badge badge-cyan mono">{doc.template_code}</span>
+                      <span className="badge badge-cyan mono">
+                        {doc?.template_code || doc?.code || 'MINDIK'}
+                      </span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{doc.doc_title}</div>
+                      <div style={{ fontWeight: 600 }}>
+                        {doc?.doc_title || doc?.title || 'Dokumen Administrasi Penyidikan'}
+                      </div>
                     </td>
                     <td>
                       <span className="mono" style={{ fontSize: '12px', color: 'var(--accent-cyan)' }}>
-                        {doc.doc_number || '-'}
+                        {doc?.doc_number || doc?.nomor_surat || '-'}
                       </span>
                     </td>
                     <td>
                       {relatedCase ? (
                         <div>
                           <div className="mono" style={{ fontSize: '11px', color: 'var(--text-primary)' }}>
-                            {relatedCase.no_lp}
+                            {relatedCase.nomor_lp || relatedCase.no_lp || '-'}
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                            {relatedCase.tindak_pidana} ({relatedCase.person?.nama || relatedCase.terlapor_name})
+                            {relatedCase.tindak_pidana || '-'} ({relatedCase.nama_terlapor || relatedCase.terlapor_name || relatedCase.person?.nama || '-'})
                           </div>
                         </div>
                       ) : (
@@ -129,12 +170,13 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc 
                     </td>
                     <td>
                       <span className="mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        {doc.created_at}
+                        {displayDate}
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <button
-                        onClick={() => onPreviewDoc(doc)}
+                        type="button"
+                        onClick={() => onPreviewDoc && onPreviewDoc(doc)}
                         className="btn btn-secondary btn-sm"
                         title="Buka Pratinjau Dokumen"
                       >

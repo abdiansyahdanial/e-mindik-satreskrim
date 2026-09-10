@@ -19,6 +19,7 @@ import {
 import { mockTemplates } from '../data/mockTemplates';
 import { mockPersonnel } from '../data/mockPersonnel';
 import { supabase } from '../supabaseClient';
+import { deleteTemplateFromSupabase, getDeletedTemplateCodes } from '../utils/templateHelper';
 import OfficialDocPreview from '../components/OfficialDocPreview';
 import { generateAndDownloadDocx } from '../services/mindikGenerator';
 
@@ -33,7 +34,10 @@ export default function DocGeneratorView({
 }) {
   const isSuperAdmin = userRole === 'super_admin';
 
-  const [allTemplates, setAllTemplates] = useState(mockTemplates);
+  const [allTemplates, setAllTemplates] = useState(() => {
+    const deleted = getDeletedTemplateCodes();
+    return mockTemplates.filter(t => !deleted.includes(t.code) && !deleted.includes(String(t.id)));
+  });
   const [selectedCaseId, setSelectedCaseId] = useState(initialCase ? initialCase.id : (cases[0]?.id || ''));
   const [selectedTemplateCode, setSelectedTemplateCode] = useState(
     initialTemplate ? initialTemplate.code : 'SPRIN_SIDIK'
@@ -75,16 +79,16 @@ export default function DocGeneratorView({
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        // Merge Supabase templates with mockTemplates (preferring Supabase ones)
-        const merged = [...data];
-        mockTemplates.forEach(mt => {
-          if (!merged.some(st => st.code === mt.code)) {
-            merged.push(mt);
-          }
-        });
-        setAllTemplates(merged);
-      }
+      const deleted = getDeletedTemplateCodes();
+      const activeSupabase = (data || []).filter(st => !deleted.includes(st.code) && !deleted.includes(String(st.id)));
+      const merged = [...activeSupabase];
+
+      mockTemplates.forEach(mt => {
+        if (!deleted.includes(mt.code) && !deleted.includes(String(mt.id)) && !merged.some(st => st.code === mt.code)) {
+          merged.push(mt);
+        }
+      });
+      setAllTemplates(merged);
     } catch (err) {
       console.warn('Could not fetch supabase templates:', err);
     }
@@ -570,36 +574,18 @@ export default function DocGeneratorView({
 
     setIsProcessingTemplate(true);
     try {
-      // Remove file from storage if present
-      if (templateToDelete.file_path) {
-        try {
-          await supabase.storage.from('templates').remove([templateToDelete.file_path]);
-          await supabase.storage.from('docx-templates').remove([templateToDelete.file_path]);
-        } catch (storageErr) {
-          console.warn('Storage delete warning:', storageErr);
-        }
-      }
+      await deleteTemplateFromSupabase(templateToDelete);
 
-      // Remove row from document_templates if in DB
-      if (templateToDelete.id) {
-        const { error } = await supabase
-          .from('document_templates')
-          .delete()
-          .eq('id', templateToDelete.id);
-
-        if (error) throw error;
-      }
-
-      setAllTemplates(prev => prev.filter(t => t.code !== templateToDelete.code));
+      setAllTemplates(prev => prev.filter(t => t.code !== templateToDelete.code && t.id !== templateToDelete.id));
 
       setGeneratorNotice({
         type: 'success',
-        message: `Format template '${templateToDelete.title}' berhasil dihapus dari Supabase!`
+        message: `Format template '${templateToDelete.title}' berhasil dihapus secara permanen!`
       });
 
       // If the deleted template was selected, fallback to first available
       if (selectedTemplateCode === templateToDelete.code) {
-        const remaining = allTemplates.filter(t => t.code !== templateToDelete.code);
+        const remaining = allTemplates.filter(t => t.code !== templateToDelete.code && t.id !== templateToDelete.id);
         if (remaining.length > 0) {
           setSelectedTemplateCode(remaining[0].code);
         }

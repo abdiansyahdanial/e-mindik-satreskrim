@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { mockTemplates } from '../data/mockTemplates';
+import { deleteTemplateFromSupabase, getDeletedTemplateCodes } from '../utils/templateHelper';
 
 export default function AdminTemplateStudio({ 
   onTemplateSaved, 
@@ -65,10 +66,12 @@ export default function AdminTemplateStudio({
         console.error('Error fetching document_templates:', error);
         setStatusNotice({
           type: 'warning',
-          message: `Gagal membaca tabel 'document_templates': ${error.message}. Menampilkan template bawaan.`
+          message: `Gagal membaca tabel 'document_templates': ${error.message}.`
         });
       } else {
-        setTemplates(data || []);
+        const deleted = getDeletedTemplateCodes();
+        const activeTemplates = (data || []).filter(t => !deleted.includes(t.code) && !deleted.includes(String(t.id)));
+        setTemplates(activeTemplates);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -381,29 +384,13 @@ export default function AdminTemplateStudio({
     setIsDeletingTemplate(true);
 
     try {
-      // Hapus file master dari Supabase Storage jika ada
-      if (templateToDelete.file_path) {
-        try {
-          await supabase.storage.from('docx-templates').remove([templateToDelete.file_path]);
-          await supabase.storage.from('templates').remove([templateToDelete.file_path]);
-        } catch (storageErr) {
-          console.warn('Hapus file master storage notice:', storageErr);
-        }
-      }
-
-      // Hapus baris dari tabel document_templates berdasarkan id
-      const { error } = await supabase
-        .from('document_templates')
-        .delete()
-        .eq('id', templateToDelete.id);
-
-      if (error) throw error;
+      await deleteTemplateFromSupabase(templateToDelete);
 
       // Perbarui state daftar template secara realtime
-      setTemplates((prev) => prev.filter((t) => t.id !== templateToDelete.id));
+      setTemplates((prev) => prev.filter((t) => t.id !== templateToDelete.id && t.code !== templateToDelete.code));
       setStatusNotice({
         type: 'success',
-        message: `Template '${templateToDelete.title}' berhasil dihapus secara permanen dari Supabase!`
+        message: `Template '${templateToDelete.title}' berhasil dihapus secara permanen!`
       });
       setTemplateToDelete(null);
     } catch (err) {
