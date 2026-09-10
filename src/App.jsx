@@ -224,21 +224,24 @@ export default function App() {
     }
 
     try {
-      const { error } = await supabase.from('cases').delete().eq('id', caseId);
-      if (error) {
-        console.error('Delete case error from Supabase:', error);
-        alert(`Gagal menghapus perkara dari database: ${error.message}`);
-        return;
-      }
+      // 1. Hapus relasi anak terlebih dahulu jika ada
+      await supabase.from('case_suspects').delete().eq('case_id', caseId);
+      await supabase.from('documents').delete().eq('case_id', caseId);
 
-      await supabase.from('documents').delete().eq('case_id', caseId).catch(() => {});
+      // 2. Hapus berkas perkara utama
+      const { error } = await supabase
+        .from('cases')
+        .delete()
+        .eq('id', caseId);
+
+      if (error) throw error;
       
       // Update state in memory after successful deletion
       setCases((prev) => prev.filter((c) => c.id !== caseId));
       setDocuments((prev) => prev.filter((d) => d.case_id !== caseId));
       showToast('Berkas perkara dan riwayat mindik berhasil dihapus dari database Supabase!');
     } catch (err) {
-      console.error('Delete case exception:', err);
+      console.error('Gagal menghapus perkara:', err);
       alert(`Terjadi kesalahan saat menghapus perkara: ${err.message}`);
     }
   };
