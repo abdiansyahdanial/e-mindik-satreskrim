@@ -217,7 +217,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const suspectNomorSpTap = activeSuspect?.nomor_sp_tap || activeSuspect?.no_sp_tap_tsk || '';
   const suspectTanggalSpTap = activeSuspect?.tanggal_sp_tap || activeSuspect?.tgl_sp_tap_tsk || '';
 
-  // Gunakan nomor_sp_tap jika SP TAP, pertahankan alur dokumen lain seperti semula
+  // Kop Nomor Surat paling atas (Nomor : ...): gunakan murni {NOMOR_SURAT} dari dokumen yang sedang dibuka.
+  // Khusus format SP_TAP_TSK: sinkronkan dari nomor_sp_tap tersangka jika tersedia
   const effectiveNomorSurat = isSpTap 
     ? (suspectNomorSpTap || rawNomorSurat)
     : rawNomorSurat;
@@ -251,7 +252,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const tglP21Kn = formatTanggalIndonesia(rawTglP21Kn);
 
   // C. RUJUKAN TINGKAT TERSANGKA (dari activeSuspect / input form)
-  const noSpTapTsk = cleanInput.NO_SP_TAP_TSK || cleanInput.no_sp_tap_tsk || suspectNomorSpTap || '';
+  // Rujukan SP TAP TSK di dalam isi surat rujukan huruf f: gunakan {NO_SP_TAP_TSK} atau {selectedSuspect?.nomor_sp_tap || '-'}
+  const noSpTapTsk = cleanInput.NO_SP_TAP_TSK || cleanInput.no_sp_tap_tsk || suspectNomorSpTap || '-';
   const rawTglSpTapTsk = cleanInput.TGL_SP_TAP_TSK || cleanInput.tgl_sp_tap_tsk || cleanInput.TANGGAL_SP_TAP_TSK || cleanInput.tanggal_sp_tap_tsk || suspectTanggalSpTap || activeCase?.tgl_sp_tap_tsk || activeCase?.tanggal_penetapan || '';
   const tglSpTapTsk = formatTanggalIndonesia(rawTglSpTapTsk);
 
@@ -481,6 +483,12 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     tanggal_sp_tap_tsk: tglSpTapTsk,
     TANGGAL_PENETAPAN: tglSpTapTsk,
     tanggal_penetapan: tglSpTapTsk,
+    NOMOR_SP_TAP: noSpTapTsk,
+    nomor_sp_tap: noSpTapTsk,
+    NO_SP_TAP: noSpTapTsk,
+    no_sp_tap: noSpTapTsk,
+    SP_TAP_TSK: noSpTapTsk,
+    sp_tap_tsk: noSpTapTsk,
 
     no_sprin_kap: noSprinKap,
     tgl_sprin_kap: tglSprinKap,
