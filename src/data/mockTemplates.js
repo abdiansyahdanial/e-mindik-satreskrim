@@ -16,6 +16,21 @@ export const mockTemplates = [
     ],
   },
   {
+    id: 'tpl-001b',
+    code: 'SPRIN_GAS_SIDIK',
+    title: 'Surat Perintah Tugas Penyidikan',
+    category: 'SURAT PERINTAH',
+    description: 'Surat perintah tugas untuk melaksanakan penyidikan perkara tindak pidana oleh tim penyidik.',
+    default_number_format: 'SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra',
+    dynamic_fields: [
+      { key: 'DOC_NO', label: 'Nomor Surat Perintah Tugas', type: 'text', placeholder: 'SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra', default_value: 'SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra', required: true },
+      { key: 'DOC_DATE', label: 'Tanggal Surat', type: 'date', required: true },
+      { key: 'DOC_VALIDITY', label: 'Masa Berlaku', type: 'text', placeholder: 'Contoh: 30 (tiga puluh) hari', default_value: '30 (tiga puluh) hari', required: false },
+      { key: 'DOC_SIGNER_ATASAN_NAME', label: 'Nama Atasan Penandatangan', type: 'select_personnel', role_filter: 'Kasat', required: true },
+      { key: 'DOC_SIGNER_KANIT_NAME', label: 'Nama Kanit Penandatangan', type: 'select_personnel', role_filter: 'Kanit', required: true },
+    ],
+  },
+  {
     id: 'tpl-002',
     code: 'SPDP',
     title: 'Surat Pemberitahuan Dimulainya Penyidikan',

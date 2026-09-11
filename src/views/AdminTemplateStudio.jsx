@@ -595,6 +595,15 @@ export default function AdminTemplateStudio({
                 </button>
                 <button 
                   type="button" 
+                  onClick={() => loadPreset('SPRIN_GAS_SIDIK')}
+                  className="btn btn-secondary btn-sm" 
+                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  title="Isi form dengan preset SPRIN GAS SIDIK"
+                >
+                  Preset Gas Sidik
+                </button>
+                <button 
+                  type="button" 
                   onClick={() => loadPreset('SPDP')}
                   className="btn btn-secondary btn-sm" 
                   style={{ fontSize: '11px', padding: '3px 8px' }}

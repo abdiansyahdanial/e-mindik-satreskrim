@@ -183,12 +183,27 @@ export default function DocGeneratorView({
     return values;
   };
 
-  // Helper identifikasi dokumen SP.Sidik
-  const isSidikDoc = (() => {
-    const c = (currentTemplate?.code || '').toUpperCase();
-    const t = (currentTemplate?.title || '').toUpperCase();
-    return c.includes('SIDIK') || t.includes('PENYIDIKAN');
+  // Helper identifikasi dokumen Surat Perintah Tugas Penyidikan (SP.Gas.Sidik)
+  const isSprinGasSidik = (() => {
+    const c = (currentTemplate?.code || '').toUpperCase().trim();
+    const t = (currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
+    return c === 'SPRIN_GAS_SIDIK' || 
+           c === 'SPRIN_TUGAS_PENYIDIKAN' || 
+           c.includes('GAS_SIDIK') || 
+           t.includes('TUGAS PENYIDIKAN');
   })();
+
+  // Helper identifikasi dokumen SP.Sidik Induk
+  const isSprinSidik = (() => {
+    const c = (currentTemplate?.code || '').toUpperCase().trim();
+    const t = (currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
+    if (isSprinGasSidik) return false;
+    return c === 'SPRIN_SIDIK' || c === 'SP_SIDIK' || 
+           (c.includes('SIDIK') && !c.includes('GAS')) || 
+           (t.includes('PENYIDIKAN') && !t.includes('TUGAS'));
+  })();
+
+  const isSidikDoc = isSprinSidik;
 
   // 2. Fetch Suspects for currentCase from Supabase (BAGIAN 3 & 4)
   useEffect(() => {
@@ -303,6 +318,8 @@ export default function DocGeneratorView({
       
       if (templateDefaultNo) {
         setNomorSurat(templateDefaultNo);
+      } else if (code === 'SPRIN_GAS_SIDIK' || code === 'SPRIN_TUGAS_PENYIDIKAN' || code.includes('GAS_SIDIK') || (selectedTemplate.title || '').toUpperCase().includes('TUGAS PENYIDIKAN')) {
+        setNomorSurat('SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra');
       } else if (code.includes('SPDP')) {
         // Gunakan format SPDP perkara jika ada, atau kembalikan ke default input penomoran SPDP
         setNomorSurat(activeCase?.no_spdp || 'B/01/IX/2026/Reskrim');
@@ -313,7 +330,7 @@ export default function DocGeneratorView({
       // Kembalikan tanggal surat ke tanggal hari ini atau tanggal default dokumen
       setTanggalSurat(new Date().toISOString().split('T')[0]);
     }
-  }, [selectedTemplate?.id]); // Trigger HANYA saat ID template berganti
+  }, [selectedTemplate?.id, selectedTemplate?.code]); // Trigger saat ID atau kode template berganti
 
   // Sinkronisasi Profil Tersangka saat Tersangka Berubah
   useEffect(() => {
@@ -377,8 +394,12 @@ export default function DocGeneratorView({
     initial['TGL_LP'] = initial['TANGGAL_LP'];
 
     initial['NO_SPRIN_SIDIK'] = currentCase.no_sprin_sidik || '';
-    initial['TGL_SPRIN_SIDIK'] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSidikDoc ? todayStr : '');
+    initial['TGL_SPRIN_SIDIK'] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSprinSidik ? todayStr : '');
     initial['TANGGAL_SPRIN_SIDIK'] = initial['TGL_SPRIN_SIDIK'];
+
+    initial['NO_SPRIN_GAS_SIDIK'] = currentCase.no_sprin_gas_sidik || '';
+    initial['TGL_SPRIN_GAS_SIDIK'] = currentCase.tgl_sprin_gas_sidik || (isSprinGasSidik ? todayStr : '');
+    initial['TANGGAL_SPRIN_GAS_SIDIK'] = initial['TGL_SPRIN_GAS_SIDIK'];
 
     initial['NO_SPDP'] = currentCase.no_spdp || '';
     initial['TGL_SPDP'] = currentCase.tgl_spdp || '';
@@ -393,6 +414,7 @@ export default function DocGeneratorView({
     initial['ATASAN_NAMA'] = currentCase.kasat_nama || '';
     initial['ATASAN_PANGKAT'] = currentCase.kasat_pangkat || '';
     initial['ATASAN_NRP'] = currentCase.kasat_nrp || '';
+    initial['ATASAN_JABATAN'] = currentCase.kasat_jabatan || 'Kasat Reskrim';
 
     initial['PENYIDIK_NAMA'] = currentCase.penyidik_1_nama || '';
     initial['PENYIDIK_PANGKAT'] = currentCase.penyidik_1_pangkat || '';
@@ -407,9 +429,15 @@ export default function DocGeneratorView({
     }
 
     const defaultDocFields = [
-      { field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
+      { 
+        field_key: 'NOMOR_SURAT', 
+        field_label: 'Nomor Surat', 
+        field_type: 'text', 
+        default_value: isSprinGasSidik ? 'SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra' : '', 
+        is_required: true 
+      },
       { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: todayStr, is_required: true },
-      ...(isSidikDoc ? [
+      ...(isSprinSidik ? [
         { field_key: 'TGL_SPRIN_SIDIK', field_label: 'Tanggal Penetapan SP.Sidik', field_type: 'date', default_value: currentCase.tgl_sprin_sidik || currentCase.sprin_date || todayStr, is_required: true }
       ] : []),
       { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
@@ -454,13 +482,19 @@ export default function DocGeneratorView({
           initial[cleanKey] = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk;
         } else if (templateDefaultNo) {
           initial[cleanKey] = templateDefaultNo;
+        } else if (isSprinGasSidik || tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || tplCode.includes('GAS_SIDIK')) {
+          initial[cleanKey] = 'SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra';
         } else if (tplCode.includes('SPDP')) {
           initial[cleanKey] = currentCase?.no_spdp || 'B/01/IX/2026/Reskrim';
         } else {
           initial[cleanKey] = defVal || '';
         }
       } else if (upperKey === 'TGL_SPRIN_SIDIK' || upperKey === 'TANGGAL_SPRIN_SIDIK') {
-        initial[cleanKey] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSidikDoc ? todayStr : '');
+        initial[cleanKey] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSprinSidik ? todayStr : '');
+      } else if (upperKey === 'NO_SPRIN_GAS_SIDIK') {
+        initial[cleanKey] = currentCase.no_sprin_gas_sidik || '';
+      } else if (upperKey === 'TGL_SPRIN_GAS_SIDIK' || upperKey === 'TANGGAL_SPRIN_GAS_SIDIK') {
+        initial[cleanKey] = currentCase.tgl_sprin_gas_sidik || (isSprinGasSidik ? todayStr : '');
       } else if (upperKey === 'NO_SPRIN_SIDIK') {
         initial[cleanKey] = currentCase.no_sprin_sidik || '';
       } else if (upperKey === 'NOMOR_LP' || upperKey === 'NO_LP') {
@@ -1241,6 +1275,90 @@ export default function DocGeneratorView({
               </div>
             )}
 
+            {/* Tim Penyidik Otomatis untuk Dokumen Penugasan / Kolektif Perkara (SPRIN SIDIK / SPRIN GAS SIDIK) */}
+            {(isSprinSidik || isSprinGasSidik) && currentCase && (
+              <div style={{
+                padding: '12px',
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '14px',
+                fontSize: '11px',
+                lineHeight: '1.5'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Shield size={13} color="var(--accent-cyan)" />
+                    <span style={{ color: 'var(--accent-cyan)', fontWeight: 700, letterSpacing: '0.3px' }}>
+                      TIM PENYIDIK OTOMATIS (PENUGASAN TIM)
+                    </span>
+                  </div>
+                  <span className="badge badge-cyan" style={{ fontSize: '9px' }}>
+                    Kasat, Kanit, P1 s.d. P5
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '6px', color: 'var(--text-secondary)' }}>
+                  {/* Kasat */}
+                  <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ color: '#93C5FD', fontSize: '10px', fontWeight: 600 }}>Pemberi Perintah (Kasat Reskrim):</div>
+                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
+                      {currentCase.kasat_nama || formValues.ATASAN_NAMA || '(Belum diset)'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#94A3B8' }}>
+                      {currentCase.kasat_pangkat || formValues.ATASAN_PANGKAT || '-'} {currentCase.kasat_nrp ? `NRP ${currentCase.kasat_nrp}` : ''}
+                    </div>
+                  </div>
+
+                  {/* Kanit / P1 */}
+                  <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ color: '#93C5FD', fontSize: '10px', fontWeight: 600 }}>Kanit / Penyidik 1 (P1):</div>
+                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
+                      {currentCase.penyidik_1_nama || formValues.PENYIDIK_1_NAMA || '(Belum diset)'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#94A3B8' }}>
+                      {currentCase.penyidik_1_pangkat || formValues.PENYIDIK_1_PANGKAT || '-'} {currentCase.penyidik_1_nrp ? `NRP ${currentCase.penyidik_1_nrp}` : ''} • {currentCase.penyidik_1_jabatan || formValues.PENYIDIK_1_JABATAN || 'Kanit'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Anggota Tim Penyidik 2 s.d. 5 */}
+                <div style={{ 
+                  marginTop: '8px', 
+                  padding: '6px 8px', 
+                  background: 'rgba(15, 23, 42, 0.4)', 
+                  borderRadius: '4px', 
+                  border: '1px dashed rgba(255,255,255,0.08)',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                  gap: '6px'
+                }}>
+                  {[2, 3, 4, 5].map((idx) => {
+                    const pNama = currentCase[`penyidik_${idx}_nama`] || formValues[`PENYIDIK_${idx}_NAMA`];
+                    const pPangkat = currentCase[`penyidik_${idx}_pangkat`] || formValues[`PENYIDIK_${idx}_PANGKAT`];
+                    const pNrp = currentCase[`penyidik_${idx}_nrp`] || formValues[`PENYIDIK_${idx}_NRP`];
+                    return (
+                      <div key={idx} style={{ fontSize: '10.5px' }}>
+                        <div style={{ color: '#94A3B8', fontSize: '9.5px' }}>Penyidik {idx}:</div>
+                        <div style={{ color: pNama ? '#F1F5F9' : '#64748B', fontWeight: pNama ? 600 : 400 }}>
+                          {pNama || '-'}
+                        </div>
+                        {pNama && (
+                          <div style={{ fontSize: '9.5px', color: '#94A3B8' }}>
+                            {pPangkat} {pNrp ? `(${pNrp})` : ''}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ fontSize: '10px', color: '#94A3B8', marginTop: '6px' }}>
+                  Tag otomatis: <code className="mono">{'{ATASAN_NAMA}'}</code>, <code className="mono">{'{PENYIDIK_1_NAMA}'}</code> s.d. <code className="mono">{'{PENYIDIK_5_NAMA}'}</code> beserta Pangkat, NRP, dan Jabatan.
+                </div>
+              </div>
+            )}
+
             {/* Rantai Rujukan Perkara (Chain of Reference) */}
             {currentCase && (
               <div style={{
@@ -1270,11 +1388,20 @@ export default function DocGeneratorView({
                   </div>
                   <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
                     <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Sidik (Tag: {'{NO_SPRIN_SIDIK}'}):</div>
-                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_sprin_sidik || (isSidikDoc ? '(Sedang dibuat)' : '-')}</div>
+                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_sprin_sidik || (isSprinSidik ? '(Sedang dibuat)' : '-')}</div>
                     <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
                       Tgl ({'{TGL_SPRIN_SIDIK}'}): {formatTanggalIndonesia(formValues.TGL_SPRIN_SIDIK || currentCase.tgl_sprin_sidik || currentCase.sprin_date) || '-'}
                     </div>
                   </div>
+                  {(currentCase.no_sprin_gas_sidik || isSprinGasSidik) && (
+                    <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
+                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Gas.Sidik (Tag: {'{NO_SPRIN_GAS_SIDIK}'}):</div>
+                      <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_sprin_gas_sidik || (isSprinGasSidik ? '(Sedang dibuat)' : '-')}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                        Tgl ({'{TGL_SPRIN_GAS_SIDIK}'}): {formatTanggalIndonesia(formValues.TGL_SPRIN_GAS_SIDIK || currentCase.tgl_sprin_gas_sidik) || '-'}
+                      </div>
+                    </div>
+                  )}
                   {currentCase.no_spdp && (
                     <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
                       <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SPDP (Tag: {'{NO_SPDP}'}):</div>
@@ -1286,8 +1413,10 @@ export default function DocGeneratorView({
                   )}
                 </div>
                 <div style={{ fontSize: '10.5px', color: '#94A3B8', marginTop: '6px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '4px' }}>
-                  {isSidikDoc ? (
-                    <span>Dokumen ini adalah <strong>SP.Sidik</strong>. Tanggal penetapan yang Anda simpan otomatis menjadi rujukan untuk SPDP & dokumen turunan berikutnya.</span>
+                  {isSprinSidik ? (
+                    <span>Dokumen ini adalah <strong>SP.Sidik Induk</strong>. Tanggal penetapan yang Anda simpan otomatis menjadi rujukan untuk SP.Gas.Sidik, SPDP & dokumen turunan berikutnya.</span>
+                  ) : isSprinGasSidik ? (
+                    <span>Dokumen ini adalah <strong>Surat Perintah Tugas Penyidikan (SP.Gas.Sidik)</strong>. Otomatis merujuk ke SP.Sidik induk (<code>{'{NO_SPRIN_SIDIK}'}</code>) dan menugaskan Tim Penyidik tanpa menimpa nomor induk perkara.</span>
                   ) : (
                     <span>Dokumen turunan ini otomatis membaca nomor & tanggal SP.Sidik dari perkara tanpa menimpa <code>{'{TANGGAL_SURAT}'}</code> aktif.</span>
                   )}
@@ -1300,7 +1429,13 @@ export default function DocGeneratorView({
                 let dynamicList = Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
                   ? [...currentTemplate.dynamic_fields] 
                   : [
-                    { field_key: 'NOMOR_SURAT', field_label: 'Nomor Surat', field_type: 'text', default_value: '', is_required: true },
+                    { 
+                      field_key: 'NOMOR_SURAT', 
+                      field_label: 'Nomor Surat', 
+                      field_type: 'text', 
+                      default_value: isSprinGasSidik ? 'SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra' : '', 
+                      is_required: true 
+                    },
                     { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
                     { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
                     { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
@@ -1308,7 +1443,7 @@ export default function DocGeneratorView({
                     { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
                   ];
 
-                if (isSidikDoc && !dynamicList.some(f => (f.field_key || f.key || '').toUpperCase().includes('TGL_SPRIN_SIDIK'))) {
+                if (isSprinSidik && !dynamicList.some(f => (f.field_key || f.key || '').toUpperCase().includes('TGL_SPRIN_SIDIK'))) {
                   dynamicList.splice(2, 0, {
                     field_key: 'TGL_SPRIN_SIDIK',
                     field_label: 'Tanggal Penetapan SP.Sidik',

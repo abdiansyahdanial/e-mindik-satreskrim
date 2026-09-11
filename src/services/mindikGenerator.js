@@ -243,6 +243,11 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const rawTglSprinSidik = cleanInput.TGL_SPRIN_SIDIK || cleanInput.tgl_sprin_sidik || cleanInput.TANGGAL_SPRIN_SIDIK || cleanInput.tanggal_sprin_sidik || activeCase?.tgl_sprin_sidik || activeCase?.sprin_date || '';
   const tglSprinSidik = formatTanggalIndonesia(rawTglSprinSidik);
 
+  const noSprinGasSidik = cleanInput.NO_SPRIN_GAS_SIDIK || cleanInput.no_sprin_gas_sidik || cleanInput.NOMOR_SPRIN_GAS_SIDIK || cleanInput.nomor_sprin_gas_sidik || activeCase?.no_sprin_gas_sidik || activeCase?.nomor_sprin_gas_sidik || '-';
+  const rawTglSprinGasSidik = cleanInput.TGL_SPRIN_GAS_SIDIK || cleanInput.tgl_sprin_gas_sidik || cleanInput.TANGGAL_SPRIN_GAS_SIDIK || cleanInput.tanggal_sprin_gas_sidik || activeCase?.tgl_sprin_gas_sidik || activeCase?.tanggal_sprin_gas_sidik || '';
+  const formattedTglSprinGasSidik = formatTanggalIndonesia(rawTglSprinGasSidik);
+  const tglSprinGasSidik = formattedTglSprinGasSidik || '-';
+
   const noSpdp = cleanInput.NO_SPDP || cleanInput.no_spdp || activeCase?.no_spdp || '';
   const rawTglSpdp = cleanInput.TGL_SPDP || cleanInput.tgl_spdp || cleanInput.TANGGAL_SPDP || cleanInput.tanggal_spdp || activeCase?.tgl_spdp || '';
   const tglSpdp = formatTanggalIndonesia(rawTglSpdp);
@@ -353,6 +358,24 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const penyidik5Nrp = cleanInput.PENYIDIK_5_NRP || cleanInput.penyidik_5_nrp || activeCase?.penyidik_5_nrp || '';
   const penyidik5Jabatan = cleanInput.PENYIDIK_5_JABATAN || cleanInput.penyidik_5_jabatan || activeCase?.penyidik_5_jabatan || '';
 
+  const atasanJabatan = cleanInput.ATASAN_JABATAN || cleanInput.atasan_jabatan || activeCase?.kasat_jabatan || 'Kasat Reskrim';
+
+  const atasanPangkatNrp = atasanPangkat && atasanNrp ? `${atasanPangkat} / ${atasanNrp}` : (atasanPangkat || atasanNrp || '');
+  const penyidikPangkatNrp = penyidikPangkat && penyidikNrp ? `${penyidikPangkat} / ${penyidikNrp}` : (penyidikPangkat || penyidikNrp || '');
+  const penyidik1PangkatNrp = penyidik1Pangkat && penyidik1Nrp ? `${penyidik1Pangkat} / ${penyidik1Nrp}` : (penyidik1Pangkat || penyidik1Nrp || '');
+  const penyidik2PangkatNrp = penyidik2Pangkat && penyidik2Nrp ? `${penyidik2Pangkat} / ${penyidik2Nrp}` : (penyidik2Pangkat || penyidik2Nrp || '');
+  const penyidik3PangkatNrp = penyidik3Pangkat && penyidik3Nrp ? `${penyidik3Pangkat} / ${penyidik3Nrp}` : (penyidik3Pangkat || penyidik3Nrp || '');
+  const penyidik4PangkatNrp = penyidik4Pangkat && penyidik4Nrp ? `${penyidik4Pangkat} / ${penyidik4Nrp}` : (penyidik4Pangkat || penyidik4Nrp || '');
+  const penyidik5PangkatNrp = penyidik5Pangkat && penyidik5Nrp ? `${penyidik5Pangkat} / ${penyidik5Nrp}` : (penyidik5Pangkat || penyidik5Nrp || '');
+
+  const timPenyidik = [
+    { no: 1, nama: penyidik1Nama, pangkat: penyidik1Pangkat, nrp: penyidik1Nrp, jabatan: penyidik1Jabatan, pangkat_nrp: penyidik1PangkatNrp },
+    { no: 2, nama: penyidik2Nama, pangkat: penyidik2Pangkat, nrp: penyidik2Nrp, jabatan: penyidik2Jabatan, pangkat_nrp: penyidik2PangkatNrp },
+    { no: 3, nama: penyidik3Nama, pangkat: penyidik3Pangkat, nrp: penyidik3Nrp, jabatan: penyidik3Jabatan, pangkat_nrp: penyidik3PangkatNrp },
+    { no: 4, nama: penyidik4Nama, pangkat: penyidik4Pangkat, nrp: penyidik4Nrp, jabatan: penyidik4Jabatan, pangkat_nrp: penyidik4PangkatNrp },
+    { no: 5, nama: penyidik5Nama, pangkat: penyidik5Pangkat, nrp: penyidik5Nrp, jabatan: penyidik5Jabatan, pangkat_nrp: penyidik5PangkatNrp },
+  ].filter(p => p.nama);
+
   const baseMap = {
     // A. SURAT AKTIF (Resmi UPPERCASE)
     NOMOR_SURAT: nomorSurat,
@@ -367,6 +390,9 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     TANGGAL_LP: tanggalLp,
     NO_SPRIN_SIDIK: noSprinSidik,
     TGL_SPRIN_SIDIK: tglSprinSidik,
+    NO_SPRIN_GAS_SIDIK: noSprinGasSidik,
+    TGL_SPRIN_GAS_SIDIK: tglSprinGasSidik,
+    TANGGAL_SPRIN_GAS_SIDIK: tglSprinGasSidik,
     NO_SPDP: noSpdp,
     TGL_SPDP: tglSpdp,
     NO_P21_KN: noP21Kn,
@@ -418,38 +444,46 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     ATASAN_NAMA: atasanNama,
     ATASAN_PANGKAT: atasanPangkat,
     ATASAN_NRP: atasanNrp,
+    ATASAN_JABATAN: atasanJabatan,
+    ATASAN_PANGKAT_NRP: atasanPangkatNrp,
 
     // Tanda Tangan Kanit / Yang Menerima Perintah / Pemeriksa BA
     PENYIDIK_NAMA: penyidikNama,
     PENYIDIK_PANGKAT: penyidikPangkat,
     PENYIDIK_NRP: penyidikNrp,
     PENYIDIK_JABATAN: penyidikJabatan,
+    PENYIDIK_PANGKAT_NRP: penyidikPangkatNrp,
 
     // Daftar Tim Penerima Perintah (Personel 1 s.d. 5)
     PENYIDIK_1_NAMA: penyidik1Nama,
     PENYIDIK_1_PANGKAT: penyidik1Pangkat,
     PENYIDIK_1_NRP: penyidik1Nrp,
     PENYIDIK_1_JABATAN: penyidik1Jabatan,
+    PENYIDIK_1_PANGKAT_NRP: penyidik1PangkatNrp,
 
     PENYIDIK_2_NAMA: penyidik2Nama,
     PENYIDIK_2_PANGKAT: penyidik2Pangkat,
     PENYIDIK_2_NRP: penyidik2Nrp,
     PENYIDIK_2_JABATAN: penyidik2Jabatan,
+    PENYIDIK_2_PANGKAT_NRP: penyidik2PangkatNrp,
 
     PENYIDIK_3_NAMA: penyidik3Nama,
     PENYIDIK_3_PANGKAT: penyidik3Pangkat,
     PENYIDIK_3_NRP: penyidik3Nrp,
     PENYIDIK_3_JABATAN: penyidik3Jabatan,
+    PENYIDIK_3_PANGKAT_NRP: penyidik3PangkatNrp,
 
     PENYIDIK_4_NAMA: penyidik4Nama,
     PENYIDIK_4_PANGKAT: penyidik4Pangkat,
     PENYIDIK_4_NRP: penyidik4Nrp,
     PENYIDIK_4_JABATAN: penyidik4Jabatan,
+    PENYIDIK_4_PANGKAT_NRP: penyidik4PangkatNrp,
 
     PENYIDIK_5_NAMA: penyidik5Nama,
     PENYIDIK_5_PANGKAT: penyidik5Pangkat,
     PENYIDIK_5_NRP: penyidik5Nrp,
     PENYIDIK_5_JABATAN: penyidik5Jabatan,
+    PENYIDIK_5_PANGKAT_NRP: penyidik5PangkatNrp,
 
     // Aliases lowercase & format pendukung untuk kompatibilitas template fleksibel
     nomor_surat: nomorSurat,
@@ -468,6 +502,25 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     tgl_sprin_sidik: tglSprinSidik,
     TANGGAL_SPRIN_SIDIK: tglSprinSidik,
     tanggal_sprin_sidik: tglSprinSidik,
+    NOMOR_SPRIN_SIDIK: noSprinSidik,
+    nomor_sprin_sidik: noSprinSidik,
+    NO_SP_SIDIK: noSprinSidik,
+    no_sp_sidik: noSprinSidik,
+    TGL_SP_SIDIK: tglSprinSidik,
+    tgl_sp_sidik: tglSprinSidik,
+
+    no_sprin_gas_sidik: noSprinGasSidik,
+    tgl_sprin_gas_sidik: tglSprinGasSidik,
+    TANGGAL_SPRIN_GAS_SIDIK: tglSprinGasSidik,
+    tanggal_sprin_gas_sidik: tglSprinGasSidik,
+    NOMOR_SPRIN_GAS_SIDIK: noSprinGasSidik,
+    nomor_sprin_gas_sidik: noSprinGasSidik,
+    NO_SP_GAS_SIDIK: noSprinGasSidik,
+    no_sp_gas_sidik: noSprinGasSidik,
+    TGL_SP_GAS_SIDIK: tglSprinGasSidik,
+    tgl_sp_gas_sidik: tglSprinGasSidik,
+    TANGGAL_SP_GAS_SIDIK: tglSprinGasSidik,
+    tanggal_sp_gas_sidik: tglSprinGasSidik,
 
     no_spdp: noSpdp,
     tgl_spdp: tglSpdp,
@@ -519,6 +572,10 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     nama_tersangka: namaTersangka,
     nama_pelapor: namaPelapor,
     nama_terlapor: namaTerlapor,
+    TERLAPOR_NAMA: namaTerlapor,
+    terlapor_nama: namaTerlapor,
+    TERLAPOR: namaTerlapor,
+    terlapor: namaTerlapor,
     nik: nik,
     jenis_kelamin: jenisKelamin,
     tempat_lahir: tempatLahir,
@@ -536,36 +593,48 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     atasan_nama: atasanNama,
     atasan_pangkat: atasanPangkat,
     atasan_nrp: atasanNrp,
+    atasan_jabatan: atasanJabatan,
+    atasan_pangkat_nrp: atasanPangkatNrp,
 
     penyidik_nama: penyidikNama,
     penyidik_pangkat: penyidikPangkat,
     penyidik_nrp: penyidikNrp,
     penyidik_jabatan: penyidikJabatan,
+    penyidik_pangkat_nrp: penyidikPangkatNrp,
 
     penyidik_1_nama: penyidik1Nama,
     penyidik_1_pangkat: penyidik1Pangkat,
     penyidik_1_nrp: penyidik1Nrp,
     penyidik_1_jabatan: penyidik1Jabatan,
+    penyidik_1_pangkat_nrp: penyidik1PangkatNrp,
 
     penyidik_2_nama: penyidik2Nama,
     penyidik_2_pangkat: penyidik2Pangkat,
     penyidik_2_nrp: penyidik2Nrp,
     penyidik_2_jabatan: penyidik2Jabatan,
+    penyidik_2_pangkat_nrp: penyidik2PangkatNrp,
 
     penyidik_3_nama: penyidik3Nama,
     penyidik_3_pangkat: penyidik3Pangkat,
     penyidik_3_nrp: penyidik3Nrp,
     penyidik_3_jabatan: penyidik3Jabatan,
+    penyidik_3_pangkat_nrp: penyidik3PangkatNrp,
 
     penyidik_4_nama: penyidik4Nama,
     penyidik_4_pangkat: penyidik4Pangkat,
     penyidik_4_nrp: penyidik4Nrp,
     penyidik_4_jabatan: penyidik4Jabatan,
+    penyidik_4_pangkat_nrp: penyidik4PangkatNrp,
 
     penyidik_5_nama: penyidik5Nama,
     penyidik_5_pangkat: penyidik5Pangkat,
     penyidik_5_nrp: penyidik5Nrp,
     penyidik_5_jabatan: penyidik5Jabatan,
+    penyidik_5_pangkat_nrp: penyidik5PangkatNrp,
+
+    tim_penyidik: timPenyidik,
+    penyidik_list: timPenyidik,
+    investigators_list: timPenyidik,
 
     // Legacy Aliases
     DOC_NO: nomorSurat,
@@ -755,6 +824,13 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.tgl_sprin_sidik = tglSprinSidik;
   finalPayload.TANGGAL_SPRIN_SIDIK = tglSprinSidik;
   finalPayload.tanggal_sprin_sidik = tglSprinSidik;
+
+  finalPayload.NO_SPRIN_GAS_SIDIK = finalPayload.NO_SPRIN_GAS_SIDIK || noSprinGasSidik;
+  finalPayload.no_sprin_gas_sidik = finalPayload.no_sprin_gas_sidik || noSprinGasSidik;
+  finalPayload.TGL_SPRIN_GAS_SIDIK = tglSprinGasSidik;
+  finalPayload.tgl_sprin_gas_sidik = tglSprinGasSidik;
+  finalPayload.TANGGAL_SPRIN_GAS_SIDIK = tglSprinGasSidik;
+  finalPayload.tanggal_sprin_gas_sidik = tglSprinGasSidik;
 
   finalPayload.TGL_SPDP = tglSpdp;
   finalPayload.tgl_spdp = tglSpdp;

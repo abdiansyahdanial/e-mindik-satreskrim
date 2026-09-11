@@ -337,6 +337,9 @@ export default function OfficialDocPreview({
             {currentDataMap.NO_SPRIN_SIDIK && (
               <span>SP.Sidik: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_SIDIK}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPRIN_SIDIK || '-'}</span>)</span>
             )}
+            {currentDataMap.NO_SPRIN_GAS_SIDIK && currentDataMap.NO_SPRIN_GAS_SIDIK !== '-' && (
+              <span>SP.Gas.Sidik: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_GAS_SIDIK}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPRIN_GAS_SIDIK || '-'}</span>)</span>
+            )}
             {currentDataMap.NO_SPDP && (
               <span>SPDP: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPDP}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPDP || '-'}</span>)</span>
             )}
@@ -378,6 +381,12 @@ export default function OfficialDocPreview({
             )}
             {currentDataMap.PENYIDIK_3_NAMA && (
               <span>P3: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_3_NAMA}</strong></span>
+            )}
+            {currentDataMap.PENYIDIK_4_NAMA && (
+              <span>P4: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_4_NAMA}</strong></span>
+            )}
+            {currentDataMap.PENYIDIK_5_NAMA && (
+              <span>P5: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_5_NAMA}</strong></span>
             )}
           </div>
         )}
