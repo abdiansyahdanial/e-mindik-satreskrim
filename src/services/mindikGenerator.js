@@ -70,6 +70,107 @@ export const formatTanggalSuratHeader = (teksTanggal) => {
   return String(teksTanggal).toUpperCase();
 };
 
+/**
+ * Kamus Pangkat Lengkap Polri:
+ * Digunakan untuk ekspansi singkatan pangkat menjadi nama pangkat resmi tanpa singkatan
+ * pada kolom tanda tangan Atasan (Kasat Reskrim) dan bukti penyerahan surat (Penyidik Penangan).
+ */
+export const MAP_PANGKAT_LENGKAP = {
+  'JENDERAL POLISI': 'JENDERAL POLISI',
+  'KOMJEN POL': 'KOMISARIS JENDERAL POLISI',
+  'IRJEN POL': 'INSPEKTUR JENDERAL POLISI',
+  'BRIGJEN POL': 'BRIGADIR JENDERAL POLISI',
+  'KOMBES POL': 'KOMISARIS BESAR POLISI',
+  'AKBP': 'AJUN KOMISARIS BESAR POLISI',
+  'AKP': 'AJUN KOMISARIS POLISI',
+  'IPTU': 'INSPEKTUR POLISI SATU',
+  'IPDA': 'INSPEKTUR POLISI DUA',
+  'AIPTU': 'AJUN INSPEKTUR POLISI SATU',
+  'AIPDA': 'AJUN INSPEKTUR POLISI DUA',
+  'BRIPKA': 'BRIGADIR POLISI KEPALA',
+  'BRIGADIR': 'BRIGADIR POLISI',
+  'BRIPTU': 'BRIGADIR POLISI SATU',
+  'BRIPDA': 'BRIGADIR POLISI DUA'
+};
+
+/**
+ * Helper konversi singkatan pangkat Polri ke format teks pangkat lengkap/resmi.
+ * Menangani variasi tanda baca (titik) atau sinonim umum Polri.
+ */
+export const formatPangkatLengkap = (pangkat) => {
+  if (!pangkat) return '';
+  let key = String(pangkat).trim().toUpperCase();
+  key = key.replace(/\.+$/g, '').trim();
+
+  if (MAP_PANGKAT_LENGKAP[key]) {
+    return MAP_PANGKAT_LENGKAP[key];
+  }
+  if (key === 'BRIGPOL') return 'BRIGADIR POLISI';
+  if (key === 'KOMBES') return 'KOMISARIS BESAR POLISI';
+  if (key === 'BRIGJEN') return 'BRIGADIR JENDERAL POLISI';
+  if (key === 'IRJEN') return 'INSPEKTUR JENDERAL POLISI';
+  if (key === 'KOMJEN') return 'KOMISARIS JENDERAL POLISI';
+
+  return key;
+};
+
+/**
+ * Helper untuk mendeteksi personel yang ditunjuk sebagai Penyidik Penangan Perkara.
+ * Mendukung objek penyidik_penangan, properti spesifik perkara, indeks slot tim penyidik (1..5),
+ * flag is_penangan pada array investigators, dengan fallback default ke Penyidik 1.
+ */
+export const getPenyidikPenangan = (activeCase = {}) => {
+  if (!activeCase) return null;
+
+  // 1. Objek penyidik_penangan langsung
+  if (activeCase.penyidik_penangan && activeCase.penyidik_penangan.nama) {
+    return activeCase.penyidik_penangan;
+  }
+
+  // 2. Direct properties di tabel case
+  if (activeCase.penyidik_penangan_nama) {
+    return {
+      nama: activeCase.penyidik_penangan_nama,
+      pangkat: activeCase.penyidik_penangan_pangkat || '',
+      nrp: activeCase.penyidik_penangan_nrp || '',
+      jabatan: activeCase.penyidik_penangan_jabatan || ''
+    };
+  }
+
+  // 3. Ditentukan berdasarkan index slot (1 s.d. 5)
+  const idx = Number(activeCase.penyidik_penangan_index || activeCase.penyidik_penangan_slot);
+  if (idx && activeCase[`penyidik_${idx}_nama`]) {
+    return {
+      nama: activeCase[`penyidik_${idx}_nama`],
+      pangkat: activeCase[`penyidik_${idx}_pangkat`] || '',
+      nrp: activeCase[`penyidik_${idx}_nrp`] || '',
+      jabatan: activeCase[`penyidik_${idx}_jabatan`] || (idx === 1 ? 'Kanit' : 'Penyidik Pembantu')
+    };
+  }
+
+  // 4. Ditentukan di array investigators dengan is_penangan: true
+  if (Array.isArray(activeCase.investigators)) {
+    const found = activeCase.investigators.find(inv => inv.is_penangan);
+    if (found && found.nama) return found;
+  }
+
+  // 5. Default Fallback: Penyidik 1 / Kanit
+  if (activeCase.penyidik_1_nama) {
+    return {
+      nama: activeCase.penyidik_1_nama,
+      pangkat: activeCase.penyidik_1_pangkat || '',
+      nrp: activeCase.penyidik_1_nrp || '',
+      jabatan: activeCase.penyidik_1_jabatan || ''
+    };
+  }
+
+  if (Array.isArray(activeCase.investigators) && activeCase.investigators[0]?.nama) {
+    return activeCase.investigators[0];
+  }
+
+  return null;
+};
+
 // In-memory cache for master .docx buffers from Supabase Storage
 const templateBufferCache = new Map();
 
@@ -355,16 +456,26 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const alamat = cleanInput.ALAMAT || cleanInput.alamat || activeSuspect?.alamat || activeCase?.alamat_tersangka || '';
 
   // F. PENYIDIK & PEJABAT
-  // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama)
+  // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama - Pangkat WAJIB Lengkap)
   const atasanNama = cleanInput.ATASAN_NAMA || cleanInput.atasan_nama || activeCase?.kasat_nama || '';
-  const atasanPangkat = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.kasat_pangkat || '';
+  const atasanPangkatRaw = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.kasat_pangkat || activeCase?.atasan_pangkat || '';
+  const atasanPangkat = formatPangkatLengkap(atasanPangkatRaw);
   const atasanNrp = cleanInput.ATASAN_NRP || cleanInput.atasan_nrp || activeCase?.kasat_nrp || '';
 
-  // Tanda Tangan Kanit / Yang Menerima Perintah / Pemeriksa BA (Penyidik 1)
+  // Tanda Tangan Kanit / Yang Menerima Perintah / Pemeriksa BA (Penyidik Biasa - Pangkat Tetap Singkatan)
   const penyidikNama = cleanInput.PENYIDIK_NAMA || cleanInput.penyidik_nama || activeCase?.penyidik_1_nama || '';
   const penyidikPangkat = cleanInput.PENYIDIK_PANGKAT || cleanInput.penyidik_pangkat || activeCase?.penyidik_1_pangkat || '';
   const penyidikNrp = cleanInput.PENYIDIK_NRP || cleanInput.penyidik_nrp || activeCase?.penyidik_1_nrp || '';
   const penyidikJabatan = cleanInput.PENYIDIK_JABATAN || cleanInput.penyidik_jabatan || activeCase?.penyidik_1_jabatan || '';
+
+  // Penyidik Penangan Perkara (Bukti Penyerahan Surat - Pangkat WAJIB Format Lengkap)
+  const penanganCase = getPenyidikPenangan(activeCase);
+  const penanganNama = cleanInput.PENYIDIK_PENANGAN_NAMA || cleanInput.penyidik_penangan_nama || penanganCase?.nama || activeCase?.penyidik_1_nama || penyidikNama || '';
+  const penanganPangkatRaw = cleanInput.PENYIDIK_PENANGAN_PANGKAT || cleanInput.penyidik_penangan_pangkat || penanganCase?.pangkat || activeCase?.penyidik_1_pangkat || penyidikPangkat || '';
+  const penanganPangkat = formatPangkatLengkap(penanganPangkatRaw);
+  const penanganNrp = cleanInput.PENYIDIK_PENANGAN_NRP || cleanInput.penyidik_penangan_nrp || penanganCase?.nrp || activeCase?.penyidik_1_nrp || penyidikNrp || '';
+  const penanganJabatan = cleanInput.PENYIDIK_PENANGAN_JABATAN || cleanInput.penyidik_penangan_jabatan || penanganCase?.jabatan || activeCase?.penyidik_1_jabatan || penyidikJabatan || 'Penyidik';
+  const penanganPangkatNrp = penanganPangkat && penanganNrp ? `${penanganPangkat} / ${penanganNrp}` : (penanganPangkat || penanganNrp || '');
 
   // Daftar Tim Penerima Perintah (Untuk Badan Surat Perintah Personel 1 s.d. 5)
   const penyidik1Nama = cleanInput.PENYIDIK_1_NAMA || cleanInput.penyidik_1_nama || activeCase?.penyidik_1_nama || penyidikNama || '';
@@ -491,6 +602,13 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     PENYIDIK_NRP: penyidikNrp,
     PENYIDIK_JABATAN: penyidikJabatan,
     PENYIDIK_PANGKAT_NRP: penyidikPangkatNrp,
+
+    // Penyidik Penangan Perkara (Bukti Penyerahan Surat - Pangkat Lengkap)
+    PENYIDIK_PENANGAN_NAMA: penanganNama,
+    PENYIDIK_PENANGAN_PANGKAT: penanganPangkat,
+    PENYIDIK_PENANGAN_NRP: penanganNrp,
+    PENYIDIK_PENANGAN_JABATAN: penanganJabatan,
+    PENYIDIK_PENANGAN_PANGKAT_NRP: penanganPangkatNrp,
 
     // Daftar Tim Penerima Perintah (Personel 1 s.d. 5)
     PENYIDIK_1_NAMA: penyidik1Nama,
@@ -639,6 +757,12 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     penyidik_nrp: penyidikNrp,
     penyidik_jabatan: penyidikJabatan,
     penyidik_pangkat_nrp: penyidikPangkatNrp,
+
+    penyidik_penangan_nama: penanganNama,
+    penyidik_penangan_pangkat: penanganPangkat,
+    penyidik_penangan_nrp: penanganNrp,
+    penyidik_penangan_jabatan: penanganJabatan,
+    penyidik_penangan_pangkat_nrp: penanganPangkatNrp,
 
     penyidik_1_nama: penyidik1Nama,
     penyidik_1_pangkat: penyidik1Pangkat,
@@ -858,6 +982,41 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   finalPayload.TANGGAL_SURAT_HEADER = formatTanggalSuratHeader(finalPayload.TANGGAL_SURAT || tanggalSurat);
   finalPayload.tanggal_surat_header = finalPayload.TANGGAL_SURAT_HEADER;
+
+  // 1. Pangkat Atasan (Ekspansi Otomatis ke Pangkat Lengkap Polri)
+  const atasanPangkatRawFinal = activeCase?.atasan_pangkat || activeCase?.kasat_pangkat || finalPayload.ATASAN_PANGKAT || '';
+  finalPayload.ATASAN_PANGKAT = formatPangkatLengkap(atasanPangkatRawFinal);
+  finalPayload.atasan_pangkat = finalPayload.ATASAN_PANGKAT;
+
+  // 2. Penyidik Penangan Perkara (Pangkat Lengkap untuk Bukti Penyerahan Surat)
+  const penanganFinal = getPenyidikPenangan(activeCase) || activeCase?.penyidik_1 || {
+    nama: finalPayload.PENYIDIK_1_NAMA || finalPayload.PENYIDIK_NAMA || '',
+    pangkat: finalPayload.PENYIDIK_1_PANGKAT || finalPayload.PENYIDIK_PANGKAT || '',
+    nrp: finalPayload.PENYIDIK_1_NRP || finalPayload.PENYIDIK_NRP || '',
+    jabatan: finalPayload.PENYIDIK_1_JABATAN || finalPayload.PENYIDIK_JABATAN || ''
+  };
+
+  finalPayload.PENYIDIK_PENANGAN_NAMA = finalPayload.PENYIDIK_PENANGAN_NAMA || penanganFinal?.nama || '';
+  finalPayload.penyidik_penangan_nama = finalPayload.PENYIDIK_PENANGAN_NAMA;
+
+  finalPayload.PENYIDIK_PENANGAN_PANGKAT = formatPangkatLengkap(finalPayload.PENYIDIK_PENANGAN_PANGKAT || penanganFinal?.pangkat || '');
+  finalPayload.penyidik_penangan_pangkat = finalPayload.PENYIDIK_PENANGAN_PANGKAT;
+
+  finalPayload.PENYIDIK_PENANGAN_NRP = finalPayload.PENYIDIK_PENANGAN_NRP || penanganFinal?.nrp || '';
+  finalPayload.penyidik_penangan_nrp = finalPayload.PENYIDIK_PENANGAN_NRP;
+
+  finalPayload.PENYIDIK_PENANGAN_JABATAN = finalPayload.PENYIDIK_PENANGAN_JABATAN || penanganFinal?.jabatan || '';
+  finalPayload.penyidik_penangan_jabatan = finalPayload.PENYIDIK_PENANGAN_JABATAN;
+
+  const finalPenanganPktNrp = finalPayload.PENYIDIK_PENANGAN_PANGKAT && finalPayload.PENYIDIK_PENANGAN_NRP
+    ? `${finalPayload.PENYIDIK_PENANGAN_PANGKAT} / ${finalPayload.PENYIDIK_PENANGAN_NRP}`
+    : (finalPayload.PENYIDIK_PENANGAN_PANGKAT || finalPayload.PENYIDIK_PENANGAN_NRP || '');
+  finalPayload.PENYIDIK_PENANGAN_PANGKAT_NRP = finalPenanganPktNrp;
+  finalPayload.penyidik_penangan_pangkat_nrp = finalPenanganPktNrp;
+
+  // 3. Pangkat Penyidik Tugas Biasa (Tetap Singkatan)
+  finalPayload.PENYIDIK_PANGKAT = finalPayload.PENYIDIK_PANGKAT || activeCase?.penyidik_pangkat || activeCase?.penyidik_1_pangkat || '';
+  finalPayload.penyidik_pangkat = finalPayload.PENYIDIK_PANGKAT;
 
   // Pastikan rantai rujukan mandiri (Chain of Reference) selalu terformat teks resmi
   finalPayload.TANGGAL_LP = tanggalLp;

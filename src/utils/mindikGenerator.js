@@ -9,6 +9,9 @@ export {
   buildDocxDataMap, 
   formatTanggalIndonesia,
   formatNomorSuratHeader,
-  formatTanggalSuratHeader
+  formatTanggalSuratHeader,
+  MAP_PANGKAT_LENGKAP,
+  formatPangkatLengkap,
+  getPenyidikPenangan
 } from '../services/mindikGenerator.js';
 

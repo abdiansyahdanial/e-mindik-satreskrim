@@ -29,7 +29,7 @@ import {
   getParentDocConfig
 } from '../utils/templateHelper';
 import OfficialDocPreview from '../components/OfficialDocPreview';
-import { generateAndDownloadDocx, formatTanggalIndonesia } from '../services/mindikGenerator';
+import { generateAndDownloadDocx, formatTanggalIndonesia, getPenyidikPenangan, formatPangkatLengkap } from '../services/mindikGenerator';
 
 export default function DocGeneratorView({ 
   cases = [], 
@@ -441,6 +441,13 @@ export default function DocGeneratorView({
     initial['PENYIDIK_PANGKAT'] = currentCase.penyidik_1_pangkat || '';
     initial['PENYIDIK_NRP'] = currentCase.penyidik_1_nrp || '';
     initial['PENYIDIK_JABATAN'] = currentCase.penyidik_1_jabatan || '';
+
+    // Data Penyidik Penangan Perkara
+    const penanganDocCase = getPenyidikPenangan(currentCase);
+    initial['PENYIDIK_PENANGAN_NAMA'] = penanganDocCase?.nama || currentCase.penyidik_1_nama || '';
+    initial['PENYIDIK_PENANGAN_PANGKAT'] = formatPangkatLengkap(penanganDocCase?.pangkat || currentCase.penyidik_1_pangkat || '');
+    initial['PENYIDIK_PENANGAN_NRP'] = penanganDocCase?.nrp || currentCase.penyidik_1_nrp || '';
+    initial['PENYIDIK_PENANGAN_JABATAN'] = penanganDocCase?.jabatan || currentCase.penyidik_1_jabatan || '';
 
     for (let i = 1; i <= 5; i++) {
       initial[`PENYIDIK_${i}_NAMA`] = currentCase[`penyidik_${i}_nama`] || '';
@@ -1352,7 +1359,7 @@ export default function DocGeneratorView({
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '6px', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '6px', color: 'var(--text-secondary)' }}>
                   {/* Kasat */}
                   <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ color: '#93C5FD', fontSize: '10px', fontWeight: 600 }}>Pemberi Perintah (Kasat Reskrim):</div>
@@ -1372,6 +1379,17 @@ export default function DocGeneratorView({
                     </div>
                     <div style={{ fontSize: '10px', color: '#94A3B8' }}>
                       {currentCase.penyidik_1_pangkat || formValues.PENYIDIK_1_PANGKAT || '-'} {currentCase.penyidik_1_nrp ? `NRP ${currentCase.penyidik_1_nrp}` : ''} • {currentCase.penyidik_1_jabatan || formValues.PENYIDIK_1_JABATAN || 'Kanit'}
+                    </div>
+                  </div>
+
+                  {/* Penyidik Penangan */}
+                  <div style={{ background: 'rgba(0, 212, 255, 0.05)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
+                    <div style={{ color: 'var(--accent-cyan)', fontSize: '10px', fontWeight: 700 }}>Penyidik Penangan Perkara:</div>
+                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
+                      {currentCase.penyidik_penangan_nama || formValues.PENYIDIK_PENANGAN_NAMA || currentCase.penyidik_1_nama || '(Belum diset)'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                      {formatPangkatLengkap(currentCase.penyidik_penangan_pangkat || formValues.PENYIDIK_PENANGAN_PANGKAT || currentCase.penyidik_1_pangkat || '')} {currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp ? `NRP ${currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp}` : ''}
                     </div>
                   </div>
                 </div>

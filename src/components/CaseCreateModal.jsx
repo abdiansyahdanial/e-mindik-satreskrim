@@ -32,6 +32,8 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
     kasat_nrp: defaultKasat?.nrp || '78120567',
 
     // Bagian B: Data Tim Penyidik (Penyidik 1 s.d. 5)
+    penyidik_penangan_index: 1, // Default ke Penyidik 1 jika tidak diubah
+
     // Penyidik 1 / Kanit (Penyidik Utama / Yang Menerima Perintah - Wajib)
     penyidik_1_nama: defaultKanit?.nama || '',
     penyidik_1_pangkat: defaultKanit?.pangkat || '',
@@ -153,6 +155,12 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
 
     setIsSubmitting(true);
 
+    const penanganIdx = Number(formData.penyidik_penangan_index) || 1;
+    const penanganNama = formData[`penyidik_${penanganIdx}_nama`]?.trim() || formData.penyidik_1_nama.trim();
+    const penanganPangkat = formData[`penyidik_${penanganIdx}_pangkat`]?.trim() || formData.penyidik_1_pangkat.trim();
+    const penanganNrp = formData[`penyidik_${penanganIdx}_nrp`]?.trim() || formData.penyidik_1_nrp.trim();
+    const penanganJabatan = formData[`penyidik_${penanganIdx}_jabatan`]?.trim() || (penanganIdx === 1 ? 'KANIT IDIK' : 'PENYIDIK PEMBANTU');
+
     // Susun array investigators untuk kompatibilitas tampilan lama
     const investigatorsList = [1, 2, 3, 4, 5]
       .filter((num) => formData[`penyidik_${num}_nama`]?.trim())
@@ -162,6 +170,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
         pangkat: formData[`penyidik_${num}_pangkat`]?.trim() || '',
         nrp: formData[`penyidik_${num}_nrp`]?.trim() || '',
         jabatan: formData[`penyidik_${num}_jabatan`]?.trim() || (num === 1 ? 'Kanit' : 'Penyidik Pembantu'),
+        is_penangan: num === penanganIdx,
       }));
 
     const newCase = {
@@ -207,6 +216,20 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
       penyidik_5_pangkat: formData.penyidik_5_pangkat?.trim() || null,
       penyidik_5_nrp: formData.penyidik_5_nrp?.trim() || null,
       penyidik_5_jabatan: formData.penyidik_5_jabatan?.trim() || null,
+
+      // Data Penyidik Penangan Perkara Terpilih
+      penyidik_penangan_index: penanganIdx,
+      penyidik_penangan_nama: penanganNama,
+      penyidik_penangan_pangkat: penanganPangkat,
+      penyidik_penangan_nrp: penanganNrp,
+      penyidik_penangan_jabatan: penanganJabatan,
+      penyidik_penangan: {
+        index: penanganIdx,
+        nama: penanganNama,
+        pangkat: penanganPangkat,
+        nrp: penanganNrp,
+        jabatan: penanganJabatan,
+      },
 
       investigators: investigatorsList,
 
@@ -627,7 +650,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span
                             className={slotIndex === 1 ? 'badge badge-blue' : 'badge badge-gray'}
                             style={{ fontSize: '10px' }}
@@ -637,6 +660,36 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                           <span style={{ fontSize: '11.5px', fontWeight: 600, color: slotIndex === 1 ? '#93C5FD' : 'var(--text-primary)' }}>
                             {slotTitle}
                           </span>
+
+                          {/* Selector Penyidik Penangan Perkara (Radio Button) */}
+                          <label
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              cursor: 'pointer',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              background: formData.penyidik_penangan_index === slotIndex ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                              border: formData.penyidik_penangan_index === slotIndex ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                              fontSize: '10.5px',
+                              color: formData.penyidik_penangan_index === slotIndex ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                              fontWeight: formData.penyidik_penangan_index === slotIndex ? 700 : 400,
+                              userSelect: 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Tandai personel ini sebagai Penyidik Penangan Perkara (bagian Yang Menyerahkan pada bukti penyerahan surat)"
+                          >
+                            <input
+                              type="radio"
+                              name="create_penyidik_penangan_radio"
+                              value={slotIndex}
+                              checked={formData.penyidik_penangan_index === slotIndex}
+                              onChange={() => setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }))}
+                              style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+                            />
+                            <span>Penyidik Penangan</span>
+                          </label>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

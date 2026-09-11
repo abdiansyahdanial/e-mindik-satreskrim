@@ -926,6 +926,8 @@ export default function CaseDetail({
                 const nrp = caseItem[`penyidik_${slot}_nrp`] || caseItem.investigators?.[slot - 1]?.nrp;
                 const jabatan = caseItem[`penyidik_${slot}_jabatan`] || caseItem.investigators?.[slot - 1]?.jabatan;
 
+                const isPenangan = slot === (Number(caseItem.penyidik_penangan_index) || caseItem.penyidik_penangan?.index || (caseItem.investigators?.[slot - 1]?.is_penangan ? slot : (slot === 1 ? 1 : null)));
+
                 if (!nama) return null;
 
                 return (
@@ -941,6 +943,11 @@ export default function CaseDetail({
                     <span className={slot === 1 ? 'badge badge-green' : 'badge badge-gray'} style={{ fontSize: '10px' }}>
                       {slot === 1 ? 'Kanit / P1' : `Penyidik ${slot}`}
                     </span>
+                    {isPenangan && (
+                      <span className="badge badge-cyan" style={{ fontSize: '9.5px', background: 'rgba(0, 212, 255, 0.2)', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}>
+                        Penyidik Penangan
+                      </span>
+                    )}
                     <span style={{ fontSize: '13px', fontWeight: 500 }}>
                       {nama}
                     </span>
