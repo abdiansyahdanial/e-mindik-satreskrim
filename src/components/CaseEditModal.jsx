@@ -53,6 +53,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
     penyidik_5_jabatan: '',
   });
 
+  const [selectedPenangan, setSelectedPenangan] = useState(1);
   const [activeSlotsCount, setActiveSlotsCount] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -81,28 +82,21 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
 
       const invList = Array.isArray(caseItem.investigators) ? caseItem.investigators : [];
 
-      // 1. Ekstrak index penyidik penangan dari semua sumber potensial
-      let initialPenanganIdx = 1;
-      if (caseItem.penyidik_penangan_index) {
-        initialPenanganIdx = Number(caseItem.penyidik_penangan_index);
-      } else if (caseItem.references?.penyidik_penangan_index) {
-        initialPenanganIdx = Number(caseItem.references.penyidik_penangan_index);
-      } else if (caseItem.references?.penyidik_penangan?.index) {
-        initialPenanganIdx = Number(caseItem.references.penyidik_penangan.index);
-      } else if (caseItem.penyidik_penangan?.index) {
-        initialPenanganIdx = Number(caseItem.penyidik_penangan.index);
-      } else if (invList.length > 0) {
-        const foundInv = invList.find((inv) => inv.is_penangan === true || inv.is_penangan === 'true' || inv.is_penangan === 1);
-        if (foundInv) {
-          initialPenanganIdx = Number(foundInv.role_order) || (invList.indexOf(foundInv) + 1);
-        }
-      }
-      if (!initialPenanganIdx || initialPenanganIdx < 1 || initialPenanganIdx > 5) {
-        initialPenanganIdx = 1;
-      }
+      // 1. Ekstrak index penyidik penangan dari data kasus (Hydration)
+      const activeCase = caseItem;
+      const penanganIdx = activeCase?.penyidik_penangan_index 
+        ?? (activeCase?.references?.penyidik_penangan_index)
+        ?? (activeCase?.references?.penyidik_penangan?.index)
+        ?? (activeCase?.penyidik_penangan?.index)
+        ?? (Array.isArray(activeCase?.investigators) && activeCase.investigators.findIndex(i => i.is_penangan === true || i.is_penangan === 'true' || i.is_penangan === 1) !== -1 
+            ? (Number(activeCase.investigators.find(i => i.is_penangan === true || i.is_penangan === 'true' || i.is_penangan === 1)?.role_order) || (activeCase.investigators.findIndex(i => i.is_penangan === true || i.is_penangan === 'true' || i.is_penangan === 1) + 1))
+            : 1);
+
+      const resolvedPenanganIdx = Number(penanganIdx) || 1;
+      setSelectedPenangan(resolvedPenanganIdx);
 
       // 2. Hitung slot aktif awal agar slot terpilih (misal Slot 4) selalu tampil di UI
-      let maxActiveSlot = Math.max(2, initialPenanganIdx);
+      let maxActiveSlot = Math.max(2, resolvedPenanganIdx);
       for (let i = 3; i <= 5; i++) {
         const invSlot = invList.find((inv) => Number(inv.role_order) === i);
         if (caseItem[`penyidik_${i}_nama`] || invSlot?.nama) {
@@ -135,7 +129,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       }
 
       setFormData({
-        penyidik_penangan_index: initialPenanganIdx,
+        penyidik_penangan_index: resolvedPenanganIdx,
         nomor_lp: caseItem.nomor_lp || caseItem.no_lp || '',
         tanggal_lp: initialDate,
         nama_pelapor: caseItem.nama_pelapor || caseItem.pelapor_name || '',
@@ -266,7 +260,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const penanganIdx = Number(formData.penyidik_penangan_index) || 1;
+    const penanganIdx = Number(selectedPenangan || formData.penyidik_penangan_index) || 1;
     const penanganNama = formData[`penyidik_${penanganIdx}_nama`]?.trim() || formData.penyidik_1_nama.trim();
     const penanganPangkat = formData[`penyidik_${penanganIdx}_pangkat`]?.trim() || formData.penyidik_1_pangkat.trim();
     const penanganNrp = formData[`penyidik_${penanganIdx}_nrp`]?.trim() || formData.penyidik_1_nrp.trim();
@@ -774,7 +768,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
 
                 {[1, 2, 3, 4, 5].map((slotIndex) => {
                   const isRequired = slotIndex === 1;
-                  const isPenanganChecked = Number(formData.penyidik_penangan_index) === slotIndex;
+                  const isPenanganChecked = Number(selectedPenangan) === slotIndex;
                   const isVisible = slotIndex <= activeSlotsCount || isPenanganChecked;
 
                   if (!isVisible && !formData[`penyidik_${slotIndex}_nama`]) {
@@ -834,8 +828,11 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                               type="radio"
                               name="edit_penyidik_penangan_radio"
                               value={slotIndex}
-                              checked={isPenanganChecked}
-                              onChange={() => setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }))}
+                              checked={Number(selectedPenangan) === slotIndex}
+                              onChange={() => {
+                                setSelectedPenangan(slotIndex);
+                                setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }));
+                              }}
                               style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
                             />
                             <span>Penyidik Penangan</span>

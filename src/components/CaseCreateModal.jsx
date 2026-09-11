@@ -66,6 +66,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
   });
 
   // Kontrol tampilan slot penyidik opsional (slot 1 selalu tampil; slot 2-5 dapat dibuka)
+  const [selectedPenangan, setSelectedPenangan] = useState(1);
   const [activeSlotsCount, setActiveSlotsCount] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -155,7 +156,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
 
     setIsSubmitting(true);
 
-    const penanganIdx = Number(formData.penyidik_penangan_index) || 1;
+    const penanganIdx = Number(selectedPenangan || formData.penyidik_penangan_index) || 1;
     const penanganNama = formData[`penyidik_${penanganIdx}_nama`]?.trim() || formData.penyidik_1_nama.trim();
     const penanganPangkat = formData[`penyidik_${penanganIdx}_pangkat`]?.trim() || formData.penyidik_1_pangkat.trim();
     const penanganNrp = formData[`penyidik_${penanganIdx}_nrp`]?.trim() || formData.penyidik_1_nrp.trim();
@@ -678,11 +679,11 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                               cursor: 'pointer',
                               padding: '2px 8px',
                               borderRadius: '4px',
-                              background: Number(formData.penyidik_penangan_index) === slotIndex ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                              border: Number(formData.penyidik_penangan_index) === slotIndex ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                              background: Number(selectedPenangan) === slotIndex ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                              border: Number(selectedPenangan) === slotIndex ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
                               fontSize: '10.5px',
-                              color: Number(formData.penyidik_penangan_index) === slotIndex ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                              fontWeight: Number(formData.penyidik_penangan_index) === slotIndex ? 700 : 400,
+                              color: Number(selectedPenangan) === slotIndex ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                              fontWeight: Number(selectedPenangan) === slotIndex ? 700 : 400,
                               userSelect: 'none',
                               transition: 'all 0.15s ease'
                             }}
@@ -692,8 +693,11 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                               type="radio"
                               name="create_penyidik_penangan_radio"
                               value={slotIndex}
-                              checked={Number(formData.penyidik_penangan_index) === slotIndex}
-                              onChange={() => setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }))}
+                              checked={Number(selectedPenangan) === slotIndex}
+                              onChange={() => {
+                                setSelectedPenangan(slotIndex);
+                                setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }));
+                              }}
                               style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
                             />
                             <span>Penyidik Penangan</span>

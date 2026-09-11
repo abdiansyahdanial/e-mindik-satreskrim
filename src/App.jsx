@@ -144,7 +144,24 @@ export default function App() {
           .order('created_at', { ascending: false });
 
         if (!casesErr && casesData) {
-          setCases(casesData);
+          const mappedCases = casesData.map((c) => {
+            const invList = Array.isArray(c.investigators) ? c.investigators : [];
+            const foundIdx = invList.findIndex((i) => i.is_penangan === true || i.is_penangan === 'true' || i.is_penangan === 1);
+            const penanganIdx = c.penyidik_penangan_index 
+              ?? c.references?.penyidik_penangan_index 
+              ?? (foundIdx !== -1 ? (Number(invList[foundIdx].role_order) || (foundIdx + 1)) : 1);
+
+            return {
+              ...c,
+              penyidik_penangan_index: Number(penanganIdx) || 1,
+            };
+          });
+          setCases(mappedCases);
+          setSelectedCaseForDetail((prev) => {
+            if (!prev) return null;
+            const updated = mappedCases.find((c) => c.id === prev.id);
+            return updated ? { ...prev, ...updated } : prev;
+          });
         }
       } catch (e) {
         console.warn('Cases sync error:', e);

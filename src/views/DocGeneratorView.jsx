@@ -1386,10 +1386,10 @@ export default function DocGeneratorView({
                   <div style={{ background: 'rgba(0, 212, 255, 0.05)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
                     <div style={{ color: 'var(--accent-cyan)', fontSize: '10px', fontWeight: 700 }}>Penyidik Penangan Perkara:</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
-                      {currentCase.penyidik_penangan_nama || formValues.PENYIDIK_PENANGAN_NAMA || currentCase.penyidik_1_nama || '(Belum diset)'}
+                      {getPenyidikPenangan(currentCase)?.nama || currentCase.penyidik_penangan_nama || formValues.PENYIDIK_PENANGAN_NAMA || currentCase.penyidik_1_nama || '(Belum diset)'}
                     </div>
                     <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
-                      {formatPangkatLengkap(currentCase.penyidik_penangan_pangkat || formValues.PENYIDIK_PENANGAN_PANGKAT || currentCase.penyidik_1_pangkat || '')} {currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp ? `NRP ${currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp}` : ''}
+                      {formatPangkatLengkap(getPenyidikPenangan(currentCase)?.pangkat || currentCase.penyidik_penangan_pangkat || formValues.PENYIDIK_PENANGAN_PANGKAT || currentCase.penyidik_1_pangkat || '')} {getPenyidikPenangan(currentCase)?.nrp || currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp ? `NRP ${getPenyidikPenangan(currentCase)?.nrp || currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp}` : ''}
                     </div>
                   </div>
                 </div>
