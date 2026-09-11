@@ -14,7 +14,8 @@ import {
   X,
   FileText,
   AlertTriangle,
-  Upload
+  Upload,
+  Shield
 } from 'lucide-react';
 import { mockTemplates } from '../data/mockTemplates';
 import { mockPersonnel } from '../data/mockPersonnel';
