@@ -239,12 +239,24 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const rawTanggalLp = cleanInput.TANGGAL_LP || cleanInput.tanggal_lp || cleanInput.TGL_LP || cleanInput.tgl_lp || activeCase?.tanggal_lp || activeCase?.sprin_date || '';
   const tanggalLp = formatTanggalIndonesia(rawTanggalLp);
 
-  const noSprinSidik = cleanInput.NO_SPRIN_SIDIK || cleanInput.no_sprin_sidik || activeCase?.no_sprin_sidik || '';
-  const rawTglSprinSidik = cleanInput.TGL_SPRIN_SIDIK || cleanInput.tgl_sprin_sidik || cleanInput.TANGGAL_SPRIN_SIDIK || cleanInput.tanggal_sprin_sidik || activeCase?.tgl_sprin_sidik || activeCase?.sprin_date || '';
+  // Universal Auto-Sync Dokumen Induk (Scalable & Modular)
+  const isSprinSidikDoc = tplCode === 'SPRIN_SIDIK' || (tplCode.includes('SIDIK') && !tplCode.includes('GAS') && !tplCode.includes('TUGAS'));
+  const isSprinGasSidikDoc = tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || tplCode.includes('GAS_SIDIK');
+
+  const noSprinSidik = (isSprinSidikDoc && effectiveNomorSurat)
+    ? (cleanInput.NO_SPRIN_SIDIK || cleanInput.no_sprin_sidik || effectiveNomorSurat)
+    : (cleanInput.NO_SPRIN_SIDIK || cleanInput.no_sprin_sidik || activeCase?.no_sprin_sidik || '');
+  const rawTglSprinSidik = (isSprinSidikDoc && effectiveTanggalSurat)
+    ? (cleanInput.TGL_SPRIN_SIDIK || cleanInput.tgl_sprin_sidik || cleanInput.TANGGAL_SPRIN_SIDIK || cleanInput.tanggal_sprin_sidik || effectiveTanggalSurat)
+    : (cleanInput.TGL_SPRIN_SIDIK || cleanInput.tgl_sprin_sidik || cleanInput.TANGGAL_SPRIN_SIDIK || cleanInput.tanggal_sprin_sidik || activeCase?.tgl_sprin_sidik || activeCase?.sprin_date || '');
   const tglSprinSidik = formatTanggalIndonesia(rawTglSprinSidik);
 
-  const noSprinGasSidik = cleanInput.NO_SPRIN_GAS_SIDIK || cleanInput.no_sprin_gas_sidik || cleanInput.NOMOR_SPRIN_GAS_SIDIK || cleanInput.nomor_sprin_gas_sidik || activeCase?.no_sprin_gas_sidik || activeCase?.nomor_sprin_gas_sidik || '-';
-  const rawTglSprinGasSidik = cleanInput.TGL_SPRIN_GAS_SIDIK || cleanInput.tgl_sprin_gas_sidik || cleanInput.TANGGAL_SPRIN_GAS_SIDIK || cleanInput.tanggal_sprin_gas_sidik || activeCase?.tgl_sprin_gas_sidik || activeCase?.tanggal_sprin_gas_sidik || '';
+  const noSprinGasSidik = (isSprinGasSidikDoc && effectiveNomorSurat)
+    ? (cleanInput.NO_SPRIN_GAS_SIDIK || cleanInput.no_sprin_gas_sidik || cleanInput.NOMOR_SPRIN_GAS_SIDIK || cleanInput.nomor_sprin_gas_sidik || effectiveNomorSurat)
+    : (cleanInput.NO_SPRIN_GAS_SIDIK || cleanInput.no_sprin_gas_sidik || cleanInput.NOMOR_SPRIN_GAS_SIDIK || cleanInput.nomor_sprin_gas_sidik || activeCase?.no_sprin_gas_sidik || activeCase?.nomor_sprin_gas_sidik || '-');
+  const rawTglSprinGasSidik = (isSprinGasSidikDoc && effectiveTanggalSurat)
+    ? (cleanInput.TGL_SPRIN_GAS_SIDIK || cleanInput.tgl_sprin_gas_sidik || cleanInput.TANGGAL_SPRIN_GAS_SIDIK || cleanInput.tanggal_sprin_gas_sidik || effectiveTanggalSurat)
+    : (cleanInput.TGL_SPRIN_GAS_SIDIK || cleanInput.tgl_sprin_gas_sidik || cleanInput.TANGGAL_SPRIN_GAS_SIDIK || cleanInput.tanggal_sprin_gas_sidik || activeCase?.tgl_sprin_gas_sidik || activeCase?.tanggal_sprin_gas_sidik || '');
   const formattedTglSprinGasSidik = formatTanggalIndonesia(rawTglSprinGasSidik);
   const tglSprinGasSidik = formattedTglSprinGasSidik || '-';
 

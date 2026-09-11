@@ -1,4 +1,4 @@
-import { supabase } from '../supabaseClient';
+import { supabase } from '../supabaseClient.js';
 
 const DELETED_KEY = 'emindik_deleted_template_codes';
 
@@ -156,3 +156,37 @@ export const isIndividualSuspectDoc = (template) => {
   const code = (typeof template === 'string' ? template : (template.code || '')).toUpperCase().trim();
   return INDIVIDUAL_TSK_DOCS.includes(code);
 };
+
+/**
+ * Konfigurasi Dokumen Induk Perkara (Universal Auto-Sync Parent Document Reference).
+ * Dokumen induk perkara baru di masa mendatang cukup didaftarkan kodenya di sini.
+ */
+export const PARENT_CASE_DOCS = {
+  'SPRIN_SIDIK': {
+    targetNoCol: 'no_sprin_sidik',
+    targetTglCol: 'tgl_sprin_sidik',
+    label: 'Surat Perintah Penyidikan',
+    noTags: ['NO_SPRIN_SIDIK', 'NOMOR_SPRIN_SIDIK'],
+    tglTags: ['TGL_SPRIN_SIDIK', 'TANGGAL_SPRIN_SIDIK']
+  },
+  'SPRIN_GAS_SIDIK': {
+    targetNoCol: 'no_sprin_gas_sidik',
+    targetTglCol: 'tgl_sprin_gas_sidik',
+    label: 'Surat Perintah Tugas Penyidikan',
+    noTags: ['NO_SPRIN_GAS_SIDIK', 'NOMOR_SPRIN_GAS_SIDIK'],
+    tglTags: ['TGL_SPRIN_GAS_SIDIK', 'TANGGAL_SPRIN_GAS_SIDIK']
+  }
+};
+
+/**
+ * Evaluasi konfigurasi dokumen induk perkara aktif
+ */
+export const getParentDocConfig = (template) => {
+  if (!template) return null;
+  const rawCode = (typeof template === 'string' ? template : (template.code || '')).toUpperCase().trim();
+  if (PARENT_CASE_DOCS[rawCode]) return PARENT_CASE_DOCS[rawCode];
+  if (rawCode === 'SPRIN_TUGAS_PENYIDIKAN' || rawCode.includes('GAS_SIDIK')) return PARENT_CASE_DOCS['SPRIN_GAS_SIDIK'];
+  if (rawCode.includes('SIDIK') && !rawCode.includes('GAS') && !rawCode.includes('TUGAS')) return PARENT_CASE_DOCS['SPRIN_SIDIK'];
+  return null;
+};
+

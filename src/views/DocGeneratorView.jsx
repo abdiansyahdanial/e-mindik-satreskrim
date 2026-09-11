@@ -24,7 +24,9 @@ import {
   deleteTemplateFromSupabase, 
   getDeletedTemplateCodes, 
   INDIVIDUAL_TSK_DOCS, 
-  isIndividualSuspectDoc 
+  isIndividualSuspectDoc,
+  PARENT_CASE_DOCS,
+  getParentDocConfig
 } from '../utils/templateHelper';
 import OfficialDocPreview from '../components/OfficialDocPreview';
 import { generateAndDownloadDocx, formatTanggalIndonesia } from '../services/mindikGenerator';
@@ -205,6 +207,10 @@ export default function DocGeneratorView({
   })();
 
   const isSidikDoc = isSprinSidik;
+
+  // Evaluasi Konfigurasi Dokumen Induk (Universal Auto-Sync)
+  const activeParentConfig = getParentDocConfig(currentTemplate);
+  const isCurrentParentDoc = Boolean(activeParentConfig);
 
   // 2. Fetch Suspects for currentCase from Supabase (BAGIAN 3 & 4)
   useEffect(() => {
@@ -402,6 +408,20 @@ export default function DocGeneratorView({
     initial['TGL_SPRIN_GAS_SIDIK'] = currentCase.tgl_sprin_gas_sidik || (isSprinGasSidik ? todayStr : '');
     initial['TANGGAL_SPRIN_GAS_SIDIK'] = initial['TGL_SPRIN_GAS_SIDIK'];
 
+    // Universal Auto-Sync Dokumen Induk (Parent Case Document)
+    if (isCurrentParentDoc && activeParentConfig) {
+      const parentDate = currentCase[activeParentConfig.targetTglCol] || todayStr;
+      (activeParentConfig.tglTags || []).forEach(tag => {
+        initial[tag] = parentDate;
+        initial[tag.toLowerCase()] = parentDate;
+      });
+      const parentNo = currentCase[activeParentConfig.targetNoCol] || '';
+      (activeParentConfig.noTags || []).forEach(tag => {
+        initial[tag] = parentNo;
+        initial[tag.toLowerCase()] = parentNo;
+      });
+    }
+
     initial['NO_SPDP'] = currentCase.no_spdp || '';
     initial['TGL_SPDP'] = currentCase.tgl_spdp || '';
     initial['TANGGAL_SPDP'] = initial['TGL_SPDP'];
@@ -454,14 +474,18 @@ export default function DocGeneratorView({
     // Hapus referensi ATASAN_JABATAN karena jabatan Kasat tercetak permanen di template
     fields = fields.filter(f => (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase() !== 'ATASAN_JABATAN');
 
-    // Jika dokumen SP.Sidik tapi template dynamic_fields belum memiliki field TGL_SPRIN_SIDIK, sisipkan
-    if (isSidikDoc && !fields.some(f => (f.field_key || f.key || '').toUpperCase().includes('TGL_SPRIN_SIDIK'))) {
-      fields.splice(2, 0, {
-        field_key: 'TGL_SPRIN_SIDIK',
-        field_label: 'Tanggal Penetapan SP.Sidik',
-        field_type: 'date',
-        default_value: currentCase.tgl_sprin_sidik || currentCase.sprin_date || todayStr,
-        is_required: true
+    // Hapus input manual rujukan dokumen induk jika dokumen yang dibuka adalah dokumen induk itu sendiri
+    if (isCurrentParentDoc && activeParentConfig) {
+      const redundantKeys = [
+        ...(activeParentConfig.noTags || []),
+        ...(activeParentConfig.tglTags || []),
+        activeParentConfig.targetNoCol?.toUpperCase(),
+        activeParentConfig.targetTglCol?.toUpperCase()
+      ].filter(Boolean);
+
+      fields = fields.filter(f => {
+        const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+        return !redundantKeys.includes(k);
       });
     }
 
@@ -475,12 +499,20 @@ export default function DocGeneratorView({
 
       // Tentukan nilai default sesuai kamus standar (tanpa string fallback bentrok)
       if (upperKey === 'TANGGAL_SURAT' || upperKey === 'DOC_DATE') {
-        initial[cleanKey] = (isTapTskDoc && (selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk)) || todayStr;
+        if (isTapTskDoc && (selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk)) {
+          initial[cleanKey] = selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk;
+        } else if (isCurrentParentDoc && activeParentConfig && currentCase[activeParentConfig.targetTglCol]) {
+          initial[cleanKey] = currentCase[activeParentConfig.targetTglCol];
+        } else {
+          initial[cleanKey] = defVal || todayStr;
+        }
       } else if (upperKey === 'NOMOR_SURAT' || upperKey === 'DOC_NO') {
         const tplCode = (currentTemplate?.code || '').toUpperCase().trim();
         const templateDefaultNo = currentTemplate?.default_number_format || currentTemplate?.nomor_surat_format || '';
         if (isTapTskDoc && (selectedSuspect?.nomor_sp_tap || selectedSuspect?.no_sp_tap_tsk)) {
           initial[cleanKey] = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk;
+        } else if (isCurrentParentDoc && activeParentConfig && currentCase[activeParentConfig.targetNoCol]) {
+          initial[cleanKey] = currentCase[activeParentConfig.targetNoCol];
         } else if (templateDefaultNo) {
           initial[cleanKey] = templateDefaultNo;
         } else if (isSprinGasSidik || tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || tplCode.includes('GAS_SIDIK')) {
@@ -604,19 +636,31 @@ export default function DocGeneratorView({
     setFormValues(prev => {
       const next = { ...prev, [key]: value };
       
-      // Jika dokumen yang sedang dibuat adalah SP.Sidik, sinkronkan tanggal penetapan SP.Sidik
-      if (isSidikDoc) {
-        if (key === 'TGL_SPRIN_SIDIK' || key === 'tgl_sprin_sidik') {
-          currentCase.tgl_sprin_sidik = value;
-          currentCase.sprin_date = value;
-          supabase.from('cases').update({ tgl_sprin_sidik: value, sprin_date: value }).eq('id', currentCase.id).catch(() => {});
-        } else if ((key === 'TANGGAL_SURAT' || key === 'DOC_DATE') && !prev.TGL_SPRIN_SIDIK) {
-          next.TGL_SPRIN_SIDIK = value;
-          currentCase.tgl_sprin_sidik = value;
-          currentCase.sprin_date = value;
-          supabase.from('cases').update({ tgl_sprin_sidik: value, sprin_date: value }).eq('id', currentCase.id).catch(() => {});
+      // Universal Auto-Sync Dokumen Induk (Scalable & Modular)
+      if (isCurrentParentDoc && activeParentConfig) {
+        if (key === 'NOMOR_SURAT' || key === 'nomor_surat' || key === 'DOC_NO' || key === 'doc_no') {
+          (activeParentConfig.noTags || []).forEach(tag => {
+            next[tag] = value;
+            next[tag.toLowerCase()] = value;
+          });
+          if (activeParentConfig.targetNoCol) {
+            currentCase[activeParentConfig.targetNoCol] = value;
+          }
+        }
+        if (key === 'TANGGAL_SURAT' || key === 'tanggal_surat' || key === 'DOC_DATE' || key === 'doc_date') {
+          (activeParentConfig.tglTags || []).forEach(tag => {
+            next[tag] = value;
+            next[tag.toLowerCase()] = value;
+          });
+          if (activeParentConfig.targetTglCol) {
+            currentCase[activeParentConfig.targetTglCol] = value;
+            if (activeParentConfig.targetTglCol === 'tgl_sprin_sidik') {
+              currentCase.sprin_date = value;
+            }
+          }
         }
       }
+
       return next;
     });
     setIsSaved(false);
@@ -626,25 +670,30 @@ export default function DocGeneratorView({
   const saveReferenceNumbers = async (enteredNo, enteredDate) => {
     if (!currentCase) return;
     const tplCode = (currentTemplate?.code || '').toUpperCase();
-    const docDate = enteredDate || formValues.TGL_SPRIN_SIDIK || formValues.tgl_sprin_sidik || formValues.TANGGAL_SURAT || formValues.DOC_DATE;
+    const docDate = enteredDate || formValues.TANGGAL_SURAT || formValues.DOC_DATE;
 
-    // 1. Dokumen Tingkat Perkara
-    if (isSidikDoc) {
-      if (enteredNo) currentCase.no_sprin_sidik = enteredNo;
-      if (docDate) {
-        currentCase.tgl_sprin_sidik = docDate;
-        currentCase.sprin_date = docDate;
+    // 1. Dokumen Induk Perkara (Universal Auto-Sync ke Supabase cases)
+    if (isCurrentParentDoc && activeParentConfig) {
+      const updateObj = {};
+      if (enteredNo && activeParentConfig.targetNoCol) {
+        currentCase[activeParentConfig.targetNoCol] = enteredNo;
+        updateObj[activeParentConfig.targetNoCol] = enteredNo;
       }
-      try {
-        const updateObj = {};
-        if (enteredNo) updateObj.no_sprin_sidik = enteredNo;
-        if (docDate) {
-          updateObj.tgl_sprin_sidik = docDate;
+      if (docDate && activeParentConfig.targetTglCol) {
+        currentCase[activeParentConfig.targetTglCol] = docDate;
+        updateObj[activeParentConfig.targetTglCol] = docDate;
+        if (activeParentConfig.targetTglCol === 'tgl_sprin_sidik') {
+          currentCase.sprin_date = docDate;
           updateObj.sprin_date = docDate;
         }
-        await supabase.from('cases').update(updateObj).eq('id', currentCase.id);
-      } catch (e) {
-        console.warn('Auto-save no_sprin_sidik & tgl_sprin_sidik error:', e);
+      }
+
+      if (Object.keys(updateObj).length > 0) {
+        try {
+          await supabase.from('cases').update(updateObj).eq('id', currentCase.id);
+        } catch (e) {
+          console.warn(`Auto-save ${activeParentConfig.label} reference error:`, e);
+        }
       }
     } else if (tplCode.includes('SPDP')) {
       const spdpDate = formValues.TGL_SPDP || formValues.TANGGAL_SURAT || formValues.DOC_DATE;
@@ -1418,8 +1467,8 @@ export default function DocGeneratorView({
                   )}
                 </div>
                 <div style={{ fontSize: '10.5px', color: '#94A3B8', marginTop: '6px', borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '4px' }}>
-                  {isSprinSidik ? (
-                    <span>Dokumen ini adalah <strong>SP.Sidik Induk</strong>. Tanggal penetapan yang Anda simpan otomatis menjadi rujukan untuk SP.Gas.Sidik, SPDP & dokumen turunan berikutnya.</span>
+                  {isCurrentParentDoc && activeParentConfig ? (
+                    <span>Dokumen ini adalah <strong>{activeParentConfig.label}</strong> (Dokumen Induk). Input <strong>Nomor Surat</strong> dan <strong>Tanggal Surat</strong> di form di bawah otomatis disinkronkan ke rujukan perkara tanpa perlu input ganda.</span>
                   ) : isSprinGasSidik ? (
                     <span>Dokumen ini adalah <strong>Surat Perintah Tugas Penyidikan (SP.Gas.Sidik)</strong>. Otomatis merujuk ke SP.Sidik induk (<code>{'{NO_SPRIN_SIDIK}'}</code>) dan menugaskan Tim Penyidik tanpa menimpa nomor induk perkara.</span>
                   ) : (
@@ -1448,13 +1497,18 @@ export default function DocGeneratorView({
                     { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
                   ];
 
-                if (isSprinSidik && !dynamicList.some(f => (f.field_key || f.key || '').toUpperCase().includes('TGL_SPRIN_SIDIK'))) {
-                  dynamicList.splice(2, 0, {
-                    field_key: 'TGL_SPRIN_SIDIK',
-                    field_label: 'Tanggal Penetapan SP.Sidik',
-                    field_type: 'date',
-                    default_value: currentCase?.tgl_sprin_sidik || currentCase?.sprin_date || '',
-                    is_required: true
+                // Universal Auto-Sync: Sembunyikan input manual rujukan dokumen induk pada dokumen induk itu sendiri
+                if (isCurrentParentDoc && activeParentConfig) {
+                  const redundantKeys = [
+                    ...(activeParentConfig.noTags || []),
+                    ...(activeParentConfig.tglTags || []),
+                    activeParentConfig.targetNoCol?.toUpperCase(),
+                    activeParentConfig.targetTglCol?.toUpperCase()
+                  ].filter(Boolean);
+
+                  dynamicList = dynamicList.filter(f => {
+                    const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+                    return !redundantKeys.includes(k);
                   });
                 }
                 dynamicList = dynamicList.filter(f => (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase() !== 'ATASAN_JABATAN');
