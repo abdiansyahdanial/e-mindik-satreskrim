@@ -60,6 +60,9 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
 
   useEffect(() => {
     if (caseItem) {
+      const activeCase = caseItem;
+      console.log("DATA PERKARA DITERIMA:", activeCase?.penyidik_penangan_index);
+
       // Determine initial date format (YYYY-MM-DD)
       let initialDate = caseItem.tanggal_lp || '';
       if (!initialDate && caseItem.created_at) {
@@ -83,7 +86,6 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       const invList = Array.isArray(caseItem.investigators) ? caseItem.investigators : [];
 
       // 1. Ekstrak index penyidik penangan dari data kasus (Hydration)
-      const activeCase = caseItem;
       const penanganIdx = activeCase?.penyidik_penangan_index 
         ?? (activeCase?.references?.penyidik_penangan_index)
         ?? (activeCase?.references?.penyidik_penangan?.index)
@@ -261,10 +263,12 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
     setErrorMessage(null);
 
     const penanganIdx = Number(selectedPenangan || formData.penyidik_penangan_index) || 1;
-    const penanganNama = formData[`penyidik_${penanganIdx}_nama`]?.trim() || formData.penyidik_1_nama.trim();
-    const penanganPangkat = formData[`penyidik_${penanganIdx}_pangkat`]?.trim() || formData.penyidik_1_pangkat.trim();
-    const penanganNrp = formData[`penyidik_${penanganIdx}_nrp`]?.trim() || formData.penyidik_1_nrp.trim();
-    const penanganJabatan = formData[`penyidik_${penanganIdx}_jabatan`]?.trim() || (penanganIdx === 1 ? 'KANIT IDIK' : 'PENYIDIK PEMBANTU');
+    const selectedPenyidik = {
+      nama: formData[`penyidik_${penanganIdx}_nama`]?.trim() || formData.penyidik_1_nama.trim(),
+      pangkat: formData[`penyidik_${penanganIdx}_pangkat`]?.trim() || formData.penyidik_1_pangkat.trim(),
+      nrp: formData[`penyidik_${penanganIdx}_nrp`]?.trim() || formData.penyidik_1_nrp.trim(),
+      jabatan: formData[`penyidik_${penanganIdx}_jabatan`]?.trim() || (penanganIdx === 1 ? 'KANIT IDIK' : 'PENYIDIK PEMBANTU'),
+    };
 
     // Siapkan daftar investigators untuk kompatibilitas tampilan dan generator
     const investigatorsList = [1, 2, 3, 4, 5]
@@ -285,14 +289,14 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       penyidik_penangan_index: penanganIdx,
       penyidik_penangan: {
         index: penanganIdx,
-        nama: penanganNama,
-        pangkat: penanganPangkat,
-        nrp: penanganNrp,
-        jabatan: penanganJabatan,
+        nama: selectedPenyidik.nama,
+        pangkat: selectedPenyidik.pangkat,
+        nrp: selectedPenyidik.nrp,
+        jabatan: selectedPenyidik.jabatan,
       },
     };
 
-    const basePayload = {
+    const payloadUpdate = {
       nomor_lp: formData.nomor_lp.trim(),
       tanggal_lp: formData.tanggal_lp,
       nama_pelapor: formData.nama_pelapor.trim(),
@@ -334,6 +338,13 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       penyidik_5_nrp: formData.penyidik_5_nrp?.trim() || null,
       penyidik_5_jabatan: formData.penyidik_5_jabatan?.trim() || null,
 
+      // C. Penyidik Penangan Terpilih (Sesuai kolom tabel Supabase)
+      penyidik_penangan_index: Number(selectedPenangan),
+      penyidik_penangan_nama: selectedPenyidik.nama,
+      penyidik_penangan_pangkat: selectedPenyidik.pangkat,
+      penyidik_penangan_nrp: selectedPenyidik.nrp,
+      penyidik_penangan_jabatan: selectedPenyidik.jabatan,
+
       investigators: investigatorsList,
       references: updatedReferences,
 
@@ -345,43 +356,26 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       updated_at: new Date().toISOString(),
     };
 
-    const fullPayload = {
-      ...basePayload,
-      penyidik_penangan_index: penanganIdx,
-      penyidik_penangan_nama: penanganNama,
-      penyidik_penangan_pangkat: penanganPangkat,
-      penyidik_penangan_nrp: penanganNrp,
-      penyidik_penangan_jabatan: penanganJabatan,
-      penyidik_penangan: {
-        index: penanganIdx,
-        nama: penanganNama,
-        pangkat: penanganPangkat,
-        nrp: penanganNrp,
-        jabatan: penanganJabatan,
-      },
-    };
+    console.log("PAYLOAD KE SUPABASE:", payloadUpdate);
 
     try {
-      let { error } = await supabase
+      const { error } = await supabase
         .from('cases')
-        .update(fullPayload)
+        .update(payloadUpdate)
         .eq('id', caseItem.id);
-
-      // Resilient Fallback: Jika tabel cases belum memiliki kolom dedicated penyidik_penangan_index (PGRST204)
-      if (error && (error.code === 'PGRST204' || (error.message && error.message.includes('schema cache')))) {
-        console.warn('PGRST204: Kolom dedicated belum ada di schema cases Supabase, menyimpan ke investigators & references JSONB...');
-        const retryResult = await supabase
-          .from('cases')
-          .update(basePayload)
-          .eq('id', caseItem.id);
-        error = retryResult.error;
-      }
 
       if (error) throw error;
 
       const mergedCase = {
         ...caseItem,
-        ...fullPayload,
+        ...payloadUpdate,
+        penyidik_penangan: {
+          index: Number(selectedPenangan),
+          nama: selectedPenyidik.nama,
+          pangkat: selectedPenyidik.pangkat,
+          nrp: selectedPenyidik.nrp,
+          jabatan: selectedPenyidik.jabatan,
+        },
         references: updatedReferences,
         investigators: investigatorsList,
       };

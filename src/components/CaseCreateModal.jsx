@@ -218,19 +218,12 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
       penyidik_5_nrp: formData.penyidik_5_nrp?.trim() || null,
       penyidik_5_jabatan: formData.penyidik_5_jabatan?.trim() || null,
 
-      // Data Penyidik Penangan Perkara Terpilih
+      // Data Penyidik Penangan Perkara Terpilih (Dedicated Columns di Supabase)
       penyidik_penangan_index: penanganIdx,
       penyidik_penangan_nama: penanganNama,
       penyidik_penangan_pangkat: penanganPangkat,
       penyidik_penangan_nrp: penanganNrp,
       penyidik_penangan_jabatan: penanganJabatan,
-      penyidik_penangan: {
-        index: penanganIdx,
-        nama: penanganNama,
-        pangkat: penanganPangkat,
-        nrp: penanganNrp,
-        jabatan: penanganJabatan,
-      },
 
       investigators: investigatorsList,
 

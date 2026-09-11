@@ -221,13 +221,8 @@ export default function App() {
     try {
       let { error } = await supabase.from('cases').insert([newCase]);
       if (error && (error.code === 'PGRST204' || (error.message && error.message.includes('schema cache')))) {
-        console.warn('PGRST204: Kolom dedicated belum ada di schema Supabase, menyimpan ke investigators & references JSONB...');
+        console.warn('PGRST204: Membuang objek non-kolom dan mencoba insert ulang...');
         const {
-          penyidik_penangan_index,
-          penyidik_penangan_nama,
-          penyidik_penangan_pangkat,
-          penyidik_penangan_nrp,
-          penyidik_penangan_jabatan,
           penyidik_penangan,
           ...cleanCase
         } = newCase;
