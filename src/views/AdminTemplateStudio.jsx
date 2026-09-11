@@ -262,29 +262,29 @@ export default function AdminTemplateStudio({
           await removeStorageFileSafely(existingFilePath || existingFileUrl);
         }
 
-        const fileExt = docxFile.name.split('.').pop().toLowerCase();
-        const safeFileName = `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-        const filePath = `mindik/${safeFileName}`;
+        const templateCode = (code || 'TEMPLATE').trim().replace(/[^a-zA-Z0-9_-]/g, '_').toUpperCase();
+        const cleanFileName = `${templateCode}_${Date.now()}.docx`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('templates')
-          .upload(filePath, docxFile, {
+          .upload(cleanFileName, docxFile, {
             cacheControl: '3600',
-            upsert: true
+            upsert: true,
+            contentType: docxFile.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
           });
 
         if (uploadError) {
-          console.error("Storage upload error:", uploadError);
-          throw new Error(`Upload gagal: ${uploadError.message}`);
+          console.error('Detail Error Upload Supabase:', uploadError);
+          throw new Error(uploadError.message || 'Gagal mengunggah file ke Storage');
         }
 
         const { data: publicUrlData } = supabase.storage
           .from('templates')
-          .getPublicUrl(filePath);
+          .getPublicUrl(cleanFileName);
 
         const fileUrl = publicUrlData?.publicUrl;
 
-        finalFilePath = uploadData?.path || filePath;
+        finalFilePath = uploadData?.path || cleanFileName;
         finalFileUrl = fileUrl || '';
       }
 
@@ -379,10 +379,14 @@ export default function AdminTemplateStudio({
         onTemplateSaved(dbData?.[0] || payload);
       }
     } catch (err) {
-      console.error('Submit error:', err);
+      console.error('Submit error detail:', err);
+      let detailMsg = err?.message || 'Terjadi kesalahan saat menyimpan ke Supabase.';
+      if (detailMsg === 'Failed to fetch' || err?.name === 'TypeError') {
+        detailMsg = 'Koneksi ke Supabase Storage gagal (Failed to fetch). Pastikan jaringan internet stabil, bucket "templates" sudah tersedia dan bersifat Public, serta RLS Storage mengizinkan upload file .docx.';
+      }
       setStatusNotice({
         type: 'error',
-        message: err.message || 'Terjadi kesalahan saat menyimpan ke Supabase.'
+        message: `Upload gagal: ${detailMsg}`
       });
     } finally {
       setIsUploading(false);

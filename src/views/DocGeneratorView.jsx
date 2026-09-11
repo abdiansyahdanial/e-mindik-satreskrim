@@ -806,28 +806,28 @@ export default function DocGeneratorView({
 
     setIsProcessingTemplate(true);
     try {
-      const fileExt = newDocxFile.name.split('.').pop().toLowerCase();
-      const safeFileName = `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-      const filePath = `mindik/${safeFileName}`;
+      const templateCode = (newCode || 'TEMPLATE').trim().replace(/[^a-zA-Z0-9_-]/g, '_').toUpperCase();
+      const cleanFileName = `${templateCode}_${Date.now()}.docx`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('templates')
-        .upload(filePath, newDocxFile, {
+        .upload(cleanFileName, newDocxFile, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true,
+          contentType: newDocxFile.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
 
       if (uploadError) {
-        console.error("Storage upload error:", uploadError);
-        throw new Error(`Upload gagal: ${uploadError.message}`);
+        console.error('Detail Error Upload Supabase:', uploadError);
+        throw new Error(uploadError.message || 'Gagal mengunggah file ke Storage');
       }
 
       const { data: publicUrlData } = supabase.storage
         .from('templates')
-        .getPublicUrl(filePath);
+        .getPublicUrl(cleanFileName);
 
       const fileUrl = publicUrlData?.publicUrl;
-      const finalFilePath = uploadData?.path || filePath;
+      const finalFilePath = uploadData?.path || cleanFileName;
 
       // Default dynamic fields (Standard Indonesian)
       const defaultFields = [
@@ -886,7 +886,11 @@ export default function DocGeneratorView({
       setSelectedTemplateCode(payload.code);
     } catch (err) {
       console.error('Add template error:', err);
-      alert(`Gagal menambah template format: ${err.message}`);
+      let errorMsg = err?.message || 'Terjadi kesalahan saat menyimpan ke Supabase.';
+      if (errorMsg === 'Failed to fetch' || err?.name === 'TypeError') {
+        errorMsg = 'Koneksi ke Supabase Storage gagal (Failed to fetch). Pastikan jaringan internet stabil, bucket "templates" sudah dibuat di Supabase Storage dan memiliki izin upload.';
+      }
+      alert(`Gagal menambah template format: ${errorMsg}`);
     } finally {
       setIsProcessingTemplate(false);
     }
