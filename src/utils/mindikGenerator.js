@@ -3,5 +3,12 @@
  * and src/services/mindikGenerator.js
  */
 export * from '../services/mindikGenerator.js';
-export { buildMindikPayload, buildMindikVariables, buildDocxDataMap, formatTanggalIndonesia } from '../services/mindikGenerator.js';
+export { 
+  buildMindikPayload, 
+  buildMindikVariables, 
+  buildDocxDataMap, 
+  formatTanggalIndonesia,
+  formatNomorSuratHeader,
+  formatTanggalSuratHeader
+} from '../services/mindikGenerator.js';
 

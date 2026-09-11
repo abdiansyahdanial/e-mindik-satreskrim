@@ -48,6 +48,28 @@ export function formatTanggalIndonesia(dateStr) {
   return `${hari} ${bulan} ${tahun}`;
 }
 
+/**
+ * Helper untuk meringkas dan mengkapitalkan nomor surat di header halaman ke-2 dst.
+ * Format naskah dinas kepolisian: memotong string sebelum '/Polres' atau '/POLRES' jika ditemukan,
+ * dan mengembalikan huruf kapital seluruhnya (contoh: 'SP.GAS/10/IX/RES.1.24/2026/SATRESKRIM').
+ * Fallback Safety: Jika tidak ada '/Polres', mengembalikan nomor surat utuh dalam format huruf kapital (.toUpperCase()).
+ * Jika string kosong/null/undefined, kembalikan string kosong ''.
+ */
+export const formatNomorSuratHeader = (nomorLengkap) => {
+  if (!nomorLengkap) return '';
+  const ringkas = String(nomorLengkap).split(/\/polres/i)[0].trim();
+  return ringkas.toUpperCase();
+};
+
+/**
+ * Helper untuk memastikan teks tanggal pada header menjadi kapital seluruhnya (contoh: '11 SEPTEMBER 2026').
+ * Jika string kosong/null/undefined, kembalikan string kosong ''.
+ */
+export const formatTanggalSuratHeader = (teksTanggal) => {
+  if (!teksTanggal) return '';
+  return String(teksTanggal).toUpperCase();
+};
+
 // In-memory cache for master .docx buffers from Supabase Storage
 const templateBufferCache = new Map();
 
@@ -392,6 +414,10 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     // A. SURAT AKTIF (Resmi UPPERCASE)
     NOMOR_SURAT: nomorSurat,
     TANGGAL_SURAT: tanggalSurat,
+    NOMOR_SURAT_HEADER: formatNomorSuratHeader(nomorSurat),
+    nomor_surat_header: formatNomorSuratHeader(nomorSurat),
+    TANGGAL_SURAT_HEADER: formatTanggalSuratHeader(tanggalSurat),
+    tanggal_surat_header: formatTanggalSuratHeader(tanggalSurat),
     TEMPAT_SURAT: tempatSurat,
     TUJUAN_SURAT: tujuanSurat,
     ALAMAT_TUJUAN: alamatTujuan,
@@ -825,6 +851,13 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.tanggal_surat = tanggalSurat;
   finalPayload.DOC_DATE = tanggalSurat;
   finalPayload.doc_date = tanggalSurat;
+
+  // Sisipkan tag header baru tanpa menimpa tag yang sudah ada (Universal Header Naskah Dinas)
+  finalPayload.NOMOR_SURAT_HEADER = formatNomorSuratHeader(finalPayload.NOMOR_SURAT || nomorSurat);
+  finalPayload.nomor_surat_header = finalPayload.NOMOR_SURAT_HEADER;
+
+  finalPayload.TANGGAL_SURAT_HEADER = formatTanggalSuratHeader(finalPayload.TANGGAL_SURAT || tanggalSurat);
+  finalPayload.tanggal_surat_header = finalPayload.TANGGAL_SURAT_HEADER;
 
   // Pastikan rantai rujukan mandiri (Chain of Reference) selalu terformat teks resmi
   finalPayload.TANGGAL_LP = tanggalLp;
