@@ -202,7 +202,21 @@ export default function App() {
     showToast(`Perkara ${newCase.nomor_lp || newCase.no_lp} berhasil diregistrasi!`);
 
     try {
-      const { error } = await supabase.from('cases').insert([newCase]);
+      let { error } = await supabase.from('cases').insert([newCase]);
+      if (error && (error.code === 'PGRST204' || (error.message && error.message.includes('schema cache')))) {
+        console.warn('PGRST204: Kolom dedicated belum ada di schema Supabase, menyimpan ke investigators & references JSONB...');
+        const {
+          penyidik_penangan_index,
+          penyidik_penangan_nama,
+          penyidik_penangan_pangkat,
+          penyidik_penangan_nrp,
+          penyidik_penangan_jabatan,
+          penyidik_penangan,
+          ...cleanCase
+        } = newCase;
+        const retry = await supabase.from('cases').insert([cleanCase]);
+        error = retry.error;
+      }
       if (error) {
         console.error('Insert case error:', error);
         alert(`Gagal menyimpan perkara ke database: ${error.message}`);

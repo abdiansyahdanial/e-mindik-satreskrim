@@ -122,12 +122,45 @@ export const formatPangkatLengkap = (pangkat) => {
 export const getPenyidikPenangan = (activeCase = {}) => {
   if (!activeCase) return null;
 
-  // 1. Objek penyidik_penangan langsung
+  // 1. Prioritas Utama: Cari elemen di array investigators yang memiliki flag is_penangan: true
+  if (Array.isArray(activeCase.investigators) && activeCase.investigators.length > 0) {
+    const found = activeCase.investigators.find(inv => inv.is_penangan === true || inv.is_penangan === 'true' || inv.is_penangan === 1);
+    if (found && found.nama) return found;
+  }
+
+  // 2. Ditentukan berdasarkan index slot (1 s.d. 5)
+  const idx = Number(
+    activeCase.penyidik_penangan_index || 
+    activeCase.penyidik_penangan_slot || 
+    activeCase.references?.penyidik_penangan_index ||
+    activeCase.references?.penyidik_penangan?.index
+  );
+  if (idx) {
+    if (activeCase[`penyidik_${idx}_nama`]) {
+      return {
+        nama: activeCase[`penyidik_${idx}_nama`],
+        pangkat: activeCase[`penyidik_${idx}_pangkat`] || '',
+        nrp: activeCase[`penyidik_${idx}_nrp`] || '',
+        jabatan: activeCase[`penyidik_${idx}_jabatan`] || (idx === 1 ? 'Kanit' : 'Penyidik Pembantu')
+      };
+    }
+    if (Array.isArray(activeCase.investigators)) {
+      const byOrder = activeCase.investigators.find(inv => Number(inv.role_order) === idx);
+      if (byOrder && byOrder.nama) return byOrder;
+    }
+  }
+
+  // 3. Objek penyidik_penangan langsung
   if (activeCase.penyidik_penangan && activeCase.penyidik_penangan.nama) {
     return activeCase.penyidik_penangan;
   }
 
-  // 2. Direct properties di tabel case
+  // 4. Dari references.penyidik_penangan
+  if (activeCase.references?.penyidik_penangan?.nama) {
+    return activeCase.references.penyidik_penangan;
+  }
+
+  // 5. Direct properties di tabel case
   if (activeCase.penyidik_penangan_nama) {
     return {
       nama: activeCase.penyidik_penangan_nama,
@@ -137,24 +170,7 @@ export const getPenyidikPenangan = (activeCase = {}) => {
     };
   }
 
-  // 3. Ditentukan berdasarkan index slot (1 s.d. 5)
-  const idx = Number(activeCase.penyidik_penangan_index || activeCase.penyidik_penangan_slot);
-  if (idx && activeCase[`penyidik_${idx}_nama`]) {
-    return {
-      nama: activeCase[`penyidik_${idx}_nama`],
-      pangkat: activeCase[`penyidik_${idx}_pangkat`] || '',
-      nrp: activeCase[`penyidik_${idx}_nrp`] || '',
-      jabatan: activeCase[`penyidik_${idx}_jabatan`] || (idx === 1 ? 'Kanit' : 'Penyidik Pembantu')
-    };
-  }
-
-  // 4. Ditentukan di array investigators dengan is_penangan: true
-  if (Array.isArray(activeCase.investigators)) {
-    const found = activeCase.investigators.find(inv => inv.is_penangan);
-    if (found && found.nama) return found;
-  }
-
-  // 5. Default Fallback: Penyidik 1 / Kanit
+  // 6. Default Fallback: Penyidik 1 / Kanit
   if (activeCase.penyidik_1_nama) {
     return {
       nama: activeCase.penyidik_1_nama,

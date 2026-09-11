@@ -257,6 +257,14 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
         no_sprin_sidik: '',
         no_spdp: '',
         no_p21_kn: '',
+        penyidik_penangan_index: penanganIdx,
+        penyidik_penangan: {
+          index: penanganIdx,
+          nama: penanganNama,
+          pangkat: penanganPangkat,
+          nrp: penanganNrp,
+          jabatan: penanganJabatan,
+        },
       },
     };
 
@@ -670,11 +678,11 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                               cursor: 'pointer',
                               padding: '2px 8px',
                               borderRadius: '4px',
-                              background: formData.penyidik_penangan_index === slotIndex ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                              border: formData.penyidik_penangan_index === slotIndex ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                              background: Number(formData.penyidik_penangan_index) === slotIndex ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                              border: Number(formData.penyidik_penangan_index) === slotIndex ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
                               fontSize: '10.5px',
-                              color: formData.penyidik_penangan_index === slotIndex ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                              fontWeight: formData.penyidik_penangan_index === slotIndex ? 700 : 400,
+                              color: Number(formData.penyidik_penangan_index) === slotIndex ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                              fontWeight: Number(formData.penyidik_penangan_index) === slotIndex ? 700 : 400,
                               userSelect: 'none',
                               transition: 'all 0.15s ease'
                             }}
@@ -684,7 +692,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                               type="radio"
                               name="create_penyidik_penangan_radio"
                               value={slotIndex}
-                              checked={formData.penyidik_penangan_index === slotIndex}
+                              checked={Number(formData.penyidik_penangan_index) === slotIndex}
                               onChange={() => setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }))}
                               style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
                             />

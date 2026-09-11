@@ -81,21 +81,57 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
 
       const invList = Array.isArray(caseItem.investigators) ? caseItem.investigators : [];
 
-      // Hitung slot aktif awal
-      let maxActiveSlot = 2;
+      // 1. Ekstrak index penyidik penangan dari semua sumber potensial
+      let initialPenanganIdx = 1;
+      if (caseItem.penyidik_penangan_index) {
+        initialPenanganIdx = Number(caseItem.penyidik_penangan_index);
+      } else if (caseItem.references?.penyidik_penangan_index) {
+        initialPenanganIdx = Number(caseItem.references.penyidik_penangan_index);
+      } else if (caseItem.references?.penyidik_penangan?.index) {
+        initialPenanganIdx = Number(caseItem.references.penyidik_penangan.index);
+      } else if (caseItem.penyidik_penangan?.index) {
+        initialPenanganIdx = Number(caseItem.penyidik_penangan.index);
+      } else if (invList.length > 0) {
+        const foundInv = invList.find((inv) => inv.is_penangan === true || inv.is_penangan === 'true' || inv.is_penangan === 1);
+        if (foundInv) {
+          initialPenanganIdx = Number(foundInv.role_order) || (invList.indexOf(foundInv) + 1);
+        }
+      }
+      if (!initialPenanganIdx || initialPenanganIdx < 1 || initialPenanganIdx > 5) {
+        initialPenanganIdx = 1;
+      }
+
+      // 2. Hitung slot aktif awal agar slot terpilih (misal Slot 4) selalu tampil di UI
+      let maxActiveSlot = Math.max(2, initialPenanganIdx);
       for (let i = 3; i <= 5; i++) {
-        if (caseItem[`penyidik_${i}_nama`] || invList[i - 1]?.nama) {
-          maxActiveSlot = i;
+        const invSlot = invList.find((inv) => Number(inv.role_order) === i);
+        if (caseItem[`penyidik_${i}_nama`] || invSlot?.nama) {
+          maxActiveSlot = Math.max(maxActiveSlot, i);
         }
       }
       setActiveSlotsCount(maxActiveSlot);
 
-      let initialPenanganIdx = caseItem.penyidik_penangan_index || 1;
-      if (!caseItem.penyidik_penangan_index && Array.isArray(caseItem.investigators)) {
-        const pIndex = caseItem.investigators.findIndex(inv => inv.is_penangan);
-        if (pIndex !== -1) {
-          initialPenanganIdx = caseItem.investigators[pIndex].role_order || (pIndex + 1);
-        }
+      // Helper untuk mengambil data slot spesifik
+      const getSlotData = (slotNum) => {
+        const inv = invList.find((i) => Number(i.role_order) === slotNum);
+        return {
+          nama: caseItem[`penyidik_${slotNum}_nama`] || inv?.nama || '',
+          pangkat: caseItem[`penyidik_${slotNum}_pangkat`] || inv?.pangkat || '',
+          nrp: caseItem[`penyidik_${slotNum}_nrp`] || inv?.nrp || '',
+          jabatan: caseItem[`penyidik_${slotNum}_jabatan`] || inv?.jabatan || (slotNum === 1 ? 'KANIT IDIK' : 'PENYIDIK PEMBANTU'),
+        };
+      };
+
+      const s1 = getSlotData(1);
+      const s2 = getSlotData(2);
+      const s3 = getSlotData(3);
+      const s4 = getSlotData(4);
+      const s5 = getSlotData(5);
+
+      if (!s1.nama) {
+        s1.nama = fallbackKanit?.nama || '';
+        s1.pangkat = fallbackKanit?.pangkat || '';
+        s1.nrp = fallbackKanit?.nrp || '';
       }
 
       setFormData({
@@ -116,31 +152,31 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
         kasat_nrp: caseItem.kasat_nrp || fallbackKasat?.nrp || '',
 
         // Data Penyidik 1 (Wajib)
-        penyidik_1_nama: caseItem.penyidik_1_nama || invList[0]?.nama || fallbackKanit?.nama || '',
-        penyidik_1_pangkat: caseItem.penyidik_1_pangkat || invList[0]?.pangkat || fallbackKanit?.pangkat || '',
-        penyidik_1_nrp: caseItem.penyidik_1_nrp || invList[0]?.nrp || fallbackKanit?.nrp || '',
-        penyidik_1_jabatan: caseItem.penyidik_1_jabatan || invList[0]?.jabatan || fallbackKanit?.jabatan || 'KANIT IDIK',
+        penyidik_1_nama: s1.nama,
+        penyidik_1_pangkat: s1.pangkat,
+        penyidik_1_nrp: s1.nrp,
+        penyidik_1_jabatan: s1.jabatan,
 
         // Data Penyidik 2 s.d. 5 (Opsional)
-        penyidik_2_nama: caseItem.penyidik_2_nama || invList[1]?.nama || '',
-        penyidik_2_pangkat: caseItem.penyidik_2_pangkat || invList[1]?.pangkat || '',
-        penyidik_2_nrp: caseItem.penyidik_2_nrp || invList[1]?.nrp || '',
-        penyidik_2_jabatan: caseItem.penyidik_2_jabatan || invList[1]?.jabatan || 'PENYIDIK PEMBANTU',
+        penyidik_2_nama: s2.nama,
+        penyidik_2_pangkat: s2.pangkat,
+        penyidik_2_nrp: s2.nrp,
+        penyidik_2_jabatan: s2.jabatan,
 
-        penyidik_3_nama: caseItem.penyidik_3_nama || invList[2]?.nama || '',
-        penyidik_3_pangkat: caseItem.penyidik_3_pangkat || invList[2]?.pangkat || '',
-        penyidik_3_nrp: caseItem.penyidik_3_nrp || invList[2]?.nrp || '',
-        penyidik_3_jabatan: caseItem.penyidik_3_jabatan || invList[2]?.jabatan || 'PENYIDIK PEMBANTU',
+        penyidik_3_nama: s3.nama,
+        penyidik_3_pangkat: s3.pangkat,
+        penyidik_3_nrp: s3.nrp,
+        penyidik_3_jabatan: s3.jabatan,
 
-        penyidik_4_nama: caseItem.penyidik_4_nama || invList[3]?.nama || '',
-        penyidik_4_pangkat: caseItem.penyidik_4_pangkat || invList[3]?.pangkat || '',
-        penyidik_4_nrp: caseItem.penyidik_4_nrp || invList[3]?.nrp || '',
-        penyidik_4_jabatan: caseItem.penyidik_4_jabatan || invList[3]?.jabatan || 'PENYIDIK PEMBANTU',
+        penyidik_4_nama: s4.nama,
+        penyidik_4_pangkat: s4.pangkat,
+        penyidik_4_nrp: s4.nrp,
+        penyidik_4_jabatan: s4.jabatan,
 
-        penyidik_5_nama: caseItem.penyidik_5_nama || invList[4]?.nama || '',
-        penyidik_5_pangkat: caseItem.penyidik_5_pangkat || invList[4]?.pangkat || '',
-        penyidik_5_nrp: caseItem.penyidik_5_nrp || invList[4]?.nrp || '',
-        penyidik_5_jabatan: caseItem.penyidik_5_jabatan || invList[4]?.jabatan || 'PENYIDIK PEMBANTU',
+        penyidik_5_nama: s5.nama,
+        penyidik_5_pangkat: s5.pangkat,
+        penyidik_5_nrp: s5.nrp,
+        penyidik_5_jabatan: s5.jabatan,
       });
       setErrorMessage(null);
     }
@@ -236,7 +272,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
     const penanganNrp = formData[`penyidik_${penanganIdx}_nrp`]?.trim() || formData.penyidik_1_nrp.trim();
     const penanganJabatan = formData[`penyidik_${penanganIdx}_jabatan`]?.trim() || (penanganIdx === 1 ? 'KANIT IDIK' : 'PENYIDIK PEMBANTU');
 
-    // Siapkan daftar investigators untuk kompatibilitas
+    // Siapkan daftar investigators untuk kompatibilitas tampilan dan generator
     const investigatorsList = [1, 2, 3, 4, 5]
       .filter((num) => formData[`penyidik_${num}_nama`]?.trim())
       .map((num) => ({
@@ -248,7 +284,21 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
         is_penangan: num === penanganIdx,
       }));
 
-    const updatePayload = {
+    // Simpan ke references JSONB yang terbukti aman di Supabase
+    const existingReferences = (caseItem.references && typeof caseItem.references === 'object') ? caseItem.references : {};
+    const updatedReferences = {
+      ...existingReferences,
+      penyidik_penangan_index: penanganIdx,
+      penyidik_penangan: {
+        index: penanganIdx,
+        nama: penanganNama,
+        pangkat: penanganPangkat,
+        nrp: penanganNrp,
+        jabatan: penanganJabatan,
+      },
+    };
+
+    const basePayload = {
       nomor_lp: formData.nomor_lp.trim(),
       tanggal_lp: formData.tanggal_lp,
       nama_pelapor: formData.nama_pelapor.trim(),
@@ -290,7 +340,19 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       penyidik_5_nrp: formData.penyidik_5_nrp?.trim() || null,
       penyidik_5_jabatan: formData.penyidik_5_jabatan?.trim() || null,
 
-      // Data Penyidik Penangan Perkara Terpilih
+      investigators: investigatorsList,
+      references: updatedReferences,
+
+      // Kompatibilitas skema lama
+      no_lp: formData.nomor_lp.trim(),
+      pelapor_name: formData.nama_pelapor.trim(),
+      terlapor_name: formData.nama_terlapor.trim() || 'Dalam Penyelidikan',
+      pasal_uu: formData.dasar_pasal_uu.trim(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const fullPayload = {
+      ...basePayload,
       penyidik_penangan_index: penanganIdx,
       penyidik_penangan_nama: penanganNama,
       penyidik_penangan_pangkat: penanganPangkat,
@@ -303,28 +365,31 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
         nrp: penanganNrp,
         jabatan: penanganJabatan,
       },
-
-      investigators: investigatorsList,
-
-      // Kompatibilitas skema lama
-      no_lp: formData.nomor_lp.trim(),
-      pelapor_name: formData.nama_pelapor.trim(),
-      terlapor_name: formData.nama_terlapor.trim() || 'Dalam Penyelidikan',
-      pasal_uu: formData.dasar_pasal_uu.trim(),
-      updated_at: new Date().toISOString(),
     };
 
     try {
-      const { error } = await supabase
+      let { error } = await supabase
         .from('cases')
-        .update(updatePayload)
+        .update(fullPayload)
         .eq('id', caseItem.id);
+
+      // Resilient Fallback: Jika tabel cases belum memiliki kolom dedicated penyidik_penangan_index (PGRST204)
+      if (error && (error.code === 'PGRST204' || (error.message && error.message.includes('schema cache')))) {
+        console.warn('PGRST204: Kolom dedicated belum ada di schema cases Supabase, menyimpan ke investigators & references JSONB...');
+        const retryResult = await supabase
+          .from('cases')
+          .update(basePayload)
+          .eq('id', caseItem.id);
+        error = retryResult.error;
+      }
 
       if (error) throw error;
 
       const mergedCase = {
         ...caseItem,
-        ...updatePayload,
+        ...fullPayload,
+        references: updatedReferences,
+        investigators: investigatorsList,
       };
 
       if (onSaveSuccess) {
@@ -709,7 +774,8 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
 
                 {[1, 2, 3, 4, 5].map((slotIndex) => {
                   const isRequired = slotIndex === 1;
-                  const isVisible = slotIndex <= activeSlotsCount;
+                  const isPenanganChecked = Number(formData.penyidik_penangan_index) === slotIndex;
+                  const isVisible = slotIndex <= activeSlotsCount || isPenanganChecked;
 
                   if (!isVisible && !formData[`penyidik_${slotIndex}_nama`]) {
                     return null;
@@ -754,11 +820,11 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                               cursor: 'pointer',
                               padding: '2px 8px',
                               borderRadius: '4px',
-                              background: formData.penyidik_penangan_index === slotIndex ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                              border: formData.penyidik_penangan_index === slotIndex ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                              background: isPenanganChecked ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                              border: isPenanganChecked ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
                               fontSize: '10.5px',
-                              color: formData.penyidik_penangan_index === slotIndex ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                              fontWeight: formData.penyidik_penangan_index === slotIndex ? 700 : 400,
+                              color: isPenanganChecked ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                              fontWeight: isPenanganChecked ? 700 : 400,
                               userSelect: 'none',
                               transition: 'all 0.15s ease'
                             }}
@@ -768,7 +834,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                               type="radio"
                               name="edit_penyidik_penangan_radio"
                               value={slotIndex}
-                              checked={formData.penyidik_penangan_index === slotIndex}
+                              checked={isPenanganChecked}
                               onChange={() => setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }))}
                               style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
                             />

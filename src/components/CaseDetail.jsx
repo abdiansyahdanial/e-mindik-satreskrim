@@ -920,15 +920,32 @@ export default function CaseDetail({
 
             {/* Tim Penyidik 1 s.d. 5 */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {[1, 2, 3, 4, 5].map((slot) => {
-                const nama = caseItem[`penyidik_${slot}_nama`] || caseItem.investigators?.[slot - 1]?.nama;
-                const pangkat = caseItem[`penyidik_${slot}_pangkat`] || caseItem.investigators?.[slot - 1]?.pangkat;
-                const nrp = caseItem[`penyidik_${slot}_nrp`] || caseItem.investigators?.[slot - 1]?.nrp;
-                const jabatan = caseItem[`penyidik_${slot}_jabatan`] || caseItem.investigators?.[slot - 1]?.jabatan;
+              {(() => {
+                const invList = Array.isArray(caseItem.investigators) ? caseItem.investigators : [];
+                let activePenanganSlot = 1;
+                if (caseItem.penyidik_penangan_index) {
+                  activePenanganSlot = Number(caseItem.penyidik_penangan_index);
+                } else if (caseItem.references?.penyidik_penangan_index) {
+                  activePenanganSlot = Number(caseItem.references.penyidik_penangan_index);
+                } else if (caseItem.references?.penyidik_penangan?.index) {
+                  activePenanganSlot = Number(caseItem.references.penyidik_penangan.index);
+                } else if (caseItem.penyidik_penangan?.index) {
+                  activePenanganSlot = Number(caseItem.penyidik_penangan.index);
+                } else if (invList.length > 0) {
+                  const found = invList.find((i) => i.is_penangan === true || i.is_penangan === 'true' || i.is_penangan === 1);
+                  if (found) activePenanganSlot = Number(found.role_order) || (invList.indexOf(found) + 1);
+                }
 
-                const isPenangan = slot === (Number(caseItem.penyidik_penangan_index) || caseItem.penyidik_penangan?.index || (caseItem.investigators?.[slot - 1]?.is_penangan ? slot : (slot === 1 ? 1 : null)));
+                return [1, 2, 3, 4, 5].map((slot) => {
+                  const invItem = invList.find((i) => Number(i.role_order) === slot);
+                  const nama = caseItem[`penyidik_${slot}_nama`] || invItem?.nama;
+                  const pangkat = caseItem[`penyidik_${slot}_pangkat`] || invItem?.pangkat;
+                  const nrp = caseItem[`penyidik_${slot}_nrp`] || invItem?.nrp;
+                  const jabatan = caseItem[`penyidik_${slot}_jabatan`] || invItem?.jabatan;
 
-                if (!nama) return null;
+                  const isPenangan = slot === activePenanganSlot;
+
+                  if (!nama) return null;
 
                 return (
                   <div key={slot} style={{
@@ -961,9 +978,10 @@ export default function CaseDetail({
                     )}
                   </div>
                 );
-              })}
-            </div>
+              });
+            })()}
           </div>
+        </div>
 
           {/* Riwayat Dokumen Mindik Terkait */}
           <div>
