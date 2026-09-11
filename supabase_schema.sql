@@ -296,6 +296,11 @@ ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS dasar_pasal_uu TEXT;
 ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS no_sprin_sidik TEXT DEFAULT NULL;
 ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS no_spdp TEXT DEFAULT NULL;
 ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS no_p21_kn TEXT DEFAULT NULL;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS penyidik_penangan_index INTEGER DEFAULT 1;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS penyidik_penangan_nama TEXT;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS penyidik_penangan_pangkat TEXT;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS penyidik_penangan_nrp TEXT;
+ALTER TABLE public.cases ADD COLUMN IF NOT EXISTS penyidik_penangan_jabatan TEXT;
 
 -- Sync nomor_lp dari no_lp yang sudah ada
 UPDATE public.cases SET nomor_lp = no_lp WHERE nomor_lp IS NULL;
