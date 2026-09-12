@@ -15,6 +15,7 @@ export {
   getPenyidikPenangan,
   getNamaHariIndonesia,
   terbilang,
+  terbilangAngka,
   terbilangTahun,
   parseDateParts,
   hitungTanggalAkhirPenahanan,

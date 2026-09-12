@@ -55,22 +55,24 @@ export const NAMA_BULAN_INDONESIA = [
 ];
 
 /**
- * Konversi angka bulat ke teks terbilang bahasa Indonesia resmi.
+ * Helper Terbilang Angka / Tahun (Pure Function)
  */
-export function terbilang(n) {
-  const bilangan = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
-  n = Math.floor(Number(n));
+export function terbilangAngka(n) {
+  const angka = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+  n = Math.floor(n);
   if (isNaN(n) || n < 0) return '';
   if (n === 0) return 'nol';
-  if (n < 12) return bilangan[n];
-  if (n < 20) return `${bilangan[n - 10]} belas`;
-  if (n < 100) return `${bilangan[Math.floor(n / 10)]} puluh${n % 10 !== 0 ? ' ' + bilangan[n % 10] : ''}`;
-  if (n < 200) return `seratus${n - 100 !== 0 ? ' ' + terbilang(n - 100) : ''}`;
-  if (n < 1000) return `${bilangan[Math.floor(n / 100)]} ratus${n % 100 !== 0 ? ' ' + terbilang(n % 100) : ''}`;
-  if (n < 2000) return `seribu${n - 1000 !== 0 ? ' ' + terbilang(n - 1000) : ''}`;
-  if (n < 1000000) return `${terbilang(Math.floor(n / 1000))} ribu${n % 1000 !== 0 ? ' ' + terbilang(n % 1000) : ''}`;
-  return String(n);
+  if (n < 12) return angka[n];
+  if (n < 20) return terbilangAngka(n - 10) + ' belas';
+  if (n < 100) return terbilangAngka(Math.floor(n / 10)) + ' puluh' + (n % 10 !== 0 ? ' ' + angka[n % 10] : '');
+  if (n < 200) return 'seratus' + (n - 100 !== 0 ? ' ' + terbilangAngka(n - 100) : '');
+  if (n < 1000) return terbilangAngka(Math.floor(n / 100)) + ' ratus' + (n % 100 !== 0 ? ' ' + terbilangAngka(n % 100) : '');
+  if (n < 2000) return 'seribu' + (n - 1000 !== 0 ? ' ' + terbilangAngka(n - 1000) : '');
+  if (n < 1000000) return terbilangAngka(Math.floor(n / 1000)) + ' ribu' + (n % 1000 !== 0 ? ' ' + terbilangAngka(n % 1000) : '');
+  return n.toString();
 }
+
+export const terbilang = terbilangAngka;
 
 /**
  * Mengonversi angka tahun (contoh: 2024 -> "dua ribu dua puluh empat", 2026 -> "dua ribu dua puluh enam").
@@ -79,7 +81,7 @@ export function terbilangTahun(tahunInput) {
   if (!tahunInput) return '';
   const num = parseInt(String(tahunInput).replace(/\D/g, ''), 10);
   if (isNaN(num)) return '';
-  return terbilang(num).trim();
+  return terbilangAngka(num).toLowerCase().trim();
 }
 
 /**
@@ -517,6 +519,9 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
                   tplName.includes('tap') ||
                   tplName.includes('penetapan tersangka');
 
+  const isKapDoc = tplCode === 'BA_KAP' || tplCode === 'SPRIN_KAP_DAN_BA' || tplCode.includes('KAP');
+  const isHanDoc = tplCode === 'SPRIN_HAN' || tplCode === 'BA_HAN' || tplCode === 'SPRIN_HAN_DAN_BA' || tplCode.includes('HAN');
+
   const rawNomorSurat = cleanInput.NOMOR_SURAT || cleanInput.doc_no || cleanInput.DOC_NO || cleanInput.nomor_surat || '';
   const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.DOC_DATE || cleanInput.tanggal_surat || cleanInput.doc_date || new Date().toISOString().split('T')[0];
 
@@ -531,11 +536,12 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   const effectiveTanggalSurat = isSpTap 
     ? (suspectTanggalSpTap || rawTanggalSurat)
-    : rawTanggalSurat;
+    : (isKapDoc && cleanInput.TANGGAL_KAP ? cleanInput.TANGGAL_KAP : (isHanDoc && cleanInput.TANGGAL_MULAI_HAN ? cleanInput.TANGGAL_MULAI_HAN : rawTanggalSurat));
 
   const nomorSurat = effectiveNomorSurat;
   const tanggalSurat = formatTanggalIndonesia(effectiveTanggalSurat);
-  const tempatSurat = cleanInput.TEMPAT_SURAT || cleanInput.tempat_surat || cleanInput.DOC_LOCATION || 'Tirawuta';
+  const tempatSurat = cleanInput.TEMPAT_SURAT || cleanInput.tempat_surat || cleanInput.DOC_LOCATION || 
+    (isKapDoc && cleanInput.TEMPAT_KAP ? cleanInput.TEMPAT_KAP : (isHanDoc && cleanInput.TEMPAT_HAN ? cleanInput.TEMPAT_HAN : 'Tirawuta'));
   const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || '';
   const alamatTujuan = cleanInput.ALAMAT_TUJUAN || cleanInput.alamat_tujuan || cleanInput.DOC_TARGET_ADDR || '';
   const masaBerlaku = cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '';

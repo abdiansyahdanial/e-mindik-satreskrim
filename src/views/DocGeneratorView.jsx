@@ -491,19 +491,32 @@ export default function DocGeneratorView({
 
     // Inisialisasi Default Nilai Penangkapan (BA_KAP / SPRIN_KAP_DAN_BA)
     if (isBaKapDoc) {
-      initial['TANGGAL_KAP'] = selectedSuspect?.tgl_sprin_kap || todayStr;
+      const tglKap = selectedSuspect?.tgl_sprin_kap || todayStr;
+      const tempatKap = 'Kab. Kolaka Timur';
+      initial['TANGGAL_KAP'] = tglKap;
       initial['JAM_KAP'] = '10.00 WITA';
-      initial['TEMPAT_KAP'] = 'Kab. Kolaka Timur';
+      initial['TEMPAT_KAP'] = tempatKap;
+      // Auto-mirror ke tanggal surat & lokasi dokumen naskah dinas
+      initial['TANGGAL_SURAT'] = tglKap;
+      initial['DOC_DATE'] = tglKap;
+      initial['TEMPAT_SURAT'] = tempatKap;
+      initial['DOC_LOCATION'] = tempatKap;
     }
 
     // Inisialisasi Default Nilai Penahanan (SPRIN_HAN / BA_HAN / SPRIN_HAN_DAN_BA)
     if (isHanDoc) {
       const tglMulai = selectedSuspect?.tgl_sprin_han || todayStr;
+      const tempatHan = 'Rumah Tahanan Negara (Rutan) Polres Kolaka Timur';
       initial['TANGGAL_MULAI_HAN'] = tglMulai;
       initial['TANGGAL_AKHIR_HAN'] = hitungTanggalAkhirPenahanan(tglMulai, 20);
-      initial['TEMPAT_HAN'] = 'Rumah Tahanan Negara (Rutan) Polres Kolaka Timur';
+      initial['TEMPAT_HAN'] = tempatHan;
       initial['TANGGAL_HAN'] = tglMulai;
       initial['JAM_HAN'] = '10.00 WITA';
+      // Auto-mirror ke tanggal surat & lokasi dokumen naskah dinas
+      initial['TANGGAL_SURAT'] = tglMulai;
+      initial['DOC_DATE'] = tglMulai;
+      initial['TEMPAT_SURAT'] = tempatHan;
+      initial['DOC_LOCATION'] = tempatHan;
     }
 
     const defaultDocFields = [
@@ -718,11 +731,30 @@ export default function DocGeneratorView({
         }
       }
 
-      // Auto-Kalkulasi Tanggal Akhir Penahanan (+19 hari / KUHAP 20 hari)
+      // Auto-Mirroring Tanggal & Tempat Penangkapan ke Tag Dokumen Surat
+      if (key === 'TANGGAL_KAP' || key === 'tanggal_kap') {
+        next.TANGGAL_SURAT = value;
+        next.tanggal_surat = value;
+        next.DOC_DATE = value;
+        next.doc_date = value;
+      }
+
+      if (key === 'TEMPAT_KAP' || key === 'tempat_kap') {
+        next.TEMPAT_SURAT = value;
+        next.tempat_surat = value;
+        next.DOC_LOCATION = value;
+        next.doc_location = value;
+      }
+
+      // Auto-Kalkulasi Tanggal Akhir Penahanan (+19 hari / KUHAP 20 hari) & Auto-Mirroring
       if (key === 'TANGGAL_MULAI_HAN' || key === 'tanggal_mulai_han') {
         const calculatedAkhir = hitungTanggalAkhirPenahanan(value, 20);
         next.TANGGAL_AKHIR_HAN = calculatedAkhir;
         next.tanggal_akhir_han = calculatedAkhir;
+        next.TANGGAL_SURAT = value;
+        next.tanggal_surat = value;
+        next.DOC_DATE = value;
+        next.doc_date = value;
         if (!prev.TANGGAL_HAN || prev.TANGGAL_HAN === prev.TANGGAL_MULAI_HAN) {
           next.TANGGAL_HAN = value;
           next.tanggal_han = value;
@@ -730,6 +762,8 @@ export default function DocGeneratorView({
       }
 
       if (key === 'TEMPAT_HAN' || key === 'tempat_han') {
+        next.TEMPAT_SURAT = value;
+        next.tempat_surat = value;
         next.DOC_LOCATION = value;
         next.doc_location = value;
       }
@@ -1809,16 +1843,33 @@ export default function DocGeneratorView({
                 }
                 dynamicList = dynamicList.filter(f => (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase() !== 'ATASAN_JABATAN');
 
-                // Saring field khusus penangkapan & penahanan agar tidak duplikat jika dokumen tersebut aktif
-                const specialKapHanKeys = [
-                  'TANGGAL_KAP', 'JAM_KAP', 'TEMPAT_KAP',
-                  'TANGGAL_MULAI_HAN', 'TANGGAL_AKHIR_HAN', 'TEMPAT_HAN',
-                  'TANGGAL_HAN', 'JAM_HAN'
-                ];
-                if (isBaKapDoc || isHanDoc) {
+                // Saring field agar form ringkas dan bebas dobel input saat Penangkapan atau Penahanan aktif
+                if (isBaKapDoc) {
+                  const redundantKapKeys = [
+                    'TANGGAL_KAP', 'JAM_KAP', 'TEMPAT_KAP',
+                    'TANGGAL_SURAT', 'DOC_DATE',
+                    'TEMPAT_SURAT', 'DOC_LOCATION',
+                    'TUJUAN_SURAT', 'DOC_TARGET',
+                    'ALAMAT_TUJUAN', 'DOC_TARGET_ADDR',
+                    'MASA_BERLAKU', 'DOC_VALIDITY'
+                  ];
                   dynamicList = dynamicList.filter(f => {
                     const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
-                    return !specialKapHanKeys.includes(k);
+                    return !redundantKapKeys.includes(k);
+                  });
+                } else if (isHanDoc) {
+                  const redundantHanKeys = [
+                    'TANGGAL_MULAI_HAN', 'TANGGAL_AKHIR_HAN', 'TEMPAT_HAN',
+                    'TANGGAL_HAN', 'JAM_HAN',
+                    'TANGGAL_SURAT', 'DOC_DATE',
+                    'TEMPAT_SURAT', 'DOC_LOCATION',
+                    'TUJUAN_SURAT', 'DOC_TARGET',
+                    'ALAMAT_TUJUAN', 'DOC_TARGET_ADDR',
+                    'MASA_BERLAKU', 'DOC_VALIDITY'
+                  ];
+                  dynamicList = dynamicList.filter(f => {
+                    const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+                    return !redundantHanKeys.includes(k);
                   });
                 }
 
