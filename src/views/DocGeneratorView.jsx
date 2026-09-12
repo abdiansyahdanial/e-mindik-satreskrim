@@ -15,7 +15,10 @@ import {
   FileText,
   AlertTriangle,
   Upload,
-  Shield
+  Shield,
+  Clock,
+  Calendar,
+  MapPin
 } from 'lucide-react';
 import { mockTemplates } from '../data/mockTemplates';
 import { mockPersonnel } from '../data/mockPersonnel';
@@ -29,7 +32,17 @@ import {
   getParentDocConfig
 } from '../utils/templateHelper';
 import OfficialDocPreview from '../components/OfficialDocPreview';
-import { generateAndDownloadDocx, formatTanggalIndonesia, getPenyidikPenangan, formatPangkatLengkap } from '../services/mindikGenerator';
+import { 
+  generateAndDownloadDocx, 
+  formatTanggalIndonesia, 
+  getPenyidikPenangan, 
+  formatPangkatLengkap,
+  parseDateParts,
+  hitungTanggalAkhirPenahanan,
+  formatWaktuJam,
+  terbilangTahun,
+  getNamaHariIndonesia
+} from '../services/mindikGenerator';
 
 export default function DocGeneratorView({ 
   cases = [], 
@@ -207,6 +220,26 @@ export default function DocGeneratorView({
   })();
 
   const isSidikDoc = isSprinSidik;
+
+  // Helper identifikasi dokumen BA Penangkapan (BA_KAP / SPRIN_KAP_DAN_BA)
+  const isBaKapDoc = (() => {
+    const c = (currentTemplate?.code || '').toUpperCase().trim();
+    const t = (currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
+    if (c === 'BA_KAP' || c === 'SPRIN_KAP_DAN_BA' || c === 'SPRIN_KAP') return true;
+    if (c.includes('BA_KAP')) return true;
+    if (t.includes('PENANGKAPAN') && (t.includes('BERITA ACARA') || t.includes('DAN BA') || t.includes('SURAT PERINTAH'))) return true;
+    return false;
+  })();
+
+  // Helper identifikasi dokumen Sprin & BA Penahanan (SPRIN_HAN / BA_HAN / SPRIN_HAN_DAN_BA)
+  const isHanDoc = (() => {
+    const c = (currentTemplate?.code || '').toUpperCase().trim();
+    const t = (currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
+    if (c === 'SPRIN_HAN' || c === 'BA_HAN' || c === 'SPRIN_HAN_DAN_BA') return true;
+    if (c.includes('SPRIN_HAN') || c.includes('BA_HAN')) return true;
+    if (t.includes('PENAHANAN') && !t.includes('PERPANJANGAN') && !t.includes('PENGELUARAN') && !t.includes('PENGALIHAN')) return true;
+    return false;
+  })();
 
   // Evaluasi Konfigurasi Dokumen Induk (Universal Auto-Sync)
   const activeParentConfig = getParentDocConfig(currentTemplate);
@@ -456,6 +489,23 @@ export default function DocGeneratorView({
       initial[`PENYIDIK_${i}_JABATAN`] = currentCase[`penyidik_${i}_jabatan`] || '';
     }
 
+    // Inisialisasi Default Nilai Penangkapan (BA_KAP / SPRIN_KAP_DAN_BA)
+    if (isBaKapDoc) {
+      initial['TANGGAL_KAP'] = selectedSuspect?.tgl_sprin_kap || todayStr;
+      initial['JAM_KAP'] = '10.00 WITA';
+      initial['TEMPAT_KAP'] = 'Kab. Kolaka Timur';
+    }
+
+    // Inisialisasi Default Nilai Penahanan (SPRIN_HAN / BA_HAN / SPRIN_HAN_DAN_BA)
+    if (isHanDoc) {
+      const tglMulai = selectedSuspect?.tgl_sprin_han || todayStr;
+      initial['TANGGAL_MULAI_HAN'] = tglMulai;
+      initial['TANGGAL_AKHIR_HAN'] = hitungTanggalAkhirPenahanan(tglMulai, 20);
+      initial['TEMPAT_HAN'] = 'Rumah Tahanan Negara (Rutan) Polres Kolaka Timur';
+      initial['TANGGAL_HAN'] = tglMulai;
+      initial['JAM_HAN'] = '10.00 WITA';
+    }
+
     const defaultDocFields = [
       { 
         field_key: 'NOMOR_SURAT', 
@@ -666,6 +716,22 @@ export default function DocGeneratorView({
             }
           }
         }
+      }
+
+      // Auto-Kalkulasi Tanggal Akhir Penahanan (+19 hari / KUHAP 20 hari)
+      if (key === 'TANGGAL_MULAI_HAN' || key === 'tanggal_mulai_han') {
+        const calculatedAkhir = hitungTanggalAkhirPenahanan(value, 20);
+        next.TANGGAL_AKHIR_HAN = calculatedAkhir;
+        next.tanggal_akhir_han = calculatedAkhir;
+        if (!prev.TANGGAL_HAN || prev.TANGGAL_HAN === prev.TANGGAL_MULAI_HAN) {
+          next.TANGGAL_HAN = value;
+          next.tanggal_han = value;
+        }
+      }
+
+      if (key === 'TEMPAT_HAN' || key === 'tempat_han') {
+        next.DOC_LOCATION = value;
+        next.doc_location = value;
       }
 
       return next;
@@ -1497,6 +1563,218 @@ export default function DocGeneratorView({
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* BAGIAN KHUSUS 1: PARAMETER BA PENANGKAPAN (BA_KAP / SPRIN_KAP_DAN_BA) */}
+              {isBaKapDoc && (
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={15} color="var(--accent-amber)" />
+                      <span style={{ color: 'var(--accent-amber)', fontWeight: 700, fontSize: '11.5px', letterSpacing: '0.3px' }}>
+                        PARAMETER KHUSUS PENANGKAPAN (BA KAP)
+                      </span>
+                    </div>
+                    <span className="badge badge-amber" style={{ fontSize: '9px' }}>
+                      Injeksi Tag Berita Acara
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                        Tanggal Penangkapan <span style={{ color: 'var(--accent-red)' }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formValues.TANGGAL_KAP || ''}
+                        onChange={(e) => handleInputChange('TANGGAL_KAP', e.target.value)}
+                        className="form-input mono"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                        Waktu / Jam Penangkapan
+                      </label>
+                      <input
+                        type="text"
+                        value={formValues.JAM_KAP || ''}
+                        onChange={(e) => handleInputChange('JAM_KAP', e.target.value)}
+                        className="form-input mono"
+                        placeholder="Contoh: 14.00 WITA"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Tempat Penangkapan <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formValues.TEMPAT_KAP !== undefined ? formValues.TEMPAT_KAP : 'Kab. Kolaka Timur'}
+                      onChange={(e) => handleInputChange('TEMPAT_KAP', e.target.value)}
+                      className="form-input"
+                      placeholder="Kab. Kolaka Timur"
+                    />
+                  </div>
+
+                  {/* Live Preview Tag Penangkapan */}
+                  {(() => {
+                    const parsed = parseDateParts(formValues.TANGGAL_KAP || formValues.TANGGAL_SURAT);
+                    return (
+                      <div style={{
+                        padding: '8px 10px',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        lineHeight: '1.5',
+                        color: '#CBD5E1',
+                        border: '1px dashed rgba(245, 158, 11, 0.25)'
+                      }}>
+                        <div style={{ color: 'var(--accent-amber)', fontWeight: 600, marginBottom: '2px' }}>
+                          Preview Injeksi Tag Word (docxtemplater):
+                        </div>
+                        <div>• <code>{'{HARI_KAP}'}</code>: <strong>{parsed.hari || '-'}</strong> | <code>{'{TANGGAL_KAP}'}</code>: <strong>{parsed.tanggal || '-'}</strong> | <code>{'{BULAN_KAP}'}</code>: <strong>{parsed.bulan || '-'}</strong> | <code>{'{TAHUN_KAP}'}</code>: <strong>{parsed.tahun || '-'}</strong></div>
+                        <div>• <code>{'{TERBILANG_TAHUN_KAP}'}</code>: <em>"{parsed.terbilangTahun || '-'}"</em></div>
+                        <div>• <code>{'{JAM_KAP}'}</code>: <strong>{formValues.JAM_KAP || '-'}</strong> | <code>{'{TEMPAT_KAP}'}</code>: <strong>{formValues.TEMPAT_KAP || 'Kab. Kolaka Timur'}</strong></div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* BAGIAN KHUSUS 2: PARAMETER SPRIN & BA PENAHANAN (SPRIN_HAN / BA_HAN / SPRIN_HAN_DAN_BA) */}
+              {isHanDoc && (
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Shield size={15} color="var(--accent-cyan)" />
+                      <span style={{ color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '11.5px', letterSpacing: '0.3px' }}>
+                        PARAMETER KHUSUS PENAHANAN (SPRIN & BA HAN)
+                      </span>
+                    </div>
+                    <span className="badge badge-cyan" style={{ fontSize: '9px' }}>
+                      KUHAP 20 Hari & BA Han
+                    </span>
+                  </div>
+
+                  {/* Tanggal Mulai & Tanggal Akhir Penahanan */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                        Tanggal Mulai Penahanan <span style={{ color: 'var(--accent-red)' }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formValues.TANGGAL_MULAI_HAN || ''}
+                        onChange={(e) => handleInputChange('TANGGAL_MULAI_HAN', e.target.value)}
+                        className="form-input mono"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label className="form-label" style={{ fontSize: '11px', marginBottom: 0 }}>
+                          Tanggal Akhir (+19 Hari) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                        </label>
+                        <span style={{ fontSize: '9px', color: 'var(--accent-cyan)' }}>Auto-fill 20 hari</span>
+                      </div>
+                      <input
+                        type="date"
+                        value={formValues.TANGGAL_AKHIR_HAN || ''}
+                        onChange={(e) => handleInputChange('TANGGAL_AKHIR_HAN', e.target.value)}
+                        className="form-input mono"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tempat / Rutan Penahanan */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Tempat / Rutan Penahanan <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formValues.TEMPAT_HAN !== undefined ? formValues.TEMPAT_HAN : 'Rumah Tahanan Negara (Rutan) Polres Kolaka Timur'}
+                      onChange={(e) => handleInputChange('TEMPAT_HAN', e.target.value)}
+                      className="form-input"
+                      placeholder="Rumah Tahanan Negara (Rutan) Polres Kolaka Timur"
+                    />
+                  </div>
+
+                  {/* Tanggal & Waktu Pembuatan BA Penahanan */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                        Tanggal BA Penahanan <span style={{ color: 'var(--accent-red)' }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formValues.TANGGAL_HAN || ''}
+                        onChange={(e) => handleInputChange('TANGGAL_HAN', e.target.value)}
+                        className="form-input mono"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                        Waktu / Jam BA Penahanan
+                      </label>
+                      <input
+                        type="text"
+                        value={formValues.JAM_HAN || ''}
+                        onChange={(e) => handleInputChange('JAM_HAN', e.target.value)}
+                        className="form-input mono"
+                        placeholder="Contoh: 10.00 WITA"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Preview Tag Penahanan */}
+                  {(() => {
+                    const parsedHan = parseDateParts(formValues.TANGGAL_HAN || formValues.TANGGAL_MULAI_HAN || formValues.TANGGAL_SURAT);
+                    return (
+                      <div style={{
+                        padding: '8px 10px',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        lineHeight: '1.5',
+                        color: '#CBD5E1',
+                        border: '1px dashed rgba(59, 130, 246, 0.25)'
+                      }}>
+                        <div style={{ color: 'var(--accent-cyan)', fontWeight: 600, marginBottom: '2px' }}>
+                          Preview Injeksi Tag Word (docxtemplater):
+                        </div>
+                        <div>• Sprin Han: <code>{'{TANGGAL_MULAI_HAN}'}</code>: <strong>{formatTanggalIndonesia(formValues.TANGGAL_MULAI_HAN) || '-'}</strong> s.d. <code>{'{TANGGAL_AKHIR_HAN}'}</code>: <strong>{formatTanggalIndonesia(formValues.TANGGAL_AKHIR_HAN) || '-'}</strong></div>
+                        <div>• Rutan: <code>{'{TEMPAT_HAN}'}</code>: <strong>{formValues.TEMPAT_HAN || 'Rumah Tahanan Negara (Rutan) Polres Kolaka Timur'}</strong></div>
+                        <div>• BA Han: <code>{'{HARI_HAN}'}</code>: <strong>{parsedHan.hari || '-'}</strong>, <code>{'{TANGGAL_HAN}'}</code>: <strong>{parsedHan.tanggal || '-'}</strong>, <code>{'{BULAN_HAN}'}</code>: <strong>{parsedHan.bulan || '-'}</strong>, <code>{'{TAHUN_HAN}'}</code>: <strong>{parsedHan.tahun || '-'}</strong> (<code>{'{TERBILANG_TAHUN_HAN}'}</code>: <em>"{parsedHan.terbilangTahun || '-'}"</em>) pukul <code>{'{JAM_HAN}'}</code>: <strong>{formValues.JAM_HAN || '-'}</strong></div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               {(() => {
                 let dynamicList = Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
                   ? [...currentTemplate.dynamic_fields] 
@@ -1530,6 +1808,20 @@ export default function DocGeneratorView({
                   });
                 }
                 dynamicList = dynamicList.filter(f => (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase() !== 'ATASAN_JABATAN');
+
+                // Saring field khusus penangkapan & penahanan agar tidak duplikat jika dokumen tersebut aktif
+                const specialKapHanKeys = [
+                  'TANGGAL_KAP', 'JAM_KAP', 'TEMPAT_KAP',
+                  'TANGGAL_MULAI_HAN', 'TANGGAL_AKHIR_HAN', 'TEMPAT_HAN',
+                  'TANGGAL_HAN', 'JAM_HAN'
+                ];
+                if (isBaKapDoc || isHanDoc) {
+                  dynamicList = dynamicList.filter(f => {
+                    const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+                    return !specialKapHanKeys.includes(k);
+                  });
+                }
+
                 return dynamicList;
               })().map((field, idx) => {
                 const fieldKey = (field.field_key || field.key || `FIELD_${idx}`).replace(/[{}]/g, '').trim();

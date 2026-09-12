@@ -48,6 +48,173 @@ export function formatTanggalIndonesia(dateStr) {
   return `${hari} ${bulan} ${tahun}`;
 }
 
+export const NAMA_HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+export const NAMA_BULAN_INDONESIA = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+
+/**
+ * Konversi angka bulat ke teks terbilang bahasa Indonesia resmi.
+ */
+export function terbilang(n) {
+  const bilangan = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+  n = Math.floor(Number(n));
+  if (isNaN(n) || n < 0) return '';
+  if (n === 0) return 'nol';
+  if (n < 12) return bilangan[n];
+  if (n < 20) return `${bilangan[n - 10]} belas`;
+  if (n < 100) return `${bilangan[Math.floor(n / 10)]} puluh${n % 10 !== 0 ? ' ' + bilangan[n % 10] : ''}`;
+  if (n < 200) return `seratus${n - 100 !== 0 ? ' ' + terbilang(n - 100) : ''}`;
+  if (n < 1000) return `${bilangan[Math.floor(n / 100)]} ratus${n % 100 !== 0 ? ' ' + terbilang(n % 100) : ''}`;
+  if (n < 2000) return `seribu${n - 1000 !== 0 ? ' ' + terbilang(n - 1000) : ''}`;
+  if (n < 1000000) return `${terbilang(Math.floor(n / 1000))} ribu${n % 1000 !== 0 ? ' ' + terbilang(n % 1000) : ''}`;
+  return String(n);
+}
+
+/**
+ * Mengonversi angka tahun (contoh: 2024 -> "dua ribu dua puluh empat", 2026 -> "dua ribu dua puluh enam").
+ */
+export function terbilangTahun(tahunInput) {
+  if (!tahunInput) return '';
+  const num = parseInt(String(tahunInput).replace(/\D/g, ''), 10);
+  if (isNaN(num)) return '';
+  return terbilang(num).trim();
+}
+
+/**
+ * Ekstraksi nama hari bahasa Indonesia (Senin s.d. Minggu).
+ */
+export function getNamaHariIndonesia(dateInput) {
+  if (!dateInput) return '';
+  const parts = parseDateParts(dateInput);
+  return parts.hari || '';
+}
+
+/**
+ * Parser bagian tanggal (Hari, Angka Tanggal, Bulan Indo, Tahun 4 Digit, Terbilang Tahun).
+ * Menerima format ISO YYYY-MM-DD, teks "DD Bulan YYYY", atau Date object.
+ */
+export function parseDateParts(dateInput) {
+  if (!dateInput) {
+    return { hari: '', tanggal: '', bulan: '', tahun: '', terbilangTahun: '', tanggalLengkap: '' };
+  }
+
+  let d = null;
+  let year = '';
+  let monthIndex = -1;
+  let day = '';
+
+  if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+    d = dateInput;
+    year = String(d.getFullYear());
+    monthIndex = d.getMonth();
+    day = String(d.getDate());
+  } else if (typeof dateInput === 'string') {
+    const str = dateInput.trim();
+    // 1. Format ISO YYYY-MM-DD
+    const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+      year = isoMatch[1];
+      monthIndex = parseInt(isoMatch[2], 10) - 1;
+      day = String(parseInt(isoMatch[3], 10));
+      d = new Date(parseInt(year, 10), monthIndex, parseInt(day, 10));
+    } else {
+      // 2. Format Teks DD Bulan YYYY (misal '12 September 2026')
+      const textMatch = str.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+      if (textMatch) {
+        day = String(parseInt(textMatch[1], 10));
+        const monthName = textMatch[2].toLowerCase();
+        monthIndex = NAMA_BULAN_INDONESIA.findIndex(b => b.toLowerCase() === monthName);
+        year = textMatch[3];
+        if (monthIndex >= 0) {
+          d = new Date(parseInt(year, 10), monthIndex, parseInt(day, 10));
+        }
+      } else {
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) {
+          d = parsed;
+          year = String(d.getFullYear());
+          monthIndex = d.getMonth();
+          day = String(d.getDate());
+        }
+      }
+    }
+  }
+
+  if (!d || isNaN(d.getTime()) || monthIndex < 0 || monthIndex > 11) {
+    return {
+      hari: '',
+      tanggal: day || '',
+      bulan: (monthIndex >= 0 && monthIndex <= 11) ? NAMA_BULAN_INDONESIA[monthIndex] : '',
+      tahun: year || '',
+      terbilangTahun: year ? terbilangTahun(year) : '',
+      tanggalLengkap: dateInput
+    };
+  }
+
+  const hari = NAMA_HARI_INDONESIA[d.getDay()];
+  const bulan = NAMA_BULAN_INDONESIA[monthIndex];
+  const terbilangThn = terbilangTahun(year);
+
+  return {
+    hari,
+    tanggal: day,
+    bulan,
+    tahun: year,
+    terbilangTahun: terbilangThn,
+    tanggalLengkap: `${day} ${bulan} ${year}`
+  };
+}
+
+/**
+ * Kalkulasi otomatis tanggal berakhir masa penahanan (KUHAP: 20 hari).
+ * Menambahkan durasiHari - 1 (19 hari) dari tanggal mulai karena hari pertama dihitung mulai.
+ * Mengembalikan format ISO YYYY-MM-DD untuk integrasi date picker.
+ */
+export function hitungTanggalAkhirPenahanan(tanggalMulaiStr, durasiHari = 20) {
+  if (!tanggalMulaiStr) return '';
+  let y, m, d;
+  const isoMatch = String(tanggalMulaiStr).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    y = parseInt(isoMatch[1], 10);
+    m = parseInt(isoMatch[2], 10) - 1;
+    d = parseInt(isoMatch[3], 10);
+  } else {
+    const dt = new Date(tanggalMulaiStr);
+    if (isNaN(dt.getTime())) return '';
+    y = dt.getFullYear();
+    m = dt.getMonth();
+    d = dt.getDate();
+  }
+  
+  const startDate = new Date(y, m, d);
+  const daysToAdd = Math.max(1, durasiHari) - 1;
+  startDate.setDate(startDate.getDate() + daysToAdd);
+
+  const endYear = startDate.getFullYear();
+  const endMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+  const endDay = String(startDate.getDate()).padStart(2, '0');
+  return `${endYear}-${endMonth}-${endDay}`;
+}
+
+/**
+ * Normalisasi format string jam/waktu naskah dinas.
+ */
+export function formatWaktuJam(timeInput) {
+  if (!timeInput) return '';
+  const str = String(timeInput).trim();
+  // Tangani format ISO datetime misal 2026-09-12T14:30:00
+  if (/^\d{4}-\d{2}-\d{2}T/i.test(str)) {
+    const timePart = str.split(/T/i)[1]?.split('.')[0] || '';
+    if (timePart) {
+      return timePart.substring(0, 5).replace(':', '.');
+    }
+  }
+  return str;
+}
+
+
 /**
  * Helper untuk meringkas dan mengkapitalkan nomor surat di header halaman ke-2 dst.
  * Format naskah dinas kepolisian: memotong string sebelum '/Polres' atau '/POLRES' jika ditemukan,
@@ -437,6 +604,39 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const rawTglTapHanPn2 = cleanInput.TGL_TAP_HAN_PN_2 || cleanInput.tgl_tap_han_pn_2 || activeSuspect?.tgl_tap_han_pn_2 || '';
   const tglTapHanPn2 = formatTanggalIndonesia(rawTglTapHanPn2);
 
+  // C.1. DATA KHUSUS PENANGKAPAN (BA_KAP & SPRIN_KAP_DAN_BA)
+  const isKapTemplate = tplCode.includes('KAP');
+  const rawTglKap = cleanInput.TANGGAL_KAP || cleanInput.tanggal_kap || cleanInput.TGL_KAP || cleanInput.tgl_kap || activeSuspect?.tgl_sprin_kap || (isKapTemplate ? rawTanggalSurat : '');
+  const parsedKap = parseDateParts(rawTglKap);
+  const hariKap = parsedKap.hari || '';
+  const tglKap = parsedKap.tanggal || '';
+  const bulanKap = parsedKap.bulan || '';
+  const tahunKap = parsedKap.tahun || '';
+  const terbilangTahunKap = parsedKap.terbilangTahun || '';
+  const tglLengkapKap = parsedKap.tanggalLengkap || (rawTglKap ? formatTanggalIndonesia(rawTglKap) : '');
+  const rawJamKap = cleanInput.JAM_KAP || cleanInput.jam_kap || cleanInput.WAKTU_KAP || cleanInput.waktu_kap || (isKapTemplate ? '10.00 WITA' : '');
+  const jamKap = formatWaktuJam(rawJamKap);
+  const tempatKap = cleanInput.TEMPAT_KAP || cleanInput.tempat_kap || (isKapTemplate ? 'Kab. Kolaka Timur' : '');
+
+  // C.2. DATA KHUSUS SPRIN & BA PENAHANAN (SPRIN_HAN / BA_HAN / SPRIN_HAN_DAN_BA)
+  const isHanTemplate = tplCode.includes('HAN');
+  const rawTglMulaiHan = cleanInput.TANGGAL_MULAI_HAN || cleanInput.tanggal_mulai_han || cleanInput.TGL_MULAI_HAN || cleanInput.tgl_mulai_han || activeSuspect?.tgl_sprin_han || (isHanTemplate ? rawTanggalSurat : '');
+  const rawTglAkhirHan = cleanInput.TANGGAL_AKHIR_HAN || cleanInput.tanggal_akhir_han || cleanInput.TGL_AKHIR_HAN || cleanInput.tgl_akhir_han || (rawTglMulaiHan ? hitungTanggalAkhirPenahanan(rawTglMulaiHan, 20) : '');
+  const tglMulaiHanFormatted = rawTglMulaiHan ? formatTanggalIndonesia(rawTglMulaiHan) : '';
+  const tglAkhirHanFormatted = rawTglAkhirHan ? formatTanggalIndonesia(rawTglAkhirHan) : '';
+  const tempatHan = cleanInput.TEMPAT_HAN || cleanInput.tempat_han || cleanInput.TEMPAT_RUTAN_HAN || cleanInput.tempat_rutan_han || (isHanTemplate ? 'Rumah Tahanan Negara (Rutan) Polres Kolaka Timur' : '');
+
+  const rawTglHan = cleanInput.TANGGAL_HAN || cleanInput.tanggal_han || cleanInput.TGL_HAN || cleanInput.tgl_han || rawTglMulaiHan || (isHanTemplate ? rawTanggalSurat : '');
+  const parsedHan = parseDateParts(rawTglHan);
+  const hariHan = parsedHan.hari || '';
+  const tglHan = parsedHan.tanggal || '';
+  const bulanHan = parsedHan.bulan || '';
+  const tahunHan = parsedHan.tahun || '';
+  const terbilangTahunHan = parsedHan.terbilangTahun || '';
+  const tglLengkapHan = parsedHan.tanggalLengkap || (rawTglHan ? formatTanggalIndonesia(rawTglHan) : '');
+  const rawJamHan = cleanInput.JAM_HAN || cleanInput.jam_han || cleanInput.WAKTU_HAN || cleanInput.waktu_han || (isHanTemplate ? '10.00 WITA' : '');
+  const jamHan = formatWaktuJam(rawJamHan);
+
   // D. UNSUR YURIDIS & PERKARA
   const dasarPasalUu = cleanInput.DASAR_PASAL_UU || cleanInput.dasar_pasal_uu || activeCase?.dasar_pasal_uu || activeCase?.pasal_uu || '';
   const pasal = cleanInput.PASAL || cleanInput.pasal || activeCase?.pasal || '';
@@ -578,6 +778,56 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     TGL_TAP_HAN_PN_1: tglTapHanPn1,
     NO_TAP_HAN_PN_2: noTapHanPn2,
     TGL_TAP_HAN_PN_2: tglTapHanPn2,
+
+    // C.1. TAG PENANGKAPAN (BA_KAP & SPRIN_KAP_DAN_BA)
+    HARI_KAP: hariKap,
+    hari_kap: hariKap,
+    TANGGAL_KAP: tglKap,
+    tanggal_kap: tglKap,
+    BULAN_KAP: bulanKap,
+    bulan_kap: bulanKap,
+    TAHUN_KAP: tahunKap,
+    tahun_kap: tahunKap,
+    TERBILANG_TAHUN_KAP: terbilangTahunKap,
+    terbilang_tahun_kap: terbilangTahunKap,
+    JAM_KAP: jamKap,
+    jam_kap: jamKap,
+    TEMPAT_KAP: tempatKap,
+    tempat_kap: tempatKap,
+    TGL_KAP: tglKap,
+    tgl_kap: tglKap,
+    TANGGAL_LENGKAP_KAP: tglLengkapKap,
+    tanggal_lengkap_kap: tglLengkapKap,
+
+    // C.2. TAG SPRIN PENAHANAN (SPRIN_HAN & SPRIN_HAN_DAN_BA)
+    TANGGAL_MULAI_HAN: tglMulaiHanFormatted,
+    tanggal_mulai_han: tglMulaiHanFormatted,
+    TANGGAL_AKHIR_HAN: tglAkhirHanFormatted,
+    tanggal_akhir_han: tglAkhirHanFormatted,
+    TEMPAT_HAN: tempatHan,
+    tempat_han: tempatHan,
+    TGL_MULAI_HAN: tglMulaiHanFormatted,
+    tgl_mulai_han: tglMulaiHanFormatted,
+    TGL_AKHIR_HAN: tglAkhirHanFormatted,
+    tgl_akhir_han: tglAkhirHanFormatted,
+
+    // C.3. TAG BA PENAHANAN (BA_HAN & SPRIN_HAN_DAN_BA)
+    HARI_HAN: hariHan,
+    hari_han: hariHan,
+    TANGGAL_HAN: tglHan,
+    tanggal_han: tglHan,
+    BULAN_HAN: bulanHan,
+    bulan_han: bulanHan,
+    TAHUN_HAN: tahunHan,
+    tahun_han: tahunHan,
+    TERBILANG_TAHUN_HAN: terbilangTahunHan,
+    terbilang_tahun_han: terbilangTahunHan,
+    JAM_HAN: jamHan,
+    jam_han: jamHan,
+    TGL_HAN: tglHan,
+    tgl_han: tglHan,
+    TANGGAL_LENGKAP_HAN: tglLengkapHan,
+    tanggal_lengkap_han: tglLengkapHan,
 
     // D. UNSUR YURIDIS & PERKARA (Resmi UPPERCASE)
     DASAR_PASAL_UU: dasarPasalUu,
@@ -1086,6 +1336,44 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   finalPayload.TGL_TAP_HAN_PN_2 = tglTapHanPn2;
   finalPayload.tgl_tap_han_pn_2 = tglTapHanPn2;
+
+  // Penegasan Tag Khusus Penangkapan (Huruf Besar & Kecil)
+  finalPayload.HARI_KAP = hariKap;
+  finalPayload.hari_kap = hariKap;
+  finalPayload.TANGGAL_KAP = tglKap;
+  finalPayload.tanggal_kap = tglKap;
+  finalPayload.BULAN_KAP = bulanKap;
+  finalPayload.bulan_kap = bulanKap;
+  finalPayload.TAHUN_KAP = tahunKap;
+  finalPayload.tahun_kap = tahunKap;
+  finalPayload.TERBILANG_TAHUN_KAP = terbilangTahunKap;
+  finalPayload.terbilang_tahun_kap = terbilangTahunKap;
+  finalPayload.JAM_KAP = jamKap;
+  finalPayload.jam_kap = jamKap;
+  finalPayload.TEMPAT_KAP = tempatKap;
+  finalPayload.tempat_kap = tempatKap;
+
+  // Penegasan Tag Khusus Sprin Penahanan (Huruf Besar & Kecil)
+  finalPayload.TANGGAL_MULAI_HAN = tglMulaiHanFormatted;
+  finalPayload.tanggal_mulai_han = tglMulaiHanFormatted;
+  finalPayload.TANGGAL_AKHIR_HAN = tglAkhirHanFormatted;
+  finalPayload.tanggal_akhir_han = tglAkhirHanFormatted;
+  finalPayload.TEMPAT_HAN = tempatHan;
+  finalPayload.tempat_han = tempatHan;
+
+  // Penegasan Tag Khusus BA Penahanan (Huruf Besar & Kecil)
+  finalPayload.HARI_HAN = hariHan;
+  finalPayload.hari_han = hariHan;
+  finalPayload.TANGGAL_HAN = tglHan;
+  finalPayload.tanggal_han = tglHan;
+  finalPayload.BULAN_HAN = bulanHan;
+  finalPayload.bulan_han = bulanHan;
+  finalPayload.TAHUN_HAN = tahunHan;
+  finalPayload.tahun_han = tahunHan;
+  finalPayload.TERBILANG_TAHUN_HAN = terbilangTahunHan;
+  finalPayload.terbilang_tahun_han = terbilangTahunHan;
+  finalPayload.JAM_HAN = jamHan;
+  finalPayload.jam_han = jamHan;
 
   // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined' di dokumen Word
   Object.keys(finalPayload).forEach((k) => {
