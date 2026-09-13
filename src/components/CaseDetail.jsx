@@ -563,6 +563,99 @@ export default function CaseDetail({
             </div>
           </div>
 
+          {/* SECTION IDENTITAS KORBAN / SAKSI KORBAN */}
+          {(() => {
+            const registeredVictims = Array.isArray(caseItem.victims)
+              ? caseItem.victims
+              : (Array.isArray(caseItem.references?.victims) ? caseItem.references.victims : []);
+
+            return (
+              <div style={{
+                padding: '14px 16px',
+                background: 'rgba(168, 85, 247, 0.05)',
+                border: '1px solid rgba(168, 85, 247, 0.25)',
+                borderRadius: 'var(--radius-lg)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <UserCheck size={18} color="#C084FC" />
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#C084FC', textTransform: 'uppercase' }}>
+                        Daftar Identitas Korban ({registeredVictims.length > 0 ? registeredVictims.length : '1 Default'})
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        {registeredVictims.length > 0
+                          ? 'Data korban tersimpan lengkap untuk dokumen VER & Perlindungan Hak Korban'
+                          : 'Belum ada korban spesifik; generator otomatis merujuk ke data Pelapor'}
+                      </div>
+                    </div>
+                  </div>
+                  {registeredVictims.length > 0 && (
+                    <span style={{
+                      fontSize: '11px',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      color: '#E9D5FF',
+                      border: '1px solid rgba(168, 85, 247, 0.3)',
+                    }}>
+                      {registeredVictims.length} Korban Terdaftar
+                    </span>
+                  )}
+                </div>
+
+                {registeredVictims.length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', marginTop: '4px' }}>
+                    {registeredVictims.map((vic, vIdx) => (
+                      <div
+                        key={vic.id || vIdx}
+                        style={{
+                          padding: '10px 12px',
+                          background: 'rgba(15, 23, 42, 0.6)',
+                          border: '1px solid rgba(168, 85, 247, 0.2)',
+                          borderRadius: 'var(--radius-md)',
+                          fontSize: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, color: '#F3E8FF' }}>
+                            {vIdx + 1}. {vic.nama || 'Tanpa Nama'}
+                          </span>
+                          {vIdx === 0 && (
+                            <span style={{ fontSize: '10px', color: '#86EFAC', background: 'rgba(34, 197, 94, 0.15)', padding: '1px 5px', borderRadius: '4px' }}>
+                              Utama
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                          NIK: <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{vic.nik || '-'}</span> | {vic.jenis_kelamin || 'Laki-laki'} | {vic.umur ? `${vic.umur} Thn` : '-'}
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                          Pekerjaan: {vic.pekerjaan || '-'} | Agama: {vic.agama || '-'}
+                        </div>
+                        {vic.alamat && (
+                          <div style={{ color: 'var(--text-muted)', fontSize: '10.5px', marginTop: '2px' }}>
+                            Alamat: {vic.alamat}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontStyle: 'italic', padding: '4px 0' }}>
+                    Korban otomatis disinkronkan ke Pelapor: <strong>{caseItem.nama_pelapor || caseItem.pelapor_name}</strong>. Untuk menambah atau mengubah 10 data identitas korban, klik tombol "Edit Perkara".
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* SECTION MANAJEMEN SUBJEK PERKARA (TERLAPOR & TERSANGKA) */}
           {(() => {
             const tersangkaCount = suspects.filter(s => (s.status === 'tersangka' || !s.status)).length;

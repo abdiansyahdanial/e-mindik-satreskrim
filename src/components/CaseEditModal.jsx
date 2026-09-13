@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit3, Check, Shield, AlertCircle, Award, Users, Plus, Trash2, Info } from 'lucide-react';
+import { X, Edit3, Check, Shield, AlertCircle, Award, Users, Plus, Trash2, Info, UserCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { mockPersonnel } from '../data/mockPersonnel';
 
@@ -57,6 +57,9 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
   const [activeSlotsCount, setActiveSlotsCount] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // State Daftar Korban (Array Objek Korban Standar 10 Field)
+  const [victims, setVictims] = useState([]);
 
   useEffect(() => {
     if (caseItem) {
@@ -174,9 +177,43 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
         penyidik_5_nrp: s5.nrp,
         penyidik_5_jabatan: s5.jabatan,
       });
+
+      // Hydrate daftar korban (support top-level victims atau references.victims)
+      const initialVictims = Array.isArray(activeCase.victims)
+        ? activeCase.victims
+        : (Array.isArray(activeCase.references?.victims) ? activeCase.references.victims : []);
+      setVictims(initialVictims);
+
       setErrorMessage(null);
     }
   }, [caseItem]);
+
+  const handleAddVictim = () => {
+    setVictims((prev) => [
+      ...prev,
+      {
+        id: `vic-${Date.now()}-${prev.length + 1}`,
+        nama: prev.length === 0 && formData.nama_pelapor ? formData.nama_pelapor : '',
+        nik: '',
+        jenis_kelamin: 'Laki-laki',
+        ttl: '',
+        umur: '',
+        pekerjaan: '',
+        kewarganegaraan: 'Indonesia',
+        pendidikan: '',
+        agama: '',
+        alamat: formData.locus || '',
+      },
+    ]);
+  };
+
+  const handleUpdateVictim = (index, prop, value) => {
+    setVictims((prev) => prev.map((v, i) => (i === index ? { ...v, [prop]: value } : v)));
+  };
+
+  const handleRemoveVictim = (index) => {
+    setVictims((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -286,6 +323,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
     const existingReferences = (caseItem.references && typeof caseItem.references === 'object') ? caseItem.references : {};
     const updatedReferences = {
       ...existingReferences,
+      victims: victims,
       penyidik_penangan_index: penanganIdx,
       penyidik_penangan: {
         index: penanganIdx,
@@ -369,6 +407,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       const mergedCase = {
         ...caseItem,
         ...payloadUpdate,
+        victims: victims,
         penyidik_penangan: {
           index: Number(selectedPenangan),
           nama: selectedPenyidik.nama,
@@ -636,7 +675,270 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
               </div>
             </div>
 
-            {/* SECTION 2: PEJABAT & TIM PENYIDIK */}
+            {/* SECTION 2: IDENTITAS KORBAN / SAKSI KORBAN */}
+            <div
+              style={{
+                padding: '16px',
+                background: 'rgba(15, 23, 42, 0.65)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid rgba(168, 85, 247, 0.28)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <UserCheck size={18} color="#C084FC" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#C084FC' }}>
+                    2. IDENTITAS KORBAN / SAKSI KORBAN ({victims.length})
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      color: '#E9D5FF',
+                      border: '1px solid rgba(168, 85, 247, 0.3)',
+                    }}
+                  >
+                    10 Field Standar Mindik
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddVictim}
+                  className="btn"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    background: 'rgba(168, 85, 247, 0.2)',
+                    color: '#E9D5FF',
+                    border: '1px solid rgba(168, 85, 247, 0.4)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>+ Tambah Korban</span>
+                </button>
+              </div>
+
+              {victims.length === 0 ? (
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    background: 'rgba(168, 85, 247, 0.05)',
+                    border: '1px dashed rgba(168, 85, 247, 0.3)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                  }}
+                >
+                  <Info size={16} color="#C084FC" style={{ flexShrink: 0 }} />
+                  <span>
+                    Belum ada data korban spesifik yang ditambahkan. Generator mindik otomatis merujuk ke data <strong>Nama Pelapor</strong> sebagai korban default. Klik <strong>+ Tambah Korban</strong> jika korban berbeda atau memerlukan data identitas lengkap (VER / Hak Korban).
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {victims.map((v, idx) => (
+                    <div
+                      key={v.id || idx}
+                      style={{
+                        padding: '14px',
+                        background: 'rgba(30, 41, 59, 0.55)',
+                        border: '1px solid rgba(168, 85, 247, 0.22)',
+                        borderRadius: 'var(--radius-md)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#F3E8FF' }}>
+                            Korban #{idx + 1}
+                          </span>
+                          {idx === 0 && (
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                background: 'rgba(34, 197, 94, 0.15)',
+                                color: '#86EFAC',
+                                border: '1px solid rgba(34, 197, 94, 0.3)',
+                              }}
+                            >
+                              Utama / Terpilih
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVictim(idx)}
+                          className="btn-danger-ghost"
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'transparent',
+                            color: '#F87171',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                          title="Hapus Korban Ini"
+                        >
+                          <Trash2 size={13} />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+
+                      {/* Baris 1: Nama & NIK */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>
+                            1. Nama Lengkap Korban <span style={{ color: 'var(--accent-red)' }}>*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={v.nama}
+                            onChange={(e) => handleUpdateVictim(idx, 'nama', e.target.value)}
+                            placeholder="Nama lengkap korban..."
+                            className="form-input"
+                            required
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>
+                            2. NIK (Nomor KTP/Identitas)
+                          </label>
+                          <input
+                            type="text"
+                            value={v.nik}
+                            onChange={(e) => handleUpdateVictim(idx, 'nik', e.target.value)}
+                            placeholder="16 digit NIK..."
+                            className="form-input mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Baris 2: JK, TTL, Umur */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '130px 1.2fr 100px', gap: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>3. Jenis Kelamin</label>
+                          <select
+                            value={v.jenis_kelamin}
+                            onChange={(e) => handleUpdateVictim(idx, 'jenis_kelamin', e.target.value)}
+                            className="form-select"
+                          >
+                            <option value="Laki-laki">Laki-laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>4. Tempat & Tanggal Lahir</label>
+                          <input
+                            type="text"
+                            value={v.ttl}
+                            onChange={(e) => handleUpdateVictim(idx, 'ttl', e.target.value)}
+                            placeholder="Contoh: Tirawuta, 12 Mei 1995"
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>5. Umur</label>
+                          <input
+                            type="text"
+                            value={v.umur}
+                            onChange={(e) => handleUpdateVictim(idx, 'umur', e.target.value)}
+                            placeholder="31 Thn"
+                            className="form-input"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Baris 3: Pekerjaan, Kewarganegaraan, Agama */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>6. Pekerjaan</label>
+                          <input
+                            type="text"
+                            value={v.pekerjaan}
+                            onChange={(e) => handleUpdateVictim(idx, 'pekerjaan', e.target.value)}
+                            placeholder="Contoh: Wiraswasta / Petani"
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>7. Kewarganegaraan</label>
+                          <input
+                            type="text"
+                            value={v.kewarganegaraan}
+                            onChange={(e) => handleUpdateVictim(idx, 'kewarganegaraan', e.target.value)}
+                            placeholder="Indonesia"
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>8. Agama</label>
+                          <select
+                            value={v.agama}
+                            onChange={(e) => handleUpdateVictim(idx, 'agama', e.target.value)}
+                            className="form-select"
+                          >
+                            <option value="">-- Pilih Agama --</option>
+                            <option value="Islam">Islam</option>
+                            <option value="Kristen Protestan">Kristen Protestan</option>
+                            <option value="Katolik">Katolik</option>
+                            <option value="Hindu">Hindu</option>
+                            <option value="Buddha">Buddha</option>
+                            <option value="Konghucu">Konghucu</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Baris 4: Pendidikan & Alamat */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>9. Pendidikan Terakhir</label>
+                          <input
+                            type="text"
+                            value={v.pendidikan}
+                            onChange={(e) => handleUpdateVictim(idx, 'pendidikan', e.target.value)}
+                            placeholder="Contoh: SMA / S-1"
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px' }}>10. Tempat Tinggal / Kediaman</label>
+                          <input
+                            type="text"
+                            value={v.alamat}
+                            onChange={(e) => handleUpdateVictim(idx, 'alamat', e.target.value)}
+                            placeholder="Alamat lengkap tempat tinggal..."
+                            className="form-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 3: PEJABAT & TIM PENYIDIK */}
             <div
               style={{
                 padding: '16px',
@@ -652,7 +954,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Award size={18} color="var(--accent-cyan)" />
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                    2. PEJABAT & TIM PENYIDIK PENANDATANGAN MINDIK
+                    3. PEJABAT & TIM PENYIDIK PENANDATANGAN MINDIK
                   </span>
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>

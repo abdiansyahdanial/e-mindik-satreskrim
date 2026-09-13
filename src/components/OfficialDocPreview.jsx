@@ -26,6 +26,8 @@ export default function OfficialDocPreview({
   personnel = [],
   activeSuspect = null,
   suspectsList = [],
+  activeVictim = null,
+  victimsList = [],
   onSaveArchive,
   isSaved = false 
 }) {
@@ -51,7 +53,7 @@ export default function OfficialDocPreview({
     formValues, 
     template?.dynamic_fields, 
     personnel,
-    { activeSuspect, suspectsList, template }
+    { activeSuspect, suspectsList, activeVictim, victimsList, template }
   ) : {};
 
   // Core update function: True file-to-file conversion with memory cache & instant fallback
@@ -65,7 +67,7 @@ export default function OfficialDocPreview({
     }
 
     // Optimization: If variables and template haven't changed, skip conversion
-    const currentKey = `${template.id || template.file_path}_${activeSuspect?.id || 'all'}_${activeSuspect?.nama || ''}_${activeSuspect?.nik || ''}_${activeSuspect?.nomor_sp_tap || ''}_${activeSuspect?.tanggal_sp_tap || ''}_${nomorSurat}_${tanggalSurat}_${JSON.stringify(formValues)}`;
+    const currentKey = `${template.id || template.file_path}_${activeSuspect?.id || 'all'}_${activeSuspect?.nama || ''}_${activeVictim?.id || activeVictim?.nama || 'vic'}_${nomorSurat}_${tanggalSurat}_${JSON.stringify(formValues)}`;
     if (!isManual && lastRenderedKeyRef.current === currentKey && prevPdfUrlRef.current) {
       return;
     }
@@ -81,6 +83,8 @@ export default function OfficialDocPreview({
         activeCase: selectedCase,
         activeSuspect,
         suspectsList,
+        activeVictim,
+        victimsList,
         formValues,
         personnelList: personnel
       });
@@ -104,7 +108,7 @@ export default function OfficialDocPreview({
     } finally {
       setIsUpdating(false);
     }
-  }, [template, selectedCase, activeSuspect, suspectsList, formValues, personnel, nomorSurat, tanggalSurat]);
+  }, [template, selectedCase, activeSuspect, suspectsList, activeVictim, victimsList, formValues, personnel, nomorSurat, tanggalSurat]);
 
   // Live synchronization: triggers instantly when selectedSuspect, nomorSurat, or tanggalSurat changes
   useEffect(() => {
@@ -183,6 +187,8 @@ export default function OfficialDocPreview({
         activeCase: selectedCase,
         activeSuspect,
         suspectsList,
+        activeVictim,
+        victimsList,
         formValues,
         personnelList: personnel
       });

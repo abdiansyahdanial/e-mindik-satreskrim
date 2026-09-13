@@ -77,6 +77,9 @@ export default function DocGeneratorView({
   const [caseSuspects, setCaseSuspects] = useState([]);
   const [selectedSuspectId, setSelectedSuspectId] = useState('');
 
+  // Multi-Korban States
+  const [selectedVictimId, setSelectedVictimId] = useState('');
+
   // Template Management Modal States (Khusus Super Admin)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [templateToEdit, setTemplateToEdit] = useState(null);
@@ -126,6 +129,16 @@ export default function DocGeneratorView({
 
   const currentCase = cases.find(c => c.id === selectedCaseId) || cases[0];
   const currentTemplate = allTemplates.find(t => t.code === selectedTemplateCode) || allTemplates[0] || mockTemplates[0];
+
+  // Data Korban dari perkara (mendukung array victims di root perkara atau references.victims)
+  const registeredVictims = (() => {
+    if (!currentCase) return [];
+    if (Array.isArray(currentCase.victims) && currentCase.victims.length > 0) return currentCase.victims;
+    if (Array.isArray(currentCase.references?.victims) && currentCase.references.victims.length > 0) return currentCase.references.victims;
+    return [];
+  })();
+
+  const selectedVictim = registeredVictims.find(v => (v.id || v.nama) === selectedVictimId) || registeredVictims[0] || null;
 
   // Helper identifikasi dokumen perorangan (1 surat untuk 1 tersangka) dari whitelist 24 dokumen resmi
   const isIndividualDoc = isIndividualSuspectDoc(currentTemplate);
@@ -203,6 +216,67 @@ export default function DocGeneratorView({
 
     return values;
   };
+
+  // Helper sinkronisasi nilai profil korban ke variabel template mindik
+  const syncVictimValues = (victim) => {
+    const defaultNama = currentCase?.nama_pelapor || currentCase?.pelapor_name || '';
+    const vNama = victim?.nama || defaultNama;
+    const vNik = victim?.nik || '';
+    const vJk = victim?.jenis_kelamin || (victim ? 'Laki-laki' : '');
+    const vTtl = victim?.ttl || '';
+    const rawUmur = victim?.umur || '';
+    const vUmur = rawUmur
+      ? (String(rawUmur).includes('Tahun') ? String(rawUmur) : `${rawUmur} Tahun`)
+      : '';
+    const vKerja = victim?.pekerjaan || '';
+    const vWarga = victim?.kewarganegaraan || (vNama ? 'Indonesia' : '');
+    const vDidik = victim?.pendidikan || '';
+    const vAgama = victim?.agama || '';
+    const vAlamat = victim?.alamat || (victim ? '' : (currentCase?.locus || ''));
+
+    return {
+      KORBAN_NAMA: vNama,
+      korban_nama: vNama,
+      KORBAN_NIK: vNik,
+      korban_nik: vNik,
+      KORBAN_JK: vJk,
+      korban_jk: vJk,
+      KORBAN_JENIS_KELAMIN: vJk,
+      korban_jenis_kelamin: vJk,
+      KORBAN_TTL: vTtl,
+      korban_ttl: vTtl,
+      KORBAN_UMUR: vUmur,
+      korban_umur: vUmur,
+      KORBAN_KERJA: vKerja,
+      korban_kerja: vKerja,
+      KORBAN_PEKERJAAN: vKerja,
+      korban_pekerjaan: vKerja,
+      KORBAN_WARGA: vWarga,
+      korban_warga: vWarga,
+      KORBAN_KEWARGANEGARAAN: vWarga,
+      korban_kewarganegaraan: vWarga,
+      KORBAN_DIDIK: vDidik,
+      korban_didik: vDidik,
+      KORBAN_PENDIDIKAN: vDidik,
+      korban_pendidikan: vDidik,
+      KORBAN_AGAMA: vAgama,
+      korban_agama: vAgama,
+      KORBAN_ALAMAT: vAlamat,
+      korban_alamat: vAlamat,
+    };
+  };
+
+  // Helper identifikasi apakah template membutuhkan identitas korban
+  const isVictimDoc = (() => {
+    const c = (currentTemplate?.code || '').toUpperCase().trim();
+    const t = (currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
+    return c.includes('VER') || 
+           c.includes('KORBAN') || 
+           c.includes('HAK_KORBAN') || 
+           t.includes('KORBAN') || 
+           t.includes('VISUM') ||
+           (Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.some(f => (f.field_key || f.key || '').toUpperCase().includes('KORBAN')));
+  })();
 
   // Helper identifikasi dokumen Surat Perintah Tugas Penyidikan (SP.Gas.Sidik)
   const isSprinGasSidik = (() => {
@@ -429,6 +503,28 @@ export default function DocGeneratorView({
     }
   };
 
+  // Sinkronisasi Profil Korban Terpilih
+  useEffect(() => {
+    if (registeredVictims.length > 0) {
+      if (!selectedVictimId || !registeredVictims.some(v => (v.id || v.nama) === selectedVictimId)) {
+        setSelectedVictimId(registeredVictims[0].id || registeredVictims[0].nama || 'vic-0');
+      }
+    } else {
+      setSelectedVictimId('');
+    }
+  }, [currentCase?.id, registeredVictims.length]);
+
+  // Handler ganti korban pilihan
+  const handleVictimChange = (victimId) => {
+    setSelectedVictimId(victimId);
+    const found = registeredVictims.find(v => (v.id || v.nama) === victimId) || registeredVictims[0];
+    const victimFields = syncVictimValues(found);
+    setFormValues(prev => ({
+      ...prev,
+      ...victimFields
+    }));
+  };
+
   // 3. Initialize or re-fill form defaults when case or template changes
   useEffect(() => {
     if (!currentTemplate || !currentCase) return;
@@ -436,6 +532,12 @@ export default function DocGeneratorView({
     const initial = {};
     const todayStr = new Date().toISOString().split('T')[0];
     const isTapTskDoc = (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
+
+    // Inisialisasi Default Nilai Korban (VER, HAK_KORBAN, dll.)
+    const victimFields = syncVictimValues(selectedVictim);
+    Object.keys(victimFields).forEach(vk => {
+      initial[vk] = victimFields[vk];
+    });
 
     // Rantai Rujukan Baku dari Perkara (Chain of Reference)
     initial['NOMOR_LP'] = currentCase.nomor_lp || currentCase.no_lp || '';
@@ -676,6 +778,8 @@ export default function DocGeneratorView({
         initial[cleanKey] = selectedSuspect.no_sprin_han || '';
       } else if (upperKey === 'TGL_SPRIN_HAN' && selectedSuspect) {
         initial[cleanKey] = selectedSuspect.tgl_sprin_han || '';
+      } else if (upperKey.startsWith('KORBAN_') || upperKey.startsWith('korban_')) {
+        initial[cleanKey] = victimFields[upperKey] !== undefined ? victimFields[upperKey] : (defVal || '');
       } else if (field.field_type === 'select_personnel' || field.type === 'select_personnel') {
         const filter = field.role_filter;
         const matched = activePersonnel.find(p => !filter || p.role === filter);
@@ -924,6 +1028,8 @@ export default function DocGeneratorView({
         activeCase: currentCase,
         activeSuspect: selectedSuspect,
         suspectsList: caseSuspects,
+        activeVictim: selectedVictim,
+        victimsList: registeredVictims,
         formValues,
         personnelList: activePersonnel
       });
@@ -1437,6 +1543,62 @@ export default function DocGeneratorView({
                         Rujukan SP.KAP: <strong>{selectedSuspect.no_sprin_kap}</strong>
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Selector Korban / Saksi Korban */}
+            {(isVictimDoc || registeredVictims.length > 0) && (
+              <div style={{
+                padding: '12px',
+                background: 'rgba(168, 85, 247, 0.08)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '14px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ margin: 0, color: '#C084FC', fontWeight: 700, fontSize: '11.5px' }}>
+                    SUBJEK KORBAN / SAKSI KORBAN
+                  </label>
+                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                    {registeredVictims.length > 0 ? `${registeredVictims.length} Korban Terdaftar` : 'Default: Pelapor'}
+                  </span>
+                </div>
+
+                {registeredVictims.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '4px 0' }}>
+                    Belum ada korban spesifik; otomatis merujuk ke data Pelapor (<strong>{currentCase?.nama_pelapor || currentCase?.pelapor_name || '-'}</strong>). Tambahkan rincian 10 data identitas korban di menu Berkas Perkara jika diperlukan.
+                  </div>
+                ) : (
+                  <select
+                    value={selectedVictimId}
+                    onChange={(e) => handleVictimChange(e.target.value)}
+                    className="form-select"
+                    style={{ borderColor: '#C084FC', fontWeight: 600 }}
+                  >
+                    {registeredVictims.map((v, vIdx) => (
+                      <option key={v.id || vIdx} value={v.id || v.nama || `vic-${vIdx}`}>
+                        {vIdx + 1}. {v.nama || 'Tanpa Nama'} {v.nik ? `(NIK: ${v.nik})` : ''} - {v.jenis_kelamin || 'Laki-laki'} {vIdx === 0 ? '(Utama)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {selectedVictim && (
+                  <div style={{
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                    marginTop: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '3px',
+                    borderTop: '1px dashed rgba(168, 85, 247, 0.25)',
+                    paddingTop: '6px'
+                  }}>
+                    <div>Nama: <strong style={{ color: '#FFF' }}>{selectedVictim.nama}</strong> | NIK: <strong style={{ color: '#FFF' }}>{selectedVictim.nik || '-'}</strong> | JK: <strong style={{ color: '#FFF' }}>{selectedVictim.jenis_kelamin || 'Laki-laki'}</strong></div>
+                    <div>TTL/Umur: <strong style={{ color: '#FFF' }}>{selectedVictim.ttl || '-'} ({selectedVictim.umur ? `${selectedVictim.umur} Thn` : '-'})</strong></div>
+                    {selectedVictim.pekerjaan && <div>Pekerjaan: <strong style={{ color: '#FFF' }}>{selectedVictim.pekerjaan}</strong> | Agama: <strong style={{ color: '#FFF' }}>{selectedVictim.agama || '-'}</strong></div>}
                   </div>
                 )}
               </div>
@@ -2030,6 +2192,8 @@ export default function DocGeneratorView({
             personnel={activePersonnel}
             activeSuspect={selectedSuspect}
             suspectsList={caseSuspects}
+            activeVictim={selectedVictim}
+            victimsList={registeredVictims}
             onSaveArchive={handleSave}
             isSaved={isSaved}
           />

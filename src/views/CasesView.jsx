@@ -36,12 +36,15 @@ export default function CasesView({
   };
 
   const filteredCases = cases.filter((item) => {
+    const s = searchTerm.toLowerCase();
     const matchesSearch = 
-      item.no_lp.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.tindak_pidana.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.pelapor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.terlapor_name && item.terlapor_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.person?.nama && item.person.nama.toLowerCase().includes(searchTerm.toLowerCase()));
+      (item.no_lp || item.nomor_lp || '').toLowerCase().includes(s) ||
+      (item.tindak_pidana || '').toLowerCase().includes(s) ||
+      (item.pelapor_name || item.nama_pelapor || '').toLowerCase().includes(s) ||
+      (item.terlapor_name || item.nama_terlapor || '').toLowerCase().includes(s) ||
+      (Array.isArray(item.victims) && item.victims.some(v => (v.nama || '').toLowerCase().includes(s))) ||
+      (Array.isArray(item.references?.victims) && item.references.victims.some(v => (v.nama || '').toLowerCase().includes(s))) ||
+      (item.person?.nama && item.person.nama.toLowerCase().includes(s));
 
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
     return matchesSearch && matchesStatus;

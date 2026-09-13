@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import LoginPage from './views/LoginPage';
+import PendingApprovalView from './views/PendingApprovalView';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import DashboardView from './views/DashboardView';
@@ -76,30 +77,48 @@ export default function App() {
             .maybeSingle();
 
           if (profile && isMounted) {
-            const resolvedRole = profile.role || 'anggota';
+            const meta = u.user_metadata || {};
+            const resolvedRole = profile.role || meta.role || 'anggota';
+            const isSuper = u.id === '75abae80-e013-4987-a5e7-f1107d2ab265' || 
+                            u.email?.includes('kasat') || 
+                            u.email?.includes('super') ||
+                            resolvedRole === 'super_admin';
+
+            const finalRole = isSuper ? 'super_admin' : resolvedRole;
+            const resolvedStatus = profile.status || meta.status || (finalRole === 'pending' ? 'pending' : 'active');
+
             setCurrentUserProfile({
               ...profile,
-              nama: profile.full_name || profile.nama || u.email.split('@')[0],
-              pangkat: profile.pangkat || (resolvedRole === 'super_admin' ? 'AKP' : 'BRIPKA'),
-              nrp: profile.rank_nrp || profile.nrp || '-',
-              jabatan: (resolvedRole === 'super_admin') ? 'ABDIANSYAH' : (profile.jabatan || 'Penyidik Pembantu'),
-              role: resolvedRole
+              nama: profile.full_name || profile.nama || meta.nama || meta.full_name || u.email.split('@')[0],
+              pangkat: profile.pangkat || meta.pangkat || (finalRole === 'super_admin' ? 'AKP' : 'BRIPKA'),
+              nrp: profile.rank_nrp || profile.nrp || meta.nrp || '-',
+              jabatan: (finalRole === 'super_admin') ? 'ABDIANSYAH' : (profile.jabatan || meta.jabatan || 'Penyidik Pembantu'),
+              satker: profile.satker || meta.satker || 'Satreskrim Polres Kolaka Timur',
+              unit: profile.unit || meta.unit || '',
+              phone: profile.phone || profile.no_hp || meta.phone || meta.no_hp || '',
+              role: finalRole,
+              status: isSuper ? 'active' : resolvedStatus
             });
-            setUserRole(resolvedRole);
+            setUserRole(finalRole);
           } else if (isMounted) {
+            const meta = u.user_metadata || {};
             const isSuper = u.id === '75abae80-e013-4987-a5e7-f1107d2ab265' || 
                             u.email?.includes('kasat') || 
                             u.email?.includes('super');
             const fallbackProf = {
               id: u.id,
               email: u.email,
-              full_name: isSuper ? 'AKP AHMAD FATONI, S.H.' : u.email.split('@')[0].toUpperCase(),
-              nama: isSuper ? 'AKP AHMAD FATONI, S.H.' : u.email.split('@')[0].toUpperCase(),
-              pangkat: isSuper ? 'AKP' : 'BRIPDA',
-              rank_nrp: isSuper ? '78120567' : '00000000',
-              nrp: isSuper ? '78120567' : '00000000',
-              jabatan: isSuper ? 'ABDIANSYAH' : 'Penyidik Pembantu Satreskrim',
-              role: isSuper ? 'super_admin' : 'anggota',
+              full_name: isSuper ? 'AKP AHMAD FATONI, S.H.' : (meta.full_name || meta.nama || u.email.split('@')[0].toUpperCase()),
+              nama: isSuper ? 'AKP AHMAD FATONI, S.H.' : (meta.nama || meta.full_name || u.email.split('@')[0].toUpperCase()),
+              pangkat: isSuper ? 'AKP' : (meta.pangkat || 'BRIPDA'),
+              rank_nrp: isSuper ? '78120567' : (meta.nrp || '00000000'),
+              nrp: isSuper ? '78120567' : (meta.nrp || '00000000'),
+              jabatan: isSuper ? 'ABDIANSYAH' : (meta.jabatan || 'Penyidik Pembantu Satreskrim'),
+              satker: meta.satker || 'Satreskrim Polres Kolaka Timur',
+              unit: meta.unit || '',
+              phone: meta.phone || '',
+              role: isSuper ? 'super_admin' : (meta.role || 'anggota'),
+              status: isSuper ? 'active' : (meta.status || 'pending')
             };
             setCurrentUserProfile(fallbackProf);
             setUserRole(fallbackProf.role);
@@ -437,6 +456,28 @@ export default function App() {
   // Not authenticated -> Show Strict LoginPage
   if (!user) {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Pending Approval Route Guard (Locks total access for pending accounts)
+  const isPendingApproval = 
+    userRole !== 'super_admin' && 
+    (currentUserProfile?.status === 'pending' || 
+     currentUserProfile?.role === 'pending' || 
+     user?.user_metadata?.status === 'pending');
+
+  if (isPendingApproval) {
+    return (
+      <PendingApprovalView
+        currentUserProfile={currentUserProfile}
+        user={user}
+        onStatusUpdated={(updatedProf) => {
+          setCurrentUserProfile(prev => ({ ...prev, ...updatedProf, status: 'active' }));
+          setUserRole(updatedProf?.role || 'anggota');
+          showToast('Akun telah aktif! Selamat bertugas.');
+        }}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   return (

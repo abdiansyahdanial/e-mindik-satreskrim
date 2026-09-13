@@ -481,17 +481,21 @@ function normalizeDocxXml(zip) {
  * - Positional: buildMindikPayload(activeCase, activeSuspect, cleanInput, suspectsList)
  * - Object: buildMindikPayload({ activeCase, activeSuspect, suspectsList, formValues })
  */
-export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = {}, maybeSuspectsList = []) {
+export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = {}, maybeSuspectsList = [], maybeVictim = null, maybeVictimsList = []) {
   let activeCase = {};
   let activeSuspect = null;
   let suspectsList = [];
   let formValues = {};
+  let activeVictim = null;
+  let victimsList = [];
 
   // Deteksi fleksibel parameter object vs positional
-  if (arg1 && (arg1.activeCase !== undefined || arg1.formValues !== undefined || arg1.activeSuspect !== undefined || arg1.suspectsList !== undefined)) {
+  if (arg1 && (arg1.activeCase !== undefined || arg1.formValues !== undefined || arg1.activeSuspect !== undefined || arg1.suspectsList !== undefined || arg1.activeVictim !== undefined || arg1.victimsList !== undefined || arg1.selectedVictim !== undefined)) {
     activeCase = arg1.activeCase || {};
     activeSuspect = arg1.activeSuspect || null;
     suspectsList = arg1.suspectsList || [];
+    activeVictim = arg1.activeVictim || arg1.selectedVictim || null;
+    victimsList = Array.isArray(arg1.victimsList) ? arg1.victimsList : (Array.isArray(arg1.victims) ? arg1.victims : []);
     formValues = arg1.formValues || {};
   } else {
     activeCase = arg1 || {};
@@ -500,6 +504,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     suspectsList = Array.isArray(maybeSuspectsList) && maybeSuspectsList.length > 0
       ? maybeSuspectsList
       : (activeSuspect ? [activeSuspect] : (activeCase.suspectsList || []));
+    activeVictim = maybeVictim || null;
+    victimsList = Array.isArray(maybeVictimsList) ? maybeVictimsList : [];
   }
 
   // Bersihkan tanda kurung kurawal jika ada user yang mengetik { } di form
@@ -676,6 +682,29 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const pendidikan = cleanInput.PENDIDIKAN || cleanInput.pendidikan || activeSuspect?.pendidikan || '';
   const statusKawin = cleanInput.STATUS_KAWIN || cleanInput.status_kawin || activeSuspect?.status_pernikahan || activeSuspect?.status_kawin || activeSuspect?.marital_status || '';
   const alamat = cleanInput.ALAMAT || cleanInput.alamat || activeSuspect?.alamat || activeCase?.alamat_tersangka || '';
+
+  // E.2. IDENTITAS KORBAN (10 Field Standar Mindik)
+  const rawVictimsList = Array.isArray(victimsList) && victimsList.length > 0
+    ? victimsList
+    : (Array.isArray(activeCase?.victims) && activeCase.victims.length > 0
+        ? activeCase.victims
+        : (Array.isArray(activeCase?.references?.victims) ? activeCase.references.victims : []));
+
+  const resolvedVictim = activeVictim || rawVictimsList[0] || null;
+
+  const korbanNama = cleanInput.KORBAN_NAMA || cleanInput.korban_nama || resolvedVictim?.nama || activeCase?.nama_pelapor || activeCase?.pelapor_name || '';
+  const korbanNik = cleanInput.KORBAN_NIK || cleanInput.korban_nik || resolvedVictim?.nik || '';
+  const korbanJk = cleanInput.KORBAN_JK || cleanInput.korban_jk || cleanInput.KORBAN_JENIS_KELAMIN || cleanInput.korban_jenis_kelamin || resolvedVictim?.jenis_kelamin || (resolvedVictim ? 'Laki-laki' : '');
+  const korbanTtl = cleanInput.KORBAN_TTL || cleanInput.korban_ttl || resolvedVictim?.ttl || '';
+  const rawKorbanUmur = cleanInput.KORBAN_UMUR || cleanInput.korban_umur || resolvedVictim?.umur || '';
+  const korbanUmur = rawKorbanUmur
+    ? (String(rawKorbanUmur).includes('Tahun') ? String(rawKorbanUmur) : `${rawKorbanUmur} Tahun`)
+    : '';
+  const korbanKerja = cleanInput.KORBAN_KERJA || cleanInput.korban_kerja || cleanInput.KORBAN_PEKERJAAN || cleanInput.korban_pekerjaan || resolvedVictim?.pekerjaan || '';
+  const korbanWarga = cleanInput.KORBAN_WARGA || cleanInput.korban_warga || cleanInput.KORBAN_KEWARGANEGARAAN || cleanInput.korban_kewarganegaraan || resolvedVictim?.kewarganegaraan || (korbanNama ? 'Indonesia' : '');
+  const korbanDidik = cleanInput.KORBAN_DIDIK || cleanInput.korban_didik || cleanInput.KORBAN_PENDIDIKAN || cleanInput.korban_pendidikan || resolvedVictim?.pendidikan || '';
+  const korbanAgama = cleanInput.KORBAN_AGAMA || cleanInput.korban_agama || resolvedVictim?.agama || '';
+  const korbanAlamat = cleanInput.KORBAN_ALAMAT || cleanInput.korban_alamat || resolvedVictim?.alamat || (resolvedVictim ? '' : (activeCase?.locus || ''));
 
   // F. PENYIDIK & PEJABAT
   // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama - Pangkat WAJIB Lengkap)
@@ -859,6 +888,36 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     PENDIDIKAN: pendidikan,
     STATUS_KAWIN: statusKawin,
     ALAMAT: alamat,
+
+    // E.2. IDENTITAS KORBAN (10 Tag Standar Mindik)
+    KORBAN_NAMA: korbanNama,
+    korban_nama: korbanNama,
+    KORBAN_NIK: korbanNik,
+    korban_nik: korbanNik,
+    KORBAN_JK: korbanJk,
+    korban_jk: korbanJk,
+    KORBAN_JENIS_KELAMIN: korbanJk,
+    korban_jenis_kelamin: korbanJk,
+    KORBAN_TTL: korbanTtl,
+    korban_ttl: korbanTtl,
+    KORBAN_UMUR: korbanUmur,
+    korban_umur: korbanUmur,
+    KORBAN_KERJA: korbanKerja,
+    korban_kerja: korbanKerja,
+    KORBAN_PEKERJAAN: korbanKerja,
+    korban_pekerjaan: korbanKerja,
+    KORBAN_WARGA: korbanWarga,
+    korban_warga: korbanWarga,
+    KORBAN_KEWARGANEGARAAN: korbanWarga,
+    korban_kewarganegaraan: korbanWarga,
+    KORBAN_DIDIK: korbanDidik,
+    korban_didik: korbanDidik,
+    KORBAN_PENDIDIKAN: korbanDidik,
+    korban_pendidikan: korbanDidik,
+    KORBAN_AGAMA: korbanAgama,
+    korban_agama: korbanAgama,
+    KORBAN_ALAMAT: korbanAlamat,
+    korban_alamat: korbanAlamat,
 
     // F. PENYIDIK & PEJABAT (Resmi UPPERCASE)
     // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama)
@@ -1129,7 +1188,32 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
           status_kawin: s.status_pernikahan || s.marital_status || '',
           alamat: s.alamat || ''
         };
-      })
+      }),
+
+    korban_list: (rawVictimsList.length > 0 ? rawVictimsList : (korbanNama ? [{
+      nama: korbanNama,
+      nik: korbanNik,
+      jenis_kelamin: korbanJk,
+      ttl: korbanTtl,
+      umur: korbanUmur,
+      pekerjaan: korbanKerja,
+      kewarganegaraan: korbanWarga,
+      pendidikan: korbanDidik,
+      agama: korbanAgama,
+      alamat: korbanAlamat,
+    }] : [])).map((v, idx) => ({
+      no: idx + 1,
+      nama: v.nama || '',
+      nik: v.nik || '',
+      jenis_kelamin: v.jenis_kelamin || '',
+      ttl: v.ttl || '',
+      umur: v.umur ? (String(v.umur).includes('Tahun') ? String(v.umur) : `${v.umur} Tahun`) : '',
+      pekerjaan: v.pekerjaan || '',
+      kewarganegaraan: v.kewarganegaraan || 'Indonesia',
+      pendidikan: v.pendidikan || '',
+      agama: v.agama || '',
+      alamat: v.alamat || ''
+    }))
   };
 
   // PISAHKAN DAFTAR SUBJEK UNTUK TAG INDIVIDUAL TSK_1..5 DAN TERLAPOR_1..5
@@ -1179,8 +1263,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     baseMap[`tsk_${i}_pendidikan`] = s.pendidikan || '';
     baseMap[`TSK_${i}_AGAMA`] = s.agama || '';
     baseMap[`tsk_${i}_agama`] = s.agama || '';
-    baseMap[`TSK_${i}_STATUS_NIKAH`] = s.status_pernikahan || s.marital_status || '';
-    baseMap[`tsk_${i}_status_nikah`] = s.status_pernikahan || s.marital_status || '';
+    baseMap[`TSK_${i}_STATUS_NIKAH`] = s.status_pernikahan || s.status_kawin || s.marital_status || '';
+    baseMap[`tsk_${i}_status_nikah`] = s.status_pernikahan || s.status_kawin || s.marital_status || '';
     baseMap[`TSK_${i}_ALAMAT`] = s.alamat || '';
     baseMap[`tsk_${i}_alamat`] = s.alamat || '';
     baseMap[`TSK_${i}_NOMOR_SP_TAP`] = sNomorSpTap;
@@ -1227,6 +1311,52 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     baseMap[`terlapor_${i}_status_nikah`] = t.status_pernikahan || t.marital_status || '';
     baseMap[`TERLAPOR_${i}_ALAMAT`] = t.alamat || '';
     baseMap[`terlapor_${i}_alamat`] = t.alamat || '';
+  }
+
+  // Tag Mandiri Korban 1 s/d 5
+  for (let i = 1; i <= 5; i++) {
+    const v = rawVictimsList[i - 1] || (i === 1 && korbanNama ? {
+      nama: korbanNama,
+      nik: korbanNik,
+      jenis_kelamin: korbanJk,
+      ttl: korbanTtl,
+      umur: korbanUmur,
+      pekerjaan: korbanKerja,
+      kewarganegaraan: korbanWarga,
+      pendidikan: korbanDidik,
+      agama: korbanAgama,
+      alamat: korbanAlamat,
+    } : {});
+    const vUmur = v.umur ? (String(v.umur).includes('Tahun') ? String(v.umur) : `${v.umur} Tahun`) : '';
+
+    baseMap[`KORBAN_${i}_NAMA`] = v.nama || '';
+    baseMap[`korban_${i}_nama`] = v.nama || '';
+    baseMap[`KORBAN_${i}_NIK`] = v.nik || '';
+    baseMap[`korban_${i}_nik`] = v.nik || '';
+    baseMap[`KORBAN_${i}_JK`] = v.jenis_kelamin || '';
+    baseMap[`korban_${i}_jk`] = v.jenis_kelamin || '';
+    baseMap[`KORBAN_${i}_JENIS_KELAMIN`] = v.jenis_kelamin || '';
+    baseMap[`korban_${i}_jenis_kelamin`] = v.jenis_kelamin || '';
+    baseMap[`KORBAN_${i}_TTL`] = v.ttl || '';
+    baseMap[`korban_${i}_ttl`] = v.ttl || '';
+    baseMap[`KORBAN_${i}_UMUR`] = vUmur;
+    baseMap[`korban_${i}_umur`] = vUmur;
+    baseMap[`KORBAN_${i}_KERJA`] = v.pekerjaan || '';
+    baseMap[`korban_${i}_kerja`] = v.pekerjaan || '';
+    baseMap[`KORBAN_${i}_PEKERJAAN`] = v.pekerjaan || '';
+    baseMap[`korban_${i}_pekerjaan`] = v.pekerjaan || '';
+    baseMap[`KORBAN_${i}_WARGA`] = v.kewarganegaraan || (v.nama ? 'Indonesia' : '');
+    baseMap[`korban_${i}_warga`] = v.kewarganegaraan || (v.nama ? 'Indonesia' : '');
+    baseMap[`KORBAN_${i}_KEWARGANEGARAAN`] = v.kewarganegaraan || (v.nama ? 'Indonesia' : '');
+    baseMap[`korban_${i}_kewarganegaraan`] = v.kewarganegaraan || (v.nama ? 'Indonesia' : '');
+    baseMap[`KORBAN_${i}_DIDIK`] = v.pendidikan || '';
+    baseMap[`korban_${i}_didik`] = v.pendidikan || '';
+    baseMap[`KORBAN_${i}_PENDIDIKAN`] = v.pendidikan || '';
+    baseMap[`korban_${i}_pendidikan`] = v.pendidikan || '';
+    baseMap[`KORBAN_${i}_AGAMA`] = v.agama || '';
+    baseMap[`korban_${i}_agama`] = v.agama || '';
+    baseMap[`KORBAN_${i}_ALAMAT`] = v.alamat || '';
+    baseMap[`korban_${i}_alamat`] = v.alamat || '';
   }
 
   // Timpa dengan custom field manual form dinamis jika ada
@@ -1514,11 +1644,15 @@ export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig
   const activeSuspect = options.activeSuspect || lpData.activeSuspect || lpData.person || null;
   const suspectsList = options.suspectsList || lpData.suspectsList || (activeSuspect ? [activeSuspect] : []);
   const template = options.template || options.selectedTemplate || lpData.template || null;
+  const activeVictim = options.activeVictim || options.selectedVictim || lpData.activeVictim || lpData.victims?.[0] || lpData.references?.victims?.[0] || null;
+  const victimsList = options.victimsList || lpData.victimsList || lpData.victims || lpData.references?.victims || [];
 
   return buildMindikPayload({
     activeCase,
     activeSuspect,
     suspectsList,
+    activeVictim,
+    victimsList,
     formValues,
     template
   });
@@ -1584,6 +1718,8 @@ export async function generateAndDownloadDocx({
   activeCase,
   activeSuspect,
   suspectsList,
+  activeVictim,
+  victimsList,
   formValues = {},
   personnelList = []
 }) {
@@ -1611,6 +1747,8 @@ export async function generateAndDownloadDocx({
   const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
     activeSuspect,
     suspectsList,
+    activeVictim,
+    victimsList,
     template
   });
 
@@ -1655,6 +1793,8 @@ export async function renderDocxToHtml({
   activeCase,
   activeSuspect,
   suspectsList,
+  activeVictim,
+  victimsList,
   formValues = {},
   personnelList = []
 }) {
@@ -1684,6 +1824,8 @@ export async function renderDocxToHtml({
   const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
     activeSuspect,
     suspectsList,
+    activeVictim,
+    victimsList,
     template
   });
 
@@ -1742,6 +1884,8 @@ export async function generateDocxBlob({
   activeCase,
   activeSuspect,
   suspectsList,
+  activeVictim,
+  victimsList,
   formValues = {},
   personnelList = []
 }) {
@@ -1773,6 +1917,8 @@ export async function generateDocxBlob({
   const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
     activeSuspect,
     suspectsList,
+    activeVictim,
+    victimsList,
     template
   });
 
@@ -1881,6 +2027,8 @@ export async function generatePdfBlob({
   activeCase,
   activeSuspect,
   suspectsList,
+  activeVictim,
+  victimsList,
   formValues = {},
   personnelList = []
 }) {
@@ -1891,6 +2039,8 @@ export async function generatePdfBlob({
     activeCase: currentCase,
     activeSuspect,
     suspectsList,
+    activeVictim,
+    victimsList,
     formValues,
     personnelList
   });
