@@ -357,3 +357,40 @@ VALUES
   )
 ON CONFLICT (id) DO NOTHING;
 
+-- ==============================================================================
+-- 8. FUNGSI RPC: DELETE USER COMPLETELY (HARD DELETE TOTAL)
+-- Jalankan skrip ini di SQL Editor Supabase:
+-- https://supabase.com/dashboard/project/ncsjgjftybxpxuixgumm/sql
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.delete_user_completely(target_user_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+    v_nrp TEXT;
+BEGIN
+    -- Ambil NRP dari profile sebelum dihapus untuk pembersihan data investigators
+    SELECT COALESCE(rank_nrp, nrp) INTO v_nrp 
+    FROM public.profiles 
+    WHERE id = target_user_id;
+
+    -- 1. Hapus data dari public.investigators jika ada id atau nrp yang cocok
+    DELETE FROM public.investigators 
+    WHERE id = target_user_id::text 
+       OR (v_nrp IS NOT NULL AND v_nrp <> '' AND nrp = v_nrp);
+
+    -- 2. Hapus data profil dari public.profiles
+    DELETE FROM public.profiles 
+    WHERE id = target_user_id;
+
+    -- 3. Hapus akun kredensial dari auth.users
+    DELETE FROM auth.users 
+    WHERE id = target_user_id;
+END;
+$$;
+
+-- Berikan hak akses eksekusi ke peran yang terotentikasi & service_role
+GRANT EXECUTE ON FUNCTION public.delete_user_completely(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_user_completely(UUID) TO service_role;

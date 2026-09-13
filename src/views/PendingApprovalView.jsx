@@ -265,7 +265,7 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
               <span style={{ color: '#CBD5E1' }}>{satker}</span>
             </div>
             <div>
-              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Email Dinas:</span>
+              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Email:</span>
               <span style={{ color: '#CBD5E1' }}>{email}</span>
             </div>
             <div>

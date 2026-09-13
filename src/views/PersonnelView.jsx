@@ -81,7 +81,7 @@ export default function PersonnelView({
     setIsSubmitting(true);
     try {
       if (onDeletePersonnel) {
-        await onDeletePersonnel(personnelToDelete.id);
+        await onDeletePersonnel(personnelToDelete);
       }
       setPersonnelToDelete(null);
     } catch (err) {
@@ -463,10 +463,10 @@ export default function PersonnelView({
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--accent-red)' }}>
-                    Konfirmasi Hapus Personel
+                    Hapus Akun & Personel Permanen
                   </h3>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Tindakan ini memerlukan otorisasi Super Admin
+                    Otorisasi Super Admin (Hard Delete Kredensial & Data)
                   </div>
                 </div>
               </div>
@@ -480,8 +480,8 @@ export default function PersonnelView({
             </div>
 
             <div className="modal-body" style={{ fontSize: '13px', lineHeight: 1.5 }}>
-              <p style={{ margin: 0 }}>
-                Apakah Anda yakin ingin menghapus data personel penyidik berikut dari database Supabase?
+              <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-primary)' }}>
+                Apakah Anda yakin ingin menghapus akun ini secara permanen? Seluruh akses login akan dicabut dan personel harus mendaftar ulang jika ingin mengakses kembali.
               </p>
 
               <div style={{
@@ -515,7 +515,7 @@ export default function PersonnelView({
                 className="btn btn-danger btn-sm"
               >
                 <Trash2 size={14} />
-                <span>{isSubmitting ? 'Menghapus...' : 'Ya, Hapus Personel'}</span>
+                <span>{isSubmitting ? 'Menghapus Akun...' : 'Ya, Hapus Akun Permanen'}</span>
               </button>
             </div>
           </div>

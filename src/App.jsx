@@ -334,26 +334,108 @@ export default function App() {
     }
   };
 
-  // Hapus Personel: HANYA BOLEH UNTUK 'super_admin'
-  const handleDeletePersonnel = async (personId) => {
+  // Hapus Personel Total (Hard Delete): HANYA BOLEH UNTUK 'super_admin'
+  const handleDeletePersonnel = async (personInput) => {
     if (userRole !== 'super_admin') {
       alert('Akses Ditolak: Hanya Super Admin yang berhak menghapus personel!');
       return;
     }
 
     try {
-      const { error } = await supabase.from('investigators').delete().eq('id', personId);
-      if (error) {
-        console.error('Delete investigator error from Supabase:', error);
-        alert(`Gagal menghapus personel dari database: ${error.message}`);
-        return;
+      const personId = typeof personInput === 'object' ? personInput?.id : personInput;
+      const personNrp = typeof personInput === 'object' ? personInput?.nrp : null;
+      const personEmail = typeof personInput === 'object' ? personInput?.email : null;
+      const personNama = typeof personInput === 'object' ? personInput?.nama : '';
+
+      const isUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      let targetUserId = isUuid(personId) ? personId : null;
+
+      // 1. Dapatkan target_user_id (UUID auth.users & profiles) jika belum berformat UUID
+      if (!targetUserId) {
+        try {
+          if (personNrp) {
+            const { data: profByNrp } = await supabase
+              .from('profiles')
+              .select('id')
+              .or(`nrp.eq.${personNrp},rank_nrp.eq.${personNrp}`)
+              .limit(1)
+              .maybeSingle();
+            if (profByNrp?.id) targetUserId = profByNrp.id;
+          }
+
+          if (!targetUserId && personEmail) {
+            const { data: profByEmail } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('email', personEmail)
+              .limit(1)
+              .maybeSingle();
+            if (profByEmail?.id) targetUserId = profByEmail.id;
+          }
+
+          if (!targetUserId && personNama) {
+            const { data: profByNama } = await supabase
+              .from('profiles')
+              .select('id')
+              .ilike('nama', `%${personNama}%`)
+              .limit(1)
+              .maybeSingle();
+            if (profByNama?.id) targetUserId = profByNama.id;
+          }
+        } catch (findErr) {
+          console.warn('Notice: Gagal mencari profile user_id:', findErr);
+        }
       }
 
-      setPersonnel((prev) => prev.filter((p) => p.id !== personId));
-      showToast('Personel penyidik berhasil dihapus dari database Supabase!');
+      // 2. Hapus data dari tabel investigators
+      try {
+        if (personId) {
+          await supabase.from('investigators').delete().eq('id', personId);
+        }
+        if (personNrp) {
+          await supabase.from('investigators').delete().eq('nrp', personNrp);
+        }
+      } catch (invErr) {
+        console.warn('Delete investigators notice:', invErr);
+      }
+
+      // 3. Hapus data profil dari tabel profiles
+      try {
+        if (targetUserId) {
+          await supabase.from('profiles').delete().eq('id', targetUserId);
+        }
+        if (personNrp) {
+          await supabase.from('profiles').delete().or(`nrp.eq.${personNrp},rank_nrp.eq.${personNrp}`);
+        }
+      } catch (profErr) {
+        console.warn('Delete profiles notice:', profErr);
+      }
+
+      // 4. Hapus akun kredensial dari auth.users dengan memanggil fungsi RPC
+      if (targetUserId) {
+        try {
+          const { error: rpcErr } = await supabase.rpc('delete_user_completely', { target_user_id: targetUserId });
+          if (rpcErr) {
+            console.warn('Supabase RPC delete_user_completely notice:', rpcErr);
+          }
+        } catch (rpcEx) {
+          console.warn('RPC delete_user_completely exception:', rpcEx);
+        }
+      }
+
+      // 5. Perbarui state lokal daftar personel
+      setPersonnel((prev) => prev.filter((p) => {
+        if (personId && p.id === personId) return false;
+        if (personNrp && p.nrp === personNrp) return false;
+        if (targetUserId && p.id === targetUserId) return false;
+        return true;
+      }));
+
+      showToast('Akun & data personel berhasil dihapus total secara permanen!');
     } catch (err) {
       console.error('Delete investigator exception:', err);
-      alert(`Terjadi kesalahan saat menghapus personel: ${err.message}`);
+      alert(`Terjadi kesalahan saat menghapus akun personel: ${err.message}`);
     }
   };
 

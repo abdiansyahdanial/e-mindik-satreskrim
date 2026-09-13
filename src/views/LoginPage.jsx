@@ -756,7 +756,7 @@ export default function LoginPage({ onLoginSuccess }) {
               {/* Field h: Email */}
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  Email Dinas <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  Email <span style={{ color: 'var(--accent-red)' }}>*</span>
                 </label>
                 <input
                   type="email"
