@@ -87,7 +87,7 @@ async function dispatchEmail(payload) {
       `;
     }
 
-    if (to) {
+    if (to && RESEND_API_KEY) {
       const resendDirect = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {

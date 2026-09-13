@@ -1,11 +1,5 @@
 import { Resend } from 'resend';
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev';
-
-const resend = new Resend(RESEND_API_KEY);
-
 /**
  * Serverless / Dev API Handler for sending automated Resend emails
  */
@@ -13,6 +7,25 @@ export default async function handler(req, res) {
   // Allow POST requests only
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method Not Allowed. Use POST.' });
+    return;
+  }
+
+  const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
+  const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || process.env.VITE_SUPERADMIN_EMAIL || 'abdiansyahdanial@gmail.com';
+  const EMAIL_FROM = process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM || 'onboarding@resend.dev';
+
+  if (!RESEND_API_KEY) {
+    console.warn('[send-email] RESEND_API_KEY is not defined in environment variables.');
+    res.status(500).json({ error: 'RESEND_API_KEY is not defined in environment variables.' });
+    return;
+  }
+
+  let resend;
+  try {
+    resend = new Resend(RESEND_API_KEY);
+  } catch (err) {
+    console.error('[send-email] Resend constructor error:', err);
+    res.status(500).json({ error: err.message });
     return;
   }
 
