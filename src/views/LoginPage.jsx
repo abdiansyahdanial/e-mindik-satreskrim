@@ -44,6 +44,13 @@ const UNIT_OPTIONS = [
   'Identifikasi (Inafis)'
 ];
 
+const cleanOfficerName = (nama) => {
+  if (!nama) return '';
+  return String(nama)
+    .replace(/^(AKBP|KOMPOL|AKP|IPTU|IPDA|AIPTU|AIPDA|BRIPKA|BRIGPOL|BRIGADIR|BRIPTU|BRIPDA)\s+/i, '')
+    .trim();
+};
+
 export default function LoginPage({ onLoginSuccess }) {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   
@@ -220,13 +227,16 @@ export default function LoginPage({ onLoginSuccess }) {
     setStatusMessage('Mendaftarkan akun personel ke Supabase Auth & Keamanan...');
 
     try {
+      const cleanNama = cleanOfficerName(regNama.trim());
+      const cleanNrp = regNrp.trim();
+
       const officerData = {
-        full_name: `${regPangkat} ${regNama.trim()}`,
-        nama: regNama.trim(),
+        full_name: `${regPangkat} ${cleanNama}`,
+        nama: cleanNama,
         pangkat: regPangkat,
         rank: regPangkat,
-        nrp: regNrp.trim(),
-        rank_nrp: regNrp.trim(),
+        nrp: cleanNrp,
+        rank_nrp: cleanNrp,
         jabatan: regJabatan,
         satker: regSatker.trim(),
         unit: regUnit,
@@ -252,19 +262,15 @@ export default function LoginPage({ onLoginSuccess }) {
 
       if (userId) {
         // Simpan data registrasi ke public.profiles dengan status: 'pending' dan role: 'anggota'
+        // Schema public.profiles: (id, full_name, rank_nrp, role, created_at, email, status, position, phone, unit)
         try {
           const { error: profErr } = await supabase.from('profiles').upsert([
             {
               id: userId,
               email: regEmail.trim(),
-              nama: regNama.trim(),
-              full_name: `${regPangkat} ${regNama.trim()}`,
-              pangkat: regPangkat,
-              rank: regPangkat,
-              nrp: regNrp.trim(),
-              rank_nrp: regNrp.trim(),
-              jabatan: regJabatan,
-              satker: regSatker.trim(),
+              full_name: `${regPangkat} ${cleanNama}`,
+              rank_nrp: cleanNrp,
+              position: regJabatan,
               unit: regUnit,
               phone: regPhone.trim(),
               role: 'anggota',
@@ -273,31 +279,16 @@ export default function LoginPage({ onLoginSuccess }) {
           ]);
           if (profErr) {
             console.warn('Profiles initial insert note, trying fallback:', profErr.message);
-            const { error: fbErr1 } = await supabase.from('profiles').upsert([
+            await supabase.from('profiles').upsert([
               {
                 id: userId,
                 email: regEmail.trim(),
-                nama: regNama.trim(),
-                full_name: `${regPangkat} ${regNama.trim()}`,
-                pangkat: regPangkat,
-                nrp: regNrp.trim(),
-                jabatan: regJabatan,
+                full_name: `${regPangkat} ${cleanNama}`,
+                rank_nrp: cleanNrp,
                 role: 'anggota',
                 status: 'pending'
               }
             ]);
-            if (fbErr1) {
-              await supabase.from('profiles').upsert([
-                {
-                  id: userId,
-                  email: regEmail.trim(),
-                  nama: regNama.trim(),
-                  pangkat: regPangkat,
-                  nrp: regNrp.trim(),
-                  jabatan: regJabatan
-                }
-              ]);
-            }
           }
         } catch (dbErr) {
           console.warn('Profiles table fallback handling:', dbErr);
@@ -678,13 +669,13 @@ export default function LoginPage({ onLoginSuccess }) {
             {/* Field a: Nama Lengkap Beserta Gelar */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                Nama Lengkap Beserta Gelar <span style={{ color: 'var(--accent-red)' }}>*</span>
+                Nama Lengkap (tanpa pangkat/gelar di awal, contoh: GABRIEL BAYU KURNIAWAN, S.H.) <span style={{ color: 'var(--accent-red)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={regNama}
                 onChange={(e) => setRegNama(e.target.value)}
-                placeholder="Masukkan nama lengkap beserta gelar"
+                placeholder="Contoh: GABRIEL BAYU KURNIAWAN, S.H."
                 className="form-input"
                 required
               />

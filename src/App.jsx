@@ -8,7 +8,7 @@ import DashboardView from './views/DashboardView';
 import CasesView from './views/CasesView';
 import DocGeneratorView from './views/DocGeneratorView';
 import ArchivesView from './views/ArchivesView';
-import PersonnelView from './views/PersonnelView';
+import PersonnelView, { cleanOfficerName } from './views/PersonnelView';
 import AdminTemplateStudio from './views/AdminTemplateStudio';
 import CaseDetailModal from './components/CaseDetailModal';
 import NewCaseModal from './components/NewCaseModal';
@@ -196,7 +196,44 @@ export default function App() {
           .select('*')
           .order('nama', { ascending: true });
 
-        if (!persErr && persData) {
+        // Query active profiles to ensure newly registered and approved officers appear seamlessly
+        const { data: activeProfs } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('status', 'active');
+
+        let merged = persData ? [...persData] : [];
+        if (activeProfs && activeProfs.length > 0) {
+          const ranks = ['AKBP', 'KOMPOL', 'AKP', 'IPTU', 'IPDA', 'AIPTU', 'AIPDA', 'BRIPKA', 'BRIGPOL', 'BRIGADIR', 'BRIPTU', 'BRIPDA'];
+          activeProfs.forEach(ap => {
+            const exists = merged.some(m => m.id === ap.id || (ap.rank_nrp && m.nrp === ap.rank_nrp));
+            if (!exists && ap.role !== 'super_admin') {
+              let detectedRank = 'BRIPDA';
+              const nameUpper = (ap.full_name || '').toUpperCase();
+              for (const rk of ranks) {
+                if (nameUpper.startsWith(rk) || nameUpper.includes(` ${rk} `)) {
+                  detectedRank = rk;
+                  break;
+                }
+              }
+
+              merged.push({
+                id: ap.id,
+                nama: cleanOfficerName(ap.full_name || ap.nama || 'Penyidik Satreskrim'),
+                pangkat: ap.pangkat || detectedRank,
+                nrp: ap.rank_nrp || ap.nrp || '-',
+                jabatan: ap.position || ap.jabatan || 'Penyidik Pembantu',
+                role: 'Penyidik',
+                phone: ap.phone || '',
+                status: 'active'
+              });
+            }
+          });
+        }
+
+        if (merged.length > 0) {
+          setPersonnel(merged);
+        } else if (!persErr && persData) {
           setPersonnel(persData);
         }
       } catch (e) {
@@ -441,6 +478,71 @@ export default function App() {
     }
   };
 
+  // Perbarui Data Personel: HANYA BOLEH UNTUK 'super_admin'
+  const handleUpdatePersonnel = async (updatedPerson) => {
+    if (userRole !== 'super_admin') return;
+    const cleanNama = cleanOfficerName(updatedPerson.nama);
+    const sanitizedPerson = {
+      ...updatedPerson,
+      nama: cleanNama
+    };
+
+    // Update in-memory state
+    setPersonnel((prev) => prev.map((p) => {
+      if ((sanitizedPerson.id && p.id === sanitizedPerson.id) || (sanitizedPerson.nrp && p.nrp === sanitizedPerson.nrp)) {
+        return { ...p, ...sanitizedPerson };
+      }
+      return p;
+    }));
+    showToast(`Data personel ${sanitizedPerson.pangkat || ''} ${sanitizedPerson.nama} berhasil diperbarui!`);
+
+    try {
+      // 1. Update di tabel investigators
+      if (sanitizedPerson.id) {
+        const { error: invErr } = await supabase
+          .from('investigators')
+          .update({
+            nama: sanitizedPerson.nama,
+            pangkat: sanitizedPerson.pangkat,
+            nrp: sanitizedPerson.nrp,
+            jabatan: sanitizedPerson.jabatan,
+            phone: sanitizedPerson.phone,
+            status: sanitizedPerson.status
+          })
+          .eq('id', sanitizedPerson.id);
+
+        if (invErr) {
+          // Jika belum ada di investigators, insert baru
+          await supabase.from('investigators').upsert([{
+            id: sanitizedPerson.id,
+            nama: sanitizedPerson.nama,
+            pangkat: sanitizedPerson.pangkat,
+            nrp: sanitizedPerson.nrp,
+            jabatan: sanitizedPerson.jabatan,
+            phone: sanitizedPerson.phone,
+            status: sanitizedPerson.status,
+            role: 'Penyidik'
+          }]);
+        }
+      }
+
+      // 2. Update di tabel profiles (menggunakan nama kolom rank_nrp & position yang ada di Supabase)
+      if (sanitizedPerson.id) {
+        await supabase
+          .from('profiles')
+          .update({
+            full_name: `${sanitizedPerson.pangkat || ''} ${sanitizedPerson.nama}`.trim(),
+            rank_nrp: sanitizedPerson.nrp,
+            phone: sanitizedPerson.phone,
+            position: sanitizedPerson.jabatan
+          })
+          .eq('id', sanitizedPerson.id);
+      }
+    } catch (err) {
+      console.warn('Update personnel database warning:', err);
+    }
+  };
+
   const handleSaveDocument = async (newDoc) => {
     setDocuments((prev) => {
       const updated = [newDoc, ...prev];
@@ -681,6 +783,7 @@ export default function App() {
               userRole={userRole}
               onAddPersonnel={handleAddPersonnel}
               onDeletePersonnel={handleDeletePersonnel}
+              onUpdatePersonnel={handleUpdatePersonnel}
             />
           )}
 
@@ -736,14 +839,19 @@ export default function App() {
         currentUserId={user?.id}
         onPersonnelUpdated={(newPerson) => {
           if (!newPerson) return;
+          const cleanedName = cleanOfficerName(newPerson.nama);
+          const sanitizedPerson = {
+            ...newPerson,
+            nama: cleanedName,
+          };
           setPersonnel(prev => {
-            const exists = prev.some(p => p.nrp === newPerson.nrp);
+            const exists = prev.some(p => (sanitizedPerson.nrp && sanitizedPerson.nrp !== '-' && p.nrp === sanitizedPerson.nrp) || p.id === sanitizedPerson.id);
             if (exists) {
-              return prev.map(p => p.nrp === newPerson.nrp ? { ...p, ...newPerson } : p);
+              return prev.map(p => ((sanitizedPerson.nrp && sanitizedPerson.nrp !== '-' && p.nrp === sanitizedPerson.nrp) || p.id === sanitizedPerson.id) ? { ...p, ...sanitizedPerson } : p);
             }
-            return [newPerson, ...prev];
+            return [sanitizedPerson, ...prev];
           });
-          showToast(`Personel ${newPerson.pangkat || ''} ${newPerson.nama} berhasil disinkronkan ke daftar penyidik!`);
+          showToast(`Personel ${cleanedName} berhasil disinkronkan ke direktori!`);
         }}
       />
     </div>

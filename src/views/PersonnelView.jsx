@@ -10,19 +10,39 @@ import {
   BadgeCheck,
   Shield,
   Clock,
-  Radio
+  Radio,
+  Edit3
 } from 'lucide-react';
+
+export const cleanOfficerName = (nama) => {
+  if (!nama) return '';
+  return String(nama)
+    .replace(/^(AKBP|KOMPOL|AKP|IPTU|IPDA|AIPTU|AIPDA|BRIPKA|BRIGPOL|BRIGADIR|BRIPTU|BRIPDA)\s+/i, '')
+    .trim();
+};
 
 export default function PersonnelView({ 
   cases = [], 
   personnel = [], 
   onAddPersonnel, 
   onDeletePersonnel,
+  onUpdatePersonnel,
   userRole = 'super_admin' 
 }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingPersonnel, setEditingPersonnel] = useState(null);
   const [personnelToDelete, setPersonnelToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [editFormData, setEditFormData] = useState({
+    id: '',
+    nama: '',
+    pangkat: 'BRIPDA',
+    nrp: '',
+    jabatan: '',
+    phone: '',
+    status: 'active'
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -42,35 +62,80 @@ export default function PersonnelView({
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleAddSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.nama.trim() || !formData.nrp.trim()) {
-      alert('Nama lengkap dan NRP wajib diisi.');
-      return;
-    }
+    if (!formData.nama.trim() || !formData.nrp.trim()) return;
 
     setIsSubmitting(true);
     try {
+      const cleanedNama = cleanOfficerName(formData.nama);
+      const newPerson = {
+        ...formData,
+        nama: cleanedNama,
+        id: `usr-${Date.now()}`,
+      };
+
       if (onAddPersonnel) {
-        await onAddPersonnel({
-          ...formData,
-          nama: formData.nama.trim(),
-          nrp: formData.nrp.trim(),
-        });
+        await onAddPersonnel(newPerson);
       }
-      setIsAddModalOpen(false);
-      // Reset form
+
       setFormData({
         nama: '',
-        pangkat: 'BRIPKA',
+        pangkat: 'BRIPDA',
         nrp: '',
         jabatan: 'Penyidik Pembantu Unit 1',
         role: 'Penyidik',
         phone: '08',
         status: 'active',
       });
+      setIsAddModalOpen(false);
     } catch (err) {
-      alert(`Gagal menambah personel: ${err.message}`);
+      console.error('Add personnel error:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (p) => {
+    setEditingPersonnel(p);
+    setEditFormData({
+      id: p.id,
+      nama: cleanOfficerName(p.nama),
+      pangkat: p.pangkat || p.rank || 'BRIPDA',
+      nrp: (p.nrp && p.nrp !== '-') ? p.nrp : (p.rank_nrp && p.rank_nrp !== '-' ? p.rank_nrp : ''),
+      jabatan: p.jabatan || 'Penyidik Pembantu',
+      phone: p.phone || '',
+      status: p.status || 'active'
+    });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editFormData.nama.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      const cleanedNama = cleanOfficerName(editFormData.nama);
+      const updated = {
+        ...editingPersonnel,
+        ...editFormData,
+        nama: cleanedNama,
+        nrp: editFormData.nrp.trim() || '-',
+        jabatan: editFormData.jabatan.trim() || 'Penyidik Pembantu',
+        phone: editFormData.phone.trim()
+      };
+
+      if (onUpdatePersonnel) {
+        await onUpdatePersonnel(updated);
+      }
+      setEditingPersonnel(null);
+    } catch (err) {
+      console.error('Edit personnel error:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -202,7 +267,7 @@ export default function PersonnelView({
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   }}>
-                    {p.nama}
+                    {cleanOfficerName(p.nama)}
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600, marginTop: '2px' }}>
                     {p.jabatan}
@@ -221,7 +286,9 @@ export default function PersonnelView({
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Nomor Registrasi (NRP):</span>
-                  <span className="mono" style={{ fontWeight: 600 }}>{p.nrp || p.rank_nrp || '-'}</span>
+                  <span className="mono" style={{ fontWeight: 600, color: (!p.nrp || p.nrp === '-') ? 'var(--accent-yellow)' : 'inherit' }}>
+                    {p.nrp && p.nrp !== '-' ? p.nrp : (p.rank_nrp && p.rank_nrp !== '-' ? p.rank_nrp : '-')}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Kontak Telepon:</span>
@@ -243,7 +310,17 @@ export default function PersonnelView({
 
               {/* Super Admin Actions */}
               {isSuperAdmin && !isKasat && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(p)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '11px', padding: '4px 10px', color: 'var(--accent-cyan)' }}
+                    title="Edit Data / NRP Personel"
+                  >
+                    <Edit3 size={13} />
+                    <span>Edit Data</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setPersonnelToDelete(p)}
@@ -304,14 +381,14 @@ export default function PersonnelView({
                 {/* Nama Lengkap */}
                 <div className="form-group">
                   <label className="form-label">
-                    Nama Lengkap Beserta Gelar <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    Nama Lengkap (tanpa pangkat/gelar di awal, contoh: GABRIEL BAYU KURNIAWAN, S.H.) <span style={{ color: 'var(--accent-red)' }}>*</span>
                   </label>
                   <input
                     type="text"
                     name="nama"
                     value={formData.nama}
                     onChange={handleChange}
-                    placeholder="Contoh: BRIPKA ANGGA PRATAMA, S.H."
+                    placeholder="Contoh: GABRIEL BAYU KURNIAWAN, S.H."
                     className="form-input"
                     required
                   />
@@ -518,6 +595,163 @@ export default function PersonnelView({
                 <span>{isSubmitting ? 'Menghapus Akun...' : 'Ya, Hapus Akun Permanen'}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Data Personel (Khusus Super Admin) */}
+      {editingPersonnel && (
+        <div className="modal-backdrop" onClick={() => setEditingPersonnel(null)}>
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '520px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: 'rgba(0, 212, 255, 0.1)',
+                  border: '1px solid var(--accent-cyan)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Edit3 size={18} color="var(--accent-cyan)" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '15px', margin: 0, color: '#FFFFFF' }}>Edit Data Personel Penyidik</h3>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Perbarui nama, pangkat, nomor registrasi (NRP), dan jabatan
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setEditingPersonnel(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '11px' }}>
+                    Nama Lengkap (tanpa pangkat di awal) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.nama}
+                    onChange={(e) => setEditFormData({ ...editFormData, nama: e.target.value })}
+                    placeholder="Contoh: GABRIEL BAYU KURNIAWAN, S.H."
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '11px' }}>
+                      Pangkat <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    </label>
+                    <select
+                      value={editFormData.pangkat}
+                      onChange={(e) => setEditFormData({ ...editFormData, pangkat: e.target.value })}
+                      className="form-select"
+                      required
+                    >
+                      <option value="BRIPDA">BRIPDA</option>
+                      <option value="BRIPTU">BRIPTU</option>
+                      <option value="BRIGADIR">BRIGADIR</option>
+                      <option value="BRIPKA">BRIPKA</option>
+                      <option value="AIPDA">AIPDA</option>
+                      <option value="AIPTU">AIPTU</option>
+                      <option value="IPDA">IPDA</option>
+                      <option value="IPTU">IPTU</option>
+                      <option value="AKP">AKP</option>
+                      <option value="KOMPOL">KOMPOL</option>
+                      <option value="AKBP">AKBP</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '11px' }}>
+                      Nomor Registrasi (NRP) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.nrp}
+                      onChange={(e) => setEditFormData({ ...editFormData, nrp: e.target.value })}
+                      placeholder="Masukkan 8 digit NRP..."
+                      className="form-input mono"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '11px' }}>
+                    Jabatan Kedinasan <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.jabatan}
+                    onChange={(e) => setEditFormData({ ...editFormData, jabatan: e.target.value })}
+                    placeholder="Contoh: Penyidik Pembantu Unit 1"
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '11px' }}>Kontak Telepon / WA</label>
+                    <input
+                      type="text"
+                      value={editFormData.phone}
+                      onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                      placeholder="08xxxxxxxxxx"
+                      className="form-input mono"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '11px' }}>Status Penugasan</label>
+                    <select
+                      value={editFormData.status}
+                      onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                      className="form-select"
+                    >
+                      <option value="active">SIAGA / AKTIF</option>
+                      <option value="standby">STANDBY</option>
+                      <option value="inactive">NON-AKTIF</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  onClick={() => setEditingPersonnel(null)} 
+                  className="btn btn-secondary btn-sm"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Check size={14} />
+                  <span>{isSubmitting ? 'Menyimpan Perubahan...' : 'Simpan Data Personel'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

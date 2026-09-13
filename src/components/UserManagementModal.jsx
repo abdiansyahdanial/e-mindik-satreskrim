@@ -20,12 +20,75 @@ import {
 import { supabase } from '../supabaseClient';
 import { sendAccountApprovedEmail } from '../services/emailService';
 
+const PANGKAT_OPTIONS = [
+  'BRIPDA', 
+  'BRIPTU', 
+  'BRIGADIR', 
+  'BRIPKA', 
+  'AIPDA', 
+  'AIPTU', 
+  'IPDA', 
+  'IPTU', 
+  'AKP', 
+  'KOMPOL', 
+  'AKBP'
+];
+
+const cleanOfficerName = (nama) => {
+  if (!nama) return '';
+  return String(nama)
+    .replace(/^(AKBP|KOMPOL|AKP|IPTU|IPDA|AIPTU|AIPDA|BRIPKA|BRIGPOL|BRIGADIR|BRIPTU|BRIPDA)\s+/i, '')
+    .trim();
+};
+
+const resolvePangkat = (prof) => {
+  if (prof?.pangkat && prof.pangkat.trim() && prof.pangkat !== '-') return prof.pangkat.trim();
+  if (prof?.rank && prof.rank.trim() && prof.rank !== '-') return prof.rank.trim();
+  
+  const textToScan = `${prof?.full_name || ''} ${prof?.nama || ''}`.toUpperCase();
+  for (const pkt of PANGKAT_OPTIONS) {
+    if (textToScan.startsWith(pkt) || textToScan.includes(` ${pkt} `) || textToScan.includes(`${pkt} `)) {
+      return pkt;
+    }
+  }
+  return '';
+};
+
+const resolveNrp = (prof) => {
+  if (prof?.rank_nrp && String(prof.rank_nrp).trim() && String(prof.rank_nrp).trim() !== '-') {
+    return String(prof.rank_nrp).trim();
+  }
+  if (prof?.nrp && String(prof.nrp).trim() && String(prof.nrp).trim() !== '-') {
+    return String(prof.nrp).trim();
+  }
+  if (prof?.no_nrp && String(prof.no_nrp).trim() && String(prof.no_nrp).trim() !== '-') {
+    return String(prof.no_nrp).trim();
+  }
+  
+  const meta = prof?.user_metadata || prof?.raw_user_meta_data || {};
+  if (meta?.rank_nrp && String(meta.rank_nrp).trim() && String(meta.rank_nrp).trim() !== '-') {
+    return String(meta.rank_nrp).trim();
+  }
+  if (meta?.nrp && String(meta.nrp).trim() && String(meta.nrp).trim() !== '-') {
+    return String(meta.nrp).trim();
+  }
+
+  const text = `${prof?.full_name || ''} ${prof?.nama || ''}`;
+  const nrpMatch = text.match(/(?:nrp\.?|nrp\s*:?)\s*([0-9]{6,10})/i) || text.match(/\b([0-9]{8})\b/);
+  if (nrpMatch && nrpMatch[1]) {
+    return nrpMatch[1];
+  }
+  return '';
+};
+
 export default function UserManagementModal({ isOpen, onClose, currentUserId, onPersonnelUpdated }) {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'rbac'
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [message, setMessage] = useState(null);
+  const [nrpInputs, setNrpInputs] = useState({});
+  const [activeNrpInputs, setActiveNrpInputs] = useState({});
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -72,58 +135,23 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
     }
   }, [isOpen, profiles.length]);
 
-const PANGKAT_OPTIONS = [
-  'BRIPDA', 
-  'BRIPTU', 
-  'BRIGADIR', 
-  'BRIPKA', 
-  'AIPDA', 
-  'AIPTU', 
-  'IPDA', 
-  'IPTU', 
-  'AKP', 
-  'KOMPOL', 
-  'AKBP'
-];
-
-const resolvePangkat = (prof) => {
-  if (prof?.pangkat && prof.pangkat.trim() && prof.pangkat !== '-') return prof.pangkat.trim();
-  if (prof?.rank && prof.rank.trim() && prof.rank !== '-') return prof.rank.trim();
-  
-  const textToScan = `${prof?.full_name || ''} ${prof?.nama || ''}`.toUpperCase();
-  for (const pkt of PANGKAT_OPTIONS) {
-    if (textToScan.startsWith(pkt) || textToScan.includes(` ${pkt} `) || textToScan.includes(`${pkt} `)) {
-      return pkt;
-    }
-  }
-  return '';
-};
-
-const resolveNrp = (prof) => {
-  if (prof?.nrp && prof.nrp.trim() && prof.nrp !== '-') return prof.nrp.trim();
-  if (prof?.rank_nrp && prof.rank_nrp.trim() && prof.rank_nrp !== '-') return prof.rank_nrp.trim();
-  return '';
-};
-
   // 1. Setujui Akun Penyidik & Sinkronkan Otomatis ke Tabel Personel (investigators)
   const handleApproveUser = async (profile) => {
     setSavingId(profile.id);
     setMessage(null);
     try {
-      const resolvedPangkat = resolvePangkat(profile);
-      const resolvedNrp = resolveNrp(profile);
+      const resolvedPangkat = resolvePangkat(profile) || 'BRIPDA';
+      const userTypedNrp = nrpInputs[profile.id]?.trim();
+      const resolvedNrp = userTypedNrp || resolveNrp(profile) || '';
+      const cleanName = cleanOfficerName(profile.nama || profile.full_name) || 'Penyidik Satreskrim';
 
-      // 1. Update status & role di tabel public.profiles (dan sinkronkan pangkat & nrp dinamis)
+      // 1. Update status & role di tabel public.profiles (menggunakan rank_nrp & position yang ada di schema)
       const updatePayload = { 
         role: 'anggota', 
-        status: 'active' 
+        status: 'active',
+        full_name: `${resolvedPangkat} ${cleanName}`
       };
-      if (resolvedPangkat) {
-        updatePayload.pangkat = resolvedPangkat;
-        updatePayload.rank = resolvedPangkat;
-      }
       if (resolvedNrp) {
-        updatePayload.nrp = resolvedNrp;
         updatePayload.rank_nrp = resolvedNrp;
       }
 
@@ -133,16 +161,11 @@ const resolveNrp = (prof) => {
         .eq('id', profile.id);
 
       if (err1) {
-        // Fallback jika kolom status/rank/rank_nrp belum ada di profiles
-        const { error: err2 } = await supabase
+        console.warn('Profile approval update notice:', err1.message);
+        await supabase
           .from('profiles')
-          .update({ 
-            role: 'anggota',
-            ...(resolvedPangkat ? { pangkat: resolvedPangkat } : {}),
-            ...(resolvedNrp ? { nrp: resolvedNrp } : {})
-          })
+          .update({ role: 'anggota' })
           .eq('id', profile.id);
-        if (err2) throw err2;
       }
 
       // Update in-memory profiles state
@@ -150,17 +173,17 @@ const resolveNrp = (prof) => {
         ...p, 
         role: 'anggota', 
         status: 'active',
-        pangkat: resolvedPangkat || p.pangkat,
-        nrp: resolvedNrp || p.nrp
+        full_name: `${resolvedPangkat} ${cleanName}`,
+        rank_nrp: resolvedNrp || p.rank_nrp
       } : p));
 
-      // 2. Data Personel Lengkap untuk Sinkronisasi & Email (Dinamis tanpa fallback statis BRIPKA/-)
+      // 2. Data Personel Lengkap untuk Sinkronisasi & Email (Nama bersih tanpa prefix pangkat)
       const officerData = {
         id: profile.id,
-        nama: profile.full_name || (resolvedPangkat ? `${resolvedPangkat} ${profile.nama}` : profile.nama) || 'Penyidik Satreskrim',
-        pangkat: resolvedPangkat || profile.pangkat || '',
-        nrp: resolvedNrp || profile.nrp || '',
-        jabatan: profile.jabatan || 'Penyidik Pembantu',
+        nama: cleanName,
+        pangkat: resolvedPangkat,
+        nrp: resolvedNrp || '-',
+        jabatan: profile.position || profile.jabatan || 'Penyidik Pembantu',
         satker: profile.satker || 'Satreskrim Polres Kolaka Timur',
         unit: profile.unit || '',
         phone: profile.phone || profile.no_hp || '',
@@ -175,15 +198,16 @@ const resolveNrp = (prof) => {
           const { data: existingInv } = await supabase
             .from('investigators')
             .select('id')
-            .eq('nrp', officerData.nrp)
+            .or(`id.eq.${profile.id},nrp.eq.${officerData.nrp}`)
             .maybeSingle();
 
           if (existingInv?.id) {
             await supabase
               .from('investigators')
               .update({
-                nama: officerData.nama,
+                nama: cleanName,
                 pangkat: officerData.pangkat,
+                nrp: officerData.nrp,
                 jabatan: officerData.jabatan,
                 phone: officerData.phone,
                 status: 'active'
@@ -194,7 +218,7 @@ const resolveNrp = (prof) => {
               .from('investigators')
               .insert([{
                 id: profile.id || `inv-${Date.now()}`,
-                nama: officerData.nama,
+                nama: cleanName,
                 pangkat: officerData.pangkat,
                 nrp: officerData.nrp,
                 jabatan: officerData.jabatan,
@@ -218,7 +242,7 @@ const resolveNrp = (prof) => {
 
       setMessage({ 
         type: 'success', 
-        text: `Akun ${officerData.nama} berhasil disetujui & disinkronkan ke daftar personel! Email aktivasi telah dikirimkan.` 
+        text: `Akun ${officerData.pangkat} ${officerData.nama} (NRP: ${officerData.nrp}) berhasil disetujui & disinkronkan ke daftar personel!` 
       });
     } catch (err) {
       console.error('Error approving user:', err);
@@ -270,6 +294,36 @@ const resolveNrp = (prof) => {
     } catch (err) {
       console.error('Error updating role:', err);
       setMessage({ type: 'error', text: `Gagal memperbarui peran: ${err.message}` });
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  // 4. Simpan / Perbaiki NRP untuk Akun Aktif
+  const handleSaveActiveNrp = async (userId, newNrp) => {
+    if (!newNrp || !newNrp.trim()) return;
+    setSavingId(userId);
+    setMessage(null);
+    try {
+      const trimmedNrp = newNrp.trim();
+      const { error: err1 } = await supabase
+        .from('profiles')
+        .update({ rank_nrp: trimmedNrp })
+        .eq('id', userId);
+
+      if (err1) throw err1;
+
+      // Update di tabel investigators juga jika ada
+      await supabase
+        .from('investigators')
+        .update({ nrp: trimmedNrp })
+        .eq('id', userId);
+
+      setProfiles(prev => prev.map(p => p.id === userId ? { ...p, rank_nrp: trimmedNrp } : p));
+      setMessage({ type: 'success', text: `NRP berhasil diperbarui menjadi ${trimmedNrp}!` });
+    } catch (err) {
+      console.error('Error saving NRP:', err);
+      setMessage({ type: 'error', text: `Gagal menyimpan NRP: ${err.message}` });
     } finally {
       setSavingId(null);
     }
@@ -540,7 +594,25 @@ const resolveNrp = (prof) => {
                     }}>
                       <div>
                         <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>PANGKAT & NRP:</span>
-                        <strong style={{ color: '#FFF' }}>{resolvePangkat(p) || p.pangkat || '-'}</strong> • <span className="mono" style={{ color: 'var(--accent-cyan)' }}>{resolveNrp(p) || p.nrp || p.rank_nrp || '-'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                          <strong style={{ color: '#FFF' }}>{resolvePangkat(p) || 'BRIPDA'}</strong>
+                          <span>•</span>
+                          <input
+                            type="text"
+                            value={nrpInputs[p.id] !== undefined ? nrpInputs[p.id] : (resolveNrp(p) || '')}
+                            onChange={(e) => setNrpInputs(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            placeholder="Ketik NRP..."
+                            className="form-input mono"
+                            style={{ 
+                              padding: '1px 6px', 
+                              fontSize: '11px', 
+                              width: '120px', 
+                              height: '22px', 
+                              borderColor: !(nrpInputs[p.id] || resolveNrp(p)) ? 'var(--accent-yellow)' : 'rgba(255,255,255,0.2)' 
+                            }}
+                            title="Nomor Registrasi (NRP) Personel"
+                          />
+                        </div>
                       </div>
                       <div>
                         <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>JABATAN & UNIT:</span>
@@ -639,10 +711,34 @@ const resolveNrp = (prof) => {
                             </span>
                           </div>
 
-                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                            <span className="mono">{p.rank_nrp || p.nrp || p.email || p.id.slice(0, 13)}</span>
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span>NRP:</span>
+                            {p.rank_nrp ? (
+                              <strong className="mono" style={{ color: 'var(--accent-cyan)' }}>{p.rank_nrp}</strong>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="text"
+                                  placeholder="Isi NRP..."
+                                  value={activeNrpInputs[p.id] !== undefined ? activeNrpInputs[p.id] : ''}
+                                  onChange={(e) => setActiveNrpInputs(prev => ({ ...prev, [p.id]: e.target.value }))}
+                                  className="form-input mono"
+                                  style={{ padding: '1px 6px', fontSize: '10.5px', width: '110px', height: '22px', borderColor: 'var(--accent-yellow)' }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveActiveNrp(p.id, activeNrpInputs[p.id])}
+                                  disabled={savingId === p.id || !activeNrpInputs[p.id]}
+                                  className="btn btn-primary btn-sm"
+                                  style={{ padding: '2px 8px', fontSize: '10px' }}
+                                >
+                                  Simpan
+                                </button>
+                              </div>
+                            )}
+                            {p.email && <span>• {p.email}</span>}
                             {p.created_at && (
-                              <span> • Terdaftar: {new Date(p.created_at).toLocaleDateString('id-ID')}</span>
+                              <span>• Terdaftar: {new Date(p.created_at).toLocaleDateString('id-ID')}</span>
                             )}
                           </div>
                         </div>
