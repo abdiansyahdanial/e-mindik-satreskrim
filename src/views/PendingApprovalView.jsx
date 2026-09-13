@@ -31,13 +31,45 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
   const email = user?.email || profile.email || '-';
   const phone = profile.phone || profile.no_hp || meta.phone || meta.no_hp || '-';
 
+  // Supabase Realtime Listener: otomatis beralih seketika saat Super Admin menyetujui akun
+  React.useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`profile_approval_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          const updated = payload.new;
+          if (updated && (updated.status === 'active' || (updated.role && updated.role !== 'pending' && updated.role !== 'rejected'))) {
+            setCheckMsg({ type: 'success', text: 'Akun Anda telah disetujui oleh Super Admin! Mengalihkan ke Dashboard...' });
+            if (onStatusUpdated) onStatusUpdated(updated);
+            setTimeout(() => {
+              window.location.replace('/');
+            }, 600);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, onStatusUpdated]);
+
   const handleCheckStatus = async () => {
     setChecking(true);
     setCheckMsg(null);
     try {
       if (!user?.id) return;
 
-      // 1. Fetch fresh profile from Supabase
+      // 1. Fetch fresh profile directly from Supabase profiles table
       const { data: freshProf, error } = await supabase
         .from('profiles')
         .select('*')
@@ -46,18 +78,18 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
 
       if (error) throw error;
 
-      // Also refresh session user metadata
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentMeta = session?.user?.user_metadata || {};
+      const isApproved = freshProf?.status === 'active' || 
+                         (freshProf?.role && freshProf.role !== 'pending' && freshProf.role !== 'rejected');
 
-      const currentStatus = freshProf?.status || currentMeta?.status || (freshProf?.role !== 'pending' && freshProf?.role ? 'active' : 'pending');
-
-      if (currentStatus === 'active' || freshProf?.role === 'admin' || freshProf?.role === 'super_admin' || freshProf?.role === 'anggota') {
+      if (isApproved) {
         setCheckMsg({ type: 'success', text: 'Selamat! Akun Anda telah disetujui oleh Super Admin. Mengalihkan ke Dashboard...' });
+        if (onStatusUpdated) {
+          onStatusUpdated({ ...freshProf, status: 'active' });
+        }
         setTimeout(() => {
-          if (onStatusUpdated) onStatusUpdated(freshProf);
-        }, 1200);
-      } else if (currentStatus === 'rejected') {
+          window.location.replace('/');
+        }, 600);
+      } else if (freshProf?.status === 'rejected' || freshProf?.role === 'rejected') {
         setCheckMsg({ type: 'error', text: 'Pengajuan akun Anda ditolak oleh Super Admin. Silakan hubungi Kasat Reskrim.' });
       } else {
         setCheckMsg({ type: 'info', text: 'Status akun masih MENUNGGU VERIFIKASI Super Admin. Notifikasi persetujuan akan dikirimkan ke email Anda.' });

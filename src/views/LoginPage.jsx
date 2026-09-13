@@ -17,7 +17,7 @@ import {
   Clock
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { sendSuperadminNewUserEmail } from '../services/emailService';
+import { sendRegistrationEmails } from '../services/emailService';
 import logoImg from '../assets/logo.png';
 
 const PANGKAT_OPTIONS = [
@@ -164,8 +164,11 @@ export default function LoginPage({ onLoginSuccess }) {
           }
         ]).catch(() => {});
       } else {
-        const resolvedRole = profileData.role || userMeta.role || (isSuper ? 'super_admin' : 'anggota');
-        const resolvedStatus = profileData.status || userMeta.status || (isSuper || resolvedRole === 'super_admin' || resolvedRole === 'admin' ? 'active' : 'active');
+        const isApproved = profileData.status === 'active' || 
+                           (profileData.role && profileData.role !== 'pending' && profileData.role !== 'rejected');
+
+        const resolvedRole = isSuper ? 'super_admin' : (profileData.role && profileData.role !== 'pending' ? profileData.role : 'anggota');
+        const resolvedStatus = isSuper || isApproved ? 'active' : (profileData.status || profileData.role || 'pending');
 
         finalProfile = {
           ...profileData,
@@ -262,8 +265,8 @@ export default function LoginPage({ onLoginSuccess }) {
         }
       }
 
-      // Kirim email notifikasi ke Super Admin secara ASYNCHRONOUS (non-blocking)
-      sendSuperadminNewUserEmail(officerData);
+      // Kirim email notifikasi kedinasan (pemberitahuan ke pendaftar & notifikasi Super Admin) secara ASYNCHRONOUS
+      sendRegistrationEmails(officerData);
 
       // Tampilkan layar sukses/tunggu
       setRegisterSuccessData(officerData);
@@ -542,7 +545,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 type="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="nama.nrp@polri.go.id"
+                placeholder="Masukkan alamat email aktif / terdaftar"
                 className="form-input"
                 autoComplete="username"
                 required
@@ -609,7 +612,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 type="text"
                 value={regNama}
                 onChange={(e) => setRegNama(e.target.value)}
-                placeholder="Contoh: AHMAD FATONI, S.H."
+                placeholder="Masukkan nama lengkap beserta gelar"
                 className="form-input"
                 required
               />
@@ -759,7 +762,7 @@ export default function LoginPage({ onLoginSuccess }) {
                   type="email"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="nama.nrp@polri.go.id"
+                  placeholder="Masukkan alamat email aktif"
                   className="form-input"
                   required
                 />

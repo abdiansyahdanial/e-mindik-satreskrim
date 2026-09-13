@@ -20,7 +20,7 @@ import {
 import { supabase } from '../supabaseClient';
 import { sendAccountApprovedEmail } from '../services/emailService';
 
-export default function UserManagementModal({ isOpen, onClose, currentUserId }) {
+export default function UserManagementModal({ isOpen, onClose, currentUserId, onPersonnelUpdated }) {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'rbac'
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -72,24 +72,19 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId }) 
     }
   }, [isOpen, profiles.length]);
 
-  // 1. Setujui Akun Penyidik
+  // 1. Setujui Akun Penyidik & Sinkronkan Otomatis ke Tabel Personel (investigators)
   const handleApproveUser = async (profile) => {
     setSavingId(profile.id);
     setMessage(null);
     try {
-      // Non-destructive update in public.profiles
-      let updatePayload = {
-        role: 'anggota',
-      };
-      
-      // Try including status: 'active'
+      // 1. Update status & role di tabel public.profiles
       const { error: err1 } = await supabase
         .from('profiles')
         .update({ role: 'anggota', status: 'active' })
         .eq('id', profile.id);
 
       if (err1) {
-        // Fallback if status column doesn't exist on profiles
+        // Fallback jika kolom status belum ada di profiles
         const { error: err2 } = await supabase
           .from('profiles')
           .update({ role: 'anggota' })
@@ -97,24 +92,74 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId }) 
         if (err2) throw err2;
       }
 
-      // Update in-memory state
+      // Update in-memory profiles state
       setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, role: 'anggota', status: 'active' } : p));
 
-      // Kirim email notifikasi aktivasi ke penyidik (non-blocking)
+      // 2. Data Personel Lengkap untuk Sinkronisasi & Email
       const officerData = {
-        nama: profile.full_name || profile.nama || 'Penyidik',
+        id: profile.id,
+        nama: profile.full_name || profile.nama || 'Penyidik Satreskrim',
         pangkat: profile.pangkat || 'BRIPKA',
         nrp: profile.rank_nrp || profile.nrp || '-',
         jabatan: profile.jabatan || 'Penyidik Pembantu',
         satker: profile.satker || 'Satreskrim Polres Kolaka Timur',
-        unit: profile.unit || 'Satreskrim',
-        email: profile.email || ''
+        unit: profile.unit || '',
+        phone: profile.phone || profile.no_hp || '',
+        email: profile.email || '',
+        role: 'Penyidik',
+        status: 'active'
       };
+
+      // 3. Sinkronkan Otomatis ke Tabel public.investigators
+      try {
+        if (officerData.nrp && officerData.nrp !== '-') {
+          const { data: existingInv } = await supabase
+            .from('investigators')
+            .select('id')
+            .eq('nrp', officerData.nrp)
+            .maybeSingle();
+
+          if (existingInv?.id) {
+            await supabase
+              .from('investigators')
+              .update({
+                nama: officerData.nama,
+                pangkat: officerData.pangkat,
+                jabatan: officerData.jabatan,
+                phone: officerData.phone,
+                status: 'active'
+              })
+              .eq('id', existingInv.id);
+          } else {
+            await supabase
+              .from('investigators')
+              .insert([{
+                id: profile.id || `inv-${Date.now()}`,
+                nama: officerData.nama,
+                pangkat: officerData.pangkat,
+                nrp: officerData.nrp,
+                jabatan: officerData.jabatan,
+                role: 'Penyidik',
+                phone: officerData.phone,
+                status: 'active'
+              }]);
+          }
+        }
+      } catch (invErr) {
+        console.warn('Investigator sync notice (handled):', invErr.message);
+      }
+
+      // 4. Perbarui daftar personel di state App.jsx
+      if (onPersonnelUpdated) {
+        onPersonnelUpdated(officerData);
+      }
+
+      // 5. Kirim email notifikasi aktivasi resmi ke penyidik via Resend (asynchronous non-blocking)
       sendAccountApprovedEmail(officerData);
 
       setMessage({ 
         type: 'success', 
-        text: `Akun ${profile.full_name || 'Penyidik'} berhasil disetujui! Email aktivasi telah dikirimkan.` 
+        text: `Akun ${profile.full_name || 'Penyidik'} berhasil disetujui & disinkronkan ke daftar personel! Email aktivasi telah dikirimkan.` 
       });
     } catch (err) {
       console.error('Error approving user:', err);

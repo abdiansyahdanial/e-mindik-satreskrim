@@ -78,14 +78,17 @@ export default function App() {
 
           if (profile && isMounted) {
             const meta = u.user_metadata || {};
-            const resolvedRole = profile.role || meta.role || 'anggota';
             const isSuper = u.id === '75abae80-e013-4987-a5e7-f1107d2ab265' || 
                             u.email?.includes('kasat') || 
                             u.email?.includes('super') ||
-                            resolvedRole === 'super_admin';
+                            profile.role === 'super_admin';
 
-            const finalRole = isSuper ? 'super_admin' : resolvedRole;
-            const resolvedStatus = profile.status || meta.status || (finalRole === 'pending' ? 'pending' : 'active');
+            // Determine if approved: either profile.status is 'active' or profile.role is already set to anggota/admin/super_admin
+            const isApproved = profile.status === 'active' || 
+                               (profile.role && profile.role !== 'pending' && profile.role !== 'rejected');
+
+            const finalRole = isSuper ? 'super_admin' : (profile.role && profile.role !== 'pending' ? profile.role : 'anggota');
+            const finalStatus = isSuper || isApproved ? 'active' : (profile.status || profile.role || 'pending');
 
             setCurrentUserProfile({
               ...profile,
@@ -97,7 +100,7 @@ export default function App() {
               unit: profile.unit || meta.unit || '',
               phone: profile.phone || profile.no_hp || meta.phone || meta.no_hp || '',
               role: finalRole,
-              status: isSuper ? 'active' : resolvedStatus
+              status: finalStatus
             });
             setUserRole(finalRole);
           } else if (isMounted) {
@@ -458,12 +461,11 @@ export default function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Pending Approval Route Guard (Locks total access for pending accounts)
+  // Pending Approval Route Guard (Locks total access ONLY for accounts that are actually pending in profiles table)
   const isPendingApproval = 
     userRole !== 'super_admin' && 
     (currentUserProfile?.status === 'pending' || 
-     currentUserProfile?.role === 'pending' || 
-     user?.user_metadata?.status === 'pending');
+     currentUserProfile?.role === 'pending');
 
   if (isPendingApproval) {
     return (
@@ -471,9 +473,17 @@ export default function App() {
         currentUserProfile={currentUserProfile}
         user={user}
         onStatusUpdated={(updatedProf) => {
-          setCurrentUserProfile(prev => ({ ...prev, ...updatedProf, status: 'active' }));
-          setUserRole(updatedProf?.role || 'anggota');
-          showToast('Akun telah aktif! Selamat bertugas.');
+          const resolvedRole = (updatedProf?.role && updatedProf.role !== 'pending' && updatedProf.role !== 'rejected') 
+            ? updatedProf.role 
+            : 'anggota';
+          setCurrentUserProfile(prev => ({ 
+            ...prev, 
+            ...updatedProf, 
+            status: 'active',
+            role: resolvedRole
+          }));
+          setUserRole(resolvedRole);
+          showToast('Akun telah aktif! Mengalihkan ke Dashboard...');
         }}
         onLogout={handleLogout}
       />
@@ -640,6 +650,17 @@ export default function App() {
         isOpen={isUserManagementOpen}
         onClose={() => setIsUserManagementOpen(false)}
         currentUserId={user?.id}
+        onPersonnelUpdated={(newPerson) => {
+          if (!newPerson) return;
+          setPersonnel(prev => {
+            const exists = prev.some(p => p.nrp === newPerson.nrp);
+            if (exists) {
+              return prev.map(p => p.nrp === newPerson.nrp ? { ...p, ...newPerson } : p);
+            }
+            return [newPerson, ...prev];
+          });
+          showToast(`Personel ${newPerson.pangkat || ''} ${newPerson.nama} berhasil disinkronkan ke daftar penyidik!`);
+        }}
       />
     </div>
   );
