@@ -171,7 +171,7 @@ VALUES
   ('usr-002', 'IPDA KURNIAWAN, S.Tr.K.', 'IPDA', '94050211', 'Kaur Bin Ops Satreskrim', 'KBO', '081234567891', 'active'),
   ('usr-003', 'AIPTU ANDI FIRMANSYAH', 'AIPTU', '80040812', 'Kanit 1 Pidum', 'Kanit', '081234567892', 'active'),
   ('usr-004', 'AIPDA RAHMAT HIDAYAT', 'AIPDA', '83090123', 'Kanit 2 Tipidter', 'Kanit', '081234567893', 'active'),
-  ('usr-005', 'BRIPKA DEDI PRASETYO, S.H.', 'BRIPKA', '88110543', 'Penyidik Pembantu Unit 1', 'Penyidik', '081234567894', 'active'),
+  ('usr-005', 'BRIPKA LA ODE MUHAMAD SAHRUL', 'BRIPKA', '90011545', 'Penyidik Pembantu Unit 1', 'Penyidik', '081234567894', 'active'),
   ('usr-006', 'BRIPKA ILHAM WAHYUDI', 'BRIPKA', '89030221', 'Penyidik Pembantu Unit 1', 'Penyidik', '081234567895', 'active'),
   ('usr-007', 'BRIGADIR FAJAR MAULANA', 'BRIGADIR', '92070444', 'Penyidik Pembantu Unit 2', 'Penyidik', '081234567896', 'standby'),
   ('usr-008', 'BRIPTU MUHAMMAD RIZKY', 'BRIPTU', '96080987', 'Bintara Administrasi Penyidikan', 'Banum', '081234567897', 'active')
@@ -200,7 +200,7 @@ VALUES
     'Tirawuta',
     '2026-08-16',
     'active',
-    '[{"user_id": "usr-005", "role_order": 1, "nama": "BRIPKA DEDI PRASETYO, S.H.", "pangkat": "BRIPKA", "nrp": "88110543", "jabatan": "Penyidik Pembantu"}, {"user_id": "usr-006", "role_order": 2, "nama": "BRIPKA ILHAM WAHYUDI", "pangkat": "BRIPKA", "nrp": "89030221", "jabatan": "Penyidik Pembantu"}]'::jsonb,
+    '[{"user_id": "usr-005", "role_order": 1, "nama": "BRIPKA LA ODE MUHAMAD SAHRUL", "pangkat": "BRIPKA", "nrp": "90011545", "jabatan": "Penyidik Pembantu"}, {"user_id": "usr-006", "role_order": 2, "nama": "BRIPKA ILHAM WAHYUDI", "pangkat": "BRIPKA", "nrp": "89030221", "jabatan": "Penyidik Pembantu"}]'::jsonb,
     '{"nik": "7405021204850002", "nama": "Wayan Agus Setiawan", "umur": "38 Tahun", "agama": "Hindu", "gender": "Laki-laki", "alamat": "Dusun II, Desa Lalingato, Kec. Tirawuta, Kab. Kolaka Timur", "pob_dob": "Lalingato, 12 April 1988", "pekerjaan": "Petani / Pekebun", "pendidikan": "SMA", "marital_status": "Kawin", "kewarganegaraan": "Indonesia"}'::jsonb,
     '{"no_spdp": "B/24/VIII/2026/Reskrim", "no_sprin_kap": "Sp.Kap/18/VIII/2026/Reskrim", "no_sprin_han": "Sp.Han/14/VIII/2026/Reskrim", "no_sp_tap_tsk": "S.Tap/12/VIII/2026/Reskrim", "no_sprin_gas": "Sp.Gas/30/VIII/2026/Reskrim", "no_sprin_sidik": "Sp.Sidik/35/VIII/2026/Reskrim"}'::jsonb
   ),
@@ -218,7 +218,7 @@ VALUES
     'Tirawuta',
     '2026-08-21',
     'active',
-    '[{"user_id": "usr-005", "role_order": 1, "nama": "BRIPKA DEDI PRASETYO, S.H.", "pangkat": "BRIPKA", "nrp": "88110543", "jabatan": "Penyidik Pembantu"}]'::jsonb,
+    '[{"user_id": "usr-005", "role_order": 1, "nama": "BRIPKA LA ODE MUHAMAD SAHRUL", "pangkat": "BRIPKA", "nrp": "90011545", "jabatan": "Penyidik Pembantu"}]'::jsonb,
     '{"nik": "7405031908820001", "nama": "Lukman Syahputra", "umur": "44 Tahun", "agama": "Islam", "gender": "Laki-laki", "alamat": "Kel. Ladongi Jaya, Kec. Ladongi, Kab. Kolaka Timur", "pob_dob": "Kendari, 19 Agustus 1982", "pekerjaan": "Pedagang", "pendidikan": "S1", "marital_status": "Kawin", "kewarganegaraan": "Indonesia"}'::jsonb,
     '{"no_spdp": "B/28/VIII/2026/Reskrim", "no_sprin_kap": "", "no_sprin_han": "", "no_sp_tap_tsk": "S.Tap/15/VIII/2026/Reskrim", "no_sprin_gas": "Sp.Gas/34/VIII/2026/Reskrim", "no_sprin_sidik": "Sp.Sidik/39/VIII/2026/Reskrim"}'::jsonb
   )
