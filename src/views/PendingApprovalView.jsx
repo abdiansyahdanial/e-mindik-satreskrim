@@ -45,14 +45,23 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
           table: 'profiles',
           filter: `id=eq.${user.id}`
         },
-        (payload) => {
+        async (payload) => {
           const updated = payload.new;
-          if (updated && (updated.status === 'active' || (updated.role && updated.role !== 'pending' && updated.role !== 'rejected'))) {
-            setCheckMsg({ type: 'success', text: 'Akun Anda telah disetujui oleh Super Admin! Mengalihkan ke Dashboard...' });
-            if (onStatusUpdated) onStatusUpdated(updated);
+          if (updated && updated.status === 'active') {
+            setCheckMsg({ 
+              type: 'success', 
+              text: 'Selamat! Akun Anda telah diverifikasi oleh Super Admin. Mengalihkan ke halaman login...' 
+            });
+            try {
+              await supabase.auth.signOut();
+            } catch {}
             setTimeout(() => {
-              window.location.replace('/');
-            }, 600);
+              if (onLogout) {
+                onLogout();
+              } else {
+                window.location.replace('/');
+              }
+            }, 1500);
           }
         }
       )
@@ -61,7 +70,7 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, onStatusUpdated]);
+  }, [user?.id, onLogout]);
 
   const handleCheckStatus = async () => {
     setChecking(true);
@@ -78,21 +87,31 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
 
       if (error) throw error;
 
-      const isApproved = freshProf?.status === 'active' || 
-                         (freshProf?.role && freshProf.role !== 'pending' && freshProf.role !== 'rejected');
+      const isApproved = freshProf?.status === 'active';
 
       if (isApproved) {
-        setCheckMsg({ type: 'success', text: 'Selamat! Akun Anda telah disetujui oleh Super Admin. Mengalihkan ke Dashboard...' });
-        if (onStatusUpdated) {
-          onStatusUpdated({ ...freshProf, status: 'active' });
+        setCheckMsg({ 
+          type: 'success', 
+          text: 'Selamat! Akun Anda telah diverifikasi oleh Super Admin. Mengalihkan ke halaman login...' 
+        });
+
+        try {
+          await supabase.auth.signOut();
+        } catch (soErr) {
+          console.warn('Signout notice:', soErr);
         }
+
         setTimeout(() => {
-          window.location.replace('/');
-        }, 600);
+          if (onLogout) {
+            onLogout();
+          } else {
+            window.location.replace('/');
+          }
+        }, 1500);
       } else if (freshProf?.status === 'rejected' || freshProf?.role === 'rejected') {
         setCheckMsg({ type: 'error', text: 'Pengajuan akun Anda ditolak oleh Super Admin. Silakan hubungi Kasat Reskrim.' });
       } else {
-        setCheckMsg({ type: 'info', text: 'Status akun masih MENUNGGU VERIFIKASI Super Admin. Notifikasi persetujuan akan dikirimkan ke email Anda.' });
+        setCheckMsg({ type: 'info', text: 'Status akun: Menunggu Persetujuan Kasat Reskrim / Super Admin. Notifikasi persetujuan akan dikirimkan ke email Anda.' });
       }
     } catch (err) {
       console.warn('Status check warning:', err);
@@ -215,7 +234,7 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
           <ShieldAlert size={26} color="#F59E0B" style={{ flexShrink: 0 }} />
           <div>
             <div style={{ color: '#FCD34D', fontWeight: 700, fontSize: '13px' }}>
-              Status Akun: Menunggu Persetujuan Super Admin
+              Status: Menunggu Persetujuan Kasat Reskrim / Super Admin
             </div>
             <div style={{ color: '#CBD5E1', fontSize: '11.5px', marginTop: '3px', lineHeight: 1.4 }}>
               Pendaftaran Anda telah berhasil dicatat. Seluruh modul penyidikan & generator berkas dikunci demi keamanan hingga diverifikasi oleh Kasat Reskrim / Super Admin.

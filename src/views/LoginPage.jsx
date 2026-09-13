@@ -142,12 +142,13 @@ export default function LoginPage({ onLoginSuccess }) {
 
         finalProfile = {
           id: user.id,
-          full_name: isSuper ? 'AKP AHMAD FATONI, S.H.' : (userMeta.full_name || userMeta.nama || user.email.split('@')[0].toUpperCase()),
-          nama: isSuper ? 'AKP AHMAD FATONI, S.H.' : (userMeta.nama || userMeta.full_name || user.email.split('@')[0].toUpperCase()),
-          pangkat: isSuper ? 'AKP' : (userMeta.pangkat || 'BRIPDA'),
-          rank_nrp: isSuper ? '78120567' : (userMeta.nrp || '00000000'),
-          nrp: isSuper ? '78120567' : (userMeta.nrp || '00000000'),
-          jabatan: isSuper ? 'Kepala Satuan Reserse Kriminal' : (userMeta.jabatan || 'Penyidik Pembantu Satreskrim'),
+          email: user.email,
+          full_name: userMeta.full_name || userMeta.nama || (isSuper ? 'Super Admin Satreskrim' : user.email.split('@')[0].toUpperCase()),
+          nama: userMeta.nama || userMeta.full_name || (isSuper ? 'Super Admin Satreskrim' : user.email.split('@')[0].toUpperCase()),
+          pangkat: userMeta.pangkat || (isSuper ? 'POLRI' : '-'),
+          rank_nrp: userMeta.nrp || '-',
+          nrp: userMeta.nrp || '-',
+          jabatan: isSuper ? 'Super Admin Satreskrim' : (userMeta.jabatan || 'Penyidik Pembantu Satreskrim'),
           satker: userMeta.satker || 'Satreskrim Polres Kolaka Timur',
           unit: userMeta.unit || '',
           phone: userMeta.phone || '',
@@ -159,23 +160,25 @@ export default function LoginPage({ onLoginSuccess }) {
         await supabase.from('profiles').upsert([
           {
             id: user.id,
+            email: user.email,
             full_name: finalProfile.full_name,
             role: assignedRole,
+            status: assignedStatus
           }
         ]).catch(() => {});
       } else {
-        const isApproved = profileData.status === 'active' || 
-                           (profileData.role && profileData.role !== 'pending' && profileData.role !== 'rejected');
-
-        const resolvedRole = isSuper ? 'super_admin' : (profileData.role && profileData.role !== 'pending' ? profileData.role : 'anggota');
-        const resolvedStatus = isSuper || isApproved ? 'active' : (profileData.status || profileData.role || 'pending');
+        const isApproved = isSuper || profileData.status === 'active';
+        const resolvedRole = isSuper ? 'super_admin' : (profileData.role || 'anggota');
+        const resolvedStatus = isApproved ? 'active' : (profileData.status || 'pending');
 
         finalProfile = {
           ...profileData,
+          id: user.id,
+          email: user.email,
           nama: profileData.full_name || profileData.nama || userMeta.nama || user.email.split('@')[0],
-          pangkat: profileData.pangkat || userMeta.pangkat || (resolvedRole === 'super_admin' ? 'AKP' : 'BRIPKA'),
+          pangkat: profileData.pangkat || userMeta.pangkat || (isSuper ? 'POLRI' : '-'),
           nrp: profileData.rank_nrp || profileData.nrp || userMeta.nrp || '-',
-          jabatan: (resolvedRole === 'super_admin') ? 'ABDIANSYAH' : (profileData.jabatan || userMeta.jabatan || 'Penyidik Pembantu'),
+          jabatan: isSuper ? 'Super Admin Satreskrim' : (profileData.jabatan || userMeta.jabatan || 'Penyidik Pembantu'),
           satker: profileData.satker || userMeta.satker || 'Satreskrim Polres Kolaka Timur',
           unit: profileData.unit || userMeta.unit || '',
           phone: profileData.phone || userMeta.phone || '',
@@ -218,7 +221,7 @@ export default function LoginPage({ onLoginSuccess }) {
 
     try {
       const officerData = {
-        full_name: regNama.trim(),
+        full_name: `${regPangkat} ${regNama.trim()}`,
         nama: regNama.trim(),
         pangkat: regPangkat,
         nrp: regNrp.trim(),
@@ -228,7 +231,7 @@ export default function LoginPage({ onLoginSuccess }) {
         phone: regPhone.trim(),
         email: regEmail.trim(),
         status: 'pending',
-        role: 'penyidik',
+        role: 'anggota',
       };
 
       // Daftarkan akun ke supabase.auth.signUp() dengan metadata lengkap
@@ -246,29 +249,56 @@ export default function LoginPage({ onLoginSuccess }) {
       const userId = newUser?.id;
 
       if (userId) {
-        // Non-destructive insert/upsert into public.profiles
-        // Try with status & role 'penyidik', fallback to basic if column missing
+        // Simpan data registrasi ke public.profiles dengan status: 'pending' dan role: 'anggota'
         try {
           const { error: profErr } = await supabase.from('profiles').upsert([
             {
               id: userId,
+              email: regEmail.trim(),
+              nama: regNama.trim(),
               full_name: `${regPangkat} ${regNama.trim()}`,
-              role: 'pending', // marks as pending role or status in database
-              rank_nrp: regNrp.trim()
+              pangkat: regPangkat,
+              nrp: regNrp.trim(),
+              rank_nrp: regNrp.trim(),
+              jabatan: regJabatan,
+              satker: regSatker.trim(),
+              unit: regUnit,
+              phone: regPhone.trim(),
+              role: 'anggota',
+              status: 'pending'
             }
           ]);
           if (profErr) {
-            console.warn('Profiles initial insert note:', profErr.message);
+            console.warn('Profiles initial insert note, trying fallback:', profErr.message);
+            await supabase.from('profiles').upsert([
+              {
+                id: userId,
+                email: regEmail.trim(),
+                nama: regNama.trim(),
+                full_name: `${regPangkat} ${regNama.trim()}`,
+                pangkat: regPangkat,
+                nrp: regNrp.trim(),
+                jabatan: regJabatan,
+                role: 'anggota'
+              }
+            ]);
           }
         } catch (dbErr) {
           console.warn('Profiles table fallback handling:', dbErr);
         }
       }
 
-      // Kirim email notifikasi kedinasan (pemberitahuan ke pendaftar & notifikasi Super Admin) secara ASYNCHRONOUS
+      // Logout sesi sementara agar browser tidak otomatis masuk ke sesi aktif
+      try {
+        await supabase.auth.signOut();
+      } catch (soErr) {
+        console.warn('Signout after signup notice:', soErr);
+      }
+
+      // Kirim email notifikasi kedinasan secara ASYNCHRONOUS
       sendRegistrationEmails(officerData);
 
-      // Tampilkan layar sukses/tunggu
+      // Tampilkan layar resmi "VERIFIKASI KEDINASAN MENUNGGU"
       setRegisterSuccessData(officerData);
       setStatusMessage('');
     } catch (err) {
@@ -944,11 +974,11 @@ export default function LoginPage({ onLoginSuccess }) {
               <CheckCircle2 size={32} color="var(--accent-green)" />
             </div>
 
-            <h3 style={{ color: '#FFFFFF', fontSize: '18px', fontWeight: 800, margin: '0 0 8px' }}>
-              Pendaftaran Berhasil!
+            <h3 style={{ color: '#FFFFFF', fontSize: '18px', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Verifikasi Kedinasan Menunggu
             </h3>
-            <p style={{ color: 'var(--accent-cyan)', fontSize: '13px', fontWeight: 600, margin: '0 0 16px' }}>
-              Akun Anda sedang menunggu verifikasi kedinasan oleh Super Admin.
+            <p style={{ color: '#FCD34D', fontSize: '13px', fontWeight: 700, margin: '0 0 16px' }}>
+              Status: Menunggu Persetujuan Kasat Reskrim / Super Admin
             </p>
 
             <div style={{

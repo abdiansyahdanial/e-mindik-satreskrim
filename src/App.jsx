@@ -83,19 +83,19 @@ export default function App() {
                             u.email?.includes('super') ||
                             profile.role === 'super_admin';
 
-            // Determine if approved: either profile.status is 'active' or profile.role is already set to anggota/admin/super_admin
-            const isApproved = profile.status === 'active' || 
-                               (profile.role && profile.role !== 'pending' && profile.role !== 'rejected');
-
-            const finalRole = isSuper ? 'super_admin' : (profile.role && profile.role !== 'pending' ? profile.role : 'anggota');
-            const finalStatus = isSuper || isApproved ? 'active' : (profile.status || profile.role || 'pending');
+            // Determine if approved: ONLY if status is 'active' or user is super_admin
+            const isApproved = isSuper || profile.status === 'active';
+            const finalRole = isSuper ? 'super_admin' : (profile.role || 'anggota');
+            const finalStatus = isApproved ? 'active' : (profile.status || 'pending');
 
             setCurrentUserProfile({
               ...profile,
+              id: u.id,
+              email: u.email,
               nama: profile.full_name || profile.nama || meta.nama || meta.full_name || u.email.split('@')[0],
-              pangkat: profile.pangkat || meta.pangkat || (finalRole === 'super_admin' ? 'AKP' : 'BRIPKA'),
+              pangkat: profile.pangkat || meta.pangkat || '-',
               nrp: profile.rank_nrp || profile.nrp || meta.nrp || '-',
-              jabatan: (finalRole === 'super_admin') ? 'ABDIANSYAH' : (profile.jabatan || meta.jabatan || 'Penyidik Pembantu'),
+              jabatan: isSuper ? 'Super Admin Satreskrim' : (profile.jabatan || meta.jabatan || 'Penyidik Pembantu'),
               satker: profile.satker || meta.satker || 'Satreskrim Polres Kolaka Timur',
               unit: profile.unit || meta.unit || '',
               phone: profile.phone || profile.no_hp || meta.phone || meta.no_hp || '',
@@ -111,12 +111,12 @@ export default function App() {
             const fallbackProf = {
               id: u.id,
               email: u.email,
-              full_name: isSuper ? 'AKP AHMAD FATONI, S.H.' : (meta.full_name || meta.nama || u.email.split('@')[0].toUpperCase()),
-              nama: isSuper ? 'AKP AHMAD FATONI, S.H.' : (meta.nama || meta.full_name || u.email.split('@')[0].toUpperCase()),
-              pangkat: isSuper ? 'AKP' : (meta.pangkat || 'BRIPDA'),
-              rank_nrp: isSuper ? '78120567' : (meta.nrp || '00000000'),
-              nrp: isSuper ? '78120567' : (meta.nrp || '00000000'),
-              jabatan: isSuper ? 'ABDIANSYAH' : (meta.jabatan || 'Penyidik Pembantu Satreskrim'),
+              full_name: meta.full_name || meta.nama || (isSuper ? 'Super Admin Satreskrim' : u.email.split('@')[0]),
+              nama: meta.nama || meta.full_name || (isSuper ? 'Super Admin Satreskrim' : u.email.split('@')[0]),
+              pangkat: meta.pangkat || (isSuper ? 'POLRI' : '-'),
+              rank_nrp: meta.nrp || '-',
+              nrp: meta.nrp || '-',
+              jabatan: isSuper ? 'Super Admin Satreskrim' : (meta.jabatan || 'Penyidik Pembantu Satreskrim'),
               satker: meta.satker || 'Satreskrim Polres Kolaka Timur',
               unit: meta.unit || '',
               phone: meta.phone || '',
@@ -216,12 +216,14 @@ export default function App() {
   }, [userRole, activeTab]);
 
   // Handlers
-  const handleLoginSuccess = ({ user: authUser, profile, role }) => {
+  const handleLoginSuccess = ({ user: authUser, profile, role, status }) => {
     setUser(authUser);
     setCurrentUserProfile(profile);
     setUserRole(role);
-    setActiveTab('dashboard');
-    showToast(`Selamat bertugas, ${profile.pangkat || ''} ${profile.nama || profile.full_name || ''} (${role.toUpperCase()})`);
+    if (status === 'active' || role === 'super_admin') {
+      setActiveTab('dashboard');
+      showToast(`Selamat bertugas, ${profile.pangkat || ''} ${profile.nama || profile.full_name || ''} (${role.toUpperCase()})`);
+    }
   };
 
   const handleLogout = async () => {
@@ -543,11 +545,11 @@ export default function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Pending Approval Route Guard (Locks total access ONLY for accounts that are actually pending in profiles table)
+  // Pending Approval Route Guard (Locks total access for accounts that are not active/approved)
   const isPendingApproval = 
     userRole !== 'super_admin' && 
     (currentUserProfile?.status === 'pending' || 
-     currentUserProfile?.role === 'pending');
+     currentUserProfile?.status !== 'active');
 
   if (isPendingApproval) {
     return (
