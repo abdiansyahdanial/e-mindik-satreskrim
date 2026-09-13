@@ -43,6 +43,11 @@ import {
   terbilangTahun,
   getNamaHariIndonesia
 } from '../services/mindikGenerator';
+import { 
+  MINDIK_PRESETS, 
+  getMindikPreset, 
+  getPresetTitle 
+} from '../constants/mindikPresets';
 
 export default function DocGeneratorView({ 
   cases = [], 
@@ -352,23 +357,27 @@ export default function DocGeneratorView({
       }
     } else {
       // DOKUMEN LAIN (SPDP, SPRINT, BA, dll.):
-      // Ambil format/nomor default dari master template aktif (misal: template.default_no atau format template studio)
-      // atau reset ke default nomor dokumen kasus tersebut, JANGAN biarkan nomor SP TAP terbawa!
+      // Ambil format/nomor default dari master template aktif atau preset Mindik
       const templateDefaultNo = selectedTemplate.default_number_format || selectedTemplate.nomor_surat_format || '';
+      const presetFields = getMindikPreset(code);
+      const presetNomorSurat = presetFields?.find(f => (f.tag || '').toUpperCase() === 'NOMOR_SURAT')?.default;
+      const presetTanggalSurat = presetFields?.find(f => (f.tag || '').toUpperCase() === 'TANGGAL_SURAT')?.default;
       
       if (templateDefaultNo) {
         setNomorSurat(templateDefaultNo);
-      } else if (code === 'SPRIN_GAS_SIDIK' || code === 'SPRIN_TUGAS_PENYIDIKAN' || code.includes('GAS_SIDIK') || (selectedTemplate.title || '').toUpperCase().includes('TUGAS PENYIDIKAN')) {
-        setNomorSurat('SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra');
+      } else if (presetNomorSurat) {
+        setNomorSurat(presetNomorSurat);
+      } else if (code === 'SPRIN_GAS_SIDIK' || code === 'SPGAS_SIDIK' || code === 'SPRIN_TUGAS_PENYIDIKAN' || code.includes('GAS_SIDIK') || (selectedTemplate.title || '').toUpperCase().includes('TUGAS PENYIDIKAN')) {
+        setNomorSurat('SP.Gas.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra');
       } else if (code.includes('SPDP')) {
         // Gunakan format SPDP perkara jika ada, atau kembalikan ke default input penomoran SPDP
-        setNomorSurat(activeCase?.no_spdp || 'B/01/IX/2026/Reskrim');
+        setNomorSurat(activeCase?.no_spdp || 'B/SPDP/….../I/RES.0.0./2026/Satreskrim');
       } else {
         setNomorSurat('');
       }
       
-      // Kembalikan tanggal surat ke tanggal hari ini atau tanggal default dokumen
-      setTanggalSurat(new Date().toISOString().split('T')[0]);
+      // Kembalikan tanggal surat ke tanggal preset atau hari ini
+      setTanggalSurat(presetTanggalSurat || new Date().toISOString().split('T')[0]);
     }
   }, [selectedTemplate?.id, selectedTemplate?.code]); // Trigger saat ID atau kode template berganti
 
@@ -537,9 +546,19 @@ export default function DocGeneratorView({
       { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false }
     ];
 
+    const presetForTemplate = getMindikPreset(currentTemplate?.code);
+
     let fields = Array.isArray(currentTemplate.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
       ? [...currentTemplate.dynamic_fields] 
-      : defaultDocFields;
+      : (presetForTemplate && presetForTemplate.length > 0
+          ? presetForTemplate.map(p => ({
+              field_key: p.tag,
+              field_label: p.label,
+              field_type: p.type,
+              default_value: p.default,
+              is_required: p.required
+            }))
+          : defaultDocFields);
 
     // Hapus referensi ATASAN_JABATAN karena jabatan Kasat tercetak permanen di template
     fields = fields.filter(f => (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase() !== 'ATASAN_JABATAN');
@@ -565,7 +584,12 @@ export default function DocGeneratorView({
       if (!cleanKey) return;
 
       const upperKey = cleanKey.toUpperCase();
-      const defVal = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
+      const presetFieldMatch = presetForTemplate?.find(p => (p.tag || '').toUpperCase() === upperKey);
+      const defVal = (field.default_value !== undefined && field.default_value !== '')
+        ? field.default_value
+        : (presetFieldMatch?.default !== undefined
+            ? presetFieldMatch.default
+            : (field.placeholder || ''));
 
       // Tentukan nilai default sesuai kamus standar (tanpa string fallback bentrok)
       if (upperKey === 'TANGGAL_SURAT' || upperKey === 'DOC_DATE') {
@@ -585,12 +609,14 @@ export default function DocGeneratorView({
           initial[cleanKey] = currentCase[activeParentConfig.targetNoCol];
         } else if (templateDefaultNo) {
           initial[cleanKey] = templateDefaultNo;
-        } else if (isSprinGasSidik || tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || tplCode.includes('GAS_SIDIK')) {
-          initial[cleanKey] = 'SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra';
+        } else if (defVal) {
+          initial[cleanKey] = defVal;
+        } else if (isSprinGasSidik || tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPGAS_SIDIK' || tplCode.includes('GAS_SIDIK')) {
+          initial[cleanKey] = 'SP.Gas.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra';
         } else if (tplCode.includes('SPDP')) {
-          initial[cleanKey] = currentCase?.no_spdp || 'B/01/IX/2026/Reskrim';
+          initial[cleanKey] = currentCase?.no_spdp || 'B/SPDP/….../I/RES.0.0./2026/Satreskrim';
         } else {
-          initial[cleanKey] = defVal || '';
+          initial[cleanKey] = '';
         }
       } else if (upperKey === 'TGL_SPRIN_SIDIK' || upperKey === 'TANGGAL_SPRIN_SIDIK') {
         initial[cleanKey] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSprinSidik ? todayStr : '');
@@ -1810,22 +1836,31 @@ export default function DocGeneratorView({
               )}
 
               {(() => {
+                const presetForDoc = getMindikPreset(currentTemplate?.code);
                 let dynamicList = Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
                   ? [...currentTemplate.dynamic_fields] 
-                  : [
-                    { 
-                      field_key: 'NOMOR_SURAT', 
-                      field_label: 'Nomor Surat', 
-                      field_type: 'text', 
-                      default_value: isSprinGasSidik ? 'SP.Gas.Sidik/___/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra' : '', 
-                      is_required: true 
-                    },
-                    { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
-                    { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
-                    { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
-                    { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
-                    { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
-                  ];
+                  : (presetForDoc && presetForDoc.length > 0
+                      ? presetForDoc.map(p => ({
+                          field_key: p.tag,
+                          field_label: p.label,
+                          field_type: p.type,
+                          default_value: p.default,
+                          is_required: p.required
+                        }))
+                      : [
+                        { 
+                          field_key: 'NOMOR_SURAT', 
+                          field_label: 'Nomor Surat', 
+                          field_type: 'text', 
+                          default_value: isSprinGasSidik ? 'SP.Gas.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra' : '', 
+                          is_required: true 
+                        },
+                        { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: '', is_required: true },
+                        { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
+                        { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
+                        { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
+                        { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
+                      ]);
 
                 // Universal Auto-Sync: Sembunyikan input manual rujukan dokumen induk pada dokumen induk itu sendiri
                 if (isCurrentParentDoc && activeParentConfig) {
@@ -1925,10 +1960,11 @@ export default function DocGeneratorView({
                       </select>
                     ) : fieldType === 'date' ? (
                       <input
-                        type="date"
+                        type={(/^\d{4}-\d{2}-\d{2}$/.test(currentVal) || !currentVal) ? "date" : "text"}
                         value={currentVal}
                         onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                         className="form-input mono"
+                        placeholder={placeholder || '... Januari 2026'}
                       />
                     ) : fieldType === 'textarea' ? (
                       <textarea

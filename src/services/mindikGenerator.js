@@ -1381,6 +1381,93 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.JAM_HAN = jamHan;
   finalPayload.jam_han = jamHan;
 
+  // D. TAG RANTAI BERKAS PERKARA (SAMPUL BP, PENGANTAR TAHAP 1, PENGANTAR KEMBALI P-19, TAHAP 2)
+  const isSampulBp = tplCode === 'SAMPUL_BERKAS_PERKARA' || tplCode === 'SAMPUL_BP' || tplName.includes('sampul berkas perkara');
+  const isPengantarTahap1 = tplCode === 'PENGANTAR_BP_TAHAP1' || tplCode === 'PENGANTAR_TAHAP_1' || tplCode === 'PENGANTAR_TAHAP1';
+  const isPengantarP19 = tplCode === 'PENGANTAR_BP_KEMBALI_P19' || tplCode === 'PENGANTAR_P19' || tplCode === 'PENGANTAR_KEMBALI_P19';
+  const isPengantarTahap2 = tplCode === 'PENGANTAR_TAHAP2' || tplCode === 'PENGANTAR_TAHAP_2';
+
+  // 1. Sampul Berkas Perkara -> alias {NOMOR_BERKAS_PERKARA}
+  const nomorBerkasPerkara = (isSampulBp && effectiveNomorSurat)
+    ? effectiveNomorSurat
+    : (cleanInput.NOMOR_BERKAS_PERKARA || cleanInput.nomor_berkas_perkara || cleanInput.NO_BERKAS_PERKARA || cleanInput.no_berkas_perkara || activeCase?.nomor_berkas_perkara || activeCase?.no_berkas_perkara || activeCase?.no_bp || '');
+
+  // 2. Pengantar BP Tahap I -> alias {NOMOR_PENGANTAR_TAHAP_1}
+  const nomorPengantarTahap1 = (isPengantarTahap1 && effectiveNomorSurat)
+    ? effectiveNomorSurat
+    : (cleanInput.NOMOR_PENGANTAR_TAHAP_1 || cleanInput.nomor_pengantar_tahap_1 || cleanInput.NOMOR_PENGANTAR_TAHAP1 || cleanInput.nomor_pengantar_tahap1 || activeCase?.nomor_pengantar_tahap_1 || activeCase?.no_pengantar_tahap_1 || '');
+
+  // 3. Pengantar BP Kembali P-19 -> alias {NOMOR_PENGANTAR_KEMBALI_P19}
+  const nomorPengantarKembaliP19 = (isPengantarP19 && effectiveNomorSurat)
+    ? effectiveNomorSurat
+    : (cleanInput.NOMOR_PENGANTAR_KEMBALI_P19 || cleanInput.nomor_pengantar_kembali_p19 || cleanInput.NOMOR_PENGANTAR_P19 || cleanInput.nomor_pengantar_p19 || activeCase?.nomor_pengantar_kembali_p19 || activeCase?.no_pengantar_kembali_p19 || '');
+
+  // 4. Pengantar Tahap II -> alias {NOMOR_PENGANTAR_TAHAP_2}
+  const nomorPengantarTahap2 = (isPengantarTahap2 && effectiveNomorSurat)
+    ? effectiveNomorSurat
+    : (cleanInput.NOMOR_PENGANTAR_TAHAP_2 || cleanInput.nomor_pengantar_tahap_2 || cleanInput.NOMOR_PENGANTAR_TAHAP2 || cleanInput.nomor_pengantar_tahap2 || activeCase?.nomor_pengantar_tahap_2 || activeCase?.no_pengantar_tahap_2 || '');
+
+  // Registrasi Tag Rantai Berkas Perkara ke Payload
+  finalPayload.NOMOR_BERKAS_PERKARA = nomorBerkasPerkara;
+  finalPayload.nomor_berkas_perkara = nomorBerkasPerkara;
+  finalPayload.NO_BERKAS_PERKARA = nomorBerkasPerkara;
+  finalPayload.no_berkas_perkara = nomorBerkasPerkara;
+
+  finalPayload.NOMOR_PENGANTAR_TAHAP_1 = nomorPengantarTahap1;
+  finalPayload.nomor_pengantar_tahap_1 = nomorPengantarTahap1;
+  finalPayload.NOMOR_PENGANTAR_TAHAP1 = nomorPengantarTahap1;
+  finalPayload.nomor_pengantar_tahap1 = nomorPengantarTahap1;
+
+  finalPayload.NOMOR_PENGANTAR_KEMBALI_P19 = nomorPengantarKembaliP19;
+  finalPayload.nomor_pengantar_kembali_p19 = nomorPengantarKembaliP19;
+  finalPayload.NOMOR_PENGANTAR_P19 = nomorPengantarKembaliP19;
+  finalPayload.nomor_pengantar_p19 = nomorPengantarKembaliP19;
+
+  finalPayload.NOMOR_PENGANTAR_TAHAP_2 = nomorPengantarTahap2;
+  finalPayload.nomor_pengantar_tahap_2 = nomorPengantarTahap2;
+  finalPayload.NOMOR_PENGANTAR_TAHAP2 = nomorPengantarTahap2;
+  finalPayload.nomor_pengantar_tahap2 = nomorPengantarTahap2;
+
+  // Uraian Perkara Sampul BP
+  if (!finalPayload.URAIAN_PERKARA) {
+    finalPayload.URAIAN_PERKARA = cleanInput.URAIAN_PERKARA || activeCase?.uraian_singkat || activeCase?.uraian_kejadian || 'Telah terjadi dugaan Tindak Pidana …........';
+    finalPayload.uraian_perkara = finalPayload.URAIAN_PERKARA;
+  }
+
+  // E. OTOMATISASI TERBILANG TAHUN UNTUK SEMUA TAG TAHUN ({TERBILANG_TAHUN_*})
+  // Mempertahankan helper terbilangAngka(tahun). Misal tahun diisi 2026 -> "dua ribu dua puluh enam"
+  Object.keys(finalPayload).forEach((key) => {
+    const upperKey = key.toUpperCase();
+    if (upperKey === 'TAHUN' || upperKey.startsWith('TAHUN_') || upperKey.endsWith('_TAHUN')) {
+      const yearVal = finalPayload[key];
+      if (yearVal) {
+        const terbilangStr = terbilangTahun(yearVal);
+        if (terbilangStr) {
+          let terbilangKey = '';
+          if (upperKey === 'TAHUN') {
+            terbilangKey = 'TERBILANG_TAHUN';
+          } else if (upperKey.startsWith('TAHUN_')) {
+            terbilangKey = `TERBILANG_${upperKey}`;
+          } else if (upperKey.endsWith('_TAHUN')) {
+            terbilangKey = `TERBILANG_${upperKey}`;
+          }
+
+          if (terbilangKey && !finalPayload[terbilangKey]) {
+            finalPayload[terbilangKey] = terbilangStr;
+            finalPayload[terbilangKey.toLowerCase()] = terbilangStr;
+          }
+        }
+      }
+    }
+  });
+
+  // Default umum TERBILANG_TAHUN jika belum diset
+  if (!finalPayload.TERBILANG_TAHUN) {
+    const yr = finalPayload.TAHUN_SURAT || finalPayload.TAHUN_BA || (tanggalSurat ? parseDateParts(tanggalSurat).tahun : '') || '2026';
+    finalPayload.TERBILANG_TAHUN = terbilangTahun(yr) || 'dua ribu dua puluh enam';
+    finalPayload.terbilang_tahun = finalPayload.TERBILANG_TAHUN;
+  }
+
   // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined' di dokumen Word
   Object.keys(finalPayload).forEach((k) => {
     if (finalPayload[k] === null || finalPayload[k] === undefined || finalPayload[k] === 'null' || finalPayload[k] === 'undefined') {

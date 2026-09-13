@@ -25,6 +25,14 @@ import {
   extractStoragePath,
   removeStorageFileSafely
 } from '../utils/templateHelper';
+import { 
+  MINDIK_PRESETS, 
+  MINDIK_PRESET_TITLES, 
+  getMindikPreset, 
+  getPresetTitle, 
+  convertPresetToDynamicFields, 
+  normalizePresetCode 
+} from '../constants/mindikPresets';
 
 export default function AdminTemplateStudio({ 
   onTemplateSaved, 
@@ -159,8 +167,47 @@ export default function AdminTemplateStudio({
     setDynamicFields((prev) => prev.filter(f => f.id !== id));
   };
 
+  // Otomatisasi Dynamic Fields saat Kode Template diketik atau dipilih
+  const handleCodeChange = (rawCode) => {
+    const cleanCode = (rawCode || '').replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase();
+    setCode(cleanCode);
+
+    // Deteksi apakah kode cocok dengan salah satu master preset Mindik
+    const presetItems = getMindikPreset(cleanCode);
+    if (presetItems && presetItems.length > 0) {
+      const converted = convertPresetToDynamicFields(presetItems);
+      setDynamicFields(converted);
+
+      const autoTitle = getPresetTitle(cleanCode);
+      if (autoTitle && (!title.trim() || title === 'Surat Perintah Penyidikan')) {
+        setTitle(autoTitle);
+      }
+
+      setStatusNotice({
+        type: 'info',
+        message: `Master Preset '${cleanCode}' aktif! ${presetItems.length} dynamic fields & nilai default berhasil dimuat otomatis.`
+      });
+    }
+  };
+
   // Preset loaders for convenience
   const loadPreset = (presetCode) => {
+    const cleanCode = normalizePresetCode(presetCode);
+    const presetItems = getMindikPreset(cleanCode);
+    if (presetItems && presetItems.length > 0) {
+      setCode(cleanCode);
+      const autoTitle = getPresetTitle(cleanCode) || cleanCode;
+      setTitle(autoTitle);
+      const converted = convertPresetToDynamicFields(presetItems);
+      setDynamicFields(converted);
+
+      setStatusNotice({
+        type: 'info',
+        message: `Form diisi dengan preset standar ${cleanCode} (${presetItems.length} fields). Silakan pilih file .docx Anda.`
+      });
+      return;
+    }
+
     const found = mockTemplates.find(t => t.code === presetCode);
     if (found) {
       setTitle(found.title);
@@ -586,8 +633,28 @@ export default function AdminTemplateStudio({
                 <span>Batal Edit</span>
               </button>
             ) : (
-              /* Quick Presets */
-              <div style={{ display: 'flex', gap: '6px' }}>
+              /* Quick Presets & Master Mindik Selector */
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      loadPreset(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                  className="form-select"
+                  style={{ fontSize: '11px', padding: '4px 8px', maxWidth: '200px', borderColor: 'var(--accent-cyan)' }}
+                  title="Pilih salah satu dari 53 Master Preset Mindik Resmi Satreskrim"
+                >
+                  <option value="" disabled>⚡ Master Preset Mindik (53 Dokumen)...</option>
+                  {Object.keys(MINDIK_PRESETS).map((pKey) => (
+                    <option key={pKey} value={pKey}>
+                      {pKey} - {MINDIK_PRESET_TITLES[pKey] || pKey}
+                    </option>
+                  ))}
+                </select>
+
                 <button 
                   type="button" 
                   onClick={() => loadPreset('SPRIN_SIDIK')}
@@ -595,25 +662,16 @@ export default function AdminTemplateStudio({
                   style={{ fontSize: '11px', padding: '3px 8px' }}
                   title="Isi form dengan preset SPRIN SIDIK"
                 >
-                  Preset Sidik
+                  Sidik
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => loadPreset('SPRIN_GAS_SIDIK')}
+                  onClick={() => loadPreset('SPGAS_SIDIK')}
                   className="btn btn-secondary btn-sm" 
                   style={{ fontSize: '11px', padding: '3px 8px' }}
-                  title="Isi form dengan preset SPRIN GAS SIDIK"
+                  title="Isi form dengan preset SPGAS SIDIK"
                 >
-                  Preset Gas Sidik
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => loadPreset('SPDP')}
-                  className="btn btn-secondary btn-sm" 
-                  style={{ fontSize: '11px', padding: '3px 8px' }}
-                  title="Isi form dengan preset SPDP"
-                >
-                  Preset SPDP
+                  Gas Sidik
                 </button>
               </div>
             )}
@@ -638,17 +696,32 @@ export default function AdminTemplateStudio({
             {/* Code & Category */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">
-                  Kode Template (Unik) <span style={{ color: 'var(--accent-red)' }}>*</span>
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="form-label" style={{ marginBottom: '2px' }}>
+                    Kode Template (Unik) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  </label>
+                  {getMindikPreset(code) && (
+                    <span className="badge badge-cyan" style={{ fontSize: '9px', padding: '1px 5px' }}>
+                      Preset Match
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
+                  list="mindik-presets-datalist"
                   value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase())}
+                  onChange={(e) => handleCodeChange(e.target.value)}
                   placeholder="Contoh: SPRIN_SIDIK"
                   className="form-input mono"
                   required
                 />
+                <datalist id="mindik-presets-datalist">
+                  {Object.keys(MINDIK_PRESETS).map((pKey) => (
+                    <option key={pKey} value={pKey}>
+                      {MINDIK_PRESET_TITLES[pKey] || pKey}
+                    </option>
+                  ))}
+                </datalist>
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -744,10 +817,15 @@ export default function AdminTemplateStudio({
 
             {/* Dynamic Fields Builder */}
             <div style={{ marginTop: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Layers size={14} color="var(--accent-cyan)" />
-                  <span>Dynamic Fields ({dynamicFields.length})</span>
+                  <span>DYNAMIC FIELDS ({dynamicFields.length})</span>
+                  {getMindikPreset(code) && (
+                    <span className="badge badge-green" style={{ fontSize: '9px', padding: '1px 6px' }}>
+                      Auto-Preset Loaded
+                    </span>
+                  )}
                 </label>
                 <button
                   type="button"
@@ -760,7 +838,26 @@ export default function AdminTemplateStudio({
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '340px', overflowY: 'auto', paddingRight: '4px' }}>
+              {/* Header Kolom Form Dinamis */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '4px 10px',
+                fontSize: '10px',
+                fontWeight: 600,
+                color: '#94A3B8',
+                background: 'rgba(15, 23, 42, 0.5)',
+                borderRadius: '4px 4px 0 0',
+                border: '1px solid var(--border-glass)',
+                borderBottom: 'none'
+              }}>
+                <span style={{ flex: '1 1 130px' }}>1. TAG WORD ({'{TAG}'})</span>
+                <span style={{ flex: '1 1 140px' }}>2. LABEL INPUT</span>
+                <span style={{ width: '125px' }}>3. TIPE INPUT</span>
+                <span style={{ width: '30px', textAlign: 'center' }}>AKSI</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '340px', overflowY: 'auto', paddingRight: '4px' }}>
                 {dynamicFields.map((field) => (
                   <div 
                     key={field.id}
@@ -774,40 +871,41 @@ export default function AdminTemplateStudio({
                       gap: '8px',
                     }}
                   >
-                    {/* Baris Atas: Key Placeholder (Kiri), Label Field (Tengah), Tipe Data (Kanan), Hapus */}
+                    {/* Baris Atas: Tag Word (Kiri), Label Input (Tengah), Dropdown Tipe (Kanan), Hapus */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {/* Key Placeholder */}
+                      {/* Tag Word */}
                       <input
                         type="text"
                         value={field.field_key || ''}
                         onChange={(e) => handleKeyChange(field.id, e.target.value)}
-                        placeholder="KEY (e.g. NOMOR_SURAT)"
+                        placeholder="TAG (e.g. NOMOR_SURAT)"
                         className="form-input mono"
                         style={{ padding: '6px 8px', fontSize: '11.5px', flex: '1 1 130px', fontWeight: 600, color: 'var(--accent-cyan)' }}
-                        title="Key placeholder kurung kurawal pada template Word (otomatis uppercase tanpa kurung)"
+                        title="Tag Word pada template Word (otomatis uppercase tanpa kurung kurawal)"
                       />
 
-                      {/* Label Field */}
+                      {/* Label Input */}
                       <input
                         type="text"
                         value={field.field_label || ''}
                         onChange={(e) => updateDynamicField(field.id, 'field_label', e.target.value)}
-                        placeholder="Label Field (misal: Nomor Surat)"
+                        placeholder="Label Input (misal: Nomor Surat)"
                         className="form-input"
                         style={{ padding: '6px 8px', fontSize: '12px', flex: '1 1 140px' }}
                       />
 
-                      {/* Tipe Data */}
+                      {/* Dropdown Tipe (Teks/Tanggal) */}
                       <select
                         value={field.field_type || 'text'}
                         onChange={(e) => updateDynamicField(field.id, 'field_type', e.target.value)}
                         className="form-select"
                         style={{ padding: '6px 8px', fontSize: '11.5px', width: '125px' }}
+                        title="Pilih tipe input form"
                       >
-                        <option value="text">Teks</option>
-                        <option value="date">Tanggal</option>
-                        <option value="select">Pilihan (Dropdown)</option>
+                        <option value="text">Teks (text)</option>
+                        <option value="date">Tanggal (date)</option>
                         <option value="textarea">Textarea</option>
+                        <option value="select">Dropdown</option>
                       </select>
 
                       {/* Tombol Hapus */}
@@ -830,16 +928,19 @@ export default function AdminTemplateStudio({
                       </button>
                     </div>
 
-                    {/* Baris Bawah: Placeholder / Default (Kiri) & Checkbox Wajib (Kanan) */}
+                    {/* Baris Bawah: Input Contoh / Default (Kiri) & Checkbox Wajib Diisi (Kanan) */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                      <input
-                        type="text"
-                        value={field.default_value || ''}
-                        onChange={(e) => updateDynamicField(field.id, 'default_value', e.target.value)}
-                        placeholder="Contoh isi / default (misal: B/01/I/2026/Reskrim)..."
-                        className="form-input"
-                        style={{ padding: '4px 8px', fontSize: '11px', flex: 1 }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                        <span style={{ fontSize: '10.5px', color: '#94A3B8', whiteSpace: 'nowrap' }}>Contoh/Default:</span>
+                        <input
+                          type="text"
+                          value={field.default_value || ''}
+                          onChange={(e) => updateDynamicField(field.id, 'default_value', e.target.value)}
+                          placeholder="Contoh isi / default (misal: SP.Sidik/..../I/RES.0.0/2026)..."
+                          className="form-input"
+                          style={{ padding: '4px 8px', fontSize: '11px', flex: 1 }}
+                        />
+                      </div>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
                         <input
                           type="checkbox"
