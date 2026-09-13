@@ -3,7 +3,6 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import handler from './api/convert-docx-to-pdf.js'
-import emailHandler from './api/send-email.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -57,7 +56,17 @@ export default defineConfig({
       name: 'api-dev-middleware',
       configureServer(server) {
         server.middlewares.use('/api/convert-docx-to-pdf', createMiddleware(handler));
-        server.middlewares.use('/api/send-email', createMiddleware(emailHandler));
+        server.middlewares.use('/api/send-email', async (req, res, next) => {
+          try {
+            const { default: emailHandler } = await import('./api/send-email.js');
+            return createMiddleware(emailHandler)(req, res, next);
+          } catch (err) {
+            console.error('Local dev send-email middleware error:', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
       }
     }
   ],
