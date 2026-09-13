@@ -190,7 +190,7 @@ export default function PersonnelView({
                   fontWeight: 700,
                   fontSize: '13px',
                 }}>
-                  {p.pangkat}
+                  {p.pangkat || p.rank || '-'}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -221,7 +221,7 @@ export default function PersonnelView({
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Nomor Registrasi (NRP):</span>
-                  <span className="mono" style={{ fontWeight: 600 }}>{p.nrp}</span>
+                  <span className="mono" style={{ fontWeight: 600 }}>{p.nrp || p.rank_nrp || '-'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Kontak Telepon:</span>
@@ -492,10 +492,10 @@ export default function PersonnelView({
                 borderRadius: 'var(--radius-md)',
               }}>
                 <div style={{ fontWeight: 700, color: '#FFFFFF' }}>
-                  {personnelToDelete.pangkat} {personnelToDelete.nama}
+                  {personnelToDelete.pangkat || personnelToDelete.rank || ''} {personnelToDelete.nama}
                 </div>
                 <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
-                  NRP: {personnelToDelete.nrp} • {personnelToDelete.jabatan}
+                  NRP: {personnelToDelete.nrp || personnelToDelete.rank_nrp || '-'} • {personnelToDelete.jabatan}
                 </div>
               </div>
             </div>

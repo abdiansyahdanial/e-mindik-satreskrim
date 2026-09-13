@@ -4,18 +4,43 @@
 -- https://supabase.com/dashboard/project/ncsjgjftybxpxuixgumm/sql
 -- ==============================================================================
 
--- 1. TABEL PROFILES (PENGGUNA & PERAN: super_admin vs admin)
+-- 1. TABEL PROFILES (PENGGUNA & PERAN: super_admin vs admin vs anggota)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT,
     nama TEXT NOT NULL DEFAULT 'Penyidik Satreskrim',
-    pangkat TEXT DEFAULT 'BRIPKA',
-    nrp TEXT DEFAULT '00000000',
+    full_name TEXT,
+    pangkat TEXT,
+    rank TEXT,
+    nrp TEXT,
+    rank_nrp TEXT,
     jabatan TEXT DEFAULT 'Penyidik Pembantu',
-    role TEXT NOT NULL CHECK (role IN ('super_admin', 'admin')) DEFAULT 'admin',
+    satker TEXT DEFAULT 'Satreskrim Polres Kolaka Timur',
+    unit TEXT,
+    phone TEXT,
+    role TEXT NOT NULL DEFAULT 'anggota',
+    status TEXT NOT NULL DEFAULT 'pending',
     avatar_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Migrasi & Pelebaran Kolom Tabel Profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS rank TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS rank_nrp TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS satker TEXT DEFAULT 'Satreskrim Polres Kolaka Timur';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS unit TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+
+-- Lepaskan check constraint lama dan pasang check constraint luas untuk role
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check 
+  CHECK (role IN ('super_admin', 'admin', 'anggota', 'penyidik', 'rejected', 'pending'));
+
+-- Hapus static default BRIPKA & 00000000 agar tidak menimpa data pendaftar baru
+ALTER TABLE public.profiles ALTER COLUMN pangkat DROP DEFAULT;
+ALTER TABLE public.profiles ALTER COLUMN nrp DROP DEFAULT;
 
 -- Aktifkan RLS untuk profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;

@@ -23,8 +23,8 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
   const meta = user?.user_metadata || {};
 
   const nama = profile.nama || profile.full_name || meta.full_name || meta.nama || user?.email?.split('@')[0] || 'Personel Penyidik';
-  const pangkat = profile.pangkat || meta.pangkat || '-';
-  const nrp = profile.rank_nrp || profile.nrp || meta.nrp || '-';
+  const pangkat = profile.pangkat || profile.rank || meta.pangkat || meta.rank || '-';
+  const nrp = profile.nrp || profile.rank_nrp || meta.nrp || meta.rank_nrp || '-';
   const jabatan = profile.jabatan || meta.jabatan || 'Penyidik Pembantu';
   const satker = profile.satker || meta.satker || 'Satreskrim Polres Kolaka Timur';
   const unit = profile.unit || meta.unit || '-';
@@ -50,18 +50,20 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
           if (updated && updated.status === 'active') {
             setCheckMsg({ 
               type: 'success', 
-              text: 'Selamat! Akun Anda telah diverifikasi oleh Super Admin. Mengalihkan ke halaman login...' 
+              text: 'Selamat! Akun Anda telah diverifikasi oleh Admin, silahkan login kembali.' 
             });
-            try {
-              await supabase.auth.signOut();
-            } catch {}
-            setTimeout(() => {
+            setTimeout(async () => {
+              try {
+                await supabase.auth.signOut();
+              } catch (soErr) {
+                console.warn('Signout notice:', soErr);
+              }
               if (onLogout) {
                 onLogout();
               } else {
                 window.location.replace('/');
               }
-            }, 1500);
+            }, 2500);
           }
         }
       )
@@ -92,26 +94,25 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
       if (isApproved) {
         setCheckMsg({ 
           type: 'success', 
-          text: 'Selamat! Akun Anda telah diverifikasi oleh Super Admin. Mengalihkan ke halaman login...' 
+          text: 'Selamat! Akun Anda telah diverifikasi oleh Admin, silahkan login kembali.' 
         });
 
-        try {
-          await supabase.auth.signOut();
-        } catch (soErr) {
-          console.warn('Signout notice:', soErr);
-        }
-
-        setTimeout(() => {
+        setTimeout(async () => {
+          try {
+            await supabase.auth.signOut();
+          } catch (soErr) {
+            console.warn('Signout notice:', soErr);
+          }
           if (onLogout) {
             onLogout();
           } else {
             window.location.replace('/');
           }
-        }, 1500);
+        }, 2500);
       } else if (freshProf?.status === 'rejected' || freshProf?.role === 'rejected') {
         setCheckMsg({ type: 'error', text: 'Pengajuan akun Anda ditolak oleh Super Admin. Silakan hubungi Kasat Reskrim.' });
       } else {
-        setCheckMsg({ type: 'info', text: 'Status akun: Menunggu Persetujuan Kasat Reskrim / Super Admin. Notifikasi persetujuan akan dikirimkan ke email Anda.' });
+        setCheckMsg({ type: 'info', text: 'Akun Anda masih dalam proses antrean verifikasi oleh Administrator Satreskrim.' });
       }
     } catch (err) {
       console.warn('Status check warning:', err);

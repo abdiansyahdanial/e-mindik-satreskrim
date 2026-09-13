@@ -72,35 +72,94 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
     }
   }, [isOpen, profiles.length]);
 
+const PANGKAT_OPTIONS = [
+  'BRIPDA', 
+  'BRIPTU', 
+  'BRIGADIR', 
+  'BRIPKA', 
+  'AIPDA', 
+  'AIPTU', 
+  'IPDA', 
+  'IPTU', 
+  'AKP', 
+  'KOMPOL', 
+  'AKBP'
+];
+
+const resolvePangkat = (prof) => {
+  if (prof?.pangkat && prof.pangkat.trim() && prof.pangkat !== '-') return prof.pangkat.trim();
+  if (prof?.rank && prof.rank.trim() && prof.rank !== '-') return prof.rank.trim();
+  
+  const textToScan = `${prof?.full_name || ''} ${prof?.nama || ''}`.toUpperCase();
+  for (const pkt of PANGKAT_OPTIONS) {
+    if (textToScan.startsWith(pkt) || textToScan.includes(` ${pkt} `) || textToScan.includes(`${pkt} `)) {
+      return pkt;
+    }
+  }
+  return '';
+};
+
+const resolveNrp = (prof) => {
+  if (prof?.nrp && prof.nrp.trim() && prof.nrp !== '-') return prof.nrp.trim();
+  if (prof?.rank_nrp && prof.rank_nrp.trim() && prof.rank_nrp !== '-') return prof.rank_nrp.trim();
+  return '';
+};
+
   // 1. Setujui Akun Penyidik & Sinkronkan Otomatis ke Tabel Personel (investigators)
   const handleApproveUser = async (profile) => {
     setSavingId(profile.id);
     setMessage(null);
     try {
-      // 1. Update status & role di tabel public.profiles
+      const resolvedPangkat = resolvePangkat(profile);
+      const resolvedNrp = resolveNrp(profile);
+
+      // 1. Update status & role di tabel public.profiles (dan sinkronkan pangkat & nrp dinamis)
+      const updatePayload = { 
+        role: 'anggota', 
+        status: 'active' 
+      };
+      if (resolvedPangkat) {
+        updatePayload.pangkat = resolvedPangkat;
+        updatePayload.rank = resolvedPangkat;
+      }
+      if (resolvedNrp) {
+        updatePayload.nrp = resolvedNrp;
+        updatePayload.rank_nrp = resolvedNrp;
+      }
+
       const { error: err1 } = await supabase
         .from('profiles')
-        .update({ role: 'anggota', status: 'active' })
+        .update(updatePayload)
         .eq('id', profile.id);
 
       if (err1) {
-        // Fallback jika kolom status belum ada di profiles
+        // Fallback jika kolom status/rank/rank_nrp belum ada di profiles
         const { error: err2 } = await supabase
           .from('profiles')
-          .update({ role: 'anggota' })
+          .update({ 
+            role: 'anggota',
+            ...(resolvedPangkat ? { pangkat: resolvedPangkat } : {}),
+            ...(resolvedNrp ? { nrp: resolvedNrp } : {})
+          })
           .eq('id', profile.id);
         if (err2) throw err2;
       }
 
       // Update in-memory profiles state
-      setProfiles(prev => prev.map(p => p.id === profile.id ? { ...p, role: 'anggota', status: 'active' } : p));
+      setProfiles(prev => prev.map(p => p.id === profile.id ? { 
+        ...p, 
+        role: 'anggota', 
+        status: 'active',
+        pangkat: resolvedPangkat || p.pangkat,
+        nrp: resolvedNrp || p.nrp
+      } : p));
 
-      // 2. Data Personel Lengkap untuk Sinkronisasi & Email
+      // 2. Data Personel Lengkap untuk Sinkronisasi & Email (Dinamis tanpa fallback statis BRIPKA/-)
       const officerData = {
         id: profile.id,
-        nama: profile.full_name || profile.nama || 'Penyidik Satreskrim',
-        pangkat: profile.pangkat || 'BRIPKA',
-        nrp: profile.rank_nrp || profile.nrp || '-',
+        nama: profile.full_name || (resolvedPangkat ? `${resolvedPangkat} ${profile.nama}` : profile.nama) || 'Penyidik Satreskrim',
+        pangkat: resolvedPangkat || profile.pangkat || '',
+        nrp: resolvedNrp || profile.nrp || '',
         jabatan: profile.jabatan || 'Penyidik Pembantu',
         satker: profile.satker || 'Satreskrim Polres Kolaka Timur',
         unit: profile.unit || '',
@@ -159,7 +218,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
 
       setMessage({ 
         type: 'success', 
-        text: `Akun ${profile.full_name || 'Penyidik'} berhasil disetujui & disinkronkan ke daftar personel! Email aktivasi telah dikirimkan.` 
+        text: `Akun ${officerData.nama} berhasil disetujui & disinkronkan ke daftar personel! Email aktivasi telah dikirimkan.` 
       });
     } catch (err) {
       console.error('Error approving user:', err);
@@ -481,7 +540,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                     }}>
                       <div>
                         <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>PANGKAT & NRP:</span>
-                        <strong style={{ color: '#FFF' }}>{p.pangkat || '-'}</strong> • <span className="mono" style={{ color: 'var(--accent-cyan)' }}>{p.rank_nrp || p.nrp || '-'}</span>
+                        <strong style={{ color: '#FFF' }}>{resolvePangkat(p) || p.pangkat || '-'}</strong> • <span className="mono" style={{ color: 'var(--accent-cyan)' }}>{resolveNrp(p) || p.nrp || p.rank_nrp || '-'}</span>
                       </div>
                       <div>
                         <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>JABATAN & UNIT:</span>

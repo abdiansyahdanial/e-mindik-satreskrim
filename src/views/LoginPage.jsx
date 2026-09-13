@@ -57,7 +57,7 @@ export default function LoginPage({ onLoginSuccess }) {
 
   // Register Form States (10 Standard Fields)
   const [regNama, setRegNama] = useState('');
-  const [regPangkat, setRegPangkat] = useState('BRIPKA');
+  const [regPangkat, setRegPangkat] = useState('BRIPDA');
   const [regNrp, setRegNrp] = useState('');
   const [regJabatan, setRegJabatan] = useState('PENYIDIK PEMBANTU');
   const [regSatker, setRegSatker] = useState('Satreskrim Polres Kolaka Timur');
@@ -66,7 +66,7 @@ export default function LoginPage({ onLoginSuccess }) {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
-  const [registerSuccessData, setRegisterSuccessData] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Real-time Strict Password Rule Evaluation
   const passwordRules = useMemo(() => {
@@ -224,7 +224,9 @@ export default function LoginPage({ onLoginSuccess }) {
         full_name: `${regPangkat} ${regNama.trim()}`,
         nama: regNama.trim(),
         pangkat: regPangkat,
+        rank: regPangkat,
         nrp: regNrp.trim(),
+        rank_nrp: regNrp.trim(),
         jabatan: regJabatan,
         satker: regSatker.trim(),
         unit: regUnit,
@@ -258,6 +260,7 @@ export default function LoginPage({ onLoginSuccess }) {
               nama: regNama.trim(),
               full_name: `${regPangkat} ${regNama.trim()}`,
               pangkat: regPangkat,
+              rank: regPangkat,
               nrp: regNrp.trim(),
               rank_nrp: regNrp.trim(),
               jabatan: regJabatan,
@@ -270,7 +273,7 @@ export default function LoginPage({ onLoginSuccess }) {
           ]);
           if (profErr) {
             console.warn('Profiles initial insert note, trying fallback:', profErr.message);
-            await supabase.from('profiles').upsert([
+            const { error: fbErr1 } = await supabase.from('profiles').upsert([
               {
                 id: userId,
                 email: regEmail.trim(),
@@ -279,16 +282,29 @@ export default function LoginPage({ onLoginSuccess }) {
                 pangkat: regPangkat,
                 nrp: regNrp.trim(),
                 jabatan: regJabatan,
-                role: 'anggota'
+                role: 'anggota',
+                status: 'pending'
               }
             ]);
+            if (fbErr1) {
+              await supabase.from('profiles').upsert([
+                {
+                  id: userId,
+                  email: regEmail.trim(),
+                  nama: regNama.trim(),
+                  pangkat: regPangkat,
+                  nrp: regNrp.trim(),
+                  jabatan: regJabatan
+                }
+              ]);
+            }
           }
         } catch (dbErr) {
           console.warn('Profiles table fallback handling:', dbErr);
         }
       }
 
-      // Logout sesi sementara agar browser tidak otomatis masuk ke sesi aktif
+      // Segera panggil signOut() di latar belakang agar sesi tidak langsung aktif ke dashboard
       try {
         await supabase.auth.signOut();
       } catch (soErr) {
@@ -298,9 +314,25 @@ export default function LoginPage({ onLoginSuccess }) {
       // Kirim email notifikasi kedinasan secara ASYNCHRONOUS
       sendRegistrationEmails(officerData);
 
-      // Tampilkan layar resmi "VERIFIKASI KEDINASAN MENUNGGU"
-      setRegisterSuccessData(officerData);
+      const savedEmail = regEmail.trim();
+
+      // Tampilkan notifikasi/modal sukses yang elegan (nuansa dark navy & gold Presisi)
+      setShowSuccessModal(true);
       setStatusMessage('');
+
+      // Tampilan bertahan selama 2 detik dengan countdown bar, lalu otomatis alihkan ke Login
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        setActiveTab('login');
+        setLoginEmail(savedEmail);
+        setLoginPassword('');
+        setRegNama('');
+        setRegNrp('');
+        setRegPhone('');
+        setRegEmail('');
+        setRegPassword('');
+        setRegConfirmPassword('');
+      }, 2000);
     } catch (err) {
       console.error('Registration error:', err);
       let msg = err.message || 'Gagal melakukan pendaftaran.';
@@ -325,6 +357,16 @@ export default function LoginPage({ onLoginSuccess }) {
       position: 'relative',
       overflowX: 'hidden',
     }}>
+      <style>{`
+        @keyframes countdown2s {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        @keyframes fadeInScale {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
       {/* Tactical Background Grid */}
       <div style={{
         position: 'absolute',
@@ -631,7 +673,7 @@ export default function LoginPage({ onLoginSuccess }) {
         )}
 
         {/* -------------------- TAB 2: FORM REGISTRASI MANDIRI PENYIDIK -------------------- */}
-        {activeTab === 'register' && !registerSuccessData && (
+        {activeTab === 'register' && (
           <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {/* Field a: Nama Lengkap Beserta Gelar */}
             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -952,85 +994,100 @@ export default function LoginPage({ onLoginSuccess }) {
           </form>
         )}
 
-        {/* -------------------- LAYAR PENDAFTARAN BERHASIL -------------------- */}
-        {registerSuccessData && (
+        {/* -------------------- MODAL SUKSES PENDAFTARAN PERSONEL (DARK NAVY & GOLD PRESISI) -------------------- */}
+        {showSuccessModal && (
           <div style={{
-            textAlign: 'center',
-            padding: '16px 8px',
-            animation: 'fadeIn 0.3s ease-out'
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(3, 7, 18, 0.88)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '20px'
           }}>
             <div style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              background: 'rgba(34, 197, 94, 0.15)',
-              border: '2px solid var(--accent-green)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              boxShadow: '0 0 20px rgba(34, 197, 94, 0.3)'
+              background: 'linear-gradient(145deg, #0B1220 0%, #060B18 100%)',
+              border: '1px solid #F59E0B',
+              borderRadius: '16px',
+              maxWidth: '460px',
+              width: '100%',
+              padding: '28px 24px 22px',
+              boxShadow: '0 0 35px rgba(245, 158, 11, 0.25), 0 20px 40px rgba(0, 0, 0, 0.8)',
+              textAlign: 'center',
+              position: 'relative',
+              animation: 'fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
             }}>
-              <CheckCircle2 size={32} color="var(--accent-green)" />
-            </div>
+              {/* Icon with Gold Glow */}
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '2px solid #F59E0B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                boxShadow: '0 0 20px rgba(245, 158, 11, 0.35)'
+              }}>
+                <CheckCircle2 size={34} color="#FCD34D" />
+              </div>
 
-            <h3 style={{ color: '#FFFFFF', fontSize: '18px', fontWeight: 800, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Verifikasi Kedinasan Menunggu
-            </h3>
-            <p style={{ color: '#FCD34D', fontSize: '13px', fontWeight: 700, margin: '0 0 16px' }}>
-              Status: Menunggu Persetujuan Kasat Reskrim / Super Admin
-            </p>
+              <h3 style={{
+                color: '#FFFFFF',
+                fontSize: '18px',
+                fontWeight: 800,
+                margin: '0 0 10px',
+                letterSpacing: '0.3px',
+                lineHeight: 1.3
+              }}>
+                Pendaftaran Personel Berhasil Dikirim
+              </h3>
 
-            <div style={{
-              background: 'rgba(6, 11, 24, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '10px',
-              padding: '14px',
-              textAlign: 'left',
-              fontSize: '12px',
-              marginBottom: '20px'
-            }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div>
-                  <span style={{ color: '#64748B', fontSize: '11px', display: 'block' }}>Nama & Pangkat:</span>
-                  <strong style={{ color: '#FFF' }}>{registerSuccessData.pangkat} {registerSuccessData.nama}</strong>
-                </div>
-                <div>
-                  <span style={{ color: '#64748B', fontSize: '11px', display: 'block' }}>NRP Kedinasan:</span>
-                  <span className="mono" style={{ color: 'var(--accent-cyan)' }}>{registerSuccessData.nrp}</span>
-                </div>
-                <div>
-                  <span style={{ color: '#64748B', fontSize: '11px', display: 'block' }}>Jabatan / Unit:</span>
-                  <span style={{ color: '#CBD5E1' }}>{registerSuccessData.jabatan} ({registerSuccessData.unit})</span>
-                </div>
-                <div>
-                  <span style={{ color: '#64748B', fontSize: '11px', display: 'block' }}>Email Terdaftar:</span>
-                  <span style={{ color: '#CBD5E1' }}>{registerSuccessData.email}</span>
-                </div>
+              <p style={{
+                color: '#CBD5E1',
+                fontSize: '13px',
+                lineHeight: 1.6,
+                margin: '0 0 20px'
+              }}>
+                Permohonan akses kedinasan Anda telah diterima oleh sistem. Mohon menunggu proses verifikasi dan aktivasi akun oleh Administrator Satreskrim.
+              </p>
+
+              {/* Countdown Progress Bar (2 Detik) */}
+              <div style={{
+                width: '100%',
+                height: '4px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                position: 'relative'
+              }}>
+                <div style={{
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #F59E0B, #FCD34D)',
+                  width: '100%',
+                  animation: 'countdown2s 2s linear forwards'
+                }} />
+              </div>
+
+              <div style={{
+                marginTop: '10px',
+                fontSize: '11px',
+                color: '#94A3B8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}>
+                <Clock size={12} color="#F59E0B" />
+                <span>Mengalihkan ke halaman masuk dalam 2 detik...</span>
               </div>
             </div>
-
-            <p style={{ color: '#94A3B8', fontSize: '11.5px', margin: '0 0 20px', lineHeight: 1.5 }}>
-              Notifikasi telah otomatis dikirimkan ke email Super Admin (Kasat Reskrim). Anda akan menerima email konfirmasi aktivasi setelah identitas dinas Anda disetujui.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRegisterSuccessData(null);
-                setActiveTab('login');
-                setLoginEmail(registerSuccessData.email);
-              }}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                padding: '11px',
-                fontSize: '13px',
-                fontWeight: 700
-              }}
-            >
-              Kembali ke Halaman Masuk
-            </button>
           </div>
         )}
 
