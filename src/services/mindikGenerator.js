@@ -796,7 +796,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const penyidik1Nama = cleanInput.PENYIDIK_1_NAMA || cleanInput.penyidik_1_nama || activeCase?.penyidik_1_nama || penyidikNama || '';
   const penyidik1PangkatRaw = cleanInput.PENYIDIK_1_PANGKAT || cleanInput.penyidik_1_pangkat || activeCase?.penyidik_1_pangkat || penyidikPangkatRaw || '';
   const penyidik1PangkatSingkat = toPangkatSingkat(penyidik1PangkatRaw);
-  const penyidik1Pangkat = toPangkatLengkap(penyidik1PangkatRaw);
+  const penyidik1Pangkat = penyidik1PangkatSingkat; // WAJIB Pangkat Singkat untuk Personel 1 di Batang Tubuh / Bagian "DIPERINTAHKAN Kepada"
   const penyidik1Nrp = cleanInput.PENYIDIK_1_NRP || cleanInput.penyidik_1_nrp || activeCase?.penyidik_1_nrp || penyidikNrp || '';
   const penyidik1Jabatan = cleanInput.PENYIDIK_1_JABATAN || cleanInput.penyidik_1_jabatan || activeCase?.penyidik_1_jabatan || penyidikJabatan || '';
 
@@ -832,7 +832,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   const atasanPangkatNrp = atasanPangkat && atasanNrp ? `${atasanPangkat} / ${atasanNrp}` : (atasanPangkat || atasanNrp || '');
   const penyidikPangkatNrp = penyidikPangkat && penyidikNrp ? `${penyidikPangkat} / ${penyidikNrp}` : (penyidikPangkat || penyidikNrp || '');
-  const penyidik1PangkatNrp = penyidik1Pangkat && penyidik1Nrp ? `${penyidik1Pangkat} / ${penyidik1Nrp}` : (penyidik1Pangkat || penyidik1Nrp || '');
+  const penyidik1PangkatNrp = penyidik1PangkatSingkat && penyidik1Nrp ? `${penyidik1PangkatSingkat} / ${penyidik1Nrp}` : (penyidik1PangkatSingkat || penyidik1Nrp || '');
   const penyidik2PangkatNrp = penyidik2PangkatSingkat && penyidik2Nrp ? `${penyidik2PangkatSingkat} / ${penyidik2Nrp}` : (penyidik2PangkatSingkat || penyidik2Nrp || '');
   const penyidik3PangkatNrp = penyidik3PangkatSingkat && penyidik3Nrp ? `${penyidik3PangkatSingkat} / ${penyidik3Nrp}` : (penyidik3PangkatSingkat || penyidik3Nrp || '');
   const penyidik4PangkatNrp = penyidik4PangkatSingkat && penyidik4Nrp ? `${penyidik4PangkatSingkat} / ${penyidik4Nrp}` : (penyidik4PangkatSingkat || penyidik4Nrp || '');
@@ -840,7 +840,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   // Daftar Tim Personel di Batang Tubuh / Tabel Tugas (Loop Array) - Tetap Pangkat Singkat Sesuai Ketentuan Naskah Dinas
   const timPenyidik = [
-    { no: 1, nama: penyidik1Nama, pangkat: penyidik1PangkatSingkat, nrp: penyidik1Nrp, jabatan: penyidik1Jabatan, pangkat_nrp: penyidik1Nrp ? `${penyidik1PangkatSingkat} / ${penyidik1Nrp}` : penyidik1PangkatSingkat, pangkat_singkat: penyidik1PangkatSingkat, pangkat_lengkap: penyidik1Pangkat },
+    { no: 1, nama: penyidik1Nama, pangkat: penyidik1PangkatSingkat, nrp: penyidik1Nrp, jabatan: penyidik1Jabatan, pangkat_nrp: penyidik1Nrp ? `${penyidik1PangkatSingkat} / ${penyidik1Nrp}` : penyidik1PangkatSingkat, pangkat_singkat: penyidik1PangkatSingkat, pangkat_lengkap: toPangkatLengkap(penyidik1PangkatRaw) },
     { no: 2, nama: penyidik2Nama, pangkat: penyidik2PangkatSingkat, nrp: penyidik2Nrp, jabatan: penyidik2Jabatan, pangkat_nrp: penyidik2PangkatNrp, pangkat_singkat: penyidik2PangkatSingkat, pangkat_lengkap: toPangkatLengkap(penyidik2PangkatRaw) },
     { no: 3, nama: penyidik3Nama, pangkat: penyidik3PangkatSingkat, nrp: penyidik3Nrp, jabatan: penyidik3Jabatan, pangkat_nrp: penyidik3PangkatNrp, pangkat_singkat: penyidik3PangkatSingkat, pangkat_lengkap: toPangkatLengkap(penyidik3PangkatRaw) },
     { no: 4, nama: penyidik4Nama, pangkat: penyidik4PangkatSingkat, nrp: penyidik4Nrp, jabatan: penyidik4Jabatan, pangkat_nrp: penyidik4PangkatNrp, pangkat_singkat: penyidik4PangkatSingkat, pangkat_lengkap: toPangkatLengkap(penyidik4PangkatRaw) },
@@ -1026,7 +1026,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     KANIT_JABATAN: penyidikJabatan,
     KANIT_PANGKAT_NRP: penyidikPangkatNrp,
     PENYIDIK_PANGKAT_LENGKAP: penyidikPangkat,
-    PENYIDIK_1_PANGKAT_LENGKAP: penyidik1Pangkat,
+    PENYIDIK_1_PANGKAT_LENGKAP: toPangkatLengkap(penyidik1PangkatRaw),
 
     // Penyidik Penangan Perkara (Bukti Penyerahan Surat - Pangkat Lengkap)
     PENYIDIK_PENANGAN_NAMA: penanganNama,
@@ -1035,9 +1035,9 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     PENYIDIK_PENANGAN_JABATAN: penanganJabatan,
     PENYIDIK_PENANGAN_PANGKAT_NRP: penanganPangkatNrp,
 
-    // Daftar Tim Penerima Perintah (Personel 1 s.d. 5)
+    // Daftar Tim Penerima Perintah (Personel 1 s.d. 5) - Pangkat Singkat untuk Batang Tubuh
     PENYIDIK_1_NAMA: penyidik1Nama,
-    PENYIDIK_1_PANGKAT: penyidik1Pangkat,
+    PENYIDIK_1_PANGKAT: penyidik1PangkatSingkat,
     PENYIDIK_1_NRP: penyidik1Nrp,
     PENYIDIK_1_JABATAN: penyidik1Jabatan,
     PENYIDIK_1_PANGKAT_NRP: penyidik1PangkatNrp,
@@ -1199,7 +1199,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     kanit_jabatan: penyidikJabatan,
     kanit_pangkat_nrp: penyidikPangkatNrp,
     penyidik_pangkat_lengkap: penyidikPangkat,
-    penyidik_1_pangkat_lengkap: penyidik1Pangkat,
+    penyidik_1_pangkat_lengkap: toPangkatLengkap(penyidik1PangkatRaw),
 
     penyidik_penangan_nama: penanganNama,
     penyidik_penangan_pangkat: penanganPangkat,
@@ -1208,38 +1208,43 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     penyidik_penangan_pangkat_nrp: penanganPangkatNrp,
 
     penyidik_1_nama: penyidik1Nama,
-    penyidik_1_pangkat: penyidik1Pangkat,
+    penyidik_1_pangkat: penyidik1PangkatSingkat,
     penyidik_1_nrp: penyidik1Nrp,
     penyidik_1_jabatan: penyidik1Jabatan,
     penyidik_1_pangkat_nrp: penyidik1PangkatNrp,
 
     penyidik_2_nama: penyidik2Nama,
-    penyidik_2_pangkat: penyidik2Pangkat,
+    penyidik_2_pangkat: penyidik2PangkatSingkat,
     penyidik_2_nrp: penyidik2Nrp,
     penyidik_2_jabatan: penyidik2Jabatan,
     penyidik_2_pangkat_nrp: penyidik2PangkatNrp,
 
     penyidik_3_nama: penyidik3Nama,
-    penyidik_3_pangkat: penyidik3Pangkat,
+    penyidik_3_pangkat: penyidik3PangkatSingkat,
     penyidik_3_nrp: penyidik3Nrp,
     penyidik_3_jabatan: penyidik3Jabatan,
     penyidik_3_pangkat_nrp: penyidik3PangkatNrp,
 
     penyidik_4_nama: penyidik4Nama,
-    penyidik_4_pangkat: penyidik4Pangkat,
+    penyidik_4_pangkat: penyidik4PangkatSingkat,
     penyidik_4_nrp: penyidik4Nrp,
     penyidik_4_jabatan: penyidik4Jabatan,
     penyidik_4_pangkat_nrp: penyidik4PangkatNrp,
 
     penyidik_5_nama: penyidik5Nama,
-    penyidik_5_pangkat: penyidik5Pangkat,
+    penyidik_5_pangkat: penyidik5PangkatSingkat,
     penyidik_5_nrp: penyidik5Nrp,
     penyidik_5_jabatan: penyidik5Jabatan,
     penyidik_5_pangkat_nrp: penyidik5PangkatNrp,
 
     tim_penyidik: timPenyidik,
+    TIM_PENYIDIK: timPenyidik,
+    petugas_list: timPenyidik,
+    PETUGAS_LIST: timPenyidik,
     penyidik_list: timPenyidik,
+    PENYIDIK_LIST: timPenyidik,
     investigators_list: timPenyidik,
+    INVESTIGATORS_LIST: timPenyidik,
 
     // Legacy Aliases
     DOC_NO: nomorSurat,
@@ -1528,13 +1533,15 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.PENYIDIK_PENANGAN_PANGKAT_NRP = finalPenanganPktNrp;
   finalPayload.penyidik_penangan_pangkat_nrp = finalPenanganPktNrp;
 
-  // 3. Pangkat Penyidik / Yang Menerima Perintah / Kanit / Penyidik 1 (WAJIB Format Lengkap Resmi)
-  const penyidikPangkatRawFinal = finalPayload.PENYIDIK_PANGKAT || activeCase?.penyidik_pangkat || activeCase?.penyidik_1_pangkat || '';
-  finalPayload.PENYIDIK_PANGKAT = formatPangkatLengkap(penyidikPangkatRawFinal);
+  // 3. Pangkat Penandatangan Sisi Kiri: Yang Menerima Perintah / Kanit (WAJIB Format Lengkap Resmi)
+  const penyidikPangkatRawFinal = cleanInput.PENYIDIK_PANGKAT || cleanInput.penyidik_pangkat || activeCase?.penyidik_pangkat || activeCase?.penyidik_1_pangkat || '';
+  finalPayload.PENYIDIK_PANGKAT = toPangkatLengkap(penyidikPangkatRawFinal);
   finalPayload.penyidik_pangkat = finalPayload.PENYIDIK_PANGKAT;
 
-  const penyidik1PangkatRawFinal = finalPayload.PENYIDIK_1_PANGKAT || activeCase?.penyidik_1_pangkat || penyidikPangkatRawFinal || '';
-  finalPayload.PENYIDIK_1_PANGKAT = formatPangkatLengkap(penyidik1PangkatRawFinal);
+  // JANGAN MEMUTASI PENYIDIK_1_PANGKAT MENJADI LENGKAP!
+  // Personel 1 s.d. 5 di bagian daftar tugas "DIPERINTAHKAN Kepada" WAJIB pangkat singkat (AIPDA, BRIPKA, dll.)
+  const penyidik1PangkatRawFinal = cleanInput.PENYIDIK_1_PANGKAT || cleanInput.penyidik_1_pangkat || activeCase?.penyidik_1_pangkat || penyidikPangkatRawFinal || '';
+  finalPayload.PENYIDIK_1_PANGKAT = toPangkatSingkat(penyidik1PangkatRawFinal);
   finalPayload.penyidik_1_pangkat = finalPayload.PENYIDIK_1_PANGKAT;
 
   // Pemetaan seragam untuk Penandatangan Sisi Kiri (Yang Menerima Perintah / Kanit / P1)
@@ -1567,16 +1574,15 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   finalPayload.PENYIDIK_PANGKAT_LENGKAP = finalPayload.PENYIDIK_PANGKAT;
   finalPayload.penyidik_pangkat_lengkap = finalPayload.PENYIDIK_PANGKAT;
-  finalPayload.PENYIDIK_1_PANGKAT_LENGKAP = finalPayload.PENYIDIK_1_PANGKAT;
-  finalPayload.penyidik_1_pangkat_lengkap = finalPayload.PENYIDIK_1_PANGKAT;
+  finalPayload.PENYIDIK_1_PANGKAT_LENGKAP = toPangkatLengkap(penyidik1PangkatRawFinal);
+  finalPayload.penyidik_1_pangkat_lengkap = finalPayload.PENYIDIK_1_PANGKAT_LENGKAP;
 
+  // Format Pangkat / NRP untuk Penandatangan Tanda Tangan Bawah (LENGKAP)
   const finalPenyidikPktNrp = finalPayload.PENYIDIK_PANGKAT && (finalPayload.PENYIDIK_NRP || activeCase?.penyidik_1_nrp)
     ? `${finalPayload.PENYIDIK_PANGKAT} / ${finalPayload.PENYIDIK_NRP || activeCase?.penyidik_1_nrp}`
     : (finalPayload.PENYIDIK_PANGKAT || finalPayload.PENYIDIK_NRP || activeCase?.penyidik_1_nrp || '');
   finalPayload.PENYIDIK_PANGKAT_NRP = finalPenyidikPktNrp;
   finalPayload.penyidik_pangkat_nrp = finalPenyidikPktNrp;
-  finalPayload.PENYIDIK_1_PANGKAT_NRP = finalPenyidikPktNrp;
-  finalPayload.penyidik_1_pangkat_nrp = finalPenyidikPktNrp;
   finalPayload.YANG_MENERIMA_PERINTAH_PANGKAT_NRP = finalPenyidikPktNrp;
   finalPayload.yang_menerima_perintah_pangkat_nrp = finalPenyidikPktNrp;
   finalPayload.PENERIMA_PERINTAH_PANGKAT_NRP = finalPenyidikPktNrp;
@@ -1584,20 +1590,40 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.KANIT_PANGKAT_NRP = finalPenyidikPktNrp;
   finalPayload.kanit_pangkat_nrp = finalPenyidikPktNrp;
 
+  // Format Pangkat / NRP untuk Personel 1 di Batang Tubuh / "DIPERINTAHKAN Kepada : 1." (PANGKAT SINGKAT!)
+  const p1Nrp = finalPayload.PENYIDIK_1_NRP || activeCase?.penyidik_1_nrp || '';
+  const finalP1PktNrp = finalPayload.PENYIDIK_1_PANGKAT && p1Nrp
+    ? `${finalPayload.PENYIDIK_1_PANGKAT} / ${p1Nrp}`
+    : (finalPayload.PENYIDIK_1_PANGKAT || p1Nrp || '');
+  finalPayload.PENYIDIK_1_PANGKAT_NRP = finalP1PktNrp;
+  finalPayload.penyidik_1_pangkat_nrp = finalP1PktNrp;
+
   // 4. Daftar Personel Tim di Batang Tubuh / Tabel Tugas (Loop Array) - Tetap Pangkat Singkat Sesuai Ketentuan Naskah Dinas
-  if (Array.isArray(finalPayload.tim_penyidik)) {
-    finalPayload.tim_penyidik = finalPayload.tim_penyidik.map(p => {
-      const pSingkat = toPangkatSingkat(p.pangkat || p.pangkat_singkat);
+  const normalizeTimArray = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(p => {
+      const pSingkat = toPangkatSingkat(p.pangkat_singkat || p.pangkat || '');
+      const pLengkap = toPangkatLengkap(p.pangkat_lengkap || p.pangkat || '');
       return {
         ...p,
-        pangkat: pSingkat,
+        pangkat: pSingkat, // WAJIB Pangkat Singkat untuk perulangan tabel tugas ("Kepada : 1..5")
         pangkat_singkat: pSingkat,
-        pangkat_lengkap: toPangkatLengkap(p.pangkat || p.pangkat_singkat),
+        pangkat_lengkap: pLengkap,
         pangkat_nrp: p.nrp ? `${pSingkat} / ${p.nrp}` : pSingkat
       };
     });
-    finalPayload.penyidik_list = finalPayload.tim_penyidik;
-    finalPayload.investigators_list = finalPayload.tim_penyidik;
+  };
+
+  if (Array.isArray(finalPayload.tim_penyidik)) {
+    const normalizedTim = normalizeTimArray(finalPayload.tim_penyidik);
+    finalPayload.tim_penyidik = normalizedTim;
+    finalPayload.TIM_PENYIDIK = normalizedTim;
+    finalPayload.penyidik_list = normalizedTim;
+    finalPayload.PENYIDIK_LIST = normalizedTim;
+    finalPayload.petugas_list = normalizedTim;
+    finalPayload.PETUGAS_LIST = normalizedTim;
+    finalPayload.investigators_list = normalizedTim;
+    finalPayload.INVESTIGATORS_LIST = normalizedTim;
   }
 
   // Pastikan rantai rujukan mandiri (Chain of Reference) selalu terformat teks resmi
