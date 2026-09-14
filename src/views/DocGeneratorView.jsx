@@ -577,12 +577,12 @@ export default function DocGeneratorView({
 
     // Otomatisasi Penandatangan Mindik dari Data Perkara Aktif
     initial['ATASAN_NAMA'] = currentCase.kasat_nama || '';
-    initial['ATASAN_PANGKAT'] = currentCase.kasat_pangkat || '';
+    initial['ATASAN_PANGKAT'] = formatPangkatLengkap(currentCase.kasat_pangkat || '');
     initial['ATASAN_NRP'] = currentCase.kasat_nrp || '';
     initial['ATASAN_JABATAN'] = currentCase.kasat_jabatan || 'Kasat Reskrim';
 
     initial['PENYIDIK_NAMA'] = currentCase.penyidik_1_nama || '';
-    initial['PENYIDIK_PANGKAT'] = currentCase.penyidik_1_pangkat || '';
+    initial['PENYIDIK_PANGKAT'] = formatPangkatLengkap(currentCase.penyidik_1_pangkat || '');
     initial['PENYIDIK_NRP'] = currentCase.penyidik_1_nrp || '';
     initial['PENYIDIK_JABATAN'] = currentCase.penyidik_1_jabatan || '';
 
@@ -747,7 +747,7 @@ export default function DocGeneratorView({
       } else if (upperKey === 'PENYIDIK_NAMA') {
         initial[cleanKey] = currentCase.penyidik_1_nama || defVal || '';
       } else if (upperKey === 'PENYIDIK_PANGKAT') {
-        initial[cleanKey] = currentCase.penyidik_1_pangkat || defVal || '';
+        initial[cleanKey] = formatPangkatLengkap(currentCase.penyidik_1_pangkat || defVal || '');
       } else if (upperKey === 'PENYIDIK_NRP') {
         initial[cleanKey] = currentCase.penyidik_1_nrp || defVal || '';
       } else if (upperKey === 'PENYIDIK_JABATAN') {
@@ -755,7 +755,7 @@ export default function DocGeneratorView({
       } else if (upperKey === 'ATASAN_NAMA') {
         initial[cleanKey] = currentCase.kasat_nama || defVal || '';
       } else if (upperKey === 'ATASAN_PANGKAT') {
-        initial[cleanKey] = currentCase.kasat_pangkat || defVal || '';
+        initial[cleanKey] = formatPangkatLengkap(currentCase.kasat_pangkat || defVal || '');
       } else if (upperKey === 'ATASAN_NRP') {
         initial[cleanKey] = currentCase.kasat_nrp || defVal || '';
       } else if (upperKey.startsWith('PENYIDIK_')) {
@@ -1666,7 +1666,7 @@ export default function DocGeneratorView({
                       {currentCase.penyidik_1_nama || formValues.PENYIDIK_1_NAMA || '(Belum diset)'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#94A3B8' }}>
-                      {currentCase.penyidik_1_pangkat || formValues.PENYIDIK_1_PANGKAT || '-'} {currentCase.penyidik_1_nrp ? `NRP ${currentCase.penyidik_1_nrp}` : ''} • {currentCase.penyidik_1_jabatan || formValues.PENYIDIK_1_JABATAN || 'Kanit'}
+                      {formatPangkatLengkap(currentCase.penyidik_1_pangkat || formValues.PENYIDIK_1_PANGKAT || '') || '-'} {currentCase.penyidik_1_nrp ? `NRP ${currentCase.penyidik_1_nrp}` : ''} • {currentCase.penyidik_1_jabatan || formValues.PENYIDIK_1_JABATAN || 'Kanit'}
                     </div>
                   </div>
 
