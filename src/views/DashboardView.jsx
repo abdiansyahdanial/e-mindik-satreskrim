@@ -39,7 +39,22 @@ export default function DashboardView({
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span className="badge badge-cyan">SISTEM INFORMASI E-MINDIK RESKRIM</span>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              background: '#1b2229',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 53, 45, 0.45)',
+              padding: '3px 10px',
+              borderRadius: 'var(--radius-full)',
+              letterSpacing: '0.04em',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ff352d', display: 'inline-block' }} />
+              SISTEM INFORMASI E-MINDIK RESKRIM
+            </span>
             <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Wilayah Hukum Polres Kolaka Timur</span>
           </div>
           <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>
@@ -78,15 +93,16 @@ export default function DashboardView({
               width: '36px',
               height: '36px',
               borderRadius: '8px',
-              background: 'var(--accent-cyan-dim)',
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <FolderLock size={18} color="var(--accent-cyan)" />
+              <FolderLock size={18} color="#ff352d" />
             </div>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-cyan)' }}>
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#ffffff' }}>
             {activeCasesCount}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -104,15 +120,16 @@ export default function DashboardView({
               width: '36px',
               height: '36px',
               borderRadius: '8px',
-              background: 'var(--accent-blue-dim)',
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <FileText size={18} color="#60A5FA" />
+              <FileText size={18} color="#ffffff" />
             </div>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#60A5FA' }}>
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#ffffff' }}>
             {docsCount}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
@@ -183,12 +200,20 @@ export default function DashboardView({
         <div className="glass" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FolderLock size={18} color="var(--accent-cyan)" />
+              <FolderLock size={18} color="#ff352d" />
               <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>
                 Berkas Perkara Terbaru
               </h3>
             </div>
-            <span className="badge badge-cyan" style={{ fontSize: '11px' }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              background: 'rgba(255, 53, 45, 0.12)',
+              border: '1px solid rgba(255, 53, 45, 0.3)',
+              color: '#ff5740',
+              padding: '2px 8px',
+              borderRadius: '999px'
+            }}>
               {cases.length} Perkara
             </span>
           </div>
@@ -248,12 +273,20 @@ export default function DashboardView({
         <div className="glass" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={18} color="#60A5FA" />
+              <FileText size={18} color="#ffffff" />
               <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>
                 Dokumen Mindik Terakhir
               </h3>
             </div>
-            <span className="badge badge-blue" style={{ fontSize: '11px' }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              background: '#2a343f',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#E2E8F0',
+              padding: '2px 8px',
+              borderRadius: '999px'
+            }}>
               {documents.length} Berkas
             </span>
           </div>
@@ -277,7 +310,7 @@ export default function DashboardView({
                     justifyContent: 'space-between',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#60A5FA';
+                    e.currentTarget.style.borderColor = '#ff352d';
                     e.currentTarget.style.transform = 'translateX(4px)';
                   }}
                   onMouseLeave={(e) => {
@@ -286,8 +319,17 @@ export default function DashboardView({
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                      <span className="badge badge-blue mono" style={{ fontSize: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span className="mono" style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        background: '#2a343f',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: '#E2E8F0',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        letterSpacing: '0.04em'
+                      }}>
                         {doc.template_code}
                       </span>
                       <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
@@ -297,7 +339,7 @@ export default function DashboardView({
                     <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                       {doc.doc_title}
                     </div>
-                    <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>
+                    <div className="mono" style={{ fontSize: '11px', color: '#9CA3AF' }}>
                       {doc.doc_number || 'Tanpa Nomor'}
                     </div>
                   </div>

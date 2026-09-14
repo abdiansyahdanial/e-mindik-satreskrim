@@ -12,13 +12,23 @@ import {
   BadgeCheck, 
   Building2, 
   Phone, 
-  KeyRound,
-  CheckCircle2,
-  Clock
+  KeyRound, 
+  CheckCircle2, 
+  Clock,
+  Eye,
+  EyeOff,
+  User,
+  Award,
+  Hash,
+  Briefcase,
+  ChevronRight,
+  ShieldCheck,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { sendRegistrationEmails } from '../services/emailService';
 import logoImg from '../assets/logo.png';
+import './LoginPage.css';
 
 const PANGKAT_OPTIONS = [
   'BRIPDA', 
@@ -44,7 +54,7 @@ const UNIT_OPTIONS = [
   'Identifikasi (Inafis)'
 ];
 
-const cleanOfficerName = (nama) => {
+export const cleanOfficerName = (nama) => {
   if (!nama) return '';
   return String(nama)
     .replace(/^(AKBP|KOMPOL|AKP|IPTU|IPDA|AIPTU|AIPDA|BRIPKA|BRIGPOL|BRIGADIR|BRIPTU|BRIPDA)\s+/i, '')
@@ -52,11 +62,14 @@ const cleanOfficerName = (nama) => {
 };
 
 export default function LoginPage({ onLoginSuccess }) {
-  const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
-  
+  // Panel Active State (false: Login, true: Register)
+  const [isRegisterActive, setIsRegisterActive] = useState(false);
+  const [isSweeping, setIsSweeping] = useState(false);
+
   // Login Form States
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
@@ -73,8 +86,20 @@ export default function LoginPage({ onLoginSuccess }) {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [registerSuccessData, setRegisterSuccessData] = useState(null);
+
+  // Panel Transition Trigger with Light Sweep
+  const handleTogglePanel = (active) => {
+    setIsRegisterActive(active);
+    setErrorMessage('');
+    setStatusMessage('');
+    setIsSweeping(true);
+    setTimeout(() => {
+      setIsSweeping(false);
+    }, 900);
+  };
 
   // Real-time Strict Password Rule Evaluation
   const passwordRules = useMemo(() => {
@@ -164,7 +189,7 @@ export default function LoginPage({ onLoginSuccess }) {
           status: assignedStatus,
         };
 
-        // Attempt non-destructive upsert profile into Supabase
+        // Non-destructive upsert profile into Supabase
         await supabase.from('profiles').upsert([
           {
             id: user.id,
@@ -262,8 +287,6 @@ export default function LoginPage({ onLoginSuccess }) {
       const userId = newUser?.id;
 
       if (userId) {
-        // Simpan data registrasi ke public.profiles dengan status: 'pending' dan role: 'anggota'
-        // Schema public.profiles: (id, full_name, rank_nrp, role, created_at, email, status, position, phone, unit)
         try {
           const { error: profErr } = await supabase.from('profiles').upsert([
             {
@@ -296,7 +319,7 @@ export default function LoginPage({ onLoginSuccess }) {
         }
       }
 
-      // Segera panggil signOut() di latar belakang agar sesi tidak langsung aktif ke dashboard
+      // SignOut di latar belakang agar sesi tidak otomatis masuk tanpa approval
       try {
         await supabase.auth.signOut();
       } catch (soErr) {
@@ -308,16 +331,16 @@ export default function LoginPage({ onLoginSuccess }) {
 
       const savedEmail = regEmail.trim();
 
-      // Tampilkan notifikasi/modal sukses yang elegan (nuansa dark navy & gold Presisi)
+      // Tampilkan notifikasi/modal sukses
       setShowSuccessModal(true);
       setRegisterSuccessData(officerData);
       setStatusMessage('');
 
-      // Tampilan bertahan selama 2 detik dengan countdown bar, lalu otomatis alihkan ke Login
+      // Bertahan selama 2 detik dengan countdown bar, lalu alihkan ke Login
       setTimeout(() => {
         setShowSuccessModal(false);
         setRegisterSuccessData(null);
-        setActiveTab('login');
+        handleTogglePanel(false);
         setLoginEmail(savedEmail);
         setLoginPassword('');
         setRegNama('');
@@ -331,7 +354,7 @@ export default function LoginPage({ onLoginSuccess }) {
       console.error('Registration error:', err);
       let msg = err.message || 'Gagal melakukan pendaftaran.';
       if (msg.includes('already registered')) {
-        msg = 'Email ini sudah terdaftar dalam sistem e-Mindik. Silakan gunakan tab MASUK atau hubungi Super Admin.';
+        msg = 'Email ini sudah terdaftar dalam sistem e-Mindik. Silakan gunakan panel MASUK atau hubungi Super Admin.';
       }
       setErrorMessage(msg);
     } finally {
@@ -340,767 +363,642 @@ export default function LoginPage({ onLoginSuccess }) {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      width: '100vw',
-      background: 'radial-gradient(circle at 50% 15%, rgba(0, 212, 255, 0.12) 0%, rgba(6, 11, 24, 0.96) 70%, #030712 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
-      position: 'relative',
-      overflowX: 'hidden',
-    }}>
+    <div className="split-auth-page">
+      {/* HUD Decors */}
+      <div className="auth-top-status">
+        <Radio size={13} className="animate-pulse" color="#ff352d" />
+        <span>Sistem Otomasi Administrasi Penyidikan Polri</span>
+      </div>
+
+      <div className="auth-top-tag">
+        E-MINDIK PRESISI • SATRESKRIM POLRES KOLTIM
+      </div>
+
+      {/* Main Split Panel Auth Card */}
+      <div className={`split-auth-card ${isRegisterActive ? 'active' : ''}`}>
+        {/* Light Sweep Beam */}
+        <div className={`light-sweep ${isSweeping ? 'sweeping' : ''}`} />
+
+        {/* ============================================================
+            PANEL 1: SIGN-IN (LOGIN)
+           ============================================================ */}
+        <div className="auth-form-panel auth-panel-signin">
+          <div className="auth-form-scroll">
+            {/* Mobile Switch Bar */}
+            <div className="mobile-auth-switch">
+              <button 
+                type="button" 
+                className="mobile-switch-btn active"
+                onClick={() => handleTogglePanel(false)}
+              >
+                Masuk Sesi
+              </button>
+              <button 
+                type="button" 
+                className="mobile-switch-btn"
+                onClick={() => handleTogglePanel(true)}
+              >
+                Daftar Akun
+              </button>
+            </div>
+
+            {/* Header / Logo */}
+            <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                margin: '0 auto 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#141a1f',
+                borderRadius: '50%',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                overflow: 'hidden'
+              }}>
+                {!logoError ? (
+                  <img
+                    src={logoImg}
+                    alt="Logo Satreskrim"
+                    onError={() => setLogoError(true)}
+                    style={{ width: '44px', height: '44px', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <ShieldCheck size={32} color="#ff352d" />
+                )}
+              </div>
+
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: 800,
+                color: '#FFFFFF',
+                margin: '0 0 4px',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase'
+              }}>
+                E-Mindik Satreskrim
+              </h2>
+              <p style={{ fontSize: '11.5px', color: 'var(--auth-text-muted)', margin: 0 }}>
+                Kepolisian Resor Kolaka Timur • Polda Sulawesi Tenggara
+              </p>
+            </div>
+
+            {/* Error & Status Alerts */}
+            {errorMessage && (
+              <div className="auth-alert-error">
+                <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {statusMessage && (
+              <div className="auth-alert-status">
+                <Clock size={16} color="#ff5740" className="animate-spin" style={{ flexShrink: 0 }} />
+                <span>{statusMessage}</span>
+              </div>
+            )}
+
+            {/* Login Form */}
+            <form onSubmit={handleSupabaseLogin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="auth-input-group">
+                <label className="auth-label">Email Kedinasan (Polri)</label>
+                <div className="auth-input-wrapper">
+                  <Mail size={16} className="auth-input-icon" />
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="nama.nrp@polri.go.id"
+                    className="auth-input"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              <div className="auth-input-group">
+                <label className="auth-label">Kata Sandi Dinas</label>
+                <div className="auth-input-wrapper">
+                  <Lock size={16} className="auth-input-icon" />
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="auth-input"
+                    disabled={loading}
+                    style={{ paddingRight: '40px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      background: 'none',
+                      border: 'none',
+                      color: '#6b7280',
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex'
+                    }}
+                  >
+                    {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="auth-btn-primary"
+              >
+                {loading ? (
+                  <>
+                    <Clock size={16} className="animate-spin" />
+                    <span>Mengautentikasi...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={16} />
+                    <span>Masuk ke Sistem Presisi</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Footer Notice */}
+            <div style={{
+              marginTop: 'auto',
+              paddingTop: '20px',
+              textAlign: 'center',
+              fontSize: '11px',
+              color: 'var(--auth-text-muted)'
+            }}>
+              <div>Akses Terenkripsi RBAC: Super Admin • Admin • Penyidik</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================
+            PANEL 2: SIGN-UP (REGISTER)
+           ============================================================ */}
+        <div className="auth-form-panel auth-panel-signup">
+          <div className="auth-form-scroll">
+            {/* Mobile Switch Bar */}
+            <div className="mobile-auth-switch">
+              <button 
+                type="button" 
+                className="mobile-switch-btn"
+                onClick={() => handleTogglePanel(false)}
+              >
+                Masuk Sesi
+              </button>
+              <button 
+                type="button" 
+                className="mobile-switch-btn active"
+                onClick={() => handleTogglePanel(true)}
+              >
+                Daftar Akun
+              </button>
+            </div>
+
+            {/* Header */}
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  color: '#ff5740',
+                  background: 'rgba(255, 53, 45, 0.1)',
+                  border: '1px solid rgba(255, 53, 45, 0.25)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  letterSpacing: '0.06em'
+                }}>
+                  REGISTRASI PERSONEL
+                </span>
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 4px' }}>
+                Pendaftaran Akun Penyidik
+              </h3>
+              <p style={{ fontSize: '11.5px', color: 'var(--auth-text-muted)', margin: 0 }}>
+                Lengkapi biodata kedinasan untuk proses verifikasi oleh Administrator.
+              </p>
+            </div>
+
+            {/* Error & Status Alerts */}
+            {errorMessage && (
+              <div className="auth-alert-error">
+                <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {statusMessage && (
+              <div className="auth-alert-status">
+                <Clock size={16} color="#ff5740" className="animate-spin" style={{ flexShrink: 0 }} />
+                <span>{statusMessage}</span>
+              </div>
+            )}
+
+            {/* Register Form */}
+            <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Row 1: Pangkat & Nama Lengkap */}
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px' }}>
+                <div className="auth-input-group">
+                  <label className="auth-label">Pangkat</label>
+                  <div className="auth-input-wrapper">
+                    <Award size={15} className="auth-input-icon" />
+                    <select
+                      value={regPangkat}
+                      onChange={(e) => setRegPangkat(e.target.value)}
+                      className="auth-input auth-select"
+                      disabled={loading}
+                    >
+                      {PANGKAT_OPTIONS.map((p) => (
+                        <option key={p} value={p} style={{ background: '#1b2229', color: '#fff' }}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="auth-input-group">
+                  <label className="auth-label">Nama Lengkap (Tanpa Pangkat)</label>
+                  <div className="auth-input-wrapper">
+                    <User size={15} className="auth-input-icon" />
+                    <input
+                      type="text"
+                      required
+                      value={regNama}
+                      onChange={(e) => setRegNama(e.target.value)}
+                      placeholder="e.g. DANIAL ABDIANSYAH"
+                      className="auth-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: NRP & Satuan Fungsi / Unit */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="auth-input-group">
+                  <label className="auth-label">NRP / NIP Personel</label>
+                  <div className="auth-input-wrapper">
+                    <Hash size={15} className="auth-input-icon" />
+                    <input
+                      type="text"
+                      required
+                      value={regNrp}
+                      onChange={(e) => setRegNrp(e.target.value)}
+                      placeholder="e.g. 98010234"
+                      className="auth-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="auth-input-group">
+                  <label className="auth-label">Satuan Fungsi / Unit</label>
+                  <div className="auth-input-wrapper">
+                    <Building2 size={15} className="auth-input-icon" />
+                    <select
+                      value={regUnit}
+                      onChange={(e) => setRegUnit(e.target.value)}
+                      className="auth-input auth-select"
+                      disabled={loading}
+                    >
+                      {UNIT_OPTIONS.map((u) => (
+                        <option key={u} value={u} style={{ background: '#1b2229', color: '#fff' }}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Jabatan & Kesatuan (Satker) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="auth-input-group">
+                  <label className="auth-label">Jabatan Kedinasan</label>
+                  <div className="auth-input-wrapper">
+                    <Briefcase size={15} className="auth-input-icon" />
+                    <input
+                      type="text"
+                      required
+                      value={regJabatan}
+                      onChange={(e) => setRegJabatan(e.target.value)}
+                      placeholder="e.g. PENYIDIK PEMBANTU"
+                      className="auth-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="auth-input-group">
+                  <label className="auth-label">Kesatuan / Satker</label>
+                  <div className="auth-input-wrapper">
+                    <Building2 size={15} className="auth-input-icon" />
+                    <input
+                      type="text"
+                      required
+                      value={regSatker}
+                      onChange={(e) => setRegSatker(e.target.value)}
+                      placeholder="Satreskrim Polres Kolaka Timur"
+                      className="auth-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Phone & Email */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="auth-input-group">
+                  <label className="auth-label">Nomor WhatsApp / HP</label>
+                  <div className="auth-input-wrapper">
+                    <Phone size={15} className="auth-input-icon" />
+                    <input
+                      type="tel"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value)}
+                      placeholder="0812XXXXXXXX"
+                      className="auth-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="auth-input-group">
+                  <label className="auth-label">Email Aktif</label>
+                  <div className="auth-input-wrapper">
+                    <Mail size={15} className="auth-input-icon" />
+                    <input
+                      type="email"
+                      required
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="contoh@email.com"
+                      className="auth-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 5: Password & Konfirmasi */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="auth-input-group">
+                  <label className="auth-label">Kata Sandi Dinas</label>
+                  <div className="auth-input-wrapper">
+                    <Lock size={15} className="auth-input-icon" />
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      required
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="Minimal 8 Karakter"
+                      className="auth-input"
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex'
+                      }}
+                    >
+                      {showRegPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="auth-input-group">
+                  <label className="auth-label">Ulangi Kata Sandi</label>
+                  <div className="auth-input-wrapper">
+                    <KeyRound size={15} className="auth-input-icon" />
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      required
+                      value={regConfirmPassword}
+                      onChange={(e) => setRegConfirmPassword(e.target.value)}
+                      placeholder="Konfirmasi Kata Sandi"
+                      className="auth-input"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Password Requirements Checklist */}
+              {regPassword.length > 0 && (
+                <div className="password-check-box">
+                  <div className={`check-item ${passwordRules.minLength ? 'valid' : 'invalid'}`}>
+                    {passwordRules.minLength ? <Check size={12} /> : <X size={12} />}
+                    <span>Min. 8 Karakter</span>
+                  </div>
+                  <div className={`check-item ${passwordRules.hasUpper ? 'valid' : 'invalid'}`}>
+                    {passwordRules.hasUpper ? <Check size={12} /> : <X size={12} />}
+                    <span>Huruf Besar (A-Z)</span>
+                  </div>
+                  <div className={`check-item ${passwordRules.hasNumber ? 'valid' : 'invalid'}`}>
+                    {passwordRules.hasNumber ? <Check size={12} /> : <X size={12} />}
+                    <span>Angka (0-9)</span>
+                  </div>
+                  <div className={`check-item ${isPasswordMatch ? 'valid' : 'invalid'}`}>
+                    {isPasswordMatch ? <Check size={12} /> : <X size={12} />}
+                    <span>Sandi Cocok</span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !isRegisterFormValid}
+                className="auth-btn-primary"
+              >
+                {loading ? (
+                  <>
+                    <Clock size={16} className="animate-spin" />
+                    <span>Mendaftarkan Akun...</span>
+                  </>
+                ) : (
+                  <>
+                    <BadgeCheck size={16} />
+                    <span>Daftarkan Akun Penyidik</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* ============================================================
+            OVERLAY CONTAINER (Sliding Panel with Angular Slant)
+           ============================================================ */}
+        <div className="auth-overlay-container">
+          <div className="auth-overlay">
+            {/* Overlay Left (Visible when Register Active -> Prompts to Sign-In) */}
+            <div className="auth-overlay-panel auth-overlay-left">
+              <div className="overlay-badge">
+                <ShieldCheck size={14} color="#ffe6e4" />
+                <span>AKUN KEDINASAN AKTIF</span>
+              </div>
+              <h2 className="overlay-title">
+                Sudah Terdaftar di Sistem?
+              </h2>
+              <p className="overlay-desc">
+                Silakan masuk dengan kredensial kedinasan yang telah diverifikasi oleh Administrator Satreskrim.
+              </p>
+              <button 
+                type="button" 
+                className="overlay-ghost-btn"
+                onClick={() => handleTogglePanel(false)}
+              >
+                <span>Masuk Sekarang</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* Overlay Right (Visible when Login Active -> Prompts to Register) */}
+            <div className="auth-overlay-panel auth-overlay-right">
+              <div className="overlay-badge">
+                <Radio size={14} className="animate-pulse" color="#ffe6e4" />
+                <span>SATRESKRIM POLRES KOLAKA TIMUR</span>
+              </div>
+              <h2 className="overlay-title">
+                Sistem Administrasi Penyidikan Digital
+              </h2>
+              <p className="overlay-desc">
+                Satreskrim Polres Kolaka Timur - Mewujudkan pelayanan penegakan hukum yang Presisi dan transparan.
+              </p>
+              <button 
+                type="button" 
+                className="overlay-ghost-btn"
+                onClick={() => handleTogglePanel(true)}
+              >
+                <UserPlus size={16} />
+                <span>Daftar Akun Personel</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================
+          MODAL SUKSES PENDAFTARAN PERSONEL (PRESISI GOLD & NAVY)
+         ============================================================ */}
+      {showSuccessModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(10, 15, 20, 0.9)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'linear-gradient(145deg, #1b2229 0%, #141a1f 100%)',
+            border: '1px solid #ff352d',
+            borderRadius: '20px',
+            maxWidth: '460px',
+            width: '100%',
+            padding: '30px 24px 24px',
+            boxShadow: '0 0 35px rgba(255, 53, 45, 0.25), 0 20px 40px rgba(0, 0, 0, 0.8)',
+            textAlign: 'center',
+            position: 'relative'
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(255, 53, 45, 0.12)',
+              border: '2px solid #ff352d',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              boxShadow: '0 0 20px rgba(255, 53, 45, 0.35)'
+            }}>
+              <CheckCircle2 size={34} color="#ff5740" />
+            </div>
+
+            <h3 style={{
+              color: '#FFFFFF',
+              fontSize: '18px',
+              fontWeight: 800,
+              margin: '0 0 10px',
+              letterSpacing: '0.3px',
+              lineHeight: 1.3
+            }}>
+              Pendaftaran Personel Berhasil Dikirim
+            </h3>
+
+            <p style={{
+              color: '#cbd5e1',
+              fontSize: '13px',
+              lineHeight: 1.6,
+              margin: '0 0 20px'
+            }}>
+              Permohonan akses kedinasan Anda telah diterima oleh sistem. Mohon menunggu proses verifikasi dan aktivasi akun oleh Administrator Satreskrim.
+            </p>
+
+            {/* Countdown Progress Bar (2 Detik) */}
+            <div style={{
+              width: '100%',
+              height: '4px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '2px',
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              <div style={{
+                height: '100%',
+                background: 'linear-gradient(90deg, #b81d18, #ff352d)',
+                width: '100%',
+                animation: 'countdown2s 2s linear forwards'
+              }} />
+            </div>
+
+            <div style={{
+              marginTop: '10px',
+              fontSize: '11px',
+              color: '#94a3b8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}>
+              <Clock size={12} color="#ff5740" />
+              <span>Mengalihkan ke halaman masuk dalam 2 detik...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes countdown2s {
           from { width: 100%; }
           to { width: 0%; }
         }
-        @keyframes fadeInScale {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
       `}</style>
-      {/* Tactical Background Grid */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundImage: `
-          linear-gradient(to right, rgba(0, 212, 255, 0.04) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(0, 212, 255, 0.04) 1px, transparent 1px)
-        `,
-        backgroundSize: '40px 40px',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Cyber Corner HUD Decors */}
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        left: '24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        color: 'var(--accent-cyan)',
-        fontSize: '11px',
-        letterSpacing: '0.1em',
-        fontFamily: 'monospace',
-      }}>
-        <Radio size={14} className="animate-pulse" />
-        <span>SECURE TERMINAL // SATRESKRIM POLRES KOLAKA TIMUR</span>
-      </div>
-
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        right: '24px',
-        fontSize: '11px',
-        color: 'var(--text-muted)',
-        fontFamily: 'monospace',
-      }}>
-        GATEWAY: SUPABASE AUTH & RESEND NOTIFICATION
-      </div>
-
-      {/* Main Container Card */}
-      <div className="glass" style={{
-        width: '100%',
-        maxWidth: activeTab === 'register' && !registerSuccessData ? '580px' : '480px',
-        padding: '32px 28px',
-        borderRadius: 'var(--radius-xl)',
-        border: '1px solid var(--border-glass-hover)',
-        boxShadow: 'var(--glow-cyan-strong)',
-        position: 'relative',
-        zIndex: 10,
-        transition: 'max-width 0.3s ease',
-        margin: '30px 0'
-      }}>
-        {/* Header Insignia with Official Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 12px',
-          }}>
-            {!logoError ? (
-              <img
-                src={logoImg}
-                alt="Logo Sat Reskrim Polres Kolaka Timur"
-                onError={() => setLogoError(true)}
-                style={{
-                  height: '76px',
-                  width: 'auto',
-                  objectFit: 'contain',
-                  filter: 'drop-shadow(0 0 16px rgba(0, 212, 255, 0.45))',
-                  transition: 'transform 0.3s ease',
-                }}
-              />
-            ) : (
-              <div style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '16px',
-                background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(59, 130, 246, 0.2) 100%)',
-                border: '2px solid var(--accent-cyan)',
-                boxShadow: 'var(--glow-cyan-strong)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Shield size={34} color="var(--accent-cyan)" />
-              </div>
-            )}
-          </div>
-
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 12px',
-            background: 'rgba(0, 212, 255, 0.08)',
-            border: '1px solid var(--accent-cyan)',
-            borderRadius: 'var(--radius-full)',
-            fontSize: '10px',
-            fontWeight: 700,
-            color: 'var(--accent-cyan)',
-            letterSpacing: '0.08em',
-            marginBottom: '6px',
-            textTransform: 'uppercase',
-          }}>
-            <Radio size={12} className="animate-pulse" />
-            <span>Sistem Otomasi Administrasi Penyidikan</span>
-          </div>
-
-          <h1 style={{
-            fontSize: '21px',
-            fontWeight: 800,
-            color: '#FFFFFF',
-            margin: '4px 0',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-          }}>
-            E-Mindik Satreskrim
-          </h1>
-          <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', margin: 0 }}>
-            Kepolisian Resor Kolaka Timur • Polda Sulawesi Tenggara
-          </p>
-        </div>
-
-        {/* Tab Switcher: LOGIN vs DAFTAR */}
-        {!registerSuccessData && (
-          <div style={{
-            display: 'flex',
-            background: 'rgba(6, 11, 24, 0.8)',
-            border: '1px solid var(--border-glass)',
-            borderRadius: '12px',
-            padding: '4px',
-            marginBottom: '20px',
-            gap: '4px'
-          }}>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('login');
-                setErrorMessage('');
-                setStatusMessage('');
-              }}
-              style={{
-                flex: 1,
-                padding: '9px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: activeTab === 'login' ? 'linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(59, 130, 246, 0.25))' : 'transparent',
-                color: activeTab === 'login' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                fontWeight: activeTab === 'login' ? 700 : 500,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: activeTab === 'login' ? '0 0 10px rgba(0, 212, 255, 0.2)' : 'none',
-                borderBottom: activeTab === 'login' ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <LogIn size={15} />
-              <span>MASUK / LOGIN</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('register');
-                setErrorMessage('');
-                setStatusMessage('');
-              }}
-              style={{
-                flex: 1,
-                padding: '9px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: activeTab === 'register' ? 'linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(59, 130, 246, 0.25))' : 'transparent',
-                color: activeTab === 'register' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                fontWeight: activeTab === 'register' ? 700 : 500,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: activeTab === 'register' ? '0 0 10px rgba(0, 212, 255, 0.2)' : 'none',
-                borderBottom: activeTab === 'register' ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <UserPlus size={15} />
-              <span>DAFTAR PENYIDIK</span>
-            </button>
-          </div>
-        )}
-
-        {/* Status & Error Alerts */}
-        {errorMessage && (
-          <div style={{
-            padding: '12px 16px',
-            borderRadius: 'var(--radius-md)',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid var(--accent-red)',
-            color: '#FFFFFF',
-            fontSize: '12px',
-            display: 'flex',
-            alignItems: 'start',
-            gap: '10px',
-            marginBottom: '18px',
-          }}>
-            <AlertCircle size={16} color="var(--accent-red)" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {statusMessage && !errorMessage && (
-          <div style={{
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            background: 'rgba(0, 212, 255, 0.1)',
-            border: '1px solid var(--accent-cyan)',
-            color: 'var(--accent-cyan)',
-            fontSize: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '18px',
-          }}>
-            <Radio size={14} className="animate-pulse" />
-            <span>{statusMessage}</span>
-          </div>
-        )}
-
-        {/* -------------------- TAB 1: FORM LOGIN -------------------- */}
-        {activeTab === 'login' && !registerSuccessData && (
-          <form onSubmit={handleSupabaseLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Mail size={13} color="var(--accent-cyan)" />
-                <span>Email Personel / Akun Dinas</span>
-              </label>
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="Masukkan alamat email aktif / terdaftar"
-                className="form-input"
-                autoComplete="username"
-                required
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Lock size={13} color="var(--accent-cyan)" />
-                <span>Kata Sandi (Password)</span>
-              </label>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="form-input mono"
-                autoComplete="current-password"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary"
-              style={{
-                padding: '12px',
-                fontSize: '13px',
-                fontWeight: 700,
-                letterSpacing: '0.03em',
-                marginTop: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: 'var(--glow-cyan)',
-              }}
-            >
-              {loading ? (
-                <>
-                  <Radio size={16} className="animate-pulse" />
-                  <span>Memproses Otentikasi...</span>
-                </>
-              ) : (
-                <>
-                  <LogIn size={16} />
-                  <span>Masuk Melalui Supabase Auth</span>
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* -------------------- TAB 2: FORM REGISTRASI MANDIRI PENYIDIK -------------------- */}
-        {activeTab === 'register' && (
-          <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {/* Field a: Nama Lengkap Beserta Gelar */}
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                Nama Lengkap (tanpa pangkat/gelar di awal, contoh: GABRIEL BAYU KURNIAWAN, S.H.) <span style={{ color: 'var(--accent-red)' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={regNama}
-                onChange={(e) => setRegNama(e.target.value)}
-                placeholder="Contoh: GABRIEL BAYU KURNIAWAN, S.H."
-                className="form-input"
-                required
-              />
-            </div>
-
-            {/* Grid 2 Kolom: Pangkat & NRP */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {/* Field b: Pangkat */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  Pangkat Kedinasan <span style={{ color: 'var(--accent-red)' }}>*</span>
-                </label>
-                <select
-                  value={regPangkat}
-                  onChange={(e) => setRegPangkat(e.target.value)}
-                  className="form-select"
-                  required
-                >
-                  {PANGKAT_OPTIONS.map((pkt) => (
-                    <option key={pkt} value={pkt}>{pkt}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Field c: NRP */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  NRP Kedinasan <span style={{ color: 'var(--accent-red)' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={regNrp}
-                  onChange={(e) => setRegNrp(e.target.value)}
-                  placeholder="Contoh: 85041234"
-                  className="form-input mono"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Field d: Jabatan Dinas */}
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-                Jabatan Dinas <span style={{ color: 'var(--accent-red)' }}>*</span>
-              </label>
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '12px',
-                  color: '#FFF',
-                  cursor: 'pointer',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: regJabatan === 'PENYIDIK PEMBANTU' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                  border: regJabatan === 'PENYIDIK PEMBANTU' ? '1px solid var(--accent-cyan)' : '1px solid transparent'
-                }}>
-                  <input
-                    type="radio"
-                    name="jabatan"
-                    value="PENYIDIK PEMBANTU"
-                    checked={regJabatan === 'PENYIDIK PEMBANTU'}
-                    onChange={(e) => setRegJabatan(e.target.value)}
-                  />
-                  <span>PENYIDIK PEMBANTU</span>
-                </label>
-
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '12px',
-                  color: '#FFF',
-                  cursor: 'pointer',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: regJabatan === 'PENYIDIK' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                  border: regJabatan === 'PENYIDIK' ? '1px solid var(--accent-cyan)' : '1px solid transparent'
-                }}>
-                  <input
-                    type="radio"
-                    name="jabatan"
-                    value="PENYIDIK"
-                    checked={regJabatan === 'PENYIDIK'}
-                    onChange={(e) => setRegJabatan(e.target.value)}
-                  />
-                  <span>PENYIDIK</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Grid 2 Kolom: Satker & Unit */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
-              {/* Field e: Satker */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  Satker
-                </label>
-                <input
-                  type="text"
-                  value={regSatker}
-                  onChange={(e) => setRegSatker(e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              {/* Field f: Unit */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  Unit Kerja
-                </label>
-                <select
-                  value={regUnit}
-                  onChange={(e) => setRegUnit(e.target.value)}
-                  className="form-select"
-                >
-                  {UNIT_OPTIONS.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Grid 2 Kolom: No HP/WhatsApp & Email */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {/* Field g: Nomor Handphone / WhatsApp */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  No. Handphone / WA
-                </label>
-                <input
-                  type="tel"
-                  value={regPhone}
-                  onChange={(e) => setRegPhone(e.target.value)}
-                  placeholder="0812XXXXXXXX"
-                  className="form-input"
-                />
-              </div>
-
-              {/* Field h: Email */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  Email <span style={{ color: 'var(--accent-red)' }}>*</span>
-                </label>
-                <input
-                  type="email"
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="Masukkan alamat email aktif"
-                  className="form-input"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Grid 2 Kolom: Password & Konfirmasi Password */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {/* Field i: Kata Sandi */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  Kata Sandi <span style={{ color: 'var(--accent-red)' }}>*</span>
-                </label>
-                <input
-                  type="password"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="Min. 8 karakter..."
-                  className="form-input mono"
-                  required
-                />
-              </div>
-
-              {/* Field j: Konfirmasi Kata Sandi */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>
-                  Konfirmasi Sandi <span style={{ color: 'var(--accent-red)' }}>*</span>
-                </label>
-                <input
-                  type="password"
-                  value={regConfirmPassword}
-                  onChange={(e) => setRegConfirmPassword(e.target.value)}
-                  placeholder="Ulangi kata sandi..."
-                  className="form-input mono"
-                  style={{
-                    borderColor: regConfirmPassword.length > 0 
-                      ? (isPasswordMatch ? 'var(--accent-green)' : 'var(--accent-red)') 
-                      : undefined
-                  }}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Strict Password Checklist Indicator (Real-Time Dynamic) */}
-            <div style={{
-              background: 'rgba(6, 11, 24, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '8px',
-              padding: '10px 12px',
-              fontSize: '11px'
-            }}>
-              <div style={{ color: '#94A3B8', fontWeight: 600, marginBottom: '6px' }}>
-                Indikator Syarat Keamanan Kata Sandi:
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  color: passwordRules.minLength ? 'var(--accent-green)' : '#64748B'
-                }}>
-                  {passwordRules.minLength ? <Check size={13} color="var(--accent-green)" /> : <div style={{ width: 13, height: 13, borderRadius: '50%', background: '#334155' }} />}
-                  <span>Minimal 8 Karakter</span>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  color: passwordRules.hasUpper ? 'var(--accent-green)' : '#64748B'
-                }}>
-                  {passwordRules.hasUpper ? <Check size={13} color="var(--accent-green)" /> : <div style={{ width: 13, height: 13, borderRadius: '50%', background: '#334155' }} />}
-                  <span>Huruf Besar (A-Z)</span>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  color: passwordRules.hasLower ? 'var(--accent-green)' : '#64748B'
-                }}>
-                  {passwordRules.hasLower ? <Check size={13} color="var(--accent-green)" /> : <div style={{ width: 13, height: 13, borderRadius: '50%', background: '#334155' }} />}
-                  <span>Huruf Kecil (a-z)</span>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  color: passwordRules.hasNumber ? 'var(--accent-green)' : '#64748B'
-                }}>
-                  {passwordRules.hasNumber ? <Check size={13} color="var(--accent-green)" /> : <div style={{ width: 13, height: 13, borderRadius: '50%', background: '#334155' }} />}
-                  <span>Angka (0-9)</span>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  color: passwordRules.hasSymbol ? 'var(--accent-green)' : '#64748B',
-                  gridColumn: 'span 2'
-                }}>
-                  {passwordRules.hasSymbol ? <Check size={13} color="var(--accent-green)" /> : <div style={{ width: 13, height: 13, borderRadius: '50%', background: '#334155' }} />}
-                  <span>Simbol Khusus (!@#$%^&*()_+-=[]{}|;:,.&lt;&gt;?)</span>
-                </div>
-
-                {regConfirmPassword.length > 0 && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    color: isPasswordMatch ? 'var(--accent-green)' : 'var(--accent-red)',
-                    gridColumn: 'span 2',
-                    marginTop: '2px',
-                    paddingTop: '4px',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.05)'
-                  }}>
-                    {isPasswordMatch ? <Check size={13} color="var(--accent-green)" /> : <X size={13} color="var(--accent-red)" />}
-                    <span>{isPasswordMatch ? 'Konfirmasi Kata Sandi Cocok' : 'Konfirmasi Kata Sandi Tidak Cocok'}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Tombol Submit Registrasi */}
-            <button
-              type="submit"
-              disabled={loading || !isRegisterFormValid}
-              className="btn btn-primary"
-              style={{
-                padding: '12px',
-                fontSize: '13px',
-                fontWeight: 700,
-                letterSpacing: '0.03em',
-                marginTop: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                opacity: (!isRegisterFormValid && !loading) ? 0.5 : 1,
-                cursor: (!isRegisterFormValid && !loading) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {loading ? (
-                <>
-                  <Radio size={16} className="animate-pulse" />
-                  <span>Mendaftarkan Akun Dinas...</span>
-                </>
-              ) : (
-                <>
-                  <BadgeCheck size={16} />
-                  <span>Daftarkan Akun Penyidik</span>
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* -------------------- MODAL SUKSES PENDAFTARAN PERSONEL (DARK NAVY & GOLD PRESISI) -------------------- */}
-        {showSuccessModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(3, 7, 18, 0.88)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99999,
-            padding: '20px'
-          }}>
-            <div style={{
-              background: 'linear-gradient(145deg, #0B1220 0%, #060B18 100%)',
-              border: '1px solid #F59E0B',
-              borderRadius: '16px',
-              maxWidth: '460px',
-              width: '100%',
-              padding: '28px 24px 22px',
-              boxShadow: '0 0 35px rgba(245, 158, 11, 0.25), 0 20px 40px rgba(0, 0, 0, 0.8)',
-              textAlign: 'center',
-              position: 'relative',
-              animation: 'fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
-            }}>
-              {/* Icon with Gold Glow */}
-              <div style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                background: 'rgba(245, 158, 11, 0.12)',
-                border: '2px solid #F59E0B',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px',
-                boxShadow: '0 0 20px rgba(245, 158, 11, 0.35)'
-              }}>
-                <CheckCircle2 size={34} color="#FCD34D" />
-              </div>
-
-              <h3 style={{
-                color: '#FFFFFF',
-                fontSize: '18px',
-                fontWeight: 800,
-                margin: '0 0 10px',
-                letterSpacing: '0.3px',
-                lineHeight: 1.3
-              }}>
-                Pendaftaran Personel Berhasil Dikirim
-              </h3>
-
-              <p style={{
-                color: '#CBD5E1',
-                fontSize: '13px',
-                lineHeight: 1.6,
-                margin: '0 0 20px'
-              }}>
-                Permohonan akses kedinasan Anda telah diterima oleh sistem. Mohon menunggu proses verifikasi dan aktivasi akun oleh Administrator Satreskrim.
-              </p>
-
-              {/* Countdown Progress Bar (2 Detik) */}
-              <div style={{
-                width: '100%',
-                height: '4px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '2px',
-                overflow: 'hidden',
-                position: 'relative'
-              }}>
-                <div style={{
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #F59E0B, #FCD34D)',
-                  width: '100%',
-                  animation: 'countdown2s 2s linear forwards'
-                }} />
-              </div>
-
-              <div style={{
-                marginTop: '10px',
-                fontSize: '11px',
-                color: '#94A3B8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}>
-                <Clock size={12} color="#F59E0B" />
-                <span>Mengalihkan ke halaman masuk dalam 2 detik...</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Footer Note */}
-        <div style={{
-          marginTop: '20px',
-          paddingTop: '14px',
-          borderTop: '1px solid var(--border-glass)',
-          textAlign: 'center',
-          fontSize: '11px',
-          color: 'var(--text-muted)',
-          lineHeight: 1.5,
-        }}>
-          <div>Hak Akses Berjenjang (RBAC): Super Admin • Admin • Penyidik</div>
-          <div style={{ marginTop: '3px', color: 'var(--text-secondary)' }}>
-            Autentikasi resmi terenkripsi via Supabase Auth & PostgreSQL RLS.
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

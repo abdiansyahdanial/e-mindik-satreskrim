@@ -156,13 +156,13 @@ export default function Navbar({
             onClick={onOpenUserManagement}
             className="btn btn-secondary btn-sm"
             style={{
-              borderColor: 'rgba(168, 85, 247, 0.4)',
-              color: '#C084FC',
-              background: 'rgba(168, 85, 247, 0.1)'
+              borderColor: 'rgba(255, 255, 255, 0.12)',
+              color: '#E2E8F0',
+              background: '#2a343f'
             }}
             title="Kelola Peran Akun (RBAC)"
           >
-            <ShieldAlert size={14} />
+            <ShieldAlert size={14} color="#ff5740" />
             <span>Kelola RBAC</span>
           </button>
         )}
@@ -174,17 +174,11 @@ export default function Navbar({
           gap: '10px',
           padding: '6px 12px',
           background: isSuperAdmin 
-            ? 'rgba(168, 85, 247, 0.1)' 
-            : isAdmin 
-            ? 'rgba(0, 212, 255, 0.08)' 
-            : 'rgba(34, 197, 94, 0.08)',
-          border: `1px solid ${
-            isSuperAdmin 
-              ? 'rgba(168, 85, 247, 0.4)' 
-              : isAdmin 
-              ? 'rgba(0, 212, 255, 0.3)' 
-              : 'rgba(34, 197, 94, 0.3)'
-          }`,
+            ? 'rgba(255, 53, 45, 0.1)' 
+            : '#222b34',
+          border: isSuperAdmin 
+            ? '1px solid rgba(255, 53, 45, 0.35)' 
+            : '1px solid rgba(255, 255, 255, 0.1)',
           borderRadius: 'var(--radius-lg)',
           marginLeft: '4px',
         }}>
@@ -193,16 +187,17 @@ export default function Navbar({
             height: '32px',
             borderRadius: '50%',
             background: isSuperAdmin 
-              ? 'linear-gradient(135deg, #A855F7 0%, #3B82F6 100%)' 
-              : isAdmin 
-              ? 'linear-gradient(135deg, #00D4FF 0%, #3B82F6 100%)' 
-              : 'linear-gradient(135deg, #22C55E 0%, #059669 100%)',
+              ? '#2a343f' 
+              : '#222b34',
+            border: isSuperAdmin 
+              ? '1.5px solid #ff352d' 
+              : '1px solid rgba(255, 255, 255, 0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 800,
             fontSize: '11.5px',
-            color: '#1b2229',
+            color: isSuperAdmin ? '#ff5740' : '#ffffff',
           }}>
             {officerInitials || 'P'}
           </div>
@@ -210,10 +205,20 @@ export default function Navbar({
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
               {officerName}
             </div>
-            <div style={{ fontSize: '10px', color: isSuperAdmin ? '#C084FC' : isAdmin ? 'var(--accent-cyan)' : 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '10px', color: isSuperAdmin ? '#ff5740' : isAdmin ? '#e2e8f0' : 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span>{officerJabatan}</span>
               <span className="mono" style={{ color: 'var(--text-muted)' }}>• {officerNrp}</span>
-              <span className={`badge ${isSuperAdmin ? 'badge-purple' : isAdmin ? 'badge-cyan' : 'badge-green'}`} style={{ fontSize: '8.5px', padding: '1px 4px' }}>
+              <span 
+                style={{
+                  fontSize: '8.5px',
+                  padding: '1px 5px',
+                  borderRadius: '4px',
+                  fontWeight: 700,
+                  background: isSuperAdmin ? 'rgba(255, 53, 45, 0.15)' : '#2a343f',
+                  color: isSuperAdmin ? '#ff5740' : '#ffffff',
+                  border: isSuperAdmin ? '1px solid rgba(255, 53, 45, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
                 {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
               </span>
             </div>
