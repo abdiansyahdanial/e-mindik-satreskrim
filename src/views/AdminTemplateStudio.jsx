@@ -534,15 +534,15 @@ export default function AdminTemplateStudio({
       {/* Header Banner */}
       <div style={{
         padding: '24px 28px',
-        background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(59, 130, 246, 0.08) 50%, rgba(6, 11, 24, 0.8) 100%)',
-        border: '1px solid var(--border-glass-hover)',
+        background: 'linear-gradient(135deg, #222b34 0%, #1e262e 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
         borderRadius: 'var(--radius-xl)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '16px',
-        boxShadow: 'var(--glow-cyan)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>

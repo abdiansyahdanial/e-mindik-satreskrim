@@ -63,9 +63,9 @@ export default function Navbar({
   return (
     <header className="app-navbar no-print" style={{
       height: 'var(--header-height)',
-      background: 'rgba(6, 11, 24, 0.88)',
+      background: '#1e262e',
       backdropFilter: 'blur(16px)',
-      borderBottom: '1px solid var(--border-glass)',
+      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -90,8 +90,8 @@ export default function Navbar({
             placeholder="Cari No. LP, Tersangka, Pasal..."
             style={{
               width: '100%',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-input)',
+              background: '#222b34',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               borderRadius: 'var(--radius-full)',
               padding: '8px 16px 8px 36px',
               fontSize: '13px',
@@ -117,9 +117,9 @@ export default function Navbar({
         alignItems: 'center',
         gap: '8px',
         padding: '6px 14px',
-        background: 'rgba(13, 21, 38, 0.6)',
+        background: '#222b34',
         borderRadius: 'var(--radius-full)',
-        border: '1px solid var(--border-glass)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
         fontSize: '12px',
         color: 'var(--accent-cyan)',
       }}>
@@ -202,7 +202,7 @@ export default function Navbar({
             justifyContent: 'center',
             fontWeight: 800,
             fontSize: '11.5px',
-            color: '#060B18',
+            color: '#1b2229',
           }}>
             {officerInitials || 'P'}
           </div>

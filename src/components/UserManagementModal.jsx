@@ -387,7 +387,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
         <div style={{
           display: 'flex',
           borderBottom: '1px solid var(--border-glass)',
-          background: 'rgba(6, 11, 24, 0.4)',
+          background: '#1e262e',
           padding: '0 20px'
         }}>
           <button

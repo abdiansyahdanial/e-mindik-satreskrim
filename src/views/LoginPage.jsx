@@ -74,6 +74,7 @@ export default function LoginPage({ onLoginSuccess }) {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [registerSuccessData, setRegisterSuccessData] = useState(null);
 
   // Real-time Strict Password Rule Evaluation
   const passwordRules = useMemo(() => {
@@ -309,11 +310,13 @@ export default function LoginPage({ onLoginSuccess }) {
 
       // Tampilkan notifikasi/modal sukses yang elegan (nuansa dark navy & gold Presisi)
       setShowSuccessModal(true);
+      setRegisterSuccessData(officerData);
       setStatusMessage('');
 
       // Tampilan bertahan selama 2 detik dengan countdown bar, lalu otomatis alihkan ke Login
       setTimeout(() => {
         setShowSuccessModal(false);
+        setRegisterSuccessData(null);
         setActiveTab('login');
         setLoginEmail(savedEmail);
         setLoginPassword('');

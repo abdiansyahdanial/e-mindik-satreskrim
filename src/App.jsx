@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import LoginPage from './views/LoginPage';
 import PendingApprovalView from './views/PendingApprovalView';
-import Sidebar from './components/Sidebar';
+import ExpandingSidebar from './components/layout/ExpandingSidebar';
 import Navbar from './components/Navbar';
 import DashboardView from './views/DashboardView';
 import CasesView from './views/CasesView';
@@ -625,7 +625,7 @@ export default function App() {
       <div style={{
         height: '100vh',
         width: '100vw',
-        background: '#060B18',
+        background: '#1b2229',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -703,8 +703,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Sidebar Navigation with 3-tier Role-based filtering */}
-      <Sidebar
+      {/* Expanding Sidebar Navigation with 3-tier Role-based filtering */}
+      <ExpandingSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         caseCount={cases.length}

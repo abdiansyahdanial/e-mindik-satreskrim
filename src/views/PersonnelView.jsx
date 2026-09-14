@@ -222,7 +222,7 @@ export default function PersonnelView({
                   top: 0,
                   right: 0,
                   background: 'linear-gradient(135deg, #00D4FF, #3B82F6)',
-                  color: '#060B18',
+                  color: '#1b2229',
                   fontSize: '9px',
                   fontWeight: 800,
                   padding: '3px 14px',
