@@ -12,7 +12,8 @@ import {
   UserCheck,
   Shield,
   UserCog,
-  Radio
+  Radio,
+  FilePlus
 } from 'lucide-react';
 import logoImg from '../../assets/logo.png';
 import './ExpandingSidebar.css';
@@ -32,6 +33,7 @@ export default function ExpandingSidebar({
   caseCount = 0,
   docCount = 0,
   personnelCount = 0,
+  dumasCount = 0,
   userRole = 'anggota',
   onOpenUserManagement
 }) {
@@ -50,6 +52,14 @@ export default function ExpandingSidebar({
       label: 'Dashboard Taktis',
       icon: LayoutDashboard,
       badge: null,
+      roles: ['super_admin', 'admin', 'anggota'],
+    },
+    {
+      id: 'dumas',
+      label: 'Input Dumas / Baru',
+      icon: FilePlus,
+      badge: dumasCount || null,
+      badgeRed: true,
       roles: ['super_admin', 'admin', 'anggota'],
     },
     {
@@ -73,6 +83,7 @@ export default function ExpandingSidebar({
       icon: Archive,
       badge: docCount || 0,
       roles: ['super_admin', 'admin', 'anggota'],
+
     },
     {
       id: 'personnel',
@@ -259,7 +270,7 @@ export default function ExpandingSidebar({
                       {item.badge !== null && item.badge !== undefined && (
                         <span 
                           className={`es-badge ${
-                            item.badgeHighlight 
+                            item.badgeRed || item.badgeHighlight
                               ? 'highlight' 
                               : item.badgePurple 
                               ? 'purple' 

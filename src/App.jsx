@@ -13,6 +13,8 @@ import CaseDetailModal from './components/CaseDetailModal';
 import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
 import UserManagementModal from './components/UserManagementModal';
+import DumasView from './views/DumasView';
+import { fetchDumasRecords } from './services/dumasService';
 import { mockDocuments } from './data/mockDocuments';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
 
@@ -25,6 +27,7 @@ export default function App() {
 
   // Core Data States - 100% PURE REAL-TIME SUPABASE (NO FALLBACK REVERT)
   const [cases, setCases] = useState([]);
+  const [dumasList, setDumasList] = useState([]);
   const [personnel, setPersonnel] = useState([]);
   const [documents, setDocuments] = useState(() => {
     try {
@@ -224,6 +227,16 @@ export default function App() {
         }
       } catch (e) {
         console.warn('Personnel sync error:', e);
+      }
+
+      // 3. Dumas: read registered reports
+      try {
+        const { data: dumasData } = await fetchDumasRecords();
+        if (dumasData && Array.isArray(dumasData)) {
+          setDumasList(dumasData);
+        }
+      } catch (e) {
+        console.warn('Dumas sync error:', e);
       }
     };
 
@@ -605,6 +618,12 @@ export default function App() {
     setActiveTab('generator');
   };
 
+  const handleHandoverFromDumas = (mappedCase) => {
+    setCaseForGenerator(mappedCase);
+    setActiveTab('generator');
+    showToast(`Data perkara Dumas ${mappedCase.no_lp || ''} siap diproses di Generator Mindik.`);
+  };
+
   // Loading state during auth check
   if (isAuthChecking) {
     return (
@@ -667,6 +686,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         caseCount={cases.length}
+        dumasCount={dumasList.length}
         docCount={documents.length}
         personnelCount={personnel.length}
         userRole={userRole}
@@ -698,6 +718,16 @@ export default function App() {
               onNewCase={() => setIsNewCaseModalOpen(true)}
               onOpenGenerator={(c) => handleOpenGeneratorForCase(c)}
               onViewDoc={(doc) => setSelectedDocForPreview(doc)}
+            />
+          )}
+
+          {activeTab === 'dumas' && (
+            <DumasView
+              dumasList={dumasList}
+              setDumasList={setDumasList}
+              currentUserProfile={currentUserProfile}
+              onHandoverToGenerator={handleHandoverFromDumas}
+              onShowToast={showToast}
             />
           )}
 

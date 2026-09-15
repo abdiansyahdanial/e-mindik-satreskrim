@@ -1,0 +1,975 @@
+/* ============================================================
+   MODUL DUMAS (PENGADUAN MASYARAKAT) - POLRES KOLAKA TIMUR
+   Tema: Tactical Dark Charcoal & Merah Presisi Satreskrim
+   ============================================================ */
+
+.dumas-container {
+  min-height: 100%;
+  width: 100%;
+  background-color: #080B10;
+  color: #E2E8F0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Glow and Accents --- */
+.dumas-glow-red {
+  box-shadow: 0 0 20px -3px rgba(229, 46, 46, 0.45);
+}
+
+.dumas-glow-red-subtle {
+  box-shadow: 0 0 12px rgba(229, 46, 46, 0.25);
+}
+
+.dumas-grid-pattern {
+  background-size: 28px 28px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+/* ============================================================
+   SURFACE CARD CONTAINER (DESIGN SYSTEM POLRES KOLAKA TIMUR)
+   ============================================================ */
+.dumas-surface-card {
+  background-color: #121721;
+  border: 1px solid #1F2937;
+  border-radius: 16px; /* rounded-2xl */
+  padding: 24px; /* p-6 */
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dumas-surface {
+  background-color: #151822;
+  border: 1px solid #292F42;
+}
+
+.dumas-card {
+  background-color: #1B1F2C;
+  border: 1px solid #292F42;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-card:hover {
+  border-color: rgba(229, 46, 46, 0.4);
+}
+
+/* ============================================================
+   3-KOLOM FORMULIR INPUT DUMAS STRUKTUR PRESISI (CODE_2.HTML)
+   ============================================================ */
+.dumas-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (min-width: 768px) {
+  .dumas-form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dumas-form-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dumas-col-card {
+  background-color: #151822;
+  border: 1px solid #292F42;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.dumas-col-card.card-terlapor {
+  border-color: rgba(229, 46, 46, 0.4);
+}
+
+.dumas-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(41, 47, 66, 0.8);
+}
+
+.dumas-badge-col {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background-color: rgba(229, 46, 46, 0.15);
+  color: #FF352D;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.dumas-btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: #FF352D;
+  background-color: rgba(229, 46, 46, 0.1);
+  border: 1px solid rgba(229, 46, 46, 0.35);
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-btn-add:hover {
+  background-color: rgba(229, 46, 46, 0.2);
+  border-color: #FF352D;
+}
+
+/* Sub-Cards for Dynamic Saksi & Terlapor */
+.dumas-subcard {
+  background-color: #0E1118;
+  border: 1px solid #292F42;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s ease;
+}
+
+.dumas-subcard:hover {
+  border-color: #475569;
+}
+
+.dumas-subcard.subcard-terlapor {
+  border-color: rgba(229, 46, 46, 0.3);
+}
+
+.dumas-subcard.subcard-terlapor:hover {
+  border-color: #E52E2E;
+}
+
+.dumas-subcard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #292F42;
+  padding-bottom: 8px;
+}
+
+.dumas-btn-delete-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #F87171;
+  background-color: rgba(127, 29, 29, 0.3);
+  border: 1px solid rgba(153, 27, 27, 0.5);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dumas-btn-delete-sub:hover {
+  background-color: rgba(153, 27, 27, 0.6);
+  color: #FFFFFF;
+}
+
+/* Field Controls */
+.dumas-form-label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.dumas-form-input {
+  width: 100%;
+  background-color: #0B0D13;
+  border: 1px solid #292F42;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #F1F5F9;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  box-sizing: border-box;
+}
+
+.dumas-form-input:focus {
+  border-color: #E52E2E;
+  box-shadow: 0 0 0 1px #E52E2E;
+}
+
+.dumas-form-input::placeholder {
+  color: #475569;
+}
+
+.dumas-form-select {
+  width: 100%;
+  background-color: #0B0D13;
+  border: 1px solid #292F42;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #F1F5F9;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.dumas-form-select:focus {
+  border-color: #E52E2E;
+  box-shadow: 0 0 0 1px #E52E2E;
+}
+
+.dumas-form-textarea {
+  width: 100%;
+  background-color: #0B0D13;
+  border: 1px solid #292F42;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #F1F5F9;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  box-sizing: border-box;
+}
+
+.dumas-form-textarea:focus {
+  border-color: #E52E2E;
+  box-shadow: 0 0 0 1px #E52E2E;
+}
+
+/* Sticky Action Footer */
+.dumas-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  background: rgba(14, 17, 24, 0.96);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid #292F42;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 30;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  margin-top: 20px;
+}
+
+.dumas-btn-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #E52E2E 0%, #C82323 100%);
+  color: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 0 20px -3px rgba(229, 46, 46, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-btn-submit:hover {
+  background: linear-gradient(135deg, #FF352D 0%, #E52E2E 100%);
+  box-shadow: 0 0 25px 0 rgba(229, 46, 46, 0.7);
+  transform: translateY(-1px);
+}
+
+.dumas-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================================
+   DETAIL DOSSIER & MAP BERKAS KEDINASAN (CODE_3.HTML)
+   ============================================================ */
+.dumas-dossier-card {
+  background-color: #121721;
+  border: 1px solid #292F42;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.dumas-dossier-card.card-pelapor {
+  border-left: 4px solid #10B981;
+}
+
+.dumas-dossier-card.card-terlapor {
+  border-left: 4px solid #E52E2E;
+}
+
+.dumas-dossier-card.card-delik {
+  border-left: 4px solid #F59E0B;
+}
+
+.dumas-dossier-header {
+  background-color: #10141D;
+  border-bottom: 1px solid #292F42;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dumas-dossier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.dumas-dossier-field {
+  background-color: #0B0D13;
+  border: 1px solid #292F42;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dumas-dossier-field-full {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dumas-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.dumas-evidence-card {
+  background-color: #121721;
+  border: 1px solid #292F42;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-evidence-card:hover {
+  border-color: rgba(229, 46, 46, 0.4);
+}
+
+.dumas-action-banner {
+  background-color: #121721;
+  border: 1px solid #292F42;
+  border-left: 4px solid #E52E2E;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ============================================================
+   TAILWIND UTILITY SIMULATION FOR DUMAS DETAIL VIEW (CODE_3.HTML)
+   Ensures 100% precision rendering even without Tailwind CLI
+   ============================================================ */
+.dumas-detail-wrapper {
+  max-width: 80rem; /* max-w-7xl */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+  background-color: #080B10;
+  color: #E2E8F0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* space-y-6 */
+  box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+  .dumas-detail-wrapper {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.dumas-command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+.dumas-btn-back {
+  background-color: #121721;
+  border: 1px solid #292F42;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: #CBD5E1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-btn-back:hover {
+  background-color: #1B1F2C;
+  color: #FFFFFF;
+}
+
+.dumas-reg-box {
+  background-color: #0B0D13;
+  border: 1px solid #292F42;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #F1F5F9;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.dumas-btn-sprin-accent {
+  background-color: #E52E2E;
+  color: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  box-shadow: 0 10px 25px -5px rgba(229, 46, 46, 0.5), 0 0 15px rgba(229, 46, 46, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-btn-sprin-accent:hover {
+  background-color: #C82323;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px -5px rgba(229, 46, 46, 0.7);
+}
+
+.dumas-quick-status-bar {
+  background-color: #121721;
+  border: 1px solid #292F42;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.dumas-badge-status-tahap {
+  background-color: rgba(69, 26, 3, 0.7);
+  color: #FCD34D;
+  border: 1px solid rgba(146, 64, 14, 0.8);
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Card 01 4-Kolom Grid */
+.dumas-grid-4cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .dumas-grid-4cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dumas-grid-4cols {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 3-Kolom Responsive Grid for Evidence Cards */
+.dumas-evidence-responsive-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .dumas-evidence-responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dumas-evidence-card-box {
+  background-color: #121721;
+  border: 1px solid #292F42;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-evidence-card-box:hover {
+  border-color: rgba(229, 46, 46, 0.4);
+}
+
+.dumas-terminal-narrative {
+  background-color: #0B0D13;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #292F42;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: #CBD5E1;
+  line-height: 1.625;
+}
+
+.dumas-btn-cetak-primary {
+  background-color: #E52E2E;
+  color: #FFFFFF;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(229, 46, 46, 0.3);
+}
+
+.dumas-btn-cetak-primary:hover {
+  background-color: #C82323;
+  box-shadow: 0 6px 18px rgba(229, 46, 46, 0.5);
+}
+
+.dumas-btn-cetak-secondary {
+  background-color: #121721;
+  border: 1px solid rgba(229, 46, 46, 0.6);
+  color: #F87171;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.dumas-btn-cetak-secondary:hover {
+  background-color: #1B1F2C;
+  color: #FFFFFF;
+  border-color: #E52E2E;
+}
+
+/* ============================================================
+   TOOLBAR ATAS (SEARCH, FILTER, & ACTION BUTTONS)
+   ============================================================ */
+.dumas-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dumas-btn-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #E52E2E 0%, #C82323 100%);
+  color: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 10px 18px; /* px-4 py-2.5 */
+  border-radius: 12px; /* rounded-xl */
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 20px -3px rgba(229, 46, 46, 0.45);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-decoration: none;
+}
+
+.dumas-btn-new:hover {
+  background: linear-gradient(135deg, #FF3B30 0%, #E52E2E 100%);
+  box-shadow: 0 0 25px 0 rgba(229, 46, 46, 0.65);
+  transform: translateY(-1px);
+}
+
+.dumas-btn-new:active {
+  transform: translateY(0);
+}
+
+.dumas-search-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+}
+
+.dumas-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748B;
+  pointer-events: none;
+}
+
+.dumas-search-input {
+  width: 100%;
+  background-color: #0B0D13;
+  border: 1px solid #292F42;
+  color: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 9px 12px 9px 36px;
+  border-radius: 8px; /* rounded-lg */
+  outline: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-search-input:focus {
+  border-color: #E52E2E;
+  box-shadow: 0 0 0 1px #E52E2E;
+}
+
+.dumas-search-input::placeholder {
+  color: #64748B;
+}
+
+.dumas-select {
+  background-color: #0B0D13;
+  border: 1px solid #292F42;
+  color: #E2E8F0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 8px; /* rounded-lg */
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.dumas-select:focus {
+  border-color: #E52E2E;
+  box-shadow: 0 0 0 1px #E52E2E;
+}
+
+/* ============================================================
+   STYLING TABEL DATA DUMAS PRESISI
+   ============================================================ */
+.dumas-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #1F2937;
+  border-radius: 12px;
+  background-color: #121721;
+}
+
+.dumas-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+.dumas-table thead tr {
+  background-color: #1A2232;
+  border-bottom: 1px solid #292F42;
+}
+
+.dumas-table th {
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94A3B8;
+  white-space: nowrap;
+}
+
+.dumas-table tbody tr {
+  border-bottom: 1px solid rgba(31, 41, 55, 0.6);
+  transition: background-color 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.dumas-table tbody tr:hover {
+  background-color: rgba(26, 34, 50, 0.5);
+}
+
+.dumas-table td {
+  padding: 14px 16px;
+  vertical-align: middle;
+}
+
+.dumas-cell-no {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dumas-cell-no span.dumas-no-text {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.dumas-cell-no:hover span.dumas-no-text {
+  color: #FF352D;
+}
+
+.dumas-cell-date {
+  font-size: 10px;
+  color: #64748B;
+}
+
+/* Status Badge Taktis */
+.dumas-badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(69, 26, 3, 0.6);
+  border: 1px solid #92400e;
+  color: #FCD34D;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px; /* rounded-full */
+  white-space: nowrap;
+}
+
+.dumas-badge-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #F59E0B;
+}
+
+/* Bukti Badge */
+.dumas-badge-evidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #0C111A;
+  border: 1px solid #292F42;
+  color: #CBD5E1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+/* Action Icon Buttons */
+.dumas-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: #0B0D13;
+  border: 1px solid #292F42;
+  color: #94A3B8;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.dumas-action-btn:hover {
+  background-color: #1F2937;
+  color: #FFFFFF;
+  border-color: #475569;
+}
+
+.dumas-action-btn.btn-red:hover {
+  background-color: rgba(229, 46, 46, 0.2);
+  color: #FF352D;
+  border-color: #E52E2E;
+}
+
+/* ============================================================
+   MODAL GLASSMORPHISM OVERLAY (TAHAP 1: SELEKSI MODE INPUT)
+   ============================================================ */
+.dumas-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  padding: 16px;
+  animation: dumasFadeIn 0.2s ease-out;
+}
+
+.dumas-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 880px;
+  background-color: #0E1118;
+  border: 1px solid #292F42;
+  border-radius: 16px; /* rounded-2xl */
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes dumasFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- Scrollbar Customization --- */
+.dumas-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.dumas-scroll::-webkit-scrollbar-track {
+  background: #080B10;
+}
+
+.dumas-scroll::-webkit-scrollbar-thumb {
+  background: #292F42;
+  border-radius: 3px;
+}
+
+.dumas-scroll::-webkit-scrollbar-thumb:hover {
+  background: #E52E2E;
+}
+
+/* ============================================================
+   MEDIA PRINT RULES (STANDAR KEDINASAN CETAK DUMAS RESMI)
+   ============================================================ */
+@media print {
+  body, .app-container, .app-main, .main-content {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .sidebar,
+  .expanding-sidebar-rail,
+  .expanding-sidebar-overlay,
+  .navbar-container,
+  .dumas-non-printable,
+  header.sticky,
+  button,
+  footer {
+    display: none !important;
+  }
+
+  .dumas-container {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+
+  .dumas-printable-area {
+    display: block !important;
+    width: 100% !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-family: 'Times New Roman', serif !important;
+  }
+
+  .dumas-card, .dumas-surface {
+    background: #FFFFFF !important;
+    border: 1px solid #666666 !important;
+    box-shadow: none !important;
+    color: #000000 !important;
+  }
+
+  .dumas-print-header {
+    text-align: center;
+    border-bottom: 2px double #000000;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+}

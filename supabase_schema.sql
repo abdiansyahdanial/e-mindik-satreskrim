@@ -419,3 +419,101 @@ $$;
 -- Berikan hak akses eksekusi ke peran yang terotentikasi & service_role
 GRANT EXECUTE ON FUNCTION public.delete_user_completely(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_user_completely(UUID) TO service_role;
+
+-- ==============================================================================
+-- 9. TABEL MODUL DUMAS (ADUAN MASYARAKAT) & LAMPIRAN BUKTI DIGITAL
+-- ==============================================================================
+
+-- A. Tabel Utama Laporan Pengaduan
+CREATE TABLE IF NOT EXISTS public.laporan_pengaduan (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nomor_lp VARCHAR(120) UNIQUE NOT NULL,
+    tanggal_lapor TIMESTAMPTZ DEFAULT NOW(),
+    penyidik_id VARCHAR(100),
+    penyidik_nama VARCHAR(150),
+    
+    -- Identitas Pelapor & Korban
+    pelapor_nama VARCHAR(150) NOT NULL,
+    pelapor_nik VARCHAR(20) NOT NULL,
+    pelapor_ttl VARCHAR(120),
+    pelapor_pekerjaan VARCHAR(100),
+    pelapor_agama VARCHAR(50),
+    pelapor_kontak VARCHAR(40),
+    pelapor_alamat TEXT,
+    
+    -- Struktur Multi-Saksi & Multi-Terlapor (JSONB Array)
+    saksi_list JSONB DEFAULT '[]'::jsonb,
+    terlapor_list JSONB DEFAULT '[]'::jsonb,
+    
+    -- Terlapor Utama Snapshot
+    terlapor_nama VARCHAR(150) NOT NULL,
+    terlapor_nik VARCHAR(20),
+    terlapor_ttl VARCHAR(120),
+    terlapor_pekerjaan VARCHAR(100),
+    terlapor_agama VARCHAR(50),
+    terlapor_status VARCHAR(60) DEFAULT 'Terlapor Utama',
+    terlapor_domisili TEXT,
+    terlapor_kontak VARCHAR(40),
+    
+    -- Delik & Tempat Kejadian Perkara
+    tindak_pidana VARCHAR(255) NOT NULL,
+    pasal_disangkakan VARCHAR(200),
+    tempus_delicti TEXT,
+    locus_delicti TEXT,
+    uraian_kejadian TEXT,
+    status_berkas VARCHAR(60) DEFAULT 'Tahap Penyelidikan (Sp.Lidik)',
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- B. Tabel Lampiran Barang Bukti Digital
+CREATE TABLE IF NOT EXISTS public.lampiran_barang_bukti (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    laporan_id UUID REFERENCES public.laporan_pengaduan(id) ON DELETE CASCADE,
+    kategori_bukti VARCHAR(60), -- 'DOKUMEN_PDF' | 'OBJEK_FISIK_JPG' | 'DOKUMEN_PENDUKUNG'
+    nama_file VARCHAR(255) NOT NULL,
+    file_path TEXT,
+    file_url TEXT,
+    file_size_bytes BIGINT,
+    mime_type VARCHAR(60),
+    hash_sha256 VARCHAR(64),
+    keterangan TEXT,
+    diunggah_pada TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexing
+CREATE INDEX IF NOT EXISTS idx_laporan_pengaduan_nomor ON public.laporan_pengaduan(nomor_lp);
+CREATE INDEX IF NOT EXISTS idx_laporan_pengaduan_created_at ON public.laporan_pengaduan(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_lampiran_barang_bukti_laporan_id ON public.lampiran_barang_bukti(laporan_id);
+
+-- RLS Policies
+ALTER TABLE public.laporan_pengaduan ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lampiran_barang_bukti ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow authenticated read laporan_pengaduan"
+    ON public.laporan_pengaduan FOR SELECT
+    TO authenticated
+    USING (true);
+
+CREATE POLICY "Allow authenticated insert laporan_pengaduan"
+    ON public.laporan_pengaduan FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated update laporan_pengaduan"
+    ON public.laporan_pengaduan FOR UPDATE
+    TO authenticated
+    USING (true);
+
+CREATE POLICY "Allow authenticated delete laporan_pengaduan"
+    ON public.laporan_pengaduan FOR DELETE
+    TO authenticated
+    USING (true);
+
+CREATE POLICY "Allow authenticated all lampiran_barang_bukti"
+    ON public.lampiran_barang_bukti FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
