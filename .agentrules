@@ -1,0 +1,15 @@
+# PANDUAN KERJA DAN BATASAN AGEN AI
+
+## Ruang Lingkup & Pembacaan Berkas
+- Hanya baca atau modifikasi berkas yang secara eksplisit diminta atau relevan langsung dengan tugas.
+- DILARANG memindai folder `node_modules`, `dist`, `.git`, atau berkas biner/arsip besar.
+- Jika memerlukan konteks arsitektur proyek, baca dokumen `PROJECT_CONTEXT.md` terlebih dahulu.
+
+## Efisiensi Token & Output
+- Tulis kode langsung ke titik sasaran (fokus pada fungsi/komponen yang diperbaiki).
+- Jangan menulis ulang seluruh isi berkas jika perubahan hanya terjadi pada beberapa baris kode (gunakan pendekatan modular).
+- Jelaskan perubahan kode secara ringkas dan padat tanpa penjelasan teori yang bertele-tele.
+
+## Standar Kode & Dokumentasi
+- Pertahankan struktur kode yang sudah ada, jangan mengubah dependensi tanpa konfirmasi.
+- Jika membuat catatan atau dokumentasi baru, simpan ke dalam folder `docs/` menggunakan format Markdown dan tautan Obsidian `[[wikilinks]]`.
