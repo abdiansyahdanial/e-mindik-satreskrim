@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient.js';
+import { uploadFileToR2 } from '../lib/r2Client.js';
 
 export const DUMAS_LOCAL_STORAGE_KEY = 'emindik_dumas_records_v1';
 export const DUMAS_DRAFT_KEY = 'emindik_dumas_form_draft_v1';
@@ -293,24 +294,50 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
     if (raw) currentList = JSON.parse(raw);
   } catch {}
 
-  const completeRecord = {
-    ...newRecord,
-    id: newRecord.id || `dum-${Date.now()}`,
-    created_at: newRecord.created_at || new Date().toISOString(),
-    lampiran_barang_bukti: [
-      ...(newRecord.lampiran_barang_bukti || []),
-      ...evidenceFiles.map((file, idx) => ({
+  // 1. Unggah berkas fisik bukti ke Cloudflare R2 secara asinkron via Presigned URL
+  const processedEvidence = await Promise.all(
+    evidenceFiles.map(async (file, idx) => {
+      let r2Url = file.url || file.previewUrl || null;
+      let r2Path = file.file_path || null;
+
+      const rawFile = file.file || file.rawFile;
+      if (rawFile) {
+        try {
+          const uploadRes = await uploadFileToR2(rawFile, file.name || file.nama_file, file.type, {
+            folder: `dumas/${newRecord.nomor_lp ? newRecord.nomor_lp.replace(/[^a-zA-Z0-9_-]/g, '_') : 'lampiran'}`
+          });
+          if (uploadRes.success) {
+            r2Url = uploadRes.url || uploadRes.publicUrl;
+            r2Path = uploadRes.filePath || uploadRes.key;
+          }
+        } catch (uploadErr) {
+          console.warn('[Dumas Storage] Gagal mengunggah berkas ke R2, fallback ke metadata lokal:', uploadErr);
+        }
+      }
+
+      return {
         id: file.id || `bb-${Date.now()}-${idx}`,
         nama_file: file.name || file.nama_file || 'Berkas_Bukti',
+        file_path: r2Path,
         kategori_bukti: file.type?.includes('pdf') || file.mime_type?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
         file_size_bytes: file.size || file.file_size_bytes || 0,
         file_size_formatted: file.size ? `${(file.size / 1024).toFixed(0)} KB` : '150 KB',
         mime_type: file.type || file.mime_type || (file.name?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
         hash_sha256: file.hash_sha256 || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
         diunggah_pada: new Date().toISOString(),
-        file_url: file.url || file.previewUrl || null,
+        file_url: r2Url,
         keterangan: file.keterangan || 'Lampiran bukti pengaduan terunggah',
-      }))
+      };
+    })
+  );
+
+  const completeRecord = {
+    ...newRecord,
+    id: newRecord.id || `dum-${Date.now()}`,
+    created_at: newRecord.created_at || new Date().toISOString(),
+    lampiran_barang_bukti: [
+      ...(newRecord.lampiran_barang_bukti || []),
+      ...processedEvidence
     ]
   };
 

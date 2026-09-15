@@ -1,10 +1,31 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import path from 'path'
+import fs from 'fs'
 import { fileURLToPath } from 'url'
 import handler from './api/convert-docx-to-pdf.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Helper untuk menyuntikkan seluruh environment variable dari .env ke process.env di sisi server dev
+function loadEnvToProcess() {
+  const envPath = path.resolve(__dirname, '.env')
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf-8').split(/\r?\n/)
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const match = trimmed.match(/^([^=]+)=(.*)$/)
+      if (match) {
+        const key = match[1].trim()
+        const val = match[2].trim()
+        if (val && !process.env[key]) {
+          process.env[key] = val
+        }
+      }
+    }
+  }
+}
 
 // Helper to wrap Vercel-style handlers into Vite connect middlewares
 function createMiddleware(endpointHandler) {
@@ -70,8 +91,21 @@ export default defineConfig({
             res.end(JSON.stringify({ error: err.message }));
           }
         });
+        server.middlewares.use('/api/r2-presign', async (req, res, next) => {
+          try {
+            loadEnvToProcess();
+            const { default: presignHandler } = await import('./api/r2-presign.js');
+            return createMiddleware(presignHandler)(req, res, next);
+          } catch (err) {
+            console.error('Local dev r2-presign middleware error:', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
         server.middlewares.use('/api/r2-storage', async (req, res, next) => {
           try {
+            loadEnvToProcess();
             const { default: r2Handler } = await import('./api/r2-storage.js');
             return createMiddleware(r2Handler)(req, res, next);
           } catch (err) {
@@ -83,18 +117,7 @@ export default defineConfig({
         });
         server.middlewares.use('/api/ocr-scan', async (req, res, next) => {
           try {
-            // Pastikan GEMINI_API_KEY disuntikkan ke process.env di server dev
-            if (!process.env.GEMINI_API_KEY) {
-              const fs = await import('fs');
-              const envPath = path.resolve(__dirname, '.env');
-              if (fs.existsSync(envPath)) {
-                const content = fs.readFileSync(envPath, 'utf-8');
-                const match = content.match(/GEMINI_API_KEY=([^\r\n]+)/);
-                if (match) {
-                  process.env.GEMINI_API_KEY = match[1].trim();
-                }
-              }
-            }
+            loadEnvToProcess();
             const { default: ocrHandler } = await import('./api/ocr-scan.js');
             return createMiddleware(ocrHandler)(req, res, next);
           } catch (err) {
@@ -112,7 +135,8 @@ export default defineConfig({
       'docx-preview/dist/docx-preview.css': path.resolve(__dirname, 'src/styles/docx-preview.css'),
     },
   },
-  envPrefix: ['VITE_', 'R2_'],
+  // Kredensial R2_ kini murni di lingkungan serverless/Node.js, jangan diekspos ke client bundle
+  envPrefix: ['VITE_'],
 })
 
 

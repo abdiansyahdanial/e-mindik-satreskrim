@@ -256,6 +256,8 @@ export default function DumasFormView({
           kategori_bukti: category,
           file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
           previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
+          file: file,
+          rawFile: file,
           keterangan: `Lembar ke-${idx + 1} surat pengaduan hasil pindai Google Gemini AI`,
           hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
             .map(b => b.toString(16).padStart(2, '0')).join('') + '...'
@@ -444,6 +446,8 @@ export default function DumasFormView({
         kategori_bukti: category,
         file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
         previewUrl: URL.createObjectURL(file),
+        file: file,
+        rawFile: file,
         keterangan: isPdf ? 'Dokumen surat pengaduan / bukti tertulis' : 'Dokumentasi barang bukti fisik perkara',
         hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
           .map(b => b.toString(16).padStart(2, '0')).join('') + '...'

@@ -23,20 +23,15 @@ Cloudflare R2 digunakan sebagai media penyimpanan objek (Object Storage) yang ko
 
 Variabel kredensial disimpan pada file `.env` di root proyek:
 ```env
-# Cloudflare R2 Credentials
+# Cloudflare R2 Credentials (Server-side Only)
 R2_ACCOUNT_ID=18927f2f5d2b4e49a1c521c5c7e73073
 R2_ACCESS_KEY_ID=383bca47cfff911142d6fc5be0204707
 R2_SECRET_ACCESS_KEY=60cefce8958c0382fb7306a34902fd5eea601c4ca7cc637604d4262f6eef83c6
 R2_BUCKET_NAME=emindik-storage
 R2_ENDPOINT=https://18927f2f5d2b4e49a1c521c5c7e73073.r2.cloudflarestorage.com
-
-# Prefix Vite untuk akses sisi klien browser
-VITE_R2_ACCOUNT_ID=18927f2f5d2b4e49a1c521c5c7e73073
-VITE_R2_ACCESS_KEY_ID=383bca47cfff911142d6fc5be0204707
-VITE_R2_SECRET_ACCESS_KEY=60cefce8958c0382fb7306a34902fd5eea601c4ca7cc637604d4262f6eef83c6
-VITE_R2_BUCKET_NAME=emindik-storage
-VITE_R2_ENDPOINT=https://18927f2f5d2b4e49a1c521c5c7e73073.r2.cloudflarestorage.com
 ```
+
+> **Keamanan**: Kredensial rahasia di atas tersimpan murni di sisi serverless (`process.env`). Seluruh prefix `VITE_R2_*` telah dihapus dari sisi klien browser untuk mencegah kebocoran Master Key. Unggah berkas dari browser menggunakan Serverless Presigned PUT URL (`/api/r2-presign`).
 
 ---
 
