@@ -2088,7 +2088,8 @@ export default function DocGeneratorView({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <label className="form-label" style={{ fontSize: '11px', marginBottom: 0 }}>
                         {fieldLabel} {isRequired && <span style={{ color: 'var(--accent-red)' }}>*</span>}
-                               <span className="mono" style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                      </label>
+                      <span className="mono" style={{ fontSize: '10px', color: '#cbd5e1' }}>
                         {`{${fieldKey}}`}
                       </span>
                     </div>
