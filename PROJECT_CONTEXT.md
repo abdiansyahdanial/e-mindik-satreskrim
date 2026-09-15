@@ -19,9 +19,13 @@ Dokumen ringkasan arsitektur resmi untuk sistem otomasi administrasi penyidikan 
   - `mammoth` & `docx-preview`: Pratinjau visual template dan dokumen DOCX langsung di browser.
   - `file-saver`: Download handler berkas hasil generate.
   - `pdf-lib`: Utilitas manipulasi format PDF.
+- **Cloud Storage (Cloudflare R2)**:
+  - `@aws-sdk/client-s3` & `@aws-sdk/s3-request-presigner`: Integrasi S3-compatible storage untuk upload dan manajemen berkas perkara (PDF, JPG, lampiran bukti).
+  - `src/lib/r2Client.js` & `src/services/r2Service.js`: Modul helper penyimpanan berkas perkara terenkripsi ke Cloudflare R2 dengan metadata lengkap dan presigned URLs.
 - **Serverless API Endpoints** (`/api`):
   - `api/send-email.js`: Integrasi notifikasi email transaksional via [[Resend]] (`resend`).
   - `api/convert-docx-to-pdf.js`: Konversi DOCX ke PDF.
+  - `api/r2-storage.js`: Operasi backend serverless storage Cloudflare R2 (presigned URL generation & file upload).
 
 ---
 

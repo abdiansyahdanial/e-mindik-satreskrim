@@ -67,6 +67,17 @@ export default defineConfig({
             res.end(JSON.stringify({ error: err.message }));
           }
         });
+        server.middlewares.use('/api/r2-storage', async (req, res, next) => {
+          try {
+            const { default: r2Handler } = await import('./api/r2-storage.js');
+            return createMiddleware(r2Handler)(req, res, next);
+          } catch (err) {
+            console.error('Local dev r2-storage middleware error:', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
       }
     }
   ],
@@ -75,6 +86,7 @@ export default defineConfig({
       'docx-preview/dist/docx-preview.css': path.resolve(__dirname, 'src/styles/docx-preview.css'),
     },
   },
+  envPrefix: ['VITE_', 'R2_'],
 })
 
 
