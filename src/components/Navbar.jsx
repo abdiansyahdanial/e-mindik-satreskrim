@@ -100,8 +100,8 @@ export default function Navbar({
               transition: 'all var(--transition-fast)',
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = 'var(--accent-cyan)';
-              e.target.style.boxShadow = '0 0 0 2px var(--accent-cyan-dim)';
+              e.target.style.borderColor = '#ff352d';
+              e.target.style.boxShadow = '0 0 0 2px rgba(255, 53, 45, 0.2)';
             }}
             onBlur={(e) => {
               e.target.style.borderColor = 'var(--border-input)';
@@ -121,9 +121,9 @@ export default function Navbar({
         borderRadius: 'var(--radius-full)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
         fontSize: '12px',
-        color: 'var(--accent-cyan)',
+        color: '#94a3b8',
       }}>
-        <Clock size={14} className="animate-pulse" />
+        <Clock size={14} color="#94a3b8" />
         <span className="mono" style={{ fontWeight: 600 }}>{timeStr || 'Memuat waktu...'}</span>
       </div>
 
@@ -156,13 +156,13 @@ export default function Navbar({
             onClick={onOpenUserManagement}
             className="btn btn-secondary btn-sm"
             style={{
-              borderColor: 'rgba(255, 255, 255, 0.12)',
-              color: '#E2E8F0',
-              background: '#2a343f'
+              borderColor: 'rgba(255, 53, 45, 0.3)',
+              color: '#ffffff',
+              background: '#222b34'
             }}
             title="Kelola Peran Akun (RBAC)"
           >
-            <ShieldAlert size={14} color="#ff5740" />
+            <ShieldAlert size={14} color="#ff352d" />
             <span>Kelola RBAC</span>
           </button>
         )}
@@ -173,11 +173,9 @@ export default function Navbar({
           alignItems: 'center',
           gap: '10px',
           padding: '6px 12px',
-          background: isSuperAdmin 
-            ? 'rgba(255, 53, 45, 0.1)' 
-            : '#222b34',
+          background: '#222b34',
           border: isSuperAdmin 
-            ? '1px solid rgba(255, 53, 45, 0.35)' 
+            ? '1px solid #b81d18' 
             : '1px solid rgba(255, 255, 255, 0.1)',
           borderRadius: 'var(--radius-lg)',
           marginLeft: '4px',
@@ -186,9 +184,7 @@ export default function Navbar({
             width: '32px',
             height: '32px',
             borderRadius: '50%',
-            background: isSuperAdmin 
-              ? '#2a343f' 
-              : '#222b34',
+            background: '#222b34',
             border: isSuperAdmin 
               ? '1.5px solid #ff352d' 
               : '1px solid rgba(255, 255, 255, 0.15)',
@@ -197,7 +193,7 @@ export default function Navbar({
             justifyContent: 'center',
             fontWeight: 800,
             fontSize: '11.5px',
-            color: isSuperAdmin ? '#ff5740' : '#ffffff',
+            color: '#ffffff',
           }}>
             {officerInitials || 'P'}
           </div>
@@ -205,7 +201,7 @@ export default function Navbar({
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
               {officerName}
             </div>
-            <div style={{ fontSize: '10px', color: isSuperAdmin ? '#ff5740' : isAdmin ? '#e2e8f0' : 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '10px', color: isSuperAdmin ? '#ff352d' : isAdmin ? '#e2e8f0' : 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span>{officerJabatan}</span>
               <span className="mono" style={{ color: 'var(--text-muted)' }}>• {officerNrp}</span>
               <span 
@@ -214,9 +210,9 @@ export default function Navbar({
                   padding: '1px 5px',
                   borderRadius: '4px',
                   fontWeight: 700,
-                  background: isSuperAdmin ? 'rgba(255, 53, 45, 0.15)' : '#2a343f',
-                  color: isSuperAdmin ? '#ff5740' : '#ffffff',
-                  border: isSuperAdmin ? '1px solid rgba(255, 53, 45, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)'
+                  background: isSuperAdmin ? 'linear-gradient(135deg, #b81d18, #ff352d)' : '#2a343f',
+                  color: '#ffffff',
+                  border: isSuperAdmin ? '1px solid rgba(255, 53, 45, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)'
                 }}
               >
                 {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}

@@ -61,7 +61,7 @@ export default function Sidebar({
       label: 'Arsip Dokumen',
       icon: Archive,
       badge: docCount || 0,
-      badgeColor: 'badge-blue',
+      badgeColor: 'badge-neutral',
       roles: ['super_admin', 'admin', 'anggota'],
     },
     {
@@ -77,7 +77,7 @@ export default function Sidebar({
       label: 'Template Studio',
       icon: FileCode,
       badge: 'STORAGE',
-      badgeColor: 'badge-purple',
+      badgeColor: 'badge-neutral',
       roles: ['super_admin'], // KHUSUS SUPER ADMIN
     },
   ];
@@ -185,20 +185,20 @@ export default function Sidebar({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {isSuperAdmin ? (
-            <ShieldAlert size={14} color="#C084FC" />
+            <ShieldAlert size={14} color="#ff352d" />
           ) : isAdmin ? (
-            <Shield size={14} color="var(--accent-cyan)" />
+            <Shield size={14} color="#ffffff" />
           ) : (
             <UserCheck size={14} color="var(--accent-green)" />
           )}
           <span style={{ 
             fontWeight: 700, 
-            color: isSuperAdmin ? '#C084FC' : isAdmin ? 'var(--accent-cyan)' : 'var(--accent-green)' 
+            color: isSuperAdmin ? '#ff352d' : isAdmin ? '#ffffff' : 'var(--accent-green)' 
           }}>
             {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
           </span>
         </div>
-        <span className="badge badge-cyan" style={{ fontSize: '9px', padding: '1px 5px' }}>
+        <span className="badge badge-neutral" style={{ fontSize: '9px', padding: '1px 5px' }}>
           SUPABASE
         </span>
       </div>
@@ -240,7 +240,7 @@ export default function Sidebar({
                 cursor: 'pointer',
                 textAlign: 'left',
                 transition: 'all var(--transition-fast)',
-                boxShadow: isActive ? '0 0 16px rgba(0, 212, 255, 0.12)' : 'none',
+                boxShadow: isActive ? '0 0 16px rgba(255, 53, 45, 0.2)' : 'none',
               }}
               onMouseEnter={(e) => {
                 if (!isActive) {
@@ -258,7 +258,7 @@ export default function Sidebar({
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <Icon 
                   size={18} 
-                  color={isActive ? 'var(--accent-cyan)' : 'currentColor'} 
+                  color={isActive ? '#ff352d' : 'currentColor'} 
                 />
                 <span style={{ 
                   fontSize: '13px', 
@@ -271,11 +271,11 @@ export default function Sidebar({
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {item.badge !== null && item.badge !== undefined && (
-                  <span className={`badge ${item.badgeColor || 'badge-cyan'}`} style={{ fontSize: '10px' }}>
+                  <span className={`badge ${item.badgeColor || 'badge-neutral'}`} style={{ fontSize: '10px' }}>
                     {item.badge}
                   </span>
                 )}
-                {isActive && <ChevronRight size={14} color="var(--accent-cyan)" />}
+                {isActive && <ChevronRight size={14} color="#ff352d" />}
               </div>
             </button>
           );
@@ -283,7 +283,7 @@ export default function Sidebar({
 
         {/* Khusus Super Admin: Tombol Kelola Peran Pengguna (RBAC) */}
         {isSuperAdmin && onOpenUserManagement && (
-          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed rgba(168, 85, 247, 0.3)' }}>
+          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed rgba(255, 53, 45, 0.25)' }}>
             <button
               type="button"
               onClick={onOpenUserManagement}
@@ -294,19 +294,19 @@ export default function Sidebar({
                 justifyContent: 'space-between',
                 padding: '10px 14px',
                 borderRadius: 'var(--radius-md)',
-                background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%)',
-                border: '1px solid rgba(168, 85, 247, 0.4)',
-                color: '#E9D5FF',
+                background: '#222b34',
+                border: '1px solid rgba(255, 53, 45, 0.35)',
+                color: '#ffffff',
                 cursor: 'pointer',
                 textAlign: 'left',
                 transition: 'all var(--transition-fast)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <UserCog size={17} color="#C084FC" />
+                <UserCog size={17} color="#ff352d" />
                 <span style={{ fontSize: '12.5px', fontWeight: 600 }}>Kelola Peran (RBAC)</span>
               </div>
-              <span className="badge badge-purple" style={{ fontSize: '8.5px' }}>AKUN</span>
+              <span className="badge" style={{ background: '#2d3748', border: '1px solid rgba(255, 53, 45, 0.3)', color: '#ffffff', fontSize: '8.5px' }}>AKUN</span>
             </button>
           </div>
         )}

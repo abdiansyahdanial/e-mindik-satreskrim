@@ -1284,7 +1284,7 @@ export default function DocGeneratorView({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <FileSignature size={22} color="var(--accent-cyan)" />
+            <FileSignature size={22} color="#ff352d" />
             <span>Studio Generator Administrasi Penyidikan (E-Mindik)</span>
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -1339,9 +1339,9 @@ export default function DocGeneratorView({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Step 1: Select Case */}
           <div className="glass" style={{ padding: '16px' }}>
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="badge badge-cyan" style={{ fontSize: '10px', padding: '1px 5px' }}>1</span>
-              <span>PILIH BERKAS PERKARA (LP)</span>
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ffffff' }}>
+              <span className="badge" style={{ background: '#2a343f', border: '1px solid rgba(255, 53, 45, 0.4)', color: '#ffffff', fontSize: '10px', padding: '1px 5px' }}>1</span>
+              <span style={{ color: '#ffffff', fontWeight: 700 }}>PILIH BERKAS PERKARA (LP)</span>
             </label>
             <select
               value={selectedCaseId}
@@ -1378,9 +1378,9 @@ export default function DocGeneratorView({
           {/* Step 2: Select Template & Format Management (Khusus Super Admin) */}
           <div className="glass" style={{ padding: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                <span className="badge badge-cyan" style={{ fontSize: '10px', padding: '1px 5px' }}>2</span>
-                <span>PILIH FORMAT DOKUMEN MINDIK</span>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, color: '#ffffff' }}>
+                <span className="badge" style={{ background: '#2a343f', border: '1px solid rgba(255, 53, 45, 0.4)', color: '#ffffff', fontSize: '10px', padding: '1px 5px' }}>2</span>
+                <span style={{ color: '#ffffff', fontWeight: 700 }}>PILIH FORMAT DOKUMEN MINDIK</span>
               </label>
 
               {/* KHUSUS SUPER ADMIN: Tombol Tambah Format */}
@@ -1409,8 +1409,8 @@ export default function DocGeneratorView({
                     style={{
                       padding: '10px 12px',
                       borderRadius: 'var(--radius-md)',
-                      background: isSelected ? 'rgba(0, 212, 255, 0.14)' : 'var(--bg-secondary)',
-                      border: isSelected ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                      background: isSelected ? 'rgba(255, 53, 45, 0.12)' : 'var(--bg-secondary)',
+                      border: isSelected ? '1px solid #ff352d' : '1px solid var(--border-glass)',
                       cursor: 'pointer',
                       transition: 'all var(--transition-fast)',
                       display: 'flex',
@@ -1421,12 +1421,12 @@ export default function DocGeneratorView({
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <span className={`badge ${t.category === 'SURAT PERINTAH' ? 'badge-red' : t.category === 'SURAT' ? 'badge-blue' : 'badge-green'}`} style={{ fontSize: '9px' }}>
+                        <span className={`badge ${t.category === 'SURAT PERINTAH' ? 'badge-red' : 'badge-neutral'}`} style={{ fontSize: '9px', background: t.category === 'SURAT PERINTAH' ? 'rgba(239, 68, 68, 0.2)' : '#2a343f', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}>
                           {t.code || '-'}
                         </span>
                         {isCloud && (
-                          <span className="badge badge-purple" style={{ fontSize: '9px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <Cloud size={10} />
+                          <span className="badge" style={{ background: '#2a343f', border: '1px solid rgba(255, 255, 255, 0.12)', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <Cloud size={10} color="#ff352d" />
                             <span>SUPABASE .DOCX</span>
                           </span>
                         )}
@@ -1461,7 +1461,7 @@ export default function DocGeneratorView({
                         </div>
                       )}
 
-                      {isSelected && <ChevronRight size={16} color="var(--accent-cyan)" />}
+                      {isSelected && <ChevronRight size={16} color="#ff352d" />}
                     </div>
                   </div>
                 );
@@ -1472,14 +1472,14 @@ export default function DocGeneratorView({
           {/* Step 3: Dynamic Variables Form */}
           <div className="glass" style={{ padding: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                <span className="badge badge-cyan" style={{ fontSize: '10px', padding: '1px 5px' }}>3</span>
-                <span>PARAMETER & VARIABEL DOKUMEN</span>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, color: '#ffffff' }}>
+                <span className="badge" style={{ background: '#2a343f', border: '1px solid rgba(255, 53, 45, 0.4)', color: '#ffffff', fontSize: '10px', padding: '1px 5px' }}>3</span>
+                <span style={{ color: '#ffffff', fontWeight: 700 }}>PARAMETER & VARIABEL DOKUMEN</span>
               </label>
               {isIndividualDoc ? (
                 <span className="badge badge-red" style={{ fontSize: '9px' }}>DOKUMEN PERORANGAN</span>
               ) : (
-                <span className="badge badge-cyan" style={{ fontSize: '9px' }}>DOKUMEN KOLEKTIF</span>
+                <span className="badge" style={{ background: '#2d3748', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '9px' }}>DOKUMEN KOLEKTIF</span>
               )}
             </div>
 
@@ -1615,7 +1615,7 @@ export default function DocGeneratorView({
                 fontSize: '11px',
                 color: 'var(--text-secondary)'
               }}>
-                <div style={{ color: 'var(--accent-cyan)', fontWeight: 600, marginBottom: '2px' }}>
+                <div style={{ color: '#ffffff', fontWeight: 600, marginBottom: '2px' }}>
                   Multi-Tersangka Terhubung ({caseSuspects.length} orang):
                 </div>
                 <div>
@@ -1628,8 +1628,8 @@ export default function DocGeneratorView({
             {(isSprinSidik || isSprinGasSidik) && currentCase && (
               <div style={{
                 padding: '12px',
-                background: 'rgba(59, 130, 246, 0.08)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: '#1e262e',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: 'var(--radius-md)',
                 marginBottom: '14px',
                 fontSize: '11px',
@@ -1637,12 +1637,12 @@ export default function DocGeneratorView({
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Shield size={13} color="var(--accent-cyan)" />
-                    <span style={{ color: 'var(--accent-cyan)', fontWeight: 700, letterSpacing: '0.3px' }}>
+                    <Shield size={13} color="#ff352d" />
+                    <span style={{ color: '#ffffff', fontWeight: 700, letterSpacing: '0.3px' }}>
                       TIM PENYIDIK OTOMATIS (PENUGASAN TIM)
                     </span>
                   </div>
-                  <span className="badge badge-cyan" style={{ fontSize: '9px' }}>
+                  <span className="badge" style={{ background: '#2d3748', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '9px' }}>
                     Kasat, Kanit, P1 s.d. P5
                   </span>
                 </div>
@@ -1650,7 +1650,7 @@ export default function DocGeneratorView({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '6px', color: 'var(--text-secondary)' }}>
                   {/* Kasat */}
                   <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ color: '#93C5FD', fontSize: '10px', fontWeight: 600 }}>Pemberi Perintah (Kasat Reskrim):</div>
+                    <div style={{ color: '#e2e8f0', fontSize: '10px', fontWeight: 600 }}>Pemberi Perintah (Kasat Reskrim):</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
                       {currentCase.kasat_nama || formValues.ATASAN_NAMA || '(Belum diset)'}
                     </div>
@@ -1661,7 +1661,7 @@ export default function DocGeneratorView({
 
                   {/* Kanit / P1 */}
                   <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ color: '#93C5FD', fontSize: '10px', fontWeight: 600 }}>Kanit / Penyidik 1 (P1):</div>
+                    <div style={{ color: '#e2e8f0', fontSize: '10px', fontWeight: 600 }}>Kanit / Penyidik 1 (P1):</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
                       {currentCase.penyidik_1_nama || formValues.PENYIDIK_1_NAMA || '(Belum diset)'}
                     </div>
@@ -1671,12 +1671,12 @@ export default function DocGeneratorView({
                   </div>
 
                   {/* Penyidik Penangan */}
-                  <div style={{ background: 'rgba(0, 212, 255, 0.05)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(0, 212, 255, 0.25)' }}>
-                    <div style={{ color: 'var(--accent-cyan)', fontSize: '10px', fontWeight: 700 }}>Penyidik Penangan Perkara:</div>
+                  <div style={{ background: 'rgba(255, 53, 45, 0.06)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255, 53, 45, 0.3)' }}>
+                    <div style={{ color: '#ff352d', fontSize: '10px', fontWeight: 700 }}>Penyidik Penangan Perkara:</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
                       {getPenyidikPenangan(currentCase)?.nama || currentCase.penyidik_penangan_nama || formValues.PENYIDIK_PENANGAN_NAMA || currentCase.penyidik_1_nama || '(Belum diset)'}
                     </div>
-                    <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                    <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
                       {formatPangkatLengkap(getPenyidikPenangan(currentCase)?.pangkat || currentCase.penyidik_penangan_pangkat || formValues.PENYIDIK_PENANGAN_PANGKAT || currentCase.penyidik_1_pangkat || '')} {getPenyidikPenangan(currentCase)?.nrp || currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp ? `NRP ${getPenyidikPenangan(currentCase)?.nrp || currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp}` : ''}
                     </div>
                   </div>
@@ -1723,15 +1723,15 @@ export default function DocGeneratorView({
             {currentCase && (
               <div style={{
                 padding: '10px 12px',
-                background: 'rgba(59, 130, 246, 0.08)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
+                background: '#1e262e',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: 'var(--radius-md)',
                 marginBottom: '14px',
                 fontSize: '11px',
                 lineHeight: '1.5'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ color: 'var(--accent-cyan)', fontWeight: 700, letterSpacing: '0.3px' }}>
+                  <span style={{ color: '#ff352d', fontWeight: 700, letterSpacing: '0.3px' }}>
                     RANTAI RUJUKAN PERKARA (CHAIN OF REFERENCE)
                   </span>
                   <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
@@ -1740,34 +1740,34 @@ export default function DocGeneratorView({
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', color: 'var(--text-secondary)' }}>
                   <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
-                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan LP (Tag: {'{NOMOR_LP}'}):</div>
+                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan LP (Tag: <span style={{ color: '#ff352d' }}>{'{NOMOR_LP}'}</span>):</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.nomor_lp || currentCase.no_lp || '-'}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
-                      Tgl ({'{TANGGAL_LP}'}): {formatTanggalIndonesia(currentCase.tanggal_lp || currentCase.sprin_date) || '-'}
+                    <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                      Tgl (<span style={{ color: '#ff352d' }}>{'{TANGGAL_LP}'}</span>): {formatTanggalIndonesia(currentCase.tanggal_lp || currentCase.sprin_date) || '-'}
                     </div>
                   </div>
                   <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
-                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Sidik (Tag: {'{NO_SPRIN_SIDIK}'}):</div>
+                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Sidik (Tag: <span style={{ color: '#ff352d' }}>{'{NO_SPRIN_SIDIK}'}</span>):</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_sprin_sidik || (isSprinSidik ? '(Sedang dibuat)' : '-')}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
-                      Tgl ({'{TGL_SPRIN_SIDIK}'}): {formatTanggalIndonesia(formValues.TGL_SPRIN_SIDIK || currentCase.tgl_sprin_sidik || currentCase.sprin_date) || '-'}
+                    <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                      Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPRIN_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_SIDIK || currentCase.tgl_sprin_sidik || currentCase.sprin_date) || '-'}
                     </div>
                   </div>
                   {(currentCase.no_sprin_gas_sidik || isSprinGasSidik) && (
                     <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
-                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Gas.Sidik (Tag: {'{NO_SPRIN_GAS_SIDIK}'}):</div>
+                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Gas.Sidik (Tag: <span style={{ color: '#ff352d' }}>{'{NO_SPRIN_GAS_SIDIK}'}</span>):</div>
                       <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_sprin_gas_sidik || (isSprinGasSidik ? '(Sedang dibuat)' : '-')}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
-                        Tgl ({'{TGL_SPRIN_GAS_SIDIK}'}): {formatTanggalIndonesia(formValues.TGL_SPRIN_GAS_SIDIK || currentCase.tgl_sprin_gas_sidik) || '-'}
+                      <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                        Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPRIN_GAS_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_GAS_SIDIK || currentCase.tgl_sprin_gas_sidik) || '-'}
                       </div>
                     </div>
                   )}
                   {currentCase.no_spdp && (
                     <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
-                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SPDP (Tag: {'{NO_SPDP}'}):</div>
+                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SPDP (Tag: <span style={{ color: '#ff352d' }}>{'{NO_SPDP}'}</span>):</div>
                       <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_spdp}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
-                        Tgl ({'{TGL_SPDP}'}): {formatTanggalIndonesia(currentCase.tgl_spdp) || '-'}
+                      <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                        Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPDP}'}</span>): {formatTanggalIndonesia(currentCase.tgl_spdp) || '-'}
                       </div>
                     </div>
                   )}
@@ -1878,8 +1878,8 @@ export default function DocGeneratorView({
               {isHanDoc && (
                 <div style={{
                   padding: '14px',
-                  background: 'rgba(59, 130, 246, 0.08)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: '#1e262e',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: 'var(--radius-md)',
                   display: 'flex',
                   flexDirection: 'column',
@@ -1887,12 +1887,12 @@ export default function DocGeneratorView({
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Shield size={15} color="var(--accent-cyan)" />
-                      <span style={{ color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '11.5px', letterSpacing: '0.3px' }}>
+                      <Shield size={15} color="#ff352d" />
+                      <span style={{ color: '#ffffff', fontWeight: 700, fontSize: '11.5px', letterSpacing: '0.3px' }}>
                         PARAMETER KHUSUS PENAHANAN (SPRIN & BA HAN)
                       </span>
                     </div>
-                    <span className="badge badge-cyan" style={{ fontSize: '9px' }}>
+                    <span className="badge" style={{ background: '#2d3748', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '9px' }}>
                       KUHAP 20 Hari & BA Han
                     </span>
                   </div>
@@ -1917,7 +1917,7 @@ export default function DocGeneratorView({
                         <label className="form-label" style={{ fontSize: '11px', marginBottom: 0 }}>
                           Tanggal Akhir (+19 Hari) <span style={{ color: 'var(--accent-red)' }}>*</span>
                         </label>
-                        <span style={{ fontSize: '9px', color: 'var(--accent-cyan)' }}>Auto-fill 20 hari</span>
+                        <span style={{ fontSize: '9px', color: '#cbd5e1' }}>Auto-fill 20 hari</span>
                       </div>
                       <input
                         type="date"
@@ -2088,8 +2088,7 @@ export default function DocGeneratorView({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <label className="form-label" style={{ fontSize: '11px', marginBottom: 0 }}>
                         {fieldLabel} {isRequired && <span style={{ color: 'var(--accent-red)' }}>*</span>}
-                      </label>
-                      <span className="mono" style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
+                               <span className="mono" style={{ fontSize: '10px', color: '#cbd5e1' }}>
                         {`{${fieldKey}}`}
                       </span>
                     </div>
@@ -2146,7 +2145,7 @@ export default function DocGeneratorView({
                     )}
                   </div>
                 );
-              })}
+              })()}
             </div>
 
             {/* Primary Action Button to Generate Real .docx */}
@@ -2161,7 +2160,7 @@ export default function DocGeneratorView({
                 padding: '12px',
                 fontSize: '13px',
                 fontWeight: 700,
-                boxShadow: 'var(--glow-cyan)',
+                boxShadow: '0 4px 16px rgba(255, 53, 45, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2214,13 +2213,13 @@ export default function DocGeneratorView({
                   width: '36px',
                   height: '36px',
                   borderRadius: '8px',
-                  background: 'rgba(0, 212, 255, 0.15)',
-                  border: '1px solid var(--accent-cyan)',
+                  background: 'rgba(255, 53, 45, 0.12)',
+                  border: '1px solid rgba(255, 53, 45, 0.4)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Upload size={18} color="var(--accent-cyan)" />
+                  <Upload size={18} color="#ff352d" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: 0 }}>Tambah Format Template .docx</h3>
@@ -2310,7 +2309,7 @@ export default function DocGeneratorView({
                       borderRadius: 'var(--radius-lg)',
                       padding: '16px',
                       textAlign: 'center',
-                      background: newDocxFile ? 'rgba(0, 212, 255, 0.08)' : 'rgba(13, 21, 38, 0.4)',
+                      background: newDocxFile ? 'rgba(255, 53, 45, 0.08)' : 'rgba(13, 21, 38, 0.4)',
                       cursor: 'pointer',
                     }}
                     onClick={() => document.getElementById('new-docx-input').click()}
@@ -2327,11 +2326,11 @@ export default function DocGeneratorView({
                       }}
                     />
 
-                    <FileText size={28} color={newDocxFile ? 'var(--accent-cyan)' : 'var(--text-secondary)'} style={{ margin: '0 auto 6px' }} />
+                    <FileText size={28} color={newDocxFile ? '#ff352d' : 'var(--text-secondary)'} style={{ margin: '0 auto 6px' }} />
                     {newDocxFile ? (
                       <div>
                         <div style={{ fontWeight: 600, color: '#FFF', fontSize: '12.5px' }}>{newDocxFile.name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>{(newDocxFile.size / 1024).toFixed(1)} KB</div>
+                        <div style={{ fontSize: '11px', color: '#ff352d' }}>{(newDocxFile.size / 1024).toFixed(1)} KB</div>
                       </div>
                     ) : (
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -2374,7 +2373,7 @@ export default function DocGeneratorView({
           >
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Edit3 size={18} color="var(--accent-cyan)" />
+                <Edit3 size={18} color="#ff352d" />
                 <h3 style={{ fontSize: '16px', margin: 0 }}>Edit Format Template</h3>
               </div>
               <button 
@@ -2491,7 +2490,7 @@ export default function DocGeneratorView({
                 borderRadius: 'var(--radius-md)',
               }}>
                 <div style={{ fontWeight: 700, color: '#FFF' }}>{templateToDelete.title}</div>
-                <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                <div className="mono" style={{ fontSize: '11px', color: '#e2e8f0', marginTop: '2px' }}>
                   Kode: {templateToDelete.code} • Kategori: {templateToDelete.category}
                 </div>
               </div>

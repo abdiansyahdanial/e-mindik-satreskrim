@@ -546,7 +546,7 @@ export default function AdminTemplateStudio({
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span className="badge badge-cyan">ADMIN TEMPLATE STUDIO</span>
+            <span className="badge badge-neutral" style={{ border: '1px solid rgba(255, 53, 45, 0.4)', color: '#ffffff' }}>ADMIN TEMPLATE STUDIO</span>
             <span className="badge badge-green">SUPABASE CONNECTED</span>
           </div>
           <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>
@@ -578,10 +578,10 @@ export default function AdminTemplateStudio({
           background: statusNotice.type === 'success' 
             ? 'rgba(34, 197, 94, 0.15)' 
             : statusNotice.type === 'error' 
-            ? 'rgba(239, 68, 68, 0.15)' 
-            : 'rgba(0, 212, 255, 0.1)',
+            ? 'rgba(255, 53, 45, 0.15)' 
+            : 'rgba(255, 53, 45, 0.12)',
           border: `1px solid ${
-            statusNotice.type === 'success' ? 'var(--accent-green)' : statusNotice.type === 'error' ? 'var(--accent-red)' : 'var(--accent-cyan)'
+            statusNotice.type === 'success' ? 'var(--accent-green)' : '#ff352d'
           }`,
           display: 'flex',
           alignItems: 'center',
@@ -592,7 +592,7 @@ export default function AdminTemplateStudio({
           {statusNotice.type === 'success' ? (
             <CheckCircle2 size={18} color="var(--accent-green)" />
           ) : (
-            <AlertCircle size={18} color={statusNotice.type === 'error' ? 'var(--accent-red)' : 'var(--accent-cyan)'} />
+            <AlertCircle size={18} color="#ff352d" />
           )}
           <span>{statusNotice.message}</span>
         </div>
@@ -611,12 +611,12 @@ export default function AdminTemplateStudio({
             <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               {editingTemplateId ? (
                 <>
-                  <Edit3 size={18} color="var(--accent-cyan)" />
+                  <Edit3 size={18} color="#ff352d" />
                   <span>Edit Template: {code || title}</span>
                 </>
               ) : (
                 <>
-                  <CloudUpload size={18} color="var(--accent-cyan)" />
+                  <CloudUpload size={18} color="#ff352d" />
                   <span>Upload Template Baru</span>
                 </>
               )}
@@ -644,7 +644,7 @@ export default function AdminTemplateStudio({
                   }}
                   defaultValue=""
                   className="form-select"
-                  style={{ fontSize: '11px', padding: '4px 8px', maxWidth: '200px', borderColor: 'var(--accent-cyan)' }}
+                  style={{ fontSize: '11px', padding: '4px 8px', maxWidth: '200px', borderColor: 'rgba(255, 53, 45, 0.4)' }}
                   title="Pilih salah satu dari 53 Master Preset Mindik Resmi Satreskrim"
                 >
                   <option value="" disabled>⚡ Master Preset Mindik (53 Dokumen)...</option>
@@ -782,20 +782,20 @@ export default function AdminTemplateStudio({
                   }}
                 />
 
-                <FileText size={28} color={docxFile ? 'var(--accent-cyan)' : 'var(--text-secondary)'} style={{ margin: '0 auto 6px' }} />
+                <FileText size={28} color={docxFile ? '#ff352d' : 'var(--text-secondary)'} style={{ margin: '0 auto 6px' }} />
                 
                 {docxFile ? (
                   <div>
                     <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '13px' }}>
                       {docxFile.name}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                    <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '2px' }}>
                       {(docxFile.size / 1024).toFixed(1)} KB • File siap diunggah ke Storage
                     </div>
                   </div>
                 ) : editingTemplateId && existingFilePath ? (
                   <div>
-                    <div style={{ fontWeight: 500, fontSize: '12px', color: '#60a5fa' }}>
+                    <div style={{ fontWeight: 500, fontSize: '12px', color: '#e2e8f0' }}>
                       File saat ini: {existingFilePath.split('/').pop()}
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
@@ -819,7 +819,7 @@ export default function AdminTemplateStudio({
             <div style={{ marginTop: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Layers size={14} color="var(--accent-cyan)" />
+                  <Layers size={14} color="#ff352d" />
                   <span>DYNAMIC FIELDS ({dynamicFields.length})</span>
                   {getMindikPreset(code) && (
                     <span className="badge badge-green" style={{ fontSize: '9px', padding: '1px 6px' }}>
@@ -845,8 +845,8 @@ export default function AdminTemplateStudio({
                 padding: '4px 10px',
                 fontSize: '10px',
                 fontWeight: 600,
-                color: '#94A3B8',
-                background: 'rgba(15, 23, 42, 0.5)',
+                color: '#cbd5e1',
+                background: '#1b2229',
                 borderRadius: '4px 4px 0 0',
                 border: '1px solid var(--border-glass)',
                 borderBottom: 'none'
@@ -880,7 +880,7 @@ export default function AdminTemplateStudio({
                         onChange={(e) => handleKeyChange(field.id, e.target.value)}
                         placeholder="TAG (e.g. NOMOR_SURAT)"
                         className="form-input mono"
-                        style={{ padding: '6px 8px', fontSize: '11.5px', flex: '1 1 130px', fontWeight: 600, color: 'var(--accent-cyan)' }}
+                        style={{ padding: '6px 8px', fontSize: '11.5px', flex: '1 1 130px', fontWeight: 600, color: '#ffffff' }}
                         title="Tag Word pada template Word (otomatis uppercase tanpa kurung kurawal)"
                       />
 
@@ -1073,7 +1073,7 @@ export default function AdminTemplateStudio({
                 border: '1px dashed var(--border-glass)',
                 color: 'var(--text-secondary)',
               }}>
-                <CloudUpload size={36} color="var(--accent-cyan)" style={{ margin: '0 auto 10px', opacity: 0.7 }} />
+                <CloudUpload size={36} color="#ff352d" style={{ margin: '0 auto 10px', opacity: 0.8 }} />
                 <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
                   Belum Ada Template di Supabase Cloud
                 </div>
@@ -1115,9 +1115,9 @@ export default function AdminTemplateStudio({
                       key={tpl.id || tpl.code}
                       style={{
                         padding: '16px',
-                        background: editingTemplateId === tpl.id ? 'rgba(0, 212, 255, 0.08)' : 'var(--bg-secondary)',
+                        background: editingTemplateId === tpl.id ? 'rgba(255, 53, 45, 0.08)' : 'var(--bg-secondary)',
                         borderRadius: 'var(--radius-lg)',
-                        border: editingTemplateId === tpl.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                        border: editingTemplateId === tpl.id ? '1px solid #ff352d' : '1px solid var(--border-glass)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '10px',
@@ -1126,10 +1126,10 @@ export default function AdminTemplateStudio({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span className="badge badge-cyan mono">{tpl.code || '-'}</span>
-                          <span className="badge badge-blue">{displayCategory}</span>
+                          <span className="badge badge-neutral mono" style={{ border: '1px solid rgba(255, 53, 45, 0.35)', color: '#ffffff' }}>{tpl.code || '-'}</span>
+                          <span className="badge badge-neutral" style={{ color: '#cbd5e1' }}>{displayCategory}</span>
                           {editingTemplateId === tpl.id && (
-                            <span className="badge badge-purple">SEDANG DIEDIT</span>
+                            <span className="badge" style={{ background: 'linear-gradient(135deg, #b81d18 0%, #ff352d 100%)', color: '#ffffff' }}>SEDANG DIEDIT</span>
                           )}
                         </div>
                         <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -1282,8 +1282,8 @@ export default function AdminTemplateStudio({
                   {templateToDelete.title}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                  <span className="badge badge-cyan mono">{templateToDelete.code}</span>
-                  <span className="badge badge-blue">{templateToDelete.category}</span>
+                  <span className="badge badge-neutral mono" style={{ border: '1px solid rgba(255, 53, 45, 0.35)', color: '#ffffff' }}>{templateToDelete.code}</span>
+                  <span className="badge badge-neutral" style={{ color: '#cbd5e1' }}>{templateToDelete.category}</span>
                 </div>
                 {templateToDelete.file_path && (
                   <div className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>

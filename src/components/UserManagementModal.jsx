@@ -345,18 +345,18 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               width: '40px',
               height: '40px',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(59, 130, 246, 0.2) 100%)',
-              border: '1px solid #A855F7',
+              background: '#222b34',
+              border: '1px solid rgba(255, 53, 45, 0.4)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <ShieldAlert size={22} color="#C084FC" />
+              <ShieldAlert size={22} color="#ff352d" />
             </div>
             <div>
               <h3 style={{ fontSize: '16px', margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>Manajemen Personel & Verifikasi Kedinasan</span>
-                <span className="badge badge-purple" style={{ fontSize: '9px' }}>SUPER ADMIN</span>
+                <span className="badge" style={{ background: 'linear-gradient(135deg, #b81d18, #ff352d)', color: '#ffffff', fontSize: '9px' }}>SUPER ADMIN</span>
               </h3>
               <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
                 Verifikasi pendaftar baru dan kelola hak akses peran RBAC Satreskrim
@@ -431,8 +431,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               padding: '12px 18px',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'rbac' ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-              color: activeTab === 'rbac' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'rbac' ? '2px solid #ff352d' : '2px solid transparent',
+              color: activeTab === 'rbac' ? '#ff352d' : 'var(--text-secondary)',
               fontWeight: activeTab === 'rbac' ? 700 : 500,
               fontSize: '12.5px',
               cursor: 'pointer',
@@ -442,7 +442,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               transition: 'all 0.2s ease'
             }}
           >
-            <ShieldCheck size={15} color={activeTab === 'rbac' ? 'var(--accent-cyan)' : 'currentColor'} />
+            <ShieldCheck size={15} color={activeTab === 'rbac' ? '#ff352d' : 'currentColor'} />
             <span>Hak Akses Akun Aktif (RBAC)</span>
             <span style={{
               background: 'rgba(255, 255, 255, 0.1)',
@@ -641,9 +641,9 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               {/* Role Explainer Card */}
               <div style={{
                 padding: '12px 14px',
-                background: 'var(--bg-tertiary)',
+                background: '#222b34',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-subtle)',
+                border: '1px solid #2d3748',
                 fontSize: '11px',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr',
@@ -651,19 +651,19 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                 marginBottom: '14px'
               }}>
                 <div>
-                  <strong style={{ color: '#C084FC' }}>1. Super Admin</strong>
+                  <strong style={{ color: '#ffffff' }}>1. Super Admin</strong>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)' }}>
                     Akses mutlak ke seluruh modul + Manajemen Akun RBAC + Template Studio.
                   </p>
                 </div>
                 <div>
-                  <strong style={{ color: 'var(--accent-cyan)' }}>2. Admin</strong>
+                  <strong style={{ color: '#ffffff' }}>2. Admin</strong>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)' }}>
                     Akses Mindik, Berkas, & wewenang khusus HAPUS berkas perkara.
                   </p>
                 </div>
                 <div>
-                  <strong style={{ color: 'var(--accent-green)' }}>3. Anggota</strong>
+                  <strong style={{ color: '#ffffff' }}>3. Anggota</strong>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)' }}>
                     Peran default. Input LP baru & jalankan generator mindik.
                   </p>
@@ -688,7 +688,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                           padding: '14px',
                           borderRadius: 'var(--radius-lg)',
                           background: 'var(--bg-secondary)',
-                          border: isSelf ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                          border: isSelf ? '1px solid rgba(255, 53, 45, 0.5)' : '1px solid var(--border-glass)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -702,11 +702,16 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                               {p.full_name || p.nama || 'Personel Satreskrim'}
                             </span>
                             {isSelf && (
-                              <span className="badge badge-cyan" style={{ fontSize: '9px' }}>
+                              <span className="badge" style={{ background: '#252f38', border: '1px solid rgba(255, 53, 45, 0.4)', color: '#ffffff', fontSize: '9px' }}>
                                 AKUN ANDA
                               </span>
                             )}
-                            <span className={`badge ${isSuper ? 'badge-purple' : isAdmin ? 'badge-blue' : 'badge-green'}`} style={{ fontSize: '9.5px' }}>
+                            <span className="badge" style={{
+                              background: isSuper ? 'linear-gradient(135deg, #b81d18, #ff352d)' : isAdmin ? '#2d3748' : '#252f38',
+                              border: isSuper ? '1px solid rgba(255, 53, 45, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                              color: '#ffffff',
+                              fontSize: '9.5px'
+                            }}>
                               {isSuper ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
                             </span>
                           </div>
@@ -714,7 +719,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <span>NRP:</span>
                             {p.rank_nrp ? (
-                              <strong className="mono" style={{ color: 'var(--accent-cyan)' }}>{p.rank_nrp}</strong>
+                              <strong className="mono" style={{ color: '#ffffff' }}>{p.rank_nrp}</strong>
                             ) : (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <input
@@ -754,7 +759,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                               fontSize: '11.5px',
                               padding: '6px 10px',
                               width: '140px',
-                              borderColor: isSuper ? '#A855F7' : isAdmin ? 'var(--accent-cyan)' : 'var(--border-glass)'
+                              borderColor: 'rgba(255, 255, 255, 0.15)'
                             }}
                           >
                             <option value="super_admin">Super Admin</option>
@@ -763,7 +768,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                           </select>
 
                           {savingId === p.id && (
-                            <RefreshCw size={14} className="animate-spin" color="var(--accent-cyan)" />
+                            <RefreshCw size={14} className="animate-spin" color="#ff352d" />
                           )}
                         </div>
                       </div>

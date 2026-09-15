@@ -61,7 +61,7 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Archive size={22} color="var(--accent-cyan)" />
+            <Archive size={22} color="#ff352d" />
             <span>Arsip Digital Berkas Administrasi Penyidikan</span>
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -98,6 +98,7 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
               key={cat}
               onClick={() => setCategoryFilter(cat)}
               className={`btn btn-sm ${categoryFilter === cat ? 'btn-primary' : 'btn-secondary'}`}
+              style={categoryFilter !== cat ? { background: '#1e262e', borderColor: 'rgba(255, 255, 255, 0.1)' } : {}}
             >
               {cat === 'all' ? 'Semua' : cat}
             </button>
@@ -123,7 +124,7 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-secondary)' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                    <FolderOpen size={40} color="var(--accent-cyan)" style={{ opacity: 0.6 }} />
+                    <FolderOpen size={40} color="#ff352d" style={{ opacity: 0.6 }} />
                     <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
                       Belum Ada Arsip Dokumen
                     </div>
@@ -143,7 +144,7 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
                 return (
                   <tr key={doc?.id || `doc-${idx}`}>
                     <td>
-                      <span className="badge badge-cyan mono">
+                      <span className="badge mono" style={{ background: '#252f38', color: '#e2e8f0', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
                         {doc?.template_code || doc?.code || 'MINDIK'}
                       </span>
                     </td>
@@ -153,7 +154,7 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
                       </div>
                     </td>
                     <td>
-                      <span className="mono" style={{ fontSize: '12px', color: 'var(--accent-cyan)' }}>
+                      <span className="mono" style={{ fontSize: '12px', color: '#e2e8f0' }}>
                         {doc?.doc_number || doc?.nomor_surat || '-'}
                       </span>
                     </td>

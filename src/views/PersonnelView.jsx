@@ -168,7 +168,7 @@ export default function PersonnelView({
       }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Users size={22} color="var(--accent-cyan)" />
+            <Users size={22} color="#ff352d" />
             <span>Direktori Personel Penyidik Satreskrim</span>
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -221,8 +221,8 @@ export default function PersonnelView({
                   position: 'absolute',
                   top: 0,
                   right: 0,
-                  background: 'linear-gradient(135deg, #00D4FF, #3B82F6)',
-                  color: '#1b2229',
+                  background: 'linear-gradient(135deg, #b81d18, #ff352d)',
+                  color: '#ffffff',
                   fontSize: '9px',
                   fontWeight: 800,
                   padding: '3px 14px',
@@ -238,20 +238,12 @@ export default function PersonnelView({
                   width: '46px',
                   height: '46px',
                   borderRadius: '12px',
-                  background: isKasat 
-                    ? 'linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(59, 130, 246, 0.2))'
-                    : isKanit
-                    ? 'rgba(34, 197, 94, 0.15)'
-                    : 'var(--bg-elevated)',
-                  border: isKasat
-                    ? '1px solid var(--accent-cyan)'
-                    : isKanit
-                    ? '1px solid var(--accent-green)'
-                    : '1px solid var(--border-glass)',
+                  background: '#2a343f',
+                  border: '1px solid rgba(255, 53, 45, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: isKasat ? 'var(--accent-cyan)' : isKanit ? 'var(--accent-green)' : 'var(--text-primary)',
+                  color: '#ffffff',
                   fontWeight: 700,
                   fontSize: '13px',
                 }}>
@@ -269,7 +261,7 @@ export default function PersonnelView({
                   }}>
                     {cleanOfficerName(p.nama)}
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600, marginTop: '2px' }}>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, marginTop: '2px' }}>
                     {p.jabatan}
                   </div>
                 </div>
@@ -292,7 +284,7 @@ export default function PersonnelView({
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Kontak Telepon:</span>
-                  <span className="mono" style={{ color: 'var(--accent-cyan)' }}>{p.phone || '-'}</span>
+                  <span className="mono" style={{ color: '#e2e8f0' }}>{p.phone || '-'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Status Penugasan:</span>
@@ -302,7 +294,7 @@ export default function PersonnelView({
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px', borderTop: '1px solid var(--border-subtle)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Perkara Ditangani:</span>
-                  <span className="badge badge-cyan" style={{ fontSize: '10px' }}>
+                  <span className="badge" style={{ background: '#252f38', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#e2e8f0', fontSize: '10px' }}>
                     {assignedCasesCount} Perkara
                   </span>
                 </div>
@@ -315,7 +307,7 @@ export default function PersonnelView({
                     type="button"
                     onClick={() => handleOpenEdit(p)}
                     className="btn btn-secondary btn-sm"
-                    style={{ fontSize: '11px', padding: '4px 10px', color: 'var(--accent-cyan)' }}
+                    style={{ fontSize: '11px', padding: '4px 10px', color: '#ffffff' }}
                     title="Edit Data / NRP Personel"
                   >
                     <Edit3 size={13} />
@@ -352,13 +344,13 @@ export default function PersonnelView({
                   width: '36px',
                   height: '36px',
                   borderRadius: '8px',
-                  background: 'rgba(0, 212, 255, 0.15)',
-                  border: '1px solid var(--accent-cyan)',
+                  background: 'rgba(255, 53, 45, 0.12)',
+                  border: '1px solid rgba(255, 53, 45, 0.4)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <UserPlus size={18} color="var(--accent-cyan)" />
+                  <UserPlus size={18} color="#ff352d" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: 0 }}>Registrasi Personel Penyidik Baru</h3>
@@ -571,7 +563,7 @@ export default function PersonnelView({
                 <div style={{ fontWeight: 700, color: '#FFFFFF' }}>
                   {personnelToDelete.pangkat || personnelToDelete.rank || ''} {personnelToDelete.nama}
                 </div>
-                <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                <div className="mono" style={{ fontSize: '11px', color: '#e2e8f0', marginTop: '2px' }}>
                   NRP: {personnelToDelete.nrp || personnelToDelete.rank_nrp || '-'} • {personnelToDelete.jabatan}
                 </div>
               </div>
@@ -613,13 +605,13 @@ export default function PersonnelView({
                   width: '36px',
                   height: '36px',
                   borderRadius: '8px',
-                  background: 'rgba(0, 212, 255, 0.1)',
-                  border: '1px solid var(--accent-cyan)',
+                  background: 'rgba(255, 53, 45, 0.12)',
+                  border: '1px solid rgba(255, 53, 45, 0.4)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Edit3 size={18} color="var(--accent-cyan)" />
+                  <Edit3 size={18} color="#ff352d" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '15px', margin: 0, color: '#FFFFFF' }}>Edit Data Personel Penyidik</h3>

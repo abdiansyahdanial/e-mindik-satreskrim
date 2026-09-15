@@ -210,22 +210,22 @@ export default function OfficialDocPreview({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '10px 16px',
-        background: '#0F172A',
+        background: '#1b2229',
         borderRadius: 'var(--radius-lg)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
         flexWrap: 'wrap',
         gap: '12px',
         boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
       }}>
         {/* Status Badges */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span className="badge badge-green" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <FileCheck size={12} />
+          <span className="badge" style={{ background: '#1e262e', border: '1px solid rgba(255, 53, 45, 0.3)', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <FileCheck size={12} color="#ff352d" />
             <span>DOKUMEN ASLI FISIK (PDF F4 POLRI)</span>
           </span>
           {template?.file_path ? (
-            <span className="badge badge-purple" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Sparkles size={11} />
+            <span className="badge" style={{ background: '#2a343f', border: '1px solid rgba(255, 255, 255, 0.12)', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Sparkles size={11} color="#ff352d" />
               <span>TEMPLATE .DOCX (SUPABASE)</span>
             </span>
           ) : (
@@ -234,7 +234,7 @@ export default function OfficialDocPreview({
             </span>
           )}
           {currentDataMap?.TANGGAL_SURAT && (
-            <span className="badge badge-blue" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }} title="Tanggal resmi surat">
+            <span className="badge" style={{ background: '#1e262e', border: '1px solid rgba(255, 53, 45, 0.3)', color: '#cbd5e1', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }} title="Tanggal resmi surat">
               <span>{currentDataMap.TEMPAT_SURAT || 'Tirawuta'}, {currentDataMap.TANGGAL_SURAT}</span>
             </span>
           )}
@@ -277,7 +277,7 @@ export default function OfficialDocPreview({
               onClick={handleDownloadDocx}
               className="btn btn-primary btn-sm"
               style={{
-                boxShadow: 'var(--glow-cyan)',
+                boxShadow: '0 4px 16px rgba(255, 53, 45, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px'
@@ -330,33 +330,33 @@ export default function OfficialDocPreview({
             alignItems: 'center',
             gap: '14px',
             fontSize: '11px',
-            color: 'var(--text-secondary)',
+            color: '#cbd5e1',
             borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             paddingTop: '8px',
             marginTop: '2px',
             flexWrap: 'wrap'
           }}>
-            <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>RANTAI RUJUKAN:</span>
+            <span style={{ color: '#ff352d', fontWeight: 700 }}>RANTAI RUJUKAN:</span>
             {currentDataMap.NOMOR_LP && (
-              <span>LP: <strong style={{ color: '#fff' }}>{currentDataMap.NOMOR_LP}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TANGGAL_LP || '-'}</span>)</span>
+              <span>LP: <strong style={{ color: '#fff' }}>{currentDataMap.NOMOR_LP}</strong> (tgl: <span style={{ color: '#cbd5e1' }}>{currentDataMap.TANGGAL_LP || '-'}</span>)</span>
             )}
             {currentDataMap.NO_SPRIN_SIDIK && (
-              <span>SP.Sidik: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_SIDIK}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPRIN_SIDIK || '-'}</span>)</span>
+              <span>SP.Sidik: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_SIDIK}</strong> (tgl: <span style={{ color: '#cbd5e1' }}>{currentDataMap.TGL_SPRIN_SIDIK || '-'}</span>)</span>
             )}
             {currentDataMap.NO_SPRIN_GAS_SIDIK && currentDataMap.NO_SPRIN_GAS_SIDIK !== '-' && (
-              <span>SP.Gas.Sidik: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_GAS_SIDIK}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPRIN_GAS_SIDIK || '-'}</span>)</span>
+              <span>SP.Gas.Sidik: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_GAS_SIDIK}</strong> (tgl: <span style={{ color: '#cbd5e1' }}>{currentDataMap.TGL_SPRIN_GAS_SIDIK || '-'}</span>)</span>
             )}
             {currentDataMap.NO_SPDP && (
-              <span>SPDP: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPDP}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPDP || '-'}</span>)</span>
+              <span>SPDP: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPDP}</strong> (tgl: <span style={{ color: '#cbd5e1' }}>{currentDataMap.TGL_SPDP || '-'}</span>)</span>
             )}
             {currentDataMap.NO_SP_TAP_TSK && (
-              <span>SP.Tap.Tsk: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SP_TAP_TSK}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SP_TAP_TSK || '-'}</span>)</span>
+              <span>SP.Tap.Tsk: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SP_TAP_TSK}</strong> (tgl: <span style={{ color: '#cbd5e1' }}>{currentDataMap.TGL_SP_TAP_TSK || '-'}</span>)</span>
             )}
             {currentDataMap.NO_SPRIN_HAN && (
-              <span>SP.Han: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_HAN}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_SPRIN_HAN || '-'}</span>)</span>
+              <span>SP.Han: <strong style={{ color: '#fff' }}>{currentDataMap.NO_SPRIN_HAN}</strong> (tgl: <span style={{ color: '#cbd5e1' }}>{currentDataMap.TGL_SPRIN_HAN || '-'}</span>)</span>
             )}
             {currentDataMap.NO_P21_KN && (
-              <span>P-21: <strong style={{ color: '#fff' }}>{currentDataMap.NO_P21_KN}</strong> (tgl: <span style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.TGL_P21_KN || '-'}</span>)</span>
+              <span>P-21: <strong style={{ color: '#fff' }}>{currentDataMap.NO_P21_KN}</strong> (tgl: <span style={{ color: '#cbd5e1' }}>{currentDataMap.TGL_P21_KN || '-'}</span>)</span>
             )}
           </div>
         )}
@@ -369,13 +369,13 @@ export default function OfficialDocPreview({
             alignItems: 'center',
             gap: '12px',
             fontSize: '11px',
-            color: 'var(--text-secondary)',
+            color: '#cbd5e1',
             borderTop: '1px dashed rgba(255, 255, 255, 0.08)',
             paddingTop: '6px',
             marginTop: '2px',
             flexWrap: 'wrap'
           }}>
-            <span style={{ color: '#93C5FD', fontWeight: 700 }}>PENANDATANGAN OTOMATIS:</span>
+            <span style={{ color: '#ff352d', fontWeight: 700 }}>PENANDATANGAN OTOMATIS:</span>
             {currentDataMap.ATASAN_NAMA && (
               <span>Kasat: <strong style={{ color: '#fff' }}>{currentDataMap.ATASAN_PANGKAT} {currentDataMap.ATASAN_NAMA}</strong> {currentDataMap.ATASAN_NRP ? `(NRP: ${currentDataMap.ATASAN_NRP})` : ''}</span>
             )}
@@ -383,16 +383,16 @@ export default function OfficialDocPreview({
               <span>Kanit/P1: <strong style={{ color: '#fff' }}>{currentDataMap.PENYIDIK_1_PANGKAT} {currentDataMap.PENYIDIK_1_NAMA}</strong> {currentDataMap.PENYIDIK_1_NRP ? `(NRP: ${currentDataMap.PENYIDIK_1_NRP})` : ''}</span>
             )}
             {currentDataMap.PENYIDIK_2_NAMA && (
-              <span>P2: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_2_NAMA}</strong></span>
+              <span>P2: <strong style={{ color: '#fff' }}>{currentDataMap.PENYIDIK_2_NAMA}</strong></span>
             )}
             {currentDataMap.PENYIDIK_3_NAMA && (
-              <span>P3: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_3_NAMA}</strong></span>
+              <span>P3: <strong style={{ color: '#fff' }}>{currentDataMap.PENYIDIK_3_NAMA}</strong></span>
             )}
             {currentDataMap.PENYIDIK_4_NAMA && (
-              <span>P4: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_4_NAMA}</strong></span>
+              <span>P4: <strong style={{ color: '#fff' }}>{currentDataMap.PENYIDIK_4_NAMA}</strong></span>
             )}
             {currentDataMap.PENYIDIK_5_NAMA && (
-              <span>P5: <strong style={{ color: 'var(--accent-cyan)' }}>{currentDataMap.PENYIDIK_5_NAMA}</strong></span>
+              <span>P5: <strong style={{ color: '#fff' }}>{currentDataMap.PENYIDIK_5_NAMA}</strong></span>
             )}
           </div>
         )}
@@ -440,13 +440,13 @@ export default function OfficialDocPreview({
         <div className="no-print glass" style={{
           padding: '16px',
           borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--accent-cyan)',
+          border: '1px solid rgba(255, 53, 45, 0.35)',
           maxHeight: '260px',
           overflowY: 'auto',
           fontSize: '12px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <span style={{ fontWeight: 700, color: 'var(--accent-cyan)' }}>
+            <span style={{ fontWeight: 700, color: '#ff352d' }}>
               VARIABEL DINAMIS DOKUMEN SUPABASE (TOTAL: {Object.keys(currentDataMap).length})
             </span>
             <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
@@ -465,7 +465,7 @@ export default function OfficialDocPreview({
                 justifyContent: 'space-between',
                 gap: '8px',
               }}>
-                <span className="mono" style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{`{${key}}`}:</span>
+                <span className="mono" style={{ color: '#cbd5e1', fontWeight: 600 }}>{`{${key}}`}:</span>
                 <span style={{ color: 'var(--text-primary)', textAlign: 'right', wordBreak: 'break-word' }}>
                   {val !== null && val !== undefined && val !== '' ? String(val).slice(0, 32) : <span style={{ color: 'var(--text-muted)' }}>-</span>}
                 </span>

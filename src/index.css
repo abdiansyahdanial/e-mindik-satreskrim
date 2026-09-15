@@ -24,24 +24,24 @@
   --border-glass-hover: rgba(255, 255, 255, 0.16);
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-input: rgba(255, 255, 255, 0.12);
-  --border-input-focus: var(--accent-cyan);
+  --border-input-focus: #ff352d;
 
   /* Accent Colors */
-  --accent-cyan: #00D4FF;
-  --accent-cyan-dim: rgba(0, 212, 255, 0.15);
-  --accent-blue: #3B82F6;
-  --accent-blue-dim: rgba(59, 130, 246, 0.15);
+  --accent-cyan: #ff352d;
+  --accent-cyan-dim: rgba(255, 53, 45, 0.15);
+  --accent-blue: #b81d18;
+  --accent-blue-dim: rgba(184, 29, 24, 0.15);
   --accent-green: #22C55E;
   --accent-green-dim: rgba(34, 197, 94, 0.15);
   --accent-yellow: #FACC15;
   --accent-yellow-dim: rgba(250, 204, 21, 0.15);
-  --accent-red: #EF4444;
-  --accent-red-dim: rgba(239, 68, 68, 0.15);
-  --accent-purple: #A855F7;
-  --accent-purple-dim: rgba(168, 85, 247, 0.15);
+  --accent-red: #ff352d;
+  --accent-red-dim: rgba(255, 53, 45, 0.15);
+  --accent-purple: #2a343f;
+  --accent-purple-dim: rgba(42, 52, 63, 0.4);
 
   /* Gradients */
-  --gradient-cyan: linear-gradient(135deg, #00D4FF 0%, #3B82F6 100%);
+  --gradient-cyan: linear-gradient(135deg, #ff352d 0%, #b81d18 100%);
   --gradient-dark: linear-gradient(180deg, #222b34 0%, #1b2229 100%);
   --gradient-card: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
   --gradient-sidebar: linear-gradient(180deg, #1e262e 0%, #1b2229 100%);
@@ -50,13 +50,13 @@
   --text-primary: #F3F4F6;
   --text-secondary: #9CA3AF;
   --text-muted: #6B7280;
-  --text-accent: var(--accent-cyan);
+  --text-accent: #ff352d;
   --text-inverse: #1b2229;
 
   /* Shadows & Glow */
-  --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.15), 0 0 40px rgba(0, 212, 255, 0.05);
-  --glow-cyan-strong: 0 0 20px rgba(0, 212, 255, 0.3), 0 0 60px rgba(0, 212, 255, 0.1);
-  --glow-blue: 0 0 20px rgba(59, 130, 246, 0.2);
+  --glow-cyan: 0 0 20px rgba(255, 53, 45, 0.15), 0 0 40px rgba(255, 53, 45, 0.05);
+  --glow-cyan-strong: 0 0 20px rgba(255, 53, 45, 0.3), 0 0 60px rgba(255, 53, 45, 0.1);
+  --glow-blue: 0 0 20px rgba(184, 29, 24, 0.2);
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.25);
   --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.35);
   --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.5);
@@ -212,13 +212,13 @@ p {
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 212, 255, 0.3);
+  background: rgba(255, 53, 45, 0.35);
 }
 
 /* --- Selection --- */
 ::selection {
-  background: var(--accent-cyan-dim);
-  color: var(--accent-cyan);
+  background: rgba(255, 53, 45, 0.25);
+  color: #ffffff;
 }
 
 /* --- Glassmorphism Utility Classes --- */
@@ -313,10 +313,10 @@ p {
 
 @keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 12px rgba(255, 53, 45, 0.3);
   }
   50% {
-    box-shadow: 0 0 24px rgba(0, 212, 255, 0.6), 0 0 48px rgba(0, 212, 255, 0.2);
+    box-shadow: 0 0 24px rgba(255, 53, 45, 0.6), 0 0 48px rgba(255, 53, 45, 0.2);
   }
 }
 
@@ -537,8 +537,8 @@ p {
 }
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 2px var(--accent-cyan-dim);
+  border-color: #ff352d;
+  box-shadow: 0 0 0 2px rgba(255, 53, 45, 0.2);
   background: var(--bg-tertiary);
 }
 
@@ -563,9 +563,9 @@ p {
 }
 
 .badge-cyan {
-  background: var(--accent-cyan-dim);
-  color: var(--accent-cyan);
-  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: #252f38;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .badge-green {
@@ -587,15 +587,21 @@ p {
 }
 
 .badge-blue {
-  background: var(--accent-blue-dim);
-  color: #60A5FA;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: #222b34;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 53, 45, 0.3);
 }
 
 .badge-purple {
-  background: var(--accent-purple-dim);
-  color: #C084FC;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: #2a343f;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.badge-neutral {
+  background: #252f38;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ============================================================
