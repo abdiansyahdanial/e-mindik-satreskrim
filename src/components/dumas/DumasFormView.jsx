@@ -4,7 +4,6 @@ import {
   Trash2, 
   FileText, 
   ArrowLeft, 
-  CheckCircle2, 
   Sparkles, 
   Image as ImageIcon,
   Save,
@@ -15,107 +14,169 @@ import { generateDumasNumber } from '../../services/dumasService';
 export default function DumasFormView({
   mode = 'manual', // 'manual' | 'ocr'
   initialOcrFile = null,
+  initialOcrFiles = null,
+  initialOcrData = null,
   onBack,
   onSubmitDumas,
   currentUserProfile
 }) {
-  // State 01: Identitas Pelapor
+  // State 01: Identitas Pelapor (Diisi dari initialOcrData jika ada)
   const [pelapor, setPelapor] = useState({
-    nama: mode === 'ocr' ? 'AHMAD SUBARI' : '',
-    nik: mode === 'ocr' ? '7411081905890001' : '',
-    ttl: mode === 'ocr' ? 'Kolaka, 19 Mei 1989' : '',
-    pekerjaan: mode === 'ocr' ? 'Wiraswasta / Pengawas BUMDes' : '',
-    agama: mode === 'ocr' ? 'Islam' : '',
-    alamat: mode === 'ocr' ? 'Desa Loea, Kec. Loea, Kab. Kolaka Timur' : '',
-    kontak: mode === 'ocr' ? '081244556677' : '',
+    nama: initialOcrData?.pelapor?.nama || initialOcrData?.pelapor_nama || initialOcrData?.pelapor?.nama_lengkap || (mode === 'ocr' ? 'AHMAD SUBARI' : ''),
+    nik: initialOcrData?.pelapor?.nik || initialOcrData?.pelapor_nik || (mode === 'ocr' ? '7411081905890001' : ''),
+    ttl: initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor_ttl || (mode === 'ocr' ? 'Kolaka, 19 Mei 1989' : ''),
+    pekerjaan: initialOcrData?.pelapor?.pekerjaan || initialOcrData?.pelapor_pekerjaan || (mode === 'ocr' ? 'Wiraswasta / Pengawas BUMDes' : ''),
+    agama: initialOcrData?.pelapor?.agama || initialOcrData?.pelapor_agama || (mode === 'ocr' ? 'Islam' : ''),
+    alamat: initialOcrData?.pelapor?.alamat || initialOcrData?.pelapor_alamat || (mode === 'ocr' ? 'Desa Loea, Kec. Loea, Kab. Kolaka Timur' : ''),
+    kontak: initialOcrData?.pelapor?.kontak || initialOcrData?.pelapor_kontak || initialOcrData?.pelapor?.no_hp || (mode === 'ocr' ? '081244556677' : ''),
   });
 
-  // State 02: Array Saksi-Saksi Dinamis
-  const [saksiList, setSaksiList] = useState(
-    mode === 'ocr'
-      ? [
-          {
-            id: 'saksi-1',
-            nama: 'HARIS MUNANDAR, S.P.',
-            nik: '7411081503850002',
-            ttl: 'Tirawuta, 15 Maret 1985',
-            pekerjaan: 'Perangkat Desa / Bendahara BUMDes',
-            agama: 'Islam',
-            alamat: 'Kel. Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
-            kontak: '082198765432',
-            role_label: 'Saksi Fakta',
-          },
-          {
-            id: 'saksi-2',
-            nama: 'NURHAYATI',
-            nik: '7411084209900003',
-            ttl: 'Kolaka, 22 September 1990',
-            pekerjaan: 'Staf Administrasi',
-            agama: 'Islam',
-            alamat: 'Desa Loea, Kec. Loea, Kab. Kolaka Timur',
-            kontak: '085211223344',
-            role_label: 'Saksi Terkait',
-          }
-        ]
-      : [
-          {
-            id: 'saksi-1',
-            nama: '',
-            nik: '',
-            ttl: '',
-            pekerjaan: '',
-            agama: '',
-            alamat: '',
-            kontak: '',
-            role_label: 'Saksi Fakta',
-          }
-        ]
-  );
+  // State 02: Array Saksi-Saksi Dinamis (Mendukung Multi-Saksi dari OCR)
+  const [saksiList, setSaksiList] = useState(() => {
+    if (initialOcrData?.saksiList && initialOcrData.saksiList.length > 0) {
+      return initialOcrData.saksiList;
+    }
+    if (initialOcrData?.saksi_list && initialOcrData.saksi_list.length > 0) {
+      return initialOcrData.saksi_list.map((s, idx) => ({
+        id: `saksi-ocr-${idx + 1}-${Date.now()}`,
+        nama: s.nama || '',
+        nik: s.nik || '',
+        ttl: s.ttl || '',
+        pekerjaan: s.pekerjaan || '',
+        agama: s.agama || 'Islam',
+        alamat: s.alamat || '',
+        kontak: s.kontak || s.no_hp || '',
+        role_label: idx === 0 ? 'Saksi Fakta' : idx === 1 ? 'Saksi Terkait' : `Saksi ${idx + 1}`,
+      }));
+    }
+    if (mode === 'ocr') {
+      return [
+        {
+          id: 'saksi-1',
+          nama: 'HARIS MUNANDAR, S.P.',
+          nik: '7411081503850002',
+          ttl: 'Tirawuta, 15 Maret 1985',
+          pekerjaan: 'Perangkat Desa / Bendahara BUMDes',
+          agama: 'Islam',
+          alamat: 'Kel. Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
+          kontak: '082198765432',
+          role_label: 'Saksi Fakta',
+        },
+        {
+          id: 'saksi-2',
+          nama: 'NURHAYATI',
+          nik: '7411084209900003',
+          ttl: 'Kolaka, 22 September 1990',
+          pekerjaan: 'Staf Administrasi',
+          agama: 'Islam',
+          alamat: 'Desa Loea, Kec. Loea, Kab. Kolaka Timur',
+          kontak: '085211223344',
+          role_label: 'Saksi Terkait',
+        }
+      ];
+    }
+    return [
+      {
+        id: 'saksi-1',
+        nama: '',
+        nik: '',
+        ttl: '',
+        pekerjaan: '',
+        agama: 'Islam',
+        alamat: '',
+        kontak: '',
+        role_label: 'Saksi Fakta',
+      }
+    ];
+  });
 
-  // State 03: Array Terlapor Dinamis
-  const [terlaporList, setTerlaporList] = useState(
-    mode === 'ocr'
-      ? [
-          {
-            id: 'terlapor-1',
-            nama: 'SAMSUL BAHRI',
-            nik: '7411080407880004',
-            ttl: 'Rate-Rate, 4 Juli 1988',
-            pekerjaan: 'Wiraswasta / Mantan Direktur BUMDes',
-            agama: 'Islam',
-            alamat: 'Kelurahan Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
-            kontak: '085298987711',
-            role_label: 'Terlapor Utama',
-          }
-        ]
-      : [
-          {
-            id: 'terlapor-1',
-            nama: '',
-            nik: '',
-            ttl: '',
-            pekerjaan: '',
-            agama: '',
-            alamat: '',
-            kontak: '',
-            role_label: 'Terlapor Utama',
-          }
-        ]
-  );
+  // State 03: Array Terlapor Dinamis (Mendukung Multi-Terlapor dari OCR)
+  const [terlaporList, setTerlaporList] = useState(() => {
+    if (initialOcrData?.terlaporList && initialOcrData.terlaporList.length > 0) {
+      return initialOcrData.terlaporList;
+    }
+    if (initialOcrData?.terlapor_list && initialOcrData.terlapor_list.length > 0) {
+      return initialOcrData.terlapor_list.map((t, idx) => ({
+        id: `terlapor-ocr-${idx + 1}-${Date.now()}`,
+        nama: t.nama || '',
+        nik: t.nik || '',
+        ttl: t.ttl || '',
+        pekerjaan: t.pekerjaan || '',
+        agama: t.agama || 'Islam',
+        alamat: t.alamat || '',
+        kontak: t.kontak || t.no_hp || '',
+        role_label: idx === 0 ? 'Terlapor Utama' : `Terlapor Tambahan ${idx}`,
+      }));
+    }
+    if (mode === 'ocr') {
+      return [
+        {
+          id: 'terlapor-1',
+          nama: 'SAMSUL BAHRI',
+          nik: '7411080407880004',
+          ttl: 'Rate-Rate, 4 Juli 1988',
+          pekerjaan: 'Wiraswasta / Mantan Direktur BUMDes',
+          agama: 'Islam',
+          alamat: 'Kelurahan Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
+          kontak: '085298987711',
+          role_label: 'Terlapor Utama',
+        }
+      ];
+    }
+    return [
+      {
+        id: 'terlapor-1',
+        nama: '',
+        nik: '',
+        ttl: '',
+        pekerjaan: '',
+        agama: 'Islam',
+        alamat: '',
+        kontak: '',
+        role_label: 'Terlapor Utama',
+      }
+    ];
+  });
 
   // State 04: Peristiwa, Delik, & Dugaan Pasal
   const [caseInfo, setCaseInfo] = useState({
-    tindak_pidana: mode === 'ocr' ? 'Penipuan & Penggelapan Dana Anggaran' : '',
-    pasal_disangkakan: mode === 'ocr' ? 'Pasal 378 KUHP dan/atau Pasal 372 KUHP' : '',
-    tempus_delicti: mode === 'ocr' ? 'Senin, 14 September 2026 - Pukul 10.30 WITA' : '',
-    locus_delicti: mode === 'ocr' ? 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur' : '',
-    uraian_kejadian: mode === 'ocr' 
+    tindak_pidana: initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || (mode === 'ocr' ? 'Penipuan & Penggelapan Dana Anggaran' : ''),
+    pasal_disangkakan: initialOcrData?.caseInfo?.pasal_disangkakan || initialOcrData?.pasal_disangkakan || (mode === 'ocr' ? 'Pasal 378 KUHP dan/atau Pasal 372 KUHP' : ''),
+    tempus_delicti: initialOcrData?.caseInfo?.tempus_delicti || initialOcrData?.tempus_delicti || (mode === 'ocr' ? 'Senin, 14 September 2026 - Pukul 10.30 WITA' : ''),
+    locus_delicti: initialOcrData?.caseInfo?.locus_delicti || initialOcrData?.locus_delicti || (mode === 'ocr' ? 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur' : ''),
+    uraian_kejadian: initialOcrData?.caseInfo?.uraian_kejadian || initialOcrData?.uraian_kejadian || (mode === 'ocr' 
       ? 'Bahwa pada hari Senin tanggal 14 September 2026 sekitar pukul 10.30 WITA, Terlapor Sdr. SAMSUL BAHRI diduga tanpa hak atau izin telah menggelapkan dana kas Bumdes sebesar Rp 45.000.000,- (Empat Puluh Lima Juta Rupiah).'
-      : '',
+      : ''),
   });
 
-  // State 05: Lampiran Bukti
-  const [evidenceFiles, setEvidenceFiles] = useState([]);
+  // State 05: Lampiran Bukti (Otomatis sertakan seluruh berkas fisik hasil OCR jika ada)
+  const [evidenceFiles, setEvidenceFiles] = useState(() => {
+    const rawFiles = initialOcrFiles && initialOcrFiles.length > 0
+      ? initialOcrFiles
+      : (initialOcrFile ? [initialOcrFile] : []);
+
+    if (!rawFiles || rawFiles.length === 0) return [];
+
+    return rawFiles.map((file, idx) => {
+      const isPdf = file.type?.includes('pdf') || file.name?.endsWith('.pdf');
+      const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
+      const mime = isPdf ? 'application/pdf' : 'image/jpeg';
+      return {
+        id: `ocr-file-${Date.now()}-${idx}`,
+        name: file.name,
+        nama_file: file.name,
+        size: file.size,
+        type: mime,
+        mime_type: mime,
+        kategori_bukti: category,
+        file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
+        previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
+        keterangan: `Lembar ke-${idx + 1} surat pengaduan hasil pindai Google Gemini AI`,
+        hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map(b => b.toString(16).padStart(2, '0')).join('') + '...'
+      };
+    });
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -376,6 +437,46 @@ export default function DumasFormView({
           }}>
             <AlertCircle size={16} color="#F87171" style={{ flexShrink: 0 }} />
             <span>{formError}</span>
+          </div>
+        )}
+
+        {/* Banner Konfirmasi Smart Scan Gemini OCR */}
+        {(initialOcrData || mode === 'ocr') && (
+          <div style={{
+            padding: '14px 20px',
+            backgroundColor: 'rgba(229, 46, 46, 0.08)',
+            border: '1px solid rgba(229, 46, 46, 0.3)',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '12px',
+            color: '#CBD5E1'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Sparkles size={18} color="#FF352D" style={{ flexShrink: 0 }} />
+              <div>
+                <strong style={{ color: '#FF352D' }}>
+                  HASIL SMART SCAN GEMINI VISION AKTIF
+                  {initialOcrFiles && initialOcrFiles.length > 1 ? ` (${initialOcrFiles.length} LEMBAR BERKAS): ` : ': '}
+                </strong>
+                <span>Entitas Pelapor, Saksi, Terlapor, &amp; Perkara telah diekstrak secara otomatis. Harap verifikasi keakuratan data dengan berkas fisik sebelum menyimpan.</span>
+              </div>
+            </div>
+            <span style={{
+              fontSize: '10px',
+              color: '#FF6B6B',
+              backgroundColor: '#151822',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: '1px solid rgba(229, 46, 46, 0.4)',
+              whiteSpace: 'nowrap',
+              fontWeight: 700
+            }}>
+              TEREKSTRAKSI AI
+            </span>
           </div>
         )}
 

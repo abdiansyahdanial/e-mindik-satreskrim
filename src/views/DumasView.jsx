@@ -16,8 +16,9 @@ export default function DumasView({
   // Sub-view: 'list' | 'form' | 'detail'
   const [subView, setSubView] = useState('list');
   const [isModeModalOpen, setIsModeModalOpen] = useState(false);
-  const [formMode, setFormMode] = useState('manual'); // 'manual' | 'ocr'
   const [initialOcrFile, setInitialOcrFile] = useState(null);
+  const [initialOcrFiles, setInitialOcrFiles] = useState([]);
+  const [initialOcrData, setInitialOcrData] = useState(null);
   const [selectedDumas, setSelectedDumas] = useState(null);
 
   // 1. Handlers Modal Pemilihan Mode
@@ -25,11 +26,21 @@ export default function DumasView({
     setIsModeModalOpen(true);
   };
 
-  const handleSelectMode = (mode, file = null) => {
+  const handleSelectMode = (mode, files = null, ocrData = null) => {
     setFormMode(mode);
-    setInitialOcrFile(file);
+    const normalizedFiles = files 
+      ? (Array.isArray(files) ? files : [files]) 
+      : [];
+    setInitialOcrFiles(normalizedFiles);
+    setInitialOcrFile(normalizedFiles[0] || null);
+    setInitialOcrData(ocrData);
     setIsModeModalOpen(false);
     setSubView('form');
+
+    if (mode === 'ocr' && ocrData && onShowToast) {
+      const pageCount = normalizedFiles.length;
+      onShowToast(`Smart Scan AI Sukses! ${pageCount > 1 ? `${pageCount} lembar berkas` : 'Berkas'} berhasil diekstrak ke formulir.`);
+    }
   };
 
   // 2. Handler Submit Form Dumas
@@ -103,6 +114,8 @@ export default function DumasView({
         <DumasFormView
           mode={formMode}
           initialOcrFile={initialOcrFile}
+          initialOcrFiles={initialOcrFiles}
+          initialOcrData={initialOcrData}
           currentUserProfile={currentUserProfile}
           onBack={() => setSubView('list')}
           onSubmitDumas={handleSubmitDumas}

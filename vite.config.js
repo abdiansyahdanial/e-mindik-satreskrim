@@ -86,7 +86,7 @@ export default defineConfig({
       'docx-preview/dist/docx-preview.css': path.resolve(__dirname, 'src/styles/docx-preview.css'),
     },
   },
-  envPrefix: ['VITE_', 'R2_'],
+  envPrefix: ['VITE_', 'R2_', 'GEMINI_'],
 })
 
 

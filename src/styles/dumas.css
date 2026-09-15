@@ -927,6 +927,86 @@
 /* ============================================================
    MEDIA PRINT RULES (STANDAR KEDINASAN CETAK DUMAS RESMI)
    ============================================================ */
+/* ============================================================
+   TACTICAL HUD SCANNER & OCR OVERLAY STYLES
+   ============================================================ */
+@keyframes hudScanline {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.2;
+  }
+}
+
+@keyframes hudPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes hudSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.hud-scanner-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #FF352D 25%, #FFFFFF 50%, #FF352D 75%, transparent 100%);
+  box-shadow: 0 0 15px #FF352D, 0 0 30px #E52E2E;
+  animation: hudScanline 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+.hud-radar-pulse {
+  animation: hudPulse 2s ease-in-out infinite;
+}
+
+.hud-tactical-border {
+  position: relative;
+}
+
+.hud-tactical-border::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 12px;
+  height: 12px;
+  border-top: 2px solid #FF352D;
+  border-left: 2px solid #FF352D;
+  pointer-events: none;
+}
+
+.hud-tactical-border::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 12px;
+  height: 12px;
+  border-bottom: 2px solid #FF352D;
+  border-right: 2px solid #FF352D;
+  pointer-events: none;
+}
+
 @media print {
   body, .app-container, .app-main, .main-content {
     background: #FFFFFF !important;
@@ -973,3 +1053,4 @@
     margin-bottom: 16px;
   }
 }
+

@@ -22,6 +22,9 @@ Dokumen ringkasan arsitektur resmi untuk sistem otomasi administrasi penyidikan 
 - **Cloud Storage (Cloudflare R2)**:
   - `@aws-sdk/client-s3` & `@aws-sdk/s3-request-presigner`: Integrasi S3-compatible storage untuk upload dan manajemen berkas perkara (PDF, JPG, lampiran bukti).
   - `src/lib/r2Client.js` & `src/services/r2Service.js`: Modul helper penyimpanan berkas perkara terenkripsi ke Cloudflare R2 dengan metadata lengkap dan presigned URLs.
+- **AI & Computer Vision (Google Gemini AI)**:
+  - `@google/genai`: SDK resmi Google Gen AI untuk fitur Smart Scan OCR berkas fisik surat pengaduan/LP.
+  - `src/lib/geminiOcrService.js`: Service multimodal Vision untuk mengekstrak entitas pelapor, saksi, terlapor, dan delik perkara ke format JSON terstruktur.
 - **Serverless API Endpoints** (`/api`):
   - `api/send-email.js`: Integrasi notifikasi email transaksional via [[Resend]] (`resend`).
   - `api/convert-docx-to-pdf.js`: Konversi DOCX ke PDF.
