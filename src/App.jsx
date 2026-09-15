@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import LoginPage from './views/LoginPage';
-import PendingApprovalView from './views/PendingApprovalView';
 import ExpandingSidebar from './components/layout/ExpandingSidebar';
 import Navbar from './components/Navbar';
 import DashboardView from './views/DashboardView';
@@ -15,7 +14,7 @@ import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
 import UserManagementModal from './components/UserManagementModal';
 import { mockDocuments } from './data/mockDocuments';
-import { CheckCircle2, ShieldAlert, RefreshCw } from 'lucide-react';
+import { CheckCircle2, RefreshCw } from 'lucide-react';
 
 export default function App() {
   // Authentication & Role State (3-tier: 'super_admin' | 'admin' | 'anggota')
@@ -67,7 +66,6 @@ export default function App() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user && isMounted) {
           const u = session.user;
-          setUser(u);
 
           // Fetch user profile from Supabase
           const { data: profile } = await supabase
@@ -76,55 +74,44 @@ export default function App() {
             .eq('id', u.id)
             .maybeSingle();
 
-          if (profile && isMounted) {
-            const meta = u.user_metadata || {};
-            const isSuper = u.id === '75abae80-e013-4987-a5e7-f1107d2ab265' || 
-                            u.email?.includes('kasat') || 
-                            u.email?.includes('super') ||
-                            profile.role === 'super_admin';
+          const meta = u.user_metadata || {};
+          const isSuper = u.id === '75abae80-e013-4987-a5e7-f1107d2ab265' || 
+                          u.email?.includes('kasat') || 
+                          u.email?.includes('super') ||
+                          profile?.role === 'super_admin';
 
-            // Determine if approved: ONLY if status is 'active' or user is super_admin
-            const isApproved = isSuper || profile.status === 'active';
-            const finalRole = isSuper ? 'super_admin' : (profile.role || 'anggota');
-            const finalStatus = isApproved ? 'active' : (profile.status || 'pending');
+          // Determine if approved: ONLY if status is 'active' or user is super_admin
+          const isApproved = isSuper || (profile?.status === 'active');
 
+          if (!isApproved) {
+            // Unapproved or pending session: do not keep active session
+            await supabase.auth.signOut().catch(() => {});
+            if (isMounted) {
+              setUser(null);
+              setUserRole(null);
+              setCurrentUserProfile(null);
+            }
+            return;
+          }
+
+          if (isMounted) {
+            const finalRole = isSuper ? 'super_admin' : (profile?.role || meta.role || 'anggota');
+            setUser(u);
+            setUserRole(finalRole);
             setCurrentUserProfile({
               ...profile,
               id: u.id,
               email: u.email,
-              nama: profile.full_name || profile.nama || meta.nama || meta.full_name || u.email.split('@')[0],
-              pangkat: profile.pangkat || meta.pangkat || '-',
-              nrp: profile.rank_nrp || profile.nrp || meta.nrp || '-',
-              jabatan: isSuper ? 'Super Admin Satreskrim' : (profile.jabatan || meta.jabatan || 'Penyidik Pembantu'),
-              satker: profile.satker || meta.satker || 'Satreskrim Polres Kolaka Timur',
-              unit: profile.unit || meta.unit || '',
-              phone: profile.phone || profile.no_hp || meta.phone || meta.no_hp || '',
+              nama: profile?.full_name || profile?.nama || meta.nama || meta.full_name || u.email.split('@')[0],
+              pangkat: profile?.pangkat || meta.pangkat || '-',
+              nrp: profile?.rank_nrp || profile?.nrp || meta.nrp || '-',
+              jabatan: isSuper ? 'Super Admin Satreskrim' : (profile?.jabatan || meta.jabatan || 'Penyidik Pembantu'),
+              satker: profile?.satker || meta.satker || 'Satreskrim Polres Kolaka Timur',
+              unit: profile?.unit || meta.unit || '',
+              phone: profile?.phone || profile?.no_hp || meta.phone || meta.no_hp || '',
               role: finalRole,
-              status: finalStatus
+              status: 'active'
             });
-            setUserRole(finalRole);
-          } else if (isMounted) {
-            const meta = u.user_metadata || {};
-            const isSuper = u.id === '75abae80-e013-4987-a5e7-f1107d2ab265' || 
-                            u.email?.includes('kasat') || 
-                            u.email?.includes('super');
-            const fallbackProf = {
-              id: u.id,
-              email: u.email,
-              full_name: meta.full_name || meta.nama || (isSuper ? 'Super Admin Satreskrim' : u.email.split('@')[0]),
-              nama: meta.nama || meta.full_name || (isSuper ? 'Super Admin Satreskrim' : u.email.split('@')[0]),
-              pangkat: meta.pangkat || (isSuper ? 'POLRI' : '-'),
-              rank_nrp: meta.nrp || '-',
-              nrp: meta.nrp || '-',
-              jabatan: isSuper ? 'Super Admin Satreskrim' : (meta.jabatan || 'Penyidik Pembantu Satreskrim'),
-              satker: meta.satker || 'Satreskrim Polres Kolaka Timur',
-              unit: meta.unit || '',
-              phone: meta.phone || '',
-              role: isSuper ? 'super_admin' : (meta.role || 'anggota'),
-              status: isSuper ? 'active' : (meta.status || 'pending')
-            };
-            setCurrentUserProfile(fallbackProf);
-            setUserRole(fallbackProf.role);
           }
         }
       } catch (err) {
@@ -136,11 +123,10 @@ export default function App() {
 
     checkCurrentSession();
 
+    // Auth state listener: only handle SIGNED_OUT to avoid race conditions during login/register
     const { data: authSubscription } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user);
-      } else if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT') {
         setUser(null);
         setUserRole(null);
         setCurrentUserProfile(null);
@@ -647,34 +633,7 @@ export default function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Pending Approval Route Guard (Locks total access for accounts that are not active/approved)
-  const isPendingApproval = 
-    userRole !== 'super_admin' && 
-    (currentUserProfile?.status === 'pending' || 
-     currentUserProfile?.status !== 'active');
 
-  if (isPendingApproval) {
-    return (
-      <PendingApprovalView
-        currentUserProfile={currentUserProfile}
-        user={user}
-        onStatusUpdated={(updatedProf) => {
-          const resolvedRole = (updatedProf?.role && updatedProf.role !== 'pending' && updatedProf.role !== 'rejected') 
-            ? updatedProf.role 
-            : 'anggota';
-          setCurrentUserProfile(prev => ({ 
-            ...prev, 
-            ...updatedProf, 
-            status: 'active',
-            role: resolvedRole
-          }));
-          setUserRole(resolvedRole);
-          showToast('Akun telah aktif! Mengalihkan ke Dashboard...');
-        }}
-        onLogout={handleLogout}
-      />
-    );
-  }
 
   return (
     <div className="app-container">

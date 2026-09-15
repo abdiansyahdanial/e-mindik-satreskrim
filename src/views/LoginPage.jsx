@@ -5,7 +5,6 @@ import {
   LogIn, 
   AlertCircle, 
   Radio, 
-  Shield, 
   UserPlus, 
   Check, 
   X, 
@@ -13,7 +12,6 @@ import {
   Building2, 
   Phone, 
   KeyRound, 
-  CheckCircle2, 
   Clock,
   Eye,
   EyeOff,
@@ -22,11 +20,11 @@ import {
   Hash,
   Briefcase,
   ChevronRight,
-  ShieldCheck,
-  ArrowRight
+  ShieldCheck
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { sendRegistrationEmails } from '../services/emailService';
+import AuthAlertModal from '../components/AuthAlertModal';
 import logoImg from '../assets/logo.png';
 import './LoginPage.css';
 
@@ -87,8 +85,15 @@ export default function LoginPage({ onLoginSuccess }) {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [registerSuccessData, setRegisterSuccessData] = useState(null);
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    type: 'login_pending',
+    title: '',
+    message: '',
+    duration: 0,
+    showConfirmButton: false,
+    confirmText: 'Mengerti'
+  });
 
   // Panel Transition Trigger with Light Sweep
   const handleTogglePanel = (active) => {
@@ -166,7 +171,34 @@ export default function LoginPage({ onLoginSuccess }) {
       const userMeta = user.user_metadata || {};
       const isSuper = user.email?.includes('super') || 
                       user.email?.includes('kasat') || 
-                      user.id === '75abae80-e013-4987-a5e7-f1107d2ab265';
+                      user.id === '75abae80-e013-4987-a5e7-f1107d2ab265' ||
+                      profileData?.role === 'super_admin';
+
+      const currentStatus = profileData?.status || userMeta.status || 'pending';
+      const isApproved = isSuper || currentStatus === 'active';
+
+      if (!isApproved) {
+        // Akun kedinasan belum disetujui oleh Administrator
+        try {
+          await supabase.auth.signOut();
+        } catch (soErr) {
+          console.warn('Signout pending user notice:', soErr);
+        }
+
+        setLoading(false);
+        setStatusMessage('');
+
+        setAlertModal({
+          isOpen: true,
+          type: 'login_pending',
+          title: 'Verifikasi Akun Dalam Proses',
+          message: 'Akun kedinasan Anda masih dalam proses verifikasi oleh Admin. Silakan lakukan pengecekan secara berkala.',
+          duration: 4000,
+          showConfirmButton: true,
+          confirmText: 'Mengerti'
+        });
+        return;
+      }
 
       let finalProfile;
       if (!profileData) {
@@ -319,7 +351,7 @@ export default function LoginPage({ onLoginSuccess }) {
         }
       }
 
-      // SignOut di latar belakang agar sesi tidak otomatis masuk tanpa approval
+      // SignOut di latar belakang agar akun baru yang belum disetujui tidak langsung tersimpan sebagai sesi aktif
       try {
         await supabase.auth.signOut();
       } catch (soErr) {
@@ -331,15 +363,21 @@ export default function LoginPage({ onLoginSuccess }) {
 
       const savedEmail = regEmail.trim();
 
-      // Tampilkan notifikasi/modal sukses
-      setShowSuccessModal(true);
-      setRegisterSuccessData(officerData);
+      // Tampilkan Alert Modal Tengah (Center Toast/Modal) selama 2 detik
+      setAlertModal({
+        isOpen: true,
+        type: 'register_success',
+        title: 'Registrasi Akun Diajukan',
+        message: 'Permohonan registrasi akun anda telah berhasil diajukan. Silakan menunggu proses verifikasi dan persetujuan dari Admin.',
+        duration: 2000,
+        showConfirmButton: false,
+        confirmText: 'Mengerti'
+      });
       setStatusMessage('');
 
-      // Bertahan selama 2 detik dengan countdown bar, lalu alihkan ke Login
+      // Setelah 2 detik, modal otomatis hilang dan alihkan status tampilan form ke tab "Masuk / Login" (reset form register)
       setTimeout(() => {
-        setShowSuccessModal(false);
-        setRegisterSuccessData(null);
+        setAlertModal(prev => ({ ...prev, isOpen: false }));
         handleTogglePanel(false);
         setLoginEmail(savedEmail);
         setLoginPassword('');
@@ -897,108 +935,18 @@ export default function LoginPage({ onLoginSuccess }) {
       </div>
 
       {/* ============================================================
-          MODAL SUKSES PENDAFTARAN PERSONEL (PRESISI GOLD & NAVY)
+          MODAL ALERT IN-PLACE (PRESISI SATRESKRIM DESIGN SYSTEM)
          ============================================================ */}
-      {showSuccessModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(10, 15, 20, 0.9)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 99999,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'linear-gradient(145deg, #1b2229 0%, #141a1f 100%)',
-            border: '1px solid #ff352d',
-            borderRadius: '20px',
-            maxWidth: '460px',
-            width: '100%',
-            padding: '30px 24px 24px',
-            boxShadow: '0 0 35px rgba(255, 53, 45, 0.25), 0 20px 40px rgba(0, 0, 0, 0.8)',
-            textAlign: 'center',
-            position: 'relative'
-          }}>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: 'rgba(255, 53, 45, 0.12)',
-              border: '2px solid #ff352d',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              boxShadow: '0 0 20px rgba(255, 53, 45, 0.35)'
-            }}>
-              <CheckCircle2 size={34} color="#ff5740" />
-            </div>
-
-            <h3 style={{
-              color: '#FFFFFF',
-              fontSize: '18px',
-              fontWeight: 800,
-              margin: '0 0 10px',
-              letterSpacing: '0.3px',
-              lineHeight: 1.3
-            }}>
-              Pendaftaran Personel Berhasil Dikirim
-            </h3>
-
-            <p style={{
-              color: '#cbd5e1',
-              fontSize: '13px',
-              lineHeight: 1.6,
-              margin: '0 0 20px'
-            }}>
-              Permohonan akses kedinasan Anda telah diterima oleh sistem. Mohon menunggu proses verifikasi dan aktivasi akun oleh Administrator Satreskrim.
-            </p>
-
-            {/* Countdown Progress Bar (2 Detik) */}
-            <div style={{
-              width: '100%',
-              height: '4px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '2px',
-              overflow: 'hidden',
-              position: 'relative'
-            }}>
-              <div style={{
-                height: '100%',
-                background: 'linear-gradient(90deg, #b81d18, #ff352d)',
-                width: '100%',
-                animation: 'countdown2s 2s linear forwards'
-              }} />
-            </div>
-
-            <div style={{
-              marginTop: '10px',
-              fontSize: '11px',
-              color: '#94a3b8',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}>
-              <Clock size={12} color="#ff5740" />
-              <span>Mengalihkan ke halaman masuk dalam 2 detik...</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes countdown2s {
-          from { width: 100%; }
-          to { width: 0%; }
-        }
-      `}</style>
+      <AuthAlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        type={alertModal.type}
+        title={alertModal.title}
+        message={alertModal.message}
+        duration={alertModal.duration}
+        showConfirmButton={alertModal.showConfirmButton}
+        confirmText={alertModal.confirmText}
+      />
     </div>
   );
 }
