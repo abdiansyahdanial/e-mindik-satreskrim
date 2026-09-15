@@ -343,26 +343,26 @@ export default function DocGeneratorView({
           });
         } else {
           // Fallback ke person di caseItem
-          if (currentCase.person?.nama && currentCase.person.nama !== 'Dalam Penyelidikan') {
+          if (currentCase?.person?.nama && currentCase?.person?.nama !== 'Dalam Penyelidikan') {
             const fallback = {
               id: 'legacy-suspect-1',
-              case_id: currentCase.id,
-              nama: currentCase.person.nama,
-              nik: currentCase.person.nik || '-',
-              jenis_kelamin: currentCase.person.gender || 'Laki-laki',
-              tempat_lahir: (currentCase.person.pob_dob || '').split(',')[0] || 'Kolaka Timur',
-              tgl_lahir: (currentCase.person.pob_dob || '').split(',')[1]?.trim() || '',
-              umur: currentCase.person.umur || '30',
-              agama: currentCase.person.agama || 'Islam',
-              pekerjaan: currentCase.person.pekerjaan || 'Swasta',
-              kewarganegaraan: currentCase.person.kewarganegaraan || 'Indonesia',
-              pendidikan: currentCase.person.pendidikan || 'SMA',
-              status_pernikahan: currentCase.person.marital_status || 'Kawin',
-              alamat: currentCase.person.alamat || currentCase.locus,
+              case_id: currentCase?.id,
+              nama: currentCase?.person?.nama,
+              nik: currentCase?.person?.nik || '-',
+              jenis_kelamin: currentCase?.person?.gender || 'Laki-laki',
+              tempat_lahir: (currentCase?.person?.pob_dob || '').split(',')[0] || 'Kolaka Timur',
+              tgl_lahir: (currentCase?.person?.pob_dob || '').split(',')[1]?.trim() || '',
+              umur: currentCase?.person?.umur || '30',
+              agama: currentCase?.person?.agama || 'Islam',
+              pekerjaan: currentCase?.person?.pekerjaan || 'Swasta',
+              kewarganegaraan: currentCase?.person?.kewarganegaraan || 'Indonesia',
+              pendidikan: currentCase?.person?.pendidikan || 'SMA',
+              status_pernikahan: currentCase?.person?.marital_status || 'Kawin',
+              alamat: currentCase?.person?.alamat || currentCase?.locus || '',
               status: 'tersangka',
-              no_sp_tap_tsk: currentCase.references?.no_sp_tap_tsk || '',
-              no_sprin_kap: currentCase.references?.no_sprin_kap || '',
-              no_sprin_han: currentCase.references?.no_sprin_han || '',
+              no_sp_tap_tsk: currentCase?.references?.no_sp_tap_tsk || '',
+              no_sprin_kap: currentCase?.references?.no_sprin_kap || '',
+              no_sprin_han: currentCase?.references?.no_sprin_han || '',
             };
             setCaseSuspects([fallback]);
             setSelectedSuspectId(fallback.id);
@@ -540,34 +540,34 @@ export default function DocGeneratorView({
     });
 
     // Rantai Rujukan Baku dari Perkara (Chain of Reference)
-    initial['NOMOR_LP'] = currentCase.nomor_lp || currentCase.no_lp || '';
-    initial['TANGGAL_LP'] = currentCase.tanggal_lp || currentCase.sprin_date || '';
+    initial['NOMOR_LP'] = currentCase?.nomor_lp || currentCase?.no_lp || '';
+    initial['TANGGAL_LP'] = currentCase?.tanggal_lp || currentCase?.sprin_date || '';
     initial['TGL_LP'] = initial['TANGGAL_LP'];
 
-    initial['NO_SPRIN_SIDIK'] = currentCase.no_sprin_sidik || '';
-    initial['TGL_SPRIN_SIDIK'] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSprinSidik ? todayStr : '');
+    initial['NO_SPRIN_SIDIK'] = currentCase?.no_sprin_sidik || '';
+    initial['TGL_SPRIN_SIDIK'] = currentCase?.tgl_sprin_sidik || currentCase?.sprin_date || (isSprinSidik ? todayStr : '');
     initial['TANGGAL_SPRIN_SIDIK'] = initial['TGL_SPRIN_SIDIK'];
 
-    initial['NO_SPRIN_GAS_SIDIK'] = currentCase.no_sprin_gas_sidik || '';
-    initial['TGL_SPRIN_GAS_SIDIK'] = currentCase.tgl_sprin_gas_sidik || (isSprinGasSidik ? todayStr : '');
+    initial['NO_SPRIN_GAS_SIDIK'] = currentCase?.no_sprin_gas_sidik || '';
+    initial['TGL_SPRIN_GAS_SIDIK'] = currentCase?.tgl_sprin_gas_sidik || (isSprinGasSidik ? todayStr : '');
     initial['TANGGAL_SPRIN_GAS_SIDIK'] = initial['TGL_SPRIN_GAS_SIDIK'];
 
     // Universal Auto-Sync Dokumen Induk (Parent Case Document)
     if (isCurrentParentDoc && activeParentConfig) {
-      const parentDate = currentCase[activeParentConfig.targetTglCol] || todayStr;
+      const parentDate = currentCase?.[activeParentConfig.targetTglCol] || todayStr;
       (activeParentConfig.tglTags || []).forEach(tag => {
         initial[tag] = parentDate;
         initial[tag.toLowerCase()] = parentDate;
       });
-      const parentNo = currentCase[activeParentConfig.targetNoCol] || '';
+      const parentNo = currentCase?.[activeParentConfig.targetNoCol] || '';
       (activeParentConfig.noTags || []).forEach(tag => {
         initial[tag] = parentNo;
         initial[tag.toLowerCase()] = parentNo;
       });
     }
 
-    initial['NO_SPDP'] = currentCase.no_spdp || '';
-    initial['TGL_SPDP'] = currentCase.tgl_spdp || '';
+    initial['NO_SPDP'] = currentCase?.no_spdp || '';
+    initial['TGL_SPDP'] = currentCase?.tgl_spdp || '';
     initial['TANGGAL_SPDP'] = initial['TGL_SPDP'];
 
     if (selectedSuspect) {
@@ -576,28 +576,28 @@ export default function DocGeneratorView({
     }
 
     // Otomatisasi Penandatangan Mindik dari Data Perkara Aktif
-    initial['ATASAN_NAMA'] = currentCase.kasat_nama || '';
-    initial['ATASAN_PANGKAT'] = formatPangkatLengkap(currentCase.kasat_pangkat || '');
-    initial['ATASAN_NRP'] = currentCase.kasat_nrp || '';
-    initial['ATASAN_JABATAN'] = currentCase.kasat_jabatan || 'Kasat Reskrim';
+    initial['ATASAN_NAMA'] = currentCase?.kasat_nama || '';
+    initial['ATASAN_PANGKAT'] = formatPangkatLengkap(currentCase?.kasat_pangkat || '');
+    initial['ATASAN_NRP'] = currentCase?.kasat_nrp || '';
+    initial['ATASAN_JABATAN'] = currentCase?.kasat_jabatan || 'Kasat Reskrim';
 
-    initial['PENYIDIK_NAMA'] = currentCase.penyidik_1_nama || '';
-    initial['PENYIDIK_PANGKAT'] = formatPangkatLengkap(currentCase.penyidik_1_pangkat || '');
-    initial['PENYIDIK_NRP'] = currentCase.penyidik_1_nrp || '';
-    initial['PENYIDIK_JABATAN'] = currentCase.penyidik_1_jabatan || '';
+    initial['PENYIDIK_NAMA'] = currentCase?.penyidik_1_nama || '';
+    initial['PENYIDIK_PANGKAT'] = formatPangkatLengkap(currentCase?.penyidik_1_pangkat || '');
+    initial['PENYIDIK_NRP'] = currentCase?.penyidik_1_nrp || '';
+    initial['PENYIDIK_JABATAN'] = currentCase?.penyidik_1_jabatan || '';
 
     // Data Penyidik Penangan Perkara
     const penanganDocCase = getPenyidikPenangan(currentCase);
-    initial['PENYIDIK_PENANGAN_NAMA'] = penanganDocCase?.nama || currentCase.penyidik_1_nama || '';
-    initial['PENYIDIK_PENANGAN_PANGKAT'] = formatPangkatLengkap(penanganDocCase?.pangkat || currentCase.penyidik_1_pangkat || '');
-    initial['PENYIDIK_PENANGAN_NRP'] = penanganDocCase?.nrp || currentCase.penyidik_1_nrp || '';
-    initial['PENYIDIK_PENANGAN_JABATAN'] = penanganDocCase?.jabatan || currentCase.penyidik_1_jabatan || '';
+    initial['PENYIDIK_PENANGAN_NAMA'] = penanganDocCase?.nama || currentCase?.penyidik_1_nama || '';
+    initial['PENYIDIK_PENANGAN_PANGKAT'] = formatPangkatLengkap(penanganDocCase?.pangkat || currentCase?.penyidik_1_pangkat || '');
+    initial['PENYIDIK_PENANGAN_NRP'] = penanganDocCase?.nrp || currentCase?.penyidik_1_nrp || '';
+    initial['PENYIDIK_PENANGAN_JABATAN'] = penanganDocCase?.jabatan || currentCase?.penyidik_1_jabatan || '';
 
     for (let i = 1; i <= 5; i++) {
-      initial[`PENYIDIK_${i}_NAMA`] = currentCase[`penyidik_${i}_nama`] || '';
-      initial[`PENYIDIK_${i}_PANGKAT`] = currentCase[`penyidik_${i}_pangkat`] || '';
-      initial[`PENYIDIK_${i}_NRP`] = currentCase[`penyidik_${i}_nrp`] || '';
-      initial[`PENYIDIK_${i}_JABATAN`] = currentCase[`penyidik_${i}_jabatan`] || '';
+      initial[`PENYIDIK_${i}_NAMA`] = currentCase?.[`penyidik_${i}_nama`] || '';
+      initial[`PENYIDIK_${i}_PANGKAT`] = currentCase?.[`penyidik_${i}_pangkat`] || '';
+      initial[`PENYIDIK_${i}_NRP`] = currentCase?.[`penyidik_${i}_nrp`] || '';
+      initial[`PENYIDIK_${i}_JABATAN`] = currentCase?.[`penyidik_${i}_jabatan`] || '';
     }
 
     // Inisialisasi Default Nilai Penangkapan (BA_KAP / SPRIN_KAP_DAN_BA)
@@ -640,7 +640,7 @@ export default function DocGeneratorView({
       },
       { field_key: 'TANGGAL_SURAT', field_label: 'Tanggal Surat', field_type: 'date', default_value: todayStr, is_required: true },
       ...(isSprinSidik ? [
-        { field_key: 'TGL_SPRIN_SIDIK', field_label: 'Tanggal Penetapan SP.Sidik', field_type: 'date', default_value: currentCase.tgl_sprin_sidik || currentCase.sprin_date || todayStr, is_required: true }
+        { field_key: 'TGL_SPRIN_SIDIK', field_label: 'Tanggal Penetapan SP.Sidik', field_type: 'date', default_value: currentCase?.tgl_sprin_sidik || currentCase?.sprin_date || todayStr, is_required: true }
       ] : []),
       { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
       { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
@@ -650,7 +650,7 @@ export default function DocGeneratorView({
 
     const presetForTemplate = getMindikPreset(currentTemplate?.code);
 
-    let fields = Array.isArray(currentTemplate.dynamic_fields) && currentTemplate.dynamic_fields.length > 0 
+    let fields = Array.isArray(currentTemplate?.dynamic_fields) && currentTemplate?.dynamic_fields.length > 0 
       ? [...currentTemplate.dynamic_fields] 
       : (presetForTemplate && presetForTemplate.length > 0
           ? presetForTemplate.map(p => ({
@@ -697,7 +697,7 @@ export default function DocGeneratorView({
       if (upperKey === 'TANGGAL_SURAT' || upperKey === 'DOC_DATE') {
         if (isTapTskDoc && (selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk)) {
           initial[cleanKey] = selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk;
-        } else if (isCurrentParentDoc && activeParentConfig && currentCase[activeParentConfig.targetTglCol]) {
+        } else if (isCurrentParentDoc && activeParentConfig && currentCase?.[activeParentConfig.targetTglCol]) {
           initial[cleanKey] = currentCase[activeParentConfig.targetTglCol];
         } else {
           initial[cleanKey] = defVal || todayStr;
@@ -706,8 +706,8 @@ export default function DocGeneratorView({
         const tplCode = (currentTemplate?.code || '').toUpperCase().trim();
         const templateDefaultNo = currentTemplate?.default_number_format || currentTemplate?.nomor_surat_format || '';
         if (isTapTskDoc && (selectedSuspect?.nomor_sp_tap || selectedSuspect?.no_sp_tap_tsk)) {
-          initial[cleanKey] = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk;
-        } else if (isCurrentParentDoc && activeParentConfig && currentCase[activeParentConfig.targetNoCol]) {
+          initial[cleanKey] = selectedSuspect?.nomor_sp_tap || selectedSuspect?.no_sp_tap_tsk;
+        } else if (isCurrentParentDoc && activeParentConfig && currentCase?.[activeParentConfig.targetNoCol]) {
           initial[cleanKey] = currentCase[activeParentConfig.targetNoCol];
         } else if (templateDefaultNo) {
           initial[cleanKey] = templateDefaultNo;
@@ -721,21 +721,21 @@ export default function DocGeneratorView({
           initial[cleanKey] = '';
         }
       } else if (upperKey === 'TGL_SPRIN_SIDIK' || upperKey === 'TANGGAL_SPRIN_SIDIK') {
-        initial[cleanKey] = currentCase.tgl_sprin_sidik || currentCase.sprin_date || (isSprinSidik ? todayStr : '');
+        initial[cleanKey] = currentCase?.tgl_sprin_sidik || currentCase?.sprin_date || (isSprinSidik ? todayStr : '');
       } else if (upperKey === 'NO_SPRIN_GAS_SIDIK') {
-        initial[cleanKey] = currentCase.no_sprin_gas_sidik || '';
+        initial[cleanKey] = currentCase?.no_sprin_gas_sidik || '';
       } else if (upperKey === 'TGL_SPRIN_GAS_SIDIK' || upperKey === 'TANGGAL_SPRIN_GAS_SIDIK') {
-        initial[cleanKey] = currentCase.tgl_sprin_gas_sidik || (isSprinGasSidik ? todayStr : '');
+        initial[cleanKey] = currentCase?.tgl_sprin_gas_sidik || (isSprinGasSidik ? todayStr : '');
       } else if (upperKey === 'NO_SPRIN_SIDIK') {
-        initial[cleanKey] = currentCase.no_sprin_sidik || '';
+        initial[cleanKey] = currentCase?.no_sprin_sidik || '';
       } else if (upperKey === 'NOMOR_LP' || upperKey === 'NO_LP') {
-        initial[cleanKey] = currentCase.nomor_lp || currentCase.no_lp || '';
+        initial[cleanKey] = currentCase?.nomor_lp || currentCase?.no_lp || '';
       } else if (upperKey === 'TANGGAL_LP' || upperKey === 'TGL_LP') {
-        initial[cleanKey] = currentCase.tanggal_lp || currentCase.sprin_date || '';
+        initial[cleanKey] = currentCase?.tanggal_lp || currentCase?.sprin_date || '';
       } else if (upperKey === 'NO_SPDP') {
-        initial[cleanKey] = currentCase.no_spdp || '';
+        initial[cleanKey] = currentCase?.no_spdp || '';
       } else if (upperKey === 'TGL_SPDP' || upperKey === 'TANGGAL_SPDP') {
-        initial[cleanKey] = currentCase.tgl_spdp || '';
+        initial[cleanKey] = currentCase?.tgl_spdp || '';
       } else if (upperKey === 'TEMPAT_SURAT' || upperKey === 'DOC_LOCATION') {
         initial[cleanKey] = defVal || 'Tirawuta';
       } else if (upperKey === 'MASA_BERLAKU' || upperKey === 'DOC_VALIDITY') {
@@ -745,26 +745,26 @@ export default function DocGeneratorView({
       } else if (upperKey === 'ALAMAT_TUJUAN' || upperKey === 'DOC_TARGET_ADDR') {
         initial[cleanKey] = defVal || 'Jl. Dr. Sutomo No. 5, Kolaka';
       } else if (upperKey === 'PENYIDIK_NAMA') {
-        initial[cleanKey] = currentCase.penyidik_1_nama || defVal || '';
+        initial[cleanKey] = currentCase?.penyidik_1_nama || defVal || '';
       } else if (upperKey === 'PENYIDIK_PANGKAT') {
-        initial[cleanKey] = formatPangkatLengkap(currentCase.penyidik_1_pangkat || defVal || '');
+        initial[cleanKey] = formatPangkatLengkap(currentCase?.penyidik_1_pangkat || defVal || '');
       } else if (upperKey === 'PENYIDIK_NRP') {
-        initial[cleanKey] = currentCase.penyidik_1_nrp || defVal || '';
+        initial[cleanKey] = currentCase?.penyidik_1_nrp || defVal || '';
       } else if (upperKey === 'PENYIDIK_JABATAN') {
-        initial[cleanKey] = currentCase.penyidik_1_jabatan || defVal || '';
+        initial[cleanKey] = currentCase?.penyidik_1_jabatan || defVal || '';
       } else if (upperKey === 'ATASAN_NAMA') {
-        initial[cleanKey] = currentCase.kasat_nama || defVal || '';
+        initial[cleanKey] = currentCase?.kasat_nama || defVal || '';
       } else if (upperKey === 'ATASAN_PANGKAT') {
-        initial[cleanKey] = formatPangkatLengkap(currentCase.kasat_pangkat || defVal || '');
+        initial[cleanKey] = formatPangkatLengkap(currentCase?.kasat_pangkat || defVal || '');
       } else if (upperKey === 'ATASAN_NRP') {
-        initial[cleanKey] = currentCase.kasat_nrp || defVal || '';
+        initial[cleanKey] = currentCase?.kasat_nrp || defVal || '';
       } else if (upperKey.startsWith('PENYIDIK_')) {
         // Otomatis sinkronkan slot PENYIDIK_1..5
         const slotMatch = upperKey.match(/^PENYIDIK_([1-5])_(NAMA|PANGKAT|NRP|JABATAN)$/);
         if (slotMatch) {
           const sNum = slotMatch[1];
           const sProp = slotMatch[2].toLowerCase();
-          initial[cleanKey] = currentCase[`penyidik_${sNum}_${sProp}`] || defVal || '';
+          initial[cleanKey] = currentCase?.[`penyidik_${sNum}_${sProp}`] || defVal || '';
         } else {
           initial[cleanKey] = defVal || '';
         }
@@ -843,7 +843,7 @@ export default function DocGeneratorView({
             next[tag] = value;
             next[tag.toLowerCase()] = value;
           });
-          if (activeParentConfig.targetNoCol) {
+          if (activeParentConfig.targetNoCol && currentCase) {
             currentCase[activeParentConfig.targetNoCol] = value;
           }
         }
@@ -852,7 +852,7 @@ export default function DocGeneratorView({
             next[tag] = value;
             next[tag.toLowerCase()] = value;
           });
-          if (activeParentConfig.targetTglCol) {
+          if (activeParentConfig.targetTglCol && currentCase) {
             currentCase[activeParentConfig.targetTglCol] = value;
             if (activeParentConfig.targetTglCol === 'tgl_sprin_sidik') {
               currentCase.sprin_date = value;
@@ -1349,9 +1349,9 @@ export default function DocGeneratorView({
               className="form-select"
               style={{ marginTop: '8px' }}
             >
-              {cases.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.no_lp} — {c.tindak_pidana} ({c.terlapor_name})
+              {(cases || []).map((c) => (
+                <option key={c?.id} value={c?.id}>
+                  {c?.no_lp || '-'} — {c?.tindak_pidana || '-'} ({c?.person?.nama || c?.terlapor_name || '-'})
                 </option>
               ))}
             </select>
@@ -1367,10 +1367,10 @@ export default function DocGeneratorView({
                 flexDirection: 'column',
                 gap: '4px',
               }}>
-                <div><strong>Pasal:</strong> {currentCase.pasal_uu}</div>
-                <div><strong>Pelapor:</strong> {currentCase.pelapor_name}</div>
-                <div><strong>Terlapor:</strong> {currentCase.person?.nama || currentCase.terlapor_name}</div>
-                <div><strong>Locus:</strong> {currentCase.locus}</div>
+                <div><strong>Pasal:</strong> {currentCase?.pasal_uu || '-'}</div>
+                <div><strong>Pelapor:</strong> {currentCase?.nama_pelapor || currentCase?.pelapor_name || '-'}</div>
+                <div><strong>Terlapor:</strong> {currentCase?.person?.nama || currentCase?.terlapor_name || '-'}</div>
+                <div><strong>Locus:</strong> {currentCase?.locus || '-'}</div>
               </div>
             )}
           </div>
@@ -1652,10 +1652,10 @@ export default function DocGeneratorView({
                   <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ color: '#e2e8f0', fontSize: '10px', fontWeight: 600 }}>Pemberi Perintah (Kasat Reskrim):</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
-                      {currentCase.kasat_nama || formValues.ATASAN_NAMA || '(Belum diset)'}
+                      {currentCase?.kasat_nama || formValues.ATASAN_NAMA || '(Belum diset)'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#94A3B8' }}>
-                      {currentCase.kasat_pangkat || formValues.ATASAN_PANGKAT || '-'} {currentCase.kasat_nrp ? `NRP ${currentCase.kasat_nrp}` : ''}
+                      {currentCase?.kasat_pangkat || formValues.ATASAN_PANGKAT || '-'} {currentCase?.kasat_nrp ? `NRP ${currentCase.kasat_nrp}` : ''}
                     </div>
                   </div>
 
@@ -1663,10 +1663,10 @@ export default function DocGeneratorView({
                   <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ color: '#e2e8f0', fontSize: '10px', fontWeight: 600 }}>Kanit / Penyidik 1 (P1):</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
-                      {currentCase.penyidik_1_nama || formValues.PENYIDIK_1_NAMA || '(Belum diset)'}
+                      {currentCase?.penyidik_1_nama || formValues.PENYIDIK_1_NAMA || '(Belum diset)'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#94A3B8' }}>
-                      {formatPangkatLengkap(currentCase.penyidik_1_pangkat || formValues.PENYIDIK_1_PANGKAT || '') || '-'} {currentCase.penyidik_1_nrp ? `NRP ${currentCase.penyidik_1_nrp}` : ''} • {currentCase.penyidik_1_jabatan || formValues.PENYIDIK_1_JABATAN || 'Kanit'}
+                      {formatPangkatLengkap(currentCase?.penyidik_1_pangkat || formValues.PENYIDIK_1_PANGKAT || '') || '-'} {currentCase?.penyidik_1_nrp ? `NRP ${currentCase.penyidik_1_nrp}` : ''} • {currentCase?.penyidik_1_jabatan || formValues.PENYIDIK_1_JABATAN || 'Kanit'}
                     </div>
                   </div>
 
@@ -1674,10 +1674,10 @@ export default function DocGeneratorView({
                   <div style={{ background: 'rgba(255, 53, 45, 0.06)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255, 53, 45, 0.3)' }}>
                     <div style={{ color: '#ff352d', fontSize: '10px', fontWeight: 700 }}>Penyidik Penangan Perkara:</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
-                      {getPenyidikPenangan(currentCase)?.nama || currentCase.penyidik_penangan_nama || formValues.PENYIDIK_PENANGAN_NAMA || currentCase.penyidik_1_nama || '(Belum diset)'}
+                      {getPenyidikPenangan(currentCase)?.nama || currentCase?.penyidik_penangan_nama || formValues.PENYIDIK_PENANGAN_NAMA || currentCase?.penyidik_1_nama || '(Belum diset)'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                      {formatPangkatLengkap(getPenyidikPenangan(currentCase)?.pangkat || currentCase.penyidik_penangan_pangkat || formValues.PENYIDIK_PENANGAN_PANGKAT || currentCase.penyidik_1_pangkat || '')} {getPenyidikPenangan(currentCase)?.nrp || currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp ? `NRP ${getPenyidikPenangan(currentCase)?.nrp || currentCase.penyidik_penangan_nrp || currentCase.penyidik_1_nrp}` : ''}
+                      {formatPangkatLengkap(getPenyidikPenangan(currentCase)?.pangkat || currentCase?.penyidik_penangan_pangkat || formValues.PENYIDIK_PENANGAN_PANGKAT || currentCase?.penyidik_1_pangkat || '')} {getPenyidikPenangan(currentCase)?.nrp || currentCase?.penyidik_penangan_nrp || currentCase?.penyidik_1_nrp ? `NRP ${getPenyidikPenangan(currentCase)?.nrp || currentCase?.penyidik_penangan_nrp || currentCase?.penyidik_1_nrp}` : ''}
                     </div>
                   </div>
                 </div>
@@ -1694,9 +1694,9 @@ export default function DocGeneratorView({
                   gap: '6px'
                 }}>
                   {[2, 3, 4, 5].map((idx) => {
-                    const pNama = currentCase[`penyidik_${idx}_nama`] || formValues[`PENYIDIK_${idx}_NAMA`];
-                    const pPangkat = currentCase[`penyidik_${idx}_pangkat`] || formValues[`PENYIDIK_${idx}_PANGKAT`];
-                    const pNrp = currentCase[`penyidik_${idx}_nrp`] || formValues[`PENYIDIK_${idx}_NRP`];
+                    const pNama = currentCase?.[`penyidik_${idx}_nama`] || formValues[`PENYIDIK_${idx}_NAMA`];
+                    const pPangkat = currentCase?.[`penyidik_${idx}_pangkat`] || formValues[`PENYIDIK_${idx}_PANGKAT`];
+                    const pNrp = currentCase?.[`penyidik_${idx}_nrp`] || formValues[`PENYIDIK_${idx}_NRP`];
                     return (
                       <div key={idx} style={{ fontSize: '10.5px' }}>
                         <div style={{ color: '#94A3B8', fontSize: '9.5px' }}>Penyidik {idx}:</div>
@@ -1741,33 +1741,33 @@ export default function DocGeneratorView({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', color: 'var(--text-secondary)' }}>
                   <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
                     <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan LP (Tag: <span style={{ color: '#ff352d' }}>{'{NOMOR_LP}'}</span>):</div>
-                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.nomor_lp || currentCase.no_lp || '-'}</div>
+                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase?.nomor_lp || currentCase?.no_lp || '-'}</div>
                     <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                      Tgl (<span style={{ color: '#ff352d' }}>{'{TANGGAL_LP}'}</span>): {formatTanggalIndonesia(currentCase.tanggal_lp || currentCase.sprin_date) || '-'}
+                      Tgl (<span style={{ color: '#ff352d' }}>{'{TANGGAL_LP}'}</span>): {formatTanggalIndonesia(currentCase?.tanggal_lp || currentCase?.sprin_date) || '-'}
                     </div>
                   </div>
                   <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
                     <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Sidik (Tag: <span style={{ color: '#ff352d' }}>{'{NO_SPRIN_SIDIK}'}</span>):</div>
-                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_sprin_sidik || (isSprinSidik ? '(Sedang dibuat)' : '-')}</div>
+                    <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase?.no_sprin_sidik || (isSprinSidik ? '(Sedang dibuat)' : '-')}</div>
                     <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                      Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPRIN_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_SIDIK || currentCase.tgl_sprin_sidik || currentCase.sprin_date) || '-'}
+                      Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPRIN_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_SIDIK || currentCase?.tgl_sprin_sidik || currentCase?.sprin_date) || '-'}
                     </div>
                   </div>
-                  {(currentCase.no_sprin_gas_sidik || isSprinGasSidik) && (
+                  {(currentCase?.no_sprin_gas_sidik || isSprinGasSidik) && (
                     <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
                       <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Gas.Sidik (Tag: <span style={{ color: '#ff352d' }}>{'{NO_SPRIN_GAS_SIDIK}'}</span>):</div>
-                      <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_sprin_gas_sidik || (isSprinGasSidik ? '(Sedang dibuat)' : '-')}</div>
+                      <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase?.no_sprin_gas_sidik || (isSprinGasSidik ? '(Sedang dibuat)' : '-')}</div>
                       <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                        Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPRIN_GAS_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_GAS_SIDIK || currentCase.tgl_sprin_gas_sidik) || '-'}
+                        Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPRIN_GAS_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_GAS_SIDIK || currentCase?.tgl_sprin_gas_sidik) || '-'}
                       </div>
                     </div>
                   )}
-                  {currentCase.no_spdp && (
+                  {currentCase?.no_spdp && (
                     <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
                       <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SPDP (Tag: <span style={{ color: '#ff352d' }}>{'{NO_SPDP}'}</span>):</div>
-                      <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase.no_spdp}</div>
+                      <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase?.no_spdp}</div>
                       <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                        Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPDP}'}</span>): {formatTanggalIndonesia(currentCase.tgl_spdp) || '-'}
+                        Tgl (<span style={{ color: '#ff352d' }}>{'{TGL_SPDP}'}</span>): {formatTanggalIndonesia(currentCase?.tgl_spdp) || '-'}
                       </div>
                     </div>
                   )}
@@ -2070,82 +2070,87 @@ export default function DocGeneratorView({
                   });
                 }
 
-                return dynamicList;
-              })().map((field, idx) => {
-                const fieldKey = (field.field_key || field.key || `FIELD_${idx}`).replace(/[{}]/g, '').trim();
-                const fieldLabel = field.field_label || field.label || fieldKey;
-                const fieldType = field.field_type || field.type || 'text';
-                const isRequired = field.is_required !== undefined ? field.is_required : !!field.required;
-                const placeholder = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
-                const currentVal = formValues[fieldKey] !== undefined 
-                  ? formValues[fieldKey] 
-                  : (formValues[fieldKey.toUpperCase()] !== undefined 
-                      ? formValues[fieldKey.toUpperCase()] 
-                      : (formValues[fieldKey.toLowerCase()] || ''));
+                if (!Array.isArray(dynamicList) || dynamicList.length === 0) {
+                  return null;
+                }
 
-                return (
-                  <div key={field.id || fieldKey || idx} className="form-group" style={{ marginBottom: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <label className="form-label" style={{ fontSize: '11px', marginBottom: 0 }}>
-                        {fieldLabel} {isRequired && <span style={{ color: 'var(--accent-red)' }}>*</span>}
-                      </label>
-                      <span className="mono" style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                        {`{${fieldKey}}`}
-                      </span>
-                    </div>
+                return dynamicList.map((field, idx) => {
+                  if (!field) return null;
+                  const fieldKey = (field.field_key || field.key || `FIELD_${idx}`).replace(/[{}]/g, '').trim();
+                  const fieldLabel = field.field_label || field.label || fieldKey;
+                  const fieldType = field.field_type || field.type || 'text';
+                  const isRequired = field.is_required !== undefined ? field.is_required : !!field.required;
+                  const placeholder = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
+                  const currentVal = formValues[fieldKey] !== undefined 
+                    ? formValues[fieldKey] 
+                    : (formValues[fieldKey.toUpperCase()] !== undefined 
+                        ? formValues[fieldKey.toUpperCase()] 
+                        : (formValues[fieldKey.toLowerCase()] || ''));
 
-                    {fieldType === 'select_personnel' ? (
-                      <select
-                        value={currentVal}
-                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                        className="form-select"
-                      >
-                        <option value="">-- Pilih Personel --</option>
-                        {activePersonnel
-                          .filter(p => !field.role_filter || p.role === field.role_filter)
-                          .map((p) => (
-                            <option key={p.id || p.nrp} value={p.nama || p.id}>
-                              {p.pangkat} {p.nama} ({p.jabatan || p.role})
-                            </option>
+                  return (
+                    <div key={field.id || fieldKey || idx} className="form-group" style={{ marginBottom: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label className="form-label" style={{ fontSize: '11px', marginBottom: 0 }}>
+                          {fieldLabel} {isRequired && <span style={{ color: 'var(--accent-red)' }}>*</span>}
+                        </label>
+                        <span className="mono" style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                          {`{${fieldKey}}`}
+                        </span>
+                      </div>
+
+                      {fieldType === 'select_personnel' ? (
+                        <select
+                          value={currentVal}
+                          onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="">-- Pilih Personel --</option>
+                          {(activePersonnel || [])
+                            .filter(p => p && (!field.role_filter || p.role === field.role_filter))
+                            .map((p) => (
+                              <option key={p?.id || p?.nrp || p?.nama} value={p?.nama || p?.id}>
+                                {p?.pangkat} {p?.nama} ({p?.jabatan || p?.role || '-'})
+                              </option>
+                            ))}
+                        </select>
+                      ) : fieldType === 'select' && Array.isArray(field.options) ? (
+                        <select
+                          value={currentVal}
+                          onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="">-- Pilih Pilihan --</option>
+                          {field.options.map((opt, oIdx) => (
+                            <option key={oIdx} value={opt}>{opt}</option>
                           ))}
-                      </select>
-                    ) : fieldType === 'select' && Array.isArray(field.options) ? (
-                      <select
-                        value={currentVal}
-                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                        className="form-select"
-                      >
-                        <option value="">-- Pilih Pilihan --</option>
-                        {field.options.map((opt, oIdx) => (
-                          <option key={oIdx} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    ) : fieldType === 'date' ? (
-                      <input
-                        type={(/^\d{4}-\d{2}-\d{2}$/.test(currentVal) || !currentVal) ? "date" : "text"}
-                        value={currentVal}
-                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                        className="form-input mono"
-                        placeholder={placeholder || '... Januari 2026'}
-                      />
-                    ) : fieldType === 'textarea' ? (
-                      <textarea
-                        value={currentVal}
-                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                        className="form-textarea"
-                        placeholder={placeholder}
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={currentVal}
-                        onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                        className="form-input mono"
-                        placeholder={placeholder}
-                      />
-                    )}
-                  </div>
-                );
+                        </select>
+                      ) : fieldType === 'date' ? (
+                        <input
+                          type={(/^\d{4}-\d{2}-\d{2}$/.test(currentVal) || !currentVal) ? "date" : "text"}
+                          value={currentVal}
+                          onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+                          className="form-input mono"
+                          placeholder={placeholder || '... Januari 2026'}
+                        />
+                      ) : fieldType === 'textarea' ? (
+                        <textarea
+                          value={currentVal}
+                          onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+                          className="form-textarea"
+                          placeholder={placeholder}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={currentVal}
+                          onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+                          className="form-input mono"
+                          placeholder={placeholder}
+                        />
+                      )}
+                    </div>
+                  );
+                });
               })()}
             </div>
 
