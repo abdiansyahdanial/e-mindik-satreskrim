@@ -513,6 +513,130 @@ export default function DumasDetailView({
                 </div>
               </div>
             </div>
+
+            {/* Terlapor Tambahan (Jika Lebih Dari 1) */}
+            {Array.isArray(perkara?.terlapor_list) && perkara.terlapor_list.length > 1 && (
+              <div style={{ padding: '0 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+                  Terlapor Tambahan ({perkara.terlapor_list.length - 1} Pihak):
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
+                  {perkara.terlapor_list.slice(1).map((t, i) => (
+                    <div key={t.id || i} style={{ backgroundColor: '#0B0D13', border: '1px solid #292F42', borderRadius: '6px', padding: '8px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ color: '#FCA5A5', fontWeight: 700, fontSize: '11px' }}>{t.nama || '-'}</span>
+                        <span style={{ fontSize: '9px', color: '#94A3B8' }}>{t.role_label || `Terlapor ${i + 2}`}</span>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#64748B' }}>
+                        {t.pekerjaan ? `${t.pekerjaan} | ` : ''}{t.alamat || t.kontak || '-'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </article>
+
+          {/* Card Saksi: Data Saksi-Saksi (Daftar Saksi Terkait) */}
+          <article
+            className="border-l-4 border-l-blue-500 rounded-xl bg-[#121721] border border-[#292F42] overflow-hidden mb-4 shadow-sm dumas-dossier-card card-saksi"
+            style={{
+              backgroundColor: '#121721',
+              border: '1px solid #292F42',
+              borderLeft: '4px solid #3B82F6',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+            }}
+          >
+            <div
+              className="bg-[#10141D] border-b border-[#292F42] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
+              style={{
+                backgroundColor: '#10141D',
+                borderBottom: '1px solid #292F42',
+                padding: '10px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '8px'
+              }}
+            >
+              <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="w-2 h-2 rounded-full bg-blue-500" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3B82F6' }}></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-400" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#60A5FA' }}>
+                  Data Saksi-Saksi Perkara
+                </span>
+              </div>
+              <span className="text-[10px] bg-blue-950/70 text-blue-300 border border-blue-800 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(30, 58, 138, 0.7)', color: '#93C5FD', border: '1px solid #1D4ED8', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                {Array.isArray(perkara?.saksi_list) && perkara.saksi_list.length > 0 
+                  ? `${perkara.saksi_list.length} SAKSI TERDAFTAR` 
+                  : 'BELUM ADA SAKSI'}
+              </span>
+            </div>
+
+            {Array.isArray(perkara?.saksi_list) && perkara.saksi_list.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px' }}>
+                {perkara.saksi_list.map((saksi, idx) => (
+                  <div 
+                    key={saksi.id || idx}
+                    style={{
+                      backgroundColor: '#0B0D13',
+                      border: '1px solid #292F42',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(41, 47, 66, 0.5)', paddingBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#3B82F6' }}></span>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', fontFamily: 'JetBrains Mono, monospace' }}>
+                          SAKSI {idx + 1}: {saksi.nama || 'Tanpa Nama'}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#93C5FD', border: '1px solid rgba(59, 130, 246, 0.4)', fontWeight: 600 }}>
+                        {saksi.role_label || (idx === 0 ? 'Saksi Fakta' : idx === 1 ? 'Saksi Terkait' : `Saksi ${idx + 1}`)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                      <div className="bg-[#121721] p-2 rounded border border-[#292F42]">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">NIK KTP</span>
+                        <span className="text-slate-200 text-xs font-semibold">{saksi.nik || '-'}</span>
+                      </div>
+                      <div className="bg-[#121721] p-2 rounded border border-[#292F42]">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Kontak / HP</span>
+                        <span className="text-blue-400 text-xs font-semibold">{saksi.kontak || '-'}</span>
+                      </div>
+                      <div className="bg-[#121721] p-2 rounded border border-[#292F42]">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">TTL / Pekerjaan</span>
+                        <span className="text-slate-200 text-xs">
+                          {saksi.ttl || '-'} <span className="text-slate-600">|</span> {saksi.pekerjaan || '-'}
+                        </span>
+                      </div>
+                      <div className="bg-[#121721] p-2 rounded border border-[#292F42]">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Agama</span>
+                        <span className="text-slate-200 text-xs">{saksi.agama || 'Islam'}</span>
+                      </div>
+                    </div>
+
+                    {saksi.alamat && (
+                      <div style={{ backgroundColor: '#121721', padding: '8px 12px', borderRadius: '6px', border: '1px solid #292F42' }}>
+                        <span className="text-[10px] text-slate-500 block uppercase tracking-wider">Alamat Domisili</span>
+                        <span className="text-slate-300 font-sans text-xs">{saksi.alamat}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
+                Nihil saksi yang tercatat pada laporan pengaduan ini.
+              </div>
+            )}
           </article>
 
           {/* Card 03: Delik & Dugaan Pidana */}

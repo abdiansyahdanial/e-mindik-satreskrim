@@ -177,10 +177,13 @@ export default function DumasModeSelectModal({
     >
       {/* Hidden Multi-File Input */}
       <input 
+        id="dumas_ocr_multi_file_input"
+        name="dumas_ocr_multi_file_input"
         type="file" 
         ref={fileInputRef}
         multiple
         accept="image/*,application/pdf" 
+        aria-label="Pilih berkas surat pengaduan fisik untuk scan OCR AI"
         style={{ display: 'none' }}
         onChange={(e) => {
           if (e.target.files && e.target.files.length > 0) {

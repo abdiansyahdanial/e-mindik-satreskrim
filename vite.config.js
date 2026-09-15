@@ -50,6 +50,9 @@ function createMiddleware(endpointHandler) {
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    // Tanpa pembatasan CSP parsial di dev-server agar Vite HMR, eval sourcemap, dan DevTools bebas warning
+  },
   plugins: [
     react(),
     {
@@ -78,6 +81,29 @@ export default defineConfig({
             res.end(JSON.stringify({ error: err.message }));
           }
         });
+        server.middlewares.use('/api/ocr-scan', async (req, res, next) => {
+          try {
+            // Pastikan GEMINI_API_KEY disuntikkan ke process.env di server dev
+            if (!process.env.GEMINI_API_KEY) {
+              const fs = await import('fs');
+              const envPath = path.resolve(__dirname, '.env');
+              if (fs.existsSync(envPath)) {
+                const content = fs.readFileSync(envPath, 'utf-8');
+                const match = content.match(/GEMINI_API_KEY=([^\r\n]+)/);
+                if (match) {
+                  process.env.GEMINI_API_KEY = match[1].trim();
+                }
+              }
+            }
+            const { default: ocrHandler } = await import('./api/ocr-scan.js');
+            return createMiddleware(ocrHandler)(req, res, next);
+          } catch (err) {
+            console.error('Local dev ocr-scan middleware error:', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
       }
     }
   ],
@@ -86,7 +112,7 @@ export default defineConfig({
       'docx-preview/dist/docx-preview.css': path.resolve(__dirname, 'src/styles/docx-preview.css'),
     },
   },
-  envPrefix: ['VITE_', 'R2_', 'GEMINI_'],
+  envPrefix: ['VITE_', 'R2_'],
 })
 
 

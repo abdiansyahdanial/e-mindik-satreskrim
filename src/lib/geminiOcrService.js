@@ -1,5 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
-
 /**
  * Helper untuk mengambil API Key secara aman dari environment Vite maupun Node
  */
@@ -59,120 +57,63 @@ export const convertImageToBase64 = async (imageFile) => {
     throw new Error('Berkas gambar tidak ditemukan atau kosong.');
   }
 
-  // Jika string data URL (contoh: "data:image/jpeg;base64,...")
+  // Jika input sudah berupa string base64 / data URL
   if (typeof imageFile === 'string') {
     if (imageFile.startsWith('data:')) {
-      const match = imageFile.match(/^data:([^;]+);base64,(.+)$/);
-      if (match) {
-        return { mimeType: match[1], base64: match[2] };
-      }
+      const parts = imageFile.split(',');
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      return { base64: parts[1], mimeType };
     }
-    // Asumsi string base64 murni
-    return { mimeType: 'image/jpeg', base64: imageFile.replace(/\s+/g, '') };
+    return { base64: imageFile, mimeType: 'image/jpeg' };
   }
 
-  // Jika browser File atau Blob
+  // Jika input berupa File atau Blob (Browser environment)
   if (typeof Blob !== 'undefined' && imageFile instanceof Blob) {
-    const mimeType = imageFile.type || 'image/jpeg';
-    const base64 = await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result;
-        if (typeof result === 'string') {
+      reader.onloadend = () => {
+        try {
+          const result = reader.result;
           const parts = result.split(',');
-          resolve(parts[1] || parts[0]);
-        } else {
-          reject(new Error('Gagal membaca data berkas gambar.'));
+          const mimeMatch = parts[0].match(/:(.*?);/);
+          const mimeType = mimeMatch ? mimeMatch[1] : imageFile.type || 'image/jpeg';
+          resolve({ base64: parts[1], mimeType });
+        } catch (err) {
+          reject(err);
         }
       };
-      reader.onerror = () => reject(new Error('Terjadi kesalahan saat membaca file gambar.'));
+      reader.onerror = () => reject(new Error('Gagal membaca file citra gambar.'));
       reader.readAsDataURL(imageFile);
     });
-
-    return { base64, mimeType };
   }
 
-  // Jika Node.js Buffer
+  // Jika input berupa Buffer (Node.js environment untuk unit testing)
   if (typeof Buffer !== 'undefined' && Buffer.isBuffer(imageFile)) {
-    return { base64: imageFile.toString('base64'), mimeType: 'image/jpeg' };
+    return {
+      base64: imageFile.toString('base64'),
+      mimeType: 'image/jpeg',
+    };
   }
 
-  // Jika ArrayBuffer
+  // Jika input berupa ArrayBuffer
   if (imageFile instanceof ArrayBuffer) {
-    const bytes = new Uint8Array(imageFile);
+    const uint8 = new Uint8Array(imageFile);
     let binary = '';
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    for (let i = 0; i < uint8.length; i++) {
+      binary += String.fromCharCode(uint8[i]);
     }
-    return { base64: btoa(binary), mimeType: 'image/jpeg' };
+    const b64 = typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
+    return { base64: b64, mimeType: 'image/jpeg' };
   }
 
   throw new Error('Tipe data berkas tidak didukung untuk pemindaian OCR.');
 };
 
-/**
- * System Prompt Kedinasan Kepolisian (Satreskrim Polres Kolaka Timur)
- * Mengatur ekstraksi dokumen fisik multi-halaman dengan presisi tinggi.
- */
-const SYSTEM_PROMPT_RESRIM = `Anda adalah sistem AI Vision OCR Kepolisian Presisi untuk Satuan Reserse Kriminal (Satreskrim) Polres Kolaka Timur, Polda Sulawesi Tenggara.
-Tugas Anda adalah membaca, menganalisis, dan mengekstrak entitas data dari seluruh lembar dokumen fisik Surat Pengaduan Masyarakat / Laporan Polisi (LP) / Berita Acara Penerimaan Laporan secara menyeluruh dan presisi tinggi. Berkas dapat terdiri dari 1 lembar atau beberapa lembar berturut-turut (multi-page).
 
-Pedoman Khusus Administrasi Penyidikan Kepolisian:
-1. Pelapor:
-   - Ekstrak nama lengkap pelapor (pelapor_nama), NIK 16 digit (pelapor_nik), tempat & tanggal lahir / umur (pelapor_ttl), agama (pelapor_agama), pekerjaan (pelapor_pekerjaan), alamat lengkap domisili (pelapor_alamat), dan nomor telepon/handphone aktif (pelapor_kontak).
-2. Saksi (saksi_list):
-   - Deteksi secara teliti dari blok klausul "mengajukan saksi sebagai berikut:" ataupun dari narasi kronologis kejadian di mana ada saksi yang melihat, mendengar, atau mengalami langsung peristiwa.
-   - Ekstrak setiap saksi: nama, nik, pekerjaan, agama, alamat, dan kontak.
-   - ATURAN KHUSUS STRIP: Jika kolom NIK, TTL, atau lainnya pada dokumen fisik bertanda strip ("-"), JANGAN abaikan saksi tersebut. Tetap ekstrak nama, pekerjaan, alamat, dan nomor kontak yang ada, serta isi field kosong atau tanda strip dengan string kosong "".
-3. Terlapor (terlapor_list):
-   - Deteksi entitas dari kalimat "diduga dilakukan oleh Terlapor:", "terduga pelaku:", serta pihak terkait penerima aliran dana/rekening/rekanan dalam narasi kronologis.
-   - Ekstrak setiap terlapor: nama, nik, pekerjaan, agama, alamat, dan kontak. Jika tidak ada NIK/alamat, isi dengan string kosong "".
-4. Perkara:
-   - tindak_pidana: Nama tindak pidana yang dilaporkan (contoh: Penipuan, Penggelapan, Penganiayaan, Pencurian).
-   - pasal_disangkakan: Pasal KUHP atau UU khusus jika tertera (contoh: Pasal 378 KUHP dan/atau Pasal 372 KUHP).
-   - tempus_delicti: Waktu kejadian perkara (hari, tanggal, jam).
-   - locus_delicti: Tempat kejadian perkara (TKP) lengkap.
-   - uraian_kejadian: Susun ringkasan kronologis kejadian yang padat, utuh, faktual, dan berurutan dari awal pertemuan/kesepakatan, pelaksanaan delik, hingga terjadinya kerugian dan pelaporan ke kantor polisi.
-
-Format Output WAJIB berupa JSON valid persis dengan skema:
-{
-  "pelapor_nama": "",
-  "pelapor_nik": "",
-  "pelapor_ttl": "",
-  "pelapor_pekerjaan": "",
-  "pelapor_agama": "",
-  "pelapor_alamat": "",
-  "pelapor_kontak": "",
-  "terlapor_list": [
-    {
-      "nama": "",
-      "nik": "",
-      "pekerjaan": "",
-      "agama": "",
-      "alamat": "",
-      "kontak": ""
-    }
-  ],
-  "saksi_list": [
-    {
-      "nama": "",
-      "nik": "",
-      "pekerjaan": "",
-      "agama": "",
-      "alamat": "",
-      "kontak": ""
-    }
-  ],
-  "tindak_pidana": "",
-  "pasal_disangkakan": "",
-  "tempus_delicti": "",
-  "locus_delicti": "",
-  "uraian_kejadian": ""
-}`;
 
 /**
- * Pindai lembar berkas fisik surat pengaduan / LP menggunakan Google Gemini Vision.
+ * Pindai lembar berkas fisik surat pengaduan / LP via Serverless Endpoint (/api/ocr-scan).
  * Mendukung berkas tunggal (File) maupun multi-halaman (File[] / Blob[]).
  *
  * @param {File|File[]|Blob|Blob[]|string|string[]} files - Berkas tunggal atau array berkas multi-halaman
@@ -182,6 +123,7 @@ Format Output WAJIB berupa JSON valid persis dengan skema:
  *   data: Object|null,
  *   mappedForm?: Object|null,
  *   modelUsed?: string,
+ *   pagesProcessed?: number,
  *   error: string|null
  * }>}
  */
@@ -215,29 +157,15 @@ export async function scanSuratPengaduan(files, options = {}) {
     };
   }
 
-  // 2. Validasi API Key
-  const apiKey = options.apiKey || getGeminiApiKey();
-  if (!apiKey) {
-    const errorMsg = 'API Key Google Gemini belum terpasang. Harap tambahkan VITE_GEMINI_API_KEY pada file .env.';
-    console.error('[Gemini OCR]', errorMsg);
-    return {
-      success: false,
-      data: null,
-      error: errorMsg,
-    };
-  }
-
   try {
-    // 3. Konversi seluruh file gambar menjadi array inlineData Base64
-    const inlineDataParts = await Promise.all(
+    // 2. Konversi seluruh file gambar menjadi array base64 data
+    const images = await Promise.all(
       fileList.map(async (file, index) => {
         try {
           const { base64, mimeType } = await convertImageToBase64(file);
           return {
-            inlineData: {
-              mimeType: mimeType || 'image/jpeg',
-              data: base64,
-            },
+            mimeType: mimeType || 'image/jpeg',
+            base64Data: base64,
           };
         } catch (convErr) {
           throw new Error(`Gagal mengonversi lembar ke-${index + 1}: ${convErr.message}`);
@@ -245,149 +173,129 @@ export async function scanSuratPengaduan(files, options = {}) {
       })
     );
 
-    // 4. Inisialisasi GoogleGenAI Client
-    const ai = new GoogleGenAI({ apiKey });
+    // 3. Kirim request POST ke endpoint backend serverless (/api/ocr-scan)
+    const endpointUrl = options.endpoint || '/api/ocr-scan';
+    const response = await fetch(endpointUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ images }),
+    });
 
-    // Daftar model vision:
-    // Sesuai instruksi menggunakan gemini-2.5-flash, dengan fallback otomatis ke gemini-3.6-flash / gemini-3.8-flash / gemini-flash-latest
-    const candidateModels = options.model
-      ? [options.model, 'gemini-2.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite']
-      : ['gemini-2.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite'];
-
-    let response = null;
-    let lastError = null;
-    let selectedModel = candidateModels[0];
-
-    const promptText = `Berikut adalah ${inlineDataParts.length} lembar berkas fisik surat pengaduan / laporan polisi. Analisis seluruh lembar dokumen ini secara terpadu dan ekstrak data sesuai skema JSON kedinasan Reskrim.`;
-
-    for (const model of candidateModels) {
-      try {
-        selectedModel = model;
-        response = await ai.models.generateContent({
-          model,
-          contents: [
-            ...inlineDataParts,
-            promptText,
-          ],
-          config: {
-            systemInstruction: SYSTEM_PROMPT_RESRIM,
-            responseMimeType: 'application/json',
-            temperature: 0.1, // Presisi tinggi & faktual
-          },
-        });
-
-        if (response && response.text) {
-          break; // Sukses mendapatkan respons
-        }
-      } catch (err) {
-        lastError = err;
-        console.warn(`[Gemini OCR] Model ${model} gagal:`, err.message);
-        // Jika status 503 (Overloaded) beri jeda backoff sejenak sebelum mencoba model berikutnya
-        if (err.message && (err.message.includes('503') || err.message.includes('UNAVAILABLE'))) {
-          await new Promise((resolve) => setTimeout(resolve, 800));
-        }
-      }
+    if (!response.ok) {
+      const errJson = await response.json().catch(() => ({}));
+      throw new Error(errJson.error || `Server OCR mengembalikan status HTTP ${response.status}`);
     }
 
-    if (!response || !response.text) {
-      throw lastError || new Error('Gagal menerima respons dari Gemini AI.');
+    const resJson = await response.json();
+    if (!resJson.success || !resJson.data) {
+      throw new Error(resJson.error || 'Server OCR tidak mengembalikan data hasil ekstraksi.');
     }
 
-    // 5. Parse Output JSON
-    let parsedData = null;
-    const rawText = response.text.trim();
+    const parsedData = resJson.data;
 
-    try {
-      parsedData = JSON.parse(rawText);
-    } catch {
-      // Pembersihan jika ada markdown fence ```json ... ```
-      const cleanedText = rawText
-        .replace(/^```(?:json)?/i, '')
-        .replace(/```$/i, '')
-        .trim();
-      parsedData = JSON.parse(cleanedText);
-    }
-
-    // 6. Normalisasi skema data (Mendukung skema flat maupun nested)
+    // 4. Normalisasi skema data (Mendukung skema flat maupun nested)
     const normalizedData = {
       pelapor_nama: sanitizeField(parsedData.pelapor_nama || parsedData.pelapor?.nama_lengkap || parsedData.pelapor?.nama),
       pelapor_nik: sanitizeField(parsedData.pelapor_nik || parsedData.pelapor?.nik),
-      pelapor_ttl: sanitizeField(parsedData.pelapor_ttl || parsedData.pelapor?.ttl),
+      pelapor_ttl: sanitizeField(parsedData.pelapor_ttl || parsedData.pelapor?.ttl || (parsedData.pelapor?.tempat_lahir ? `${parsedData.pelapor.tempat_lahir}, ${parsedData.pelapor.tgl_lahir || ''}` : '')),
       pelapor_pekerjaan: sanitizeField(parsedData.pelapor_pekerjaan || parsedData.pelapor?.pekerjaan),
       pelapor_agama: sanitizeField(parsedData.pelapor_agama || parsedData.pelapor?.agama) || 'Islam',
       pelapor_alamat: sanitizeField(parsedData.pelapor_alamat || parsedData.pelapor?.alamat),
-      pelapor_kontak: sanitizeField(parsedData.pelapor_kontak || parsedData.pelapor?.no_hp || parsedData.pelapor?.kontak),
+      pelapor_kontak: sanitizeField(parsedData.pelapor_kontak || parsedData.pelapor?.telepon || parsedData.pelapor?.kontak || parsedData.pelapor?.no_hp),
 
       terlapor_list: Array.isArray(parsedData.terlapor_list)
-        ? parsedData.terlapor_list.map((t) => ({
+        ? parsedData.terlapor_list.map((t, idx) => ({
             nama: sanitizeField(t.nama),
             nik: sanitizeField(t.nik),
+            ttl: sanitizeField(t.ttl),
             pekerjaan: sanitizeField(t.pekerjaan),
             agama: sanitizeField(t.agama) || 'Islam',
             alamat: sanitizeField(t.alamat),
-            kontak: sanitizeField(t.kontak || t.no_hp),
+            kontak: sanitizeField(t.kontak || t.telepon || t.no_hp),
+            role_label: t.role_label || (idx === 0 ? 'Terlapor Utama' : `Terlapor Tambahan ${idx}`),
           }))
         : Array.isArray(parsedData.terlapor)
-        ? parsedData.terlapor.map((t) => ({
+        ? parsedData.terlapor.map((t, idx) => ({
             nama: sanitizeField(t.nama),
             nik: sanitizeField(t.nik),
+            ttl: sanitizeField(t.ttl),
             pekerjaan: sanitizeField(t.pekerjaan),
             agama: sanitizeField(t.agama) || 'Islam',
             alamat: sanitizeField(t.alamat),
-            kontak: sanitizeField(t.kontak || t.no_hp),
+            kontak: sanitizeField(t.kontak || t.telepon || t.no_hp),
+            role_label: t.role_label || (idx === 0 ? 'Terlapor Utama' : `Terlapor Tambahan ${idx}`),
           }))
+        : parsedData.terlapor && typeof parsedData.terlapor === 'object'
+        ? [{
+            nama: sanitizeField(parsedData.terlapor.nama),
+            nik: sanitizeField(parsedData.terlapor.nik),
+            ttl: sanitizeField(parsedData.terlapor.ttl),
+            pekerjaan: sanitizeField(parsedData.terlapor.pekerjaan),
+            agama: sanitizeField(parsedData.terlapor.agama) || 'Islam',
+            alamat: sanitizeField(parsedData.terlapor.alamat),
+            kontak: sanitizeField(parsedData.terlapor.kontak || parsedData.terlapor.telepon),
+            role_label: 'Terlapor Utama',
+          }]
         : [],
 
       saksi_list: Array.isArray(parsedData.saksi_list)
-        ? parsedData.saksi_list.map((s) => ({
+        ? parsedData.saksi_list.map((s, idx) => ({
             nama: sanitizeField(s.nama),
             nik: sanitizeField(s.nik),
+            ttl: sanitizeField(s.ttl || s.tgl_lahir),
             pekerjaan: sanitizeField(s.pekerjaan),
             agama: sanitizeField(s.agama) || 'Islam',
             alamat: sanitizeField(s.alamat),
-            kontak: sanitizeField(s.kontak || s.no_hp),
+            kontak: sanitizeField(s.kontak || s.telepon || s.no_hp),
+            role_label: s.role_label || (idx === 0 ? 'Saksi Fakta' : idx === 1 ? 'Saksi Terkait' : `Saksi ${idx + 1}`),
           }))
         : Array.isArray(parsedData.saksi)
-        ? parsedData.saksi.map((s) => ({
+        ? parsedData.saksi.map((s, idx) => ({
             nama: sanitizeField(s.nama),
             nik: sanitizeField(s.nik),
+            ttl: sanitizeField(s.ttl || s.tgl_lahir),
             pekerjaan: sanitizeField(s.pekerjaan),
             agama: sanitizeField(s.agama) || 'Islam',
             alamat: sanitizeField(s.alamat),
-            kontak: sanitizeField(s.kontak || s.no_hp),
+            kontak: sanitizeField(s.kontak || s.telepon || s.no_hp),
+            role_label: s.role_label || (idx === 0 ? 'Saksi Fakta' : idx === 1 ? 'Saksi Terkait' : `Saksi ${idx + 1}`),
           }))
         : [],
 
       tindak_pidana: sanitizeField(parsedData.tindak_pidana || parsedData.perkara?.tindak_pidana),
-      pasal_disangkakan: sanitizeField(parsedData.pasal_disangkakan || parsedData.perkara?.pasal_disangkakan),
-      tempus_delicti: sanitizeField(parsedData.tempus_delicti || parsedData.perkara?.tempus_delicti),
-      locus_delicti: sanitizeField(parsedData.locus_delicti || parsedData.perkara?.locus_delicti),
-      uraian_kejadian: sanitizeField(parsedData.uraian_kejadian || parsedData.perkara?.uraian_kejadian),
+      pasal_disangkakan: sanitizeField(parsedData.pasal_disangkakan || parsedData.perkara?.pasal_disangkakan || parsedData.perkara?.pasal_sangkaan),
+      tempus_delicti: sanitizeField(parsedData.tempus_delicti || parsedData.perkara?.tempus_delicti || parsedData.perkara?.waktu_kejadian),
+      locus_delicti: sanitizeField(parsedData.locus_delicti || parsedData.perkara?.locus_delicti || parsedData.perkara?.tempat_kejadian),
+      uraian_kejadian: sanitizeField(parsedData.uraian_kejadian || parsedData.perkara?.uraian_kejadian || parsedData.perkara?.uraian_singkat),
     };
 
-    // 7. Mapping langsung ke state struktur Dumas
+    // 5. Mapping langsung ke state struktur Dumas
     const mappedForm = mapOcrResultToDumasForm(normalizedData);
 
     return {
       success: true,
       data: normalizedData,
       mappedForm,
-      modelUsed: selectedModel,
-      pagesProcessed: inlineDataParts.length,
+      modelUsed: resJson.modelUsed || 'serverless-ocr',
+      pagesProcessed: images.length,
       error: null,
     };
   } catch (err) {
-    console.error('[Gemini OCR] Error pemindaian surat pengaduan:', err);
+    console.error('[OCR Client] Error pemindaian surat pengaduan:', err);
 
     let friendlyMessage = 'Gagal memindai dokumen. Pastikan foto dokumen tegak, tidak buram, dan teks dapat terbaca.';
     const rawMsg = err.message || '';
 
-    if (rawMsg.includes('API_KEY_INVALID') || rawMsg.includes('403') || rawMsg.includes('UNAUTHENTICATED')) {
-      friendlyMessage = 'API Key Gemini tidak valid atau kuota habis. Periksa konfigurasi VITE_GEMINI_API_KEY.';
+    if (rawMsg.includes('API_KEY') || rawMsg.includes('403') || rawMsg.includes('UNAUTHENTICATED')) {
+      friendlyMessage = 'Kredensial API Gemini belum dikonfigurasi di server atau kuota habis.';
     } else if (rawMsg.includes('503') || rawMsg.includes('UNAVAILABLE')) {
       friendlyMessage = 'Layanan Google Gemini AI sedang mengalami lonjakan beban. Silakan ulangi dalam beberapa detik.';
     } else if (rawMsg.includes('NetworkError') || rawMsg.includes('Failed to fetch')) {
-      friendlyMessage = 'Gagal terhubung ke server Google AI. Periksa koneksi internet Anda.';
+      friendlyMessage = 'Gagal terhubung ke endpoint backend OCR. Pastikan server dev atau backend aktif.';
+    } else if (rawMsg) {
+      friendlyMessage = rawMsg;
     }
 
     return {

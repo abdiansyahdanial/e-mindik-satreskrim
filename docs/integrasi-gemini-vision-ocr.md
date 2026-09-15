@@ -13,7 +13,9 @@ Fitur ini mengotomatiskan pembacaan dokumen fisik (surat pengaduan bermeterai / 
 - **Perkara**: Dugaan Tindak Pidana, Pasal yang disangkakan, Tempus Delicti, Locus Delicti, dan Uraian Singkat Kejadian.
 
 ### File Terkait
-- Layanan Utama OCR: `src/lib/geminiOcrService.js`
+- Endpoint Serverless OCR (Backend): `api/ocr-scan.js`
+- Dev Server Middleware (Localhost): `vite.config.js`
+- Layanan Frontend OCR: `src/lib/geminiOcrService.js`
 - Modal Pemilihan Mode & Tactical HUD: `src/components/dumas/DumasModeSelectModal.jsx`
 - Formulir Dumas 3 Kolom Terisi Otomatis: `src/components/dumas/DumasFormView.jsx`
 - View Controller Dumas: `src/views/DumasView.jsx`
@@ -23,20 +25,24 @@ Fitur ini mengotomatiskan pembacaan dokumen fisik (surat pengaduan bermeterai / 
 
 ## 2. Kredensial & Environment Variable
 
+Kredensial disimpan secara aman di backend serverless tanpa bocor ke bundle JavaScript browser:
+
 ```env
-# Google Gemini API
-GEMINI_API_KEY=AIzaSy_YOUR_ACTUAL_API_KEY_HERE
-VITE_GEMINI_API_KEY=AIzaSy_YOUR_ACTUAL_API_KEY_HERE
+# Google Gemini API (Server-Side Only)
+GEMINI_API_KEY=AQ.Ab8RN6...YOUR_ACTUAL_KEY...
 ```
 
 ---
 
 ## 3. Model AI & Fallback Strategy
 
-Google Gemini API secara berkala memperbarui ketersediaan model:
-1. **Model Utama**: `gemini-3.6-flash` (Direkomendasikan resmi oleh Google AI untuk kecepatan vision & response JSON schema).
-2. **Fallback Model**: `gemini-3.8-flash` dan `gemini-2.5-flash`.
-3. **Konfigurasi Output**: `responseMimeType: "application/json"` dengan System Prompt kedinasan Satreskrim.
+Google Gemini API memiliki urutan prioritas model vision berdaya tahan tinggi:
+1. **Prioritas Utama**: `gemini-2.0-flash`
+2. **Fallback 1**: `gemini-1.5-flash`
+3. **Fallback 2**: `gemini-1.5-pro`
+4. **Fallback Resilient (Produksi Aktif)**: `gemini-flash-latest` dan `gemini-flash-lite-latest` (Menjamin pemrosesan tetap berjalan mulus meskipun versi terdahulu telah didepresiasi oleh Google atau sedang overload).
+5. **Penanganan 503 (Overloaded / High Demand)**: Dilengkapi mekanisme *exponential backoff retry* otomatis (1s -> 2s) sebelum beralih ke model berikutnya.
+6. **Konfigurasi Output**: `responseMimeType: "application/json"`, `temperature: 0.1` (faktual & presisi tinggi), dengan System Prompt kedinasan Satreskrim.
 
 ---
 

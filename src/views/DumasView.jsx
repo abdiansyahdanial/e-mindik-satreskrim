@@ -3,7 +3,12 @@ import DumasListView from '../components/dumas/DumasListView';
 import DumasFormView from '../components/dumas/DumasFormView';
 import DumasDetailView from '../components/dumas/DumasDetailView';
 import DumasModeSelectModal from '../components/dumas/DumasModeSelectModal';
-import { saveDumasRecord, deleteDumasRecord, convertDumasToCase } from '../services/dumasService';
+import { 
+  saveDumasRecord, 
+  deleteDumasRecord, 
+  convertDumasToCase,
+  hasDumasDraft
+} from '../services/dumasService';
 import '../styles/dumas.css';
 
 export default function DumasView({
@@ -15,6 +20,7 @@ export default function DumasView({
 }) {
   // Sub-view: 'list' | 'form' | 'detail'
   const [subView, setSubView] = useState('list');
+  const [formMode, setFormMode] = useState('manual');
   const [isModeModalOpen, setIsModeModalOpen] = useState(false);
   const [initialOcrFile, setInitialOcrFile] = useState(null);
   const [initialOcrFiles, setInitialOcrFiles] = useState([]);
@@ -43,6 +49,15 @@ export default function DumasView({
     }
   };
 
+  // Handler Buka Draf Tersimpan
+  const handleOpenDraft = () => {
+    setFormMode('manual');
+    setInitialOcrFile(null);
+    setInitialOcrFiles([]);
+    setInitialOcrData(null);
+    setSubView('form');
+  };
+
   // 2. Handler Submit Form Dumas
   const handleSubmitDumas = async (newRecord, evidenceFiles = []) => {
     try {
@@ -55,9 +70,11 @@ export default function DumasView({
           onShowToast(`Laporan Dumas ${result.record.nomor_lp} berhasil teregistrasi!`);
         }
       }
+      return result;
     } catch (err) {
       console.error('Gagal submit dumas:', err);
       alert('Terjadi kendala saat menyimpan berkas.');
+      return { success: false, error: err };
     }
   };
 
@@ -100,6 +117,8 @@ export default function DumasView({
         <DumasListView
           dumasList={dumasList}
           onOpenModeSelect={handleOpenModeSelect}
+          hasDraft={hasDumasDraft(currentUserProfile?.id)}
+          onOpenDraft={handleOpenDraft}
           onSelectDumas={(item) => {
             setSelectedDumas(item);
             setSubView('detail');
@@ -112,6 +131,7 @@ export default function DumasView({
       {/* Tampilan 2: Formulir Data Struktur (Tahap 2) */}
       {subView === 'form' && (
         <DumasFormView
+          key={initialOcrData ? 'form-ocr-active' : 'form-manual'}
           mode={formMode}
           initialOcrFile={initialOcrFile}
           initialOcrFiles={initialOcrFiles}

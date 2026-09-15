@@ -1,6 +1,73 @@
-import { supabase } from '../supabaseClient';
+import { supabase } from '../supabaseClient.js';
 
-const DUMAS_LOCAL_STORAGE_KEY = 'emindik_dumas_records_v1';
+export const DUMAS_LOCAL_STORAGE_KEY = 'emindik_dumas_records_v1';
+export const DUMAS_DRAFT_KEY = 'emindik_dumas_form_draft_v1';
+
+/**
+ * Mendapatkan key storage draf (dengan isolasi ID pengguna jika tersedia)
+ */
+export function getDumasDraftKey(userId = null) {
+  return userId ? `${DUMAS_DRAFT_KEY}_${userId}` : DUMAS_DRAFT_KEY;
+}
+
+/**
+ * Membaca draf tersimpan secara aman
+ */
+export function loadDumasDraft(userId = null) {
+  try {
+    const key = getDumasDraftKey(userId);
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (err) {
+    console.warn('Gagal membaca draf dumas dari storage:', err);
+    return null;
+  }
+}
+
+/**
+ * Menyimpan draf formulir dumas
+ */
+export function saveDumasDraft(draftData, userId = null) {
+  try {
+    const key = getDumasDraftKey(userId);
+    if (!draftData) {
+      localStorage.removeItem(key);
+      return;
+    }
+    localStorage.setItem(key, JSON.stringify(draftData));
+  } catch (err) {
+    console.warn('Gagal menyimpan draf dumas ke storage:', err);
+  }
+}
+
+/**
+ * Menghapus draf formulir dumas
+ */
+export function clearDumasDraft(userId = null) {
+  try {
+    const key = getDumasDraftKey(userId);
+    localStorage.removeItem(key);
+  } catch (err) {
+    console.warn('Gagal menghapus draf dumas dari storage:', err);
+  }
+}
+
+/**
+ * Memeriksa ketersediaan draf tersimpan
+ */
+export function hasDumasDraft(userId = null) {
+  try {
+    const key = getDumasDraftKey(userId);
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return !!(parsed && typeof parsed === 'object');
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Konversi nomor bulan (1-12) ke angka Romawi
@@ -171,16 +238,30 @@ export async function fetchDumasRecords() {
     } catch {}
   }
 
-  // Coba ambil dari Supabase
+  // Coba ambil dari Supabase (Tabel laporan_pengaduan terverifikasi sesuai skema database baris 428)
   try {
-    const { data: supabaseDumas, error } = await supabase
+    const res = await supabase
       .from('laporan_pengaduan')
-      .select('*, lampiran_barang_bukti(*)')
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && Array.isArray(supabaseDumas) && supabaseDumas.length > 0) {
+    // Pengecekan respons error / status 404 jika tabel belum siap di database Supabase
+    if (res?.error) {
+      console.info(`Notice: Tabel 'laporan_pengaduan' belum siap di Supabase (${res.error.message || res.error.status || res.error.code}). Menampilkan data fallback.`);
+      return { 
+        data: Array.isArray(localData) ? localData : [], 
+        source: 'local_fallback', 
+        error: null 
+      };
+    }
+
+    if (Array.isArray(res?.data)) {
+      if (res.data.length === 0) {
+        return { data: [], source: 'supabase', error: null };
+      }
+
       // Normalisasi nama relasi bukti jika ada
-      const normalized = supabaseDumas.map(d => ({
+      const normalized = res.data.map(d => ({
         ...d,
         saksi_list: Array.isArray(d.saksi_list) ? d.saksi_list : [],
         terlapor_list: Array.isArray(d.terlapor_list) ? d.terlapor_list : [],
@@ -198,7 +279,7 @@ export async function fetchDumasRecords() {
     console.warn('Notice: Query Supabase laporan_pengaduan dialihkan ke local resilience:', supErr);
   }
 
-  return { data: localData, source: 'local', error: null };
+  return { data: Array.isArray(localData) ? localData : [], source: 'local', error: null };
 }
 
 /**
@@ -241,6 +322,14 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
   // 2. Kirim ke Supabase jika tabel tersedia
   let supabaseResult = null;
   try {
+    const validSaksi = Array.isArray(completeRecord.saksi_list)
+      ? completeRecord.saksi_list.filter((s) => s && s.nama && s.nama.trim() !== '')
+      : [];
+
+    const validTerlapor = Array.isArray(completeRecord.terlapor_list)
+      ? completeRecord.terlapor_list.filter((t) => t && t.nama && t.nama.trim() !== '')
+      : [];
+
     const payload = {
       nomor_lp: completeRecord.nomor_lp,
       penyidik_id: completeRecord.penyidik_id || null,
@@ -252,8 +341,10 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
       pelapor_agama: completeRecord.pelapor_agama || '',
       pelapor_kontak: completeRecord.pelapor_kontak || '',
       pelapor_alamat: completeRecord.pelapor_alamat || '',
-      saksi_list: completeRecord.saksi_list || [],
-      terlapor_list: completeRecord.terlapor_list || [],
+      saksi_list: validSaksi,
+      saksi: validSaksi,
+      terlapor_list: validTerlapor,
+      terlapor: validTerlapor,
       terlapor_nama: completeRecord.terlapor_nama,
       terlapor_nik: completeRecord.terlapor_nik || '',
       terlapor_ttl: completeRecord.terlapor_ttl || '',
@@ -270,6 +361,8 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
       status_berkas: completeRecord.status_berkas || 'Tahap Penyelidikan (Sp.Lidik)',
     };
 
+    console.log("[Dumas Submit] Payload data yang disimpan:", payload);
+
     const { data, error } = await supabase
       .from('laporan_pengaduan')
       .insert([payload])
@@ -278,6 +371,25 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
 
     if (!error && data) {
       supabaseResult = data;
+
+      // Batch insert ke tabel relasi saksi_dumas jika tabel relasi tersedia
+      if (validSaksi.length > 0) {
+        try {
+          const saksiRows = validSaksi.map((s) => ({
+            laporan_id: data.id,
+            nama: s.nama,
+            nik: s.nik || '',
+            ttl: s.ttl || '',
+            pekerjaan: s.pekerjaan || '',
+            agama: s.agama || 'Islam',
+            alamat: s.alamat || '',
+            kontak: s.kontak || '',
+            role_label: s.role_label || 'Saksi',
+          }));
+          await supabase.from('saksi_dumas').insert(saksiRows);
+        } catch {}
+      }
+
       // Jika ada barang bukti dan Supabase sukses, simpan lampiran
       if (completeRecord.lampiran_barang_bukti?.length > 0) {
         const bbPayloads = completeRecord.lampiran_barang_bukti.map(bb => ({
@@ -292,7 +404,11 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
           keterangan: bb.keterangan || '',
         }));
 
-        await supabase.from('lampiran_barang_bukti').insert(bbPayloads);
+        try {
+          await supabase.from('lampiran_barang_bukti').insert(bbPayloads);
+        } catch (bbErr) {
+          console.warn('Notice: Gagal menyimpan ke tabel lampiran_barang_bukti (tabel mungkin belum ada):', bbErr);
+        }
       }
     }
   } catch (err) {

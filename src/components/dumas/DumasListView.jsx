@@ -3,17 +3,17 @@ import {
   FilePlus, 
   Search, 
   FolderOpen, 
-  Printer, 
   FileSignature, 
   FileText, 
-  Trash2, 
-  ShieldCheck, 
-  Layers
+  Trash2,
+  Clock
 } from 'lucide-react';
 
 export default function DumasListView({
   dumasList = [],
   onOpenModeSelect,
+  hasDraft = false,
+  onOpenDraft,
   onSelectDumas,
   onDeleteDumas,
   onOpenGeneratorForDumas
@@ -79,7 +79,33 @@ export default function DumasListView({
             </p>
           </div>
 
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {hasDraft && onOpenDraft && (
+              <button
+                type="button"
+                onClick={onOpenDraft}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 16px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  color: '#34D399',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Buka kembali draf formulir yang tersimpan di browser"
+              >
+                <Clock size={15} />
+                <span>Lanjutkan Draf Tersimpan</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={onOpenModeSelect}
@@ -102,7 +128,11 @@ export default function DumasListView({
             <div className="dumas-search-wrap">
               <Search size={15} className="dumas-search-icon" />
               <input 
+                id="dumas_search_term"
+                name="dumas_search_term"
                 type="text"
+                autoComplete="off"
+                aria-label="Cari No. Dumas, Pelapor, Terlapor, atau Pasal"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Cari No. Dumas, Pelapor, Terlapor, atau Pasal..."
@@ -111,8 +141,11 @@ export default function DumasListView({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
-              <span style={{ color: '#94A3B8' }}>Status:</span>
+              <label htmlFor="dumas_status_filter" style={{ color: '#94A3B8' }}>Status:</label>
               <select
+                id="dumas_status_filter"
+                name="dumas_status_filter"
+                aria-label="Filter Status Laporan Dumas"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="dumas-select"

@@ -1,15 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Trash2, 
   FileText, 
   ArrowLeft, 
   Sparkles, 
-  Image as ImageIcon,
-  Save,
-  AlertCircle
+  Image as ImageIcon, 
+  Save, 
+  AlertCircle,
+  RotateCcw,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
-import { generateDumasNumber } from '../../services/dumasService';
+import { 
+  generateDumasNumber, 
+  loadDumasDraft, 
+  saveDumasDraft, 
+  clearDumasDraft 
+} from '../../services/dumasService';
+
+const defaultPelapor = {
+  nama: '',
+  nik: '',
+  ttl: '',
+  pekerjaan: '',
+  agama: 'Islam',
+  alamat: '',
+  kontak: '',
+};
+
+const defaultSaksi = [
+  {
+    id: 'saksi-1',
+    nama: '',
+    nik: '',
+    ttl: '',
+    pekerjaan: '',
+    agama: 'Islam',
+    alamat: '',
+    kontak: '',
+    role_label: 'Saksi Fakta',
+  }
+];
+
+const defaultTerlapor = [
+  {
+    id: 'terlapor-1',
+    nama: '',
+    nik: '',
+    ttl: '',
+    pekerjaan: '',
+    agama: 'Islam',
+    alamat: '',
+    kontak: '',
+    role_label: 'Terlapor Utama',
+  }
+];
+
+const defaultCaseInfo = {
+  tindak_pidana: '',
+  pasal_disangkakan: '',
+  tempus_delicti: '',
+  locus_delicti: '',
+  uraian_kejadian: '',
+};
 
 export default function DumasFormView({
   mode = 'manual', // 'manual' | 'ocr'
@@ -20,18 +74,53 @@ export default function DumasFormView({
   onSubmitDumas,
   currentUserProfile
 }) {
-  // State 01: Identitas Pelapor (Diisi dari initialOcrData jika ada)
-  const [pelapor, setPelapor] = useState({
-    nama: initialOcrData?.pelapor?.nama || initialOcrData?.pelapor_nama || initialOcrData?.pelapor?.nama_lengkap || (mode === 'ocr' ? 'AHMAD SUBARI' : ''),
-    nik: initialOcrData?.pelapor?.nik || initialOcrData?.pelapor_nik || (mode === 'ocr' ? '7411081905890001' : ''),
-    ttl: initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor_ttl || (mode === 'ocr' ? 'Kolaka, 19 Mei 1989' : ''),
-    pekerjaan: initialOcrData?.pelapor?.pekerjaan || initialOcrData?.pelapor_pekerjaan || (mode === 'ocr' ? 'Wiraswasta / Pengawas BUMDes' : ''),
-    agama: initialOcrData?.pelapor?.agama || initialOcrData?.pelapor_agama || (mode === 'ocr' ? 'Islam' : ''),
-    alamat: initialOcrData?.pelapor?.alamat || initialOcrData?.pelapor_alamat || (mode === 'ocr' ? 'Desa Loea, Kec. Loea, Kab. Kolaka Timur' : ''),
-    kontak: initialOcrData?.pelapor?.kontak || initialOcrData?.pelapor_kontak || initialOcrData?.pelapor?.no_hp || (mode === 'ocr' ? '081244556677' : ''),
+  // 0. Safe Hydration Draf Tersimpan dari LocalStorage
+  const [savedDraft] = useState(() => {
+    // Jika ada data OCR baru yang dipassing dari modal, utamakan data OCR baru
+    if (initialOcrData) return null;
+    return loadDumasDraft(currentUserProfile?.id);
   });
 
-  // State 02: Array Saksi-Saksi Dinamis (Mendukung Multi-Saksi dari OCR)
+  const [isDraftRestored, setIsDraftRestored] = useState(() => !!savedDraft);
+  const [lastSavedTime, setLastSavedTime] = useState(() => {
+    if (savedDraft?.savedAt) {
+      return new Date(savedDraft.savedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    }
+    return null;
+  });
+  const [saveStatus, setSaveStatus] = useState(() => (savedDraft ? 'saved' : 'idle'));
+
+  // State 01: Identitas Pelapor (Diisi dari initialOcrData atau Draf tersimpan jika ada)
+  const [pelapor, setPelapor] = useState(() => {
+    if (initialOcrData) {
+      return {
+        nama: initialOcrData?.pelapor?.nama || initialOcrData?.pelapor_nama || initialOcrData?.pelapor?.nama_lengkap || '',
+        nik: initialOcrData?.pelapor?.nik || initialOcrData?.pelapor_nik || '',
+        ttl: initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor_ttl || '',
+        pekerjaan: initialOcrData?.pelapor?.pekerjaan || initialOcrData?.pelapor_pekerjaan || '',
+        agama: initialOcrData?.pelapor?.agama || initialOcrData?.pelapor_agama || 'Islam',
+        alamat: initialOcrData?.pelapor?.alamat || initialOcrData?.pelapor_alamat || '',
+        kontak: initialOcrData?.pelapor?.kontak || initialOcrData?.pelapor_kontak || initialOcrData?.pelapor?.no_hp || '',
+      };
+    }
+    if (savedDraft?.pelapor) {
+      return { ...defaultPelapor, ...savedDraft.pelapor };
+    }
+    if (mode === 'ocr') {
+      return {
+        nama: 'AHMAD SUBARI',
+        nik: '7411081905890001',
+        ttl: 'Kolaka, 19 Mei 1989',
+        pekerjaan: 'Wiraswasta / Pengawas BUMDes',
+        agama: 'Islam',
+        alamat: 'Desa Loea, Kec. Loea, Kab. Kolaka Timur',
+        kontak: '081244556677',
+      };
+    }
+    return defaultPelapor;
+  });
+
+  // State 02: Array Saksi-Saksi Dinamis (Mendukung Multi-Saksi dari OCR & Draf)
   const [saksiList, setSaksiList] = useState(() => {
     if (initialOcrData?.saksiList && initialOcrData.saksiList.length > 0) {
       return initialOcrData.saksiList;
@@ -48,6 +137,9 @@ export default function DumasFormView({
         kontak: s.kontak || s.no_hp || '',
         role_label: idx === 0 ? 'Saksi Fakta' : idx === 1 ? 'Saksi Terkait' : `Saksi ${idx + 1}`,
       }));
+    }
+    if (savedDraft?.saksiList && Array.isArray(savedDraft.saksiList) && savedDraft.saksiList.length > 0) {
+      return savedDraft.saksiList;
     }
     if (mode === 'ocr') {
       return [
@@ -75,22 +167,10 @@ export default function DumasFormView({
         }
       ];
     }
-    return [
-      {
-        id: 'saksi-1',
-        nama: '',
-        nik: '',
-        ttl: '',
-        pekerjaan: '',
-        agama: 'Islam',
-        alamat: '',
-        kontak: '',
-        role_label: 'Saksi Fakta',
-      }
-    ];
+    return defaultSaksi;
   });
 
-  // State 03: Array Terlapor Dinamis (Mendukung Multi-Terlapor dari OCR)
+  // State 03: Array Terlapor Dinamis (Mendukung Multi-Terlapor dari OCR & Draf)
   const [terlaporList, setTerlaporList] = useState(() => {
     if (initialOcrData?.terlaporList && initialOcrData.terlaporList.length > 0) {
       return initialOcrData.terlaporList;
@@ -108,6 +188,9 @@ export default function DumasFormView({
         role_label: idx === 0 ? 'Terlapor Utama' : `Terlapor Tambahan ${idx}`,
       }));
     }
+    if (savedDraft?.terlaporList && Array.isArray(savedDraft.terlaporList) && savedDraft.terlaporList.length > 0) {
+      return savedDraft.terlaporList;
+    }
     if (mode === 'ocr') {
       return [
         {
@@ -123,62 +206,148 @@ export default function DumasFormView({
         }
       ];
     }
-    return [
-      {
-        id: 'terlapor-1',
-        nama: '',
-        nik: '',
-        ttl: '',
-        pekerjaan: '',
-        agama: 'Islam',
-        alamat: '',
-        kontak: '',
-        role_label: 'Terlapor Utama',
-      }
-    ];
+    return defaultTerlapor;
   });
 
   // State 04: Peristiwa, Delik, & Dugaan Pasal
-  const [caseInfo, setCaseInfo] = useState({
-    tindak_pidana: initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || (mode === 'ocr' ? 'Penipuan & Penggelapan Dana Anggaran' : ''),
-    pasal_disangkakan: initialOcrData?.caseInfo?.pasal_disangkakan || initialOcrData?.pasal_disangkakan || (mode === 'ocr' ? 'Pasal 378 KUHP dan/atau Pasal 372 KUHP' : ''),
-    tempus_delicti: initialOcrData?.caseInfo?.tempus_delicti || initialOcrData?.tempus_delicti || (mode === 'ocr' ? 'Senin, 14 September 2026 - Pukul 10.30 WITA' : ''),
-    locus_delicti: initialOcrData?.caseInfo?.locus_delicti || initialOcrData?.locus_delicti || (mode === 'ocr' ? 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur' : ''),
-    uraian_kejadian: initialOcrData?.caseInfo?.uraian_kejadian || initialOcrData?.uraian_kejadian || (mode === 'ocr' 
-      ? 'Bahwa pada hari Senin tanggal 14 September 2026 sekitar pukul 10.30 WITA, Terlapor Sdr. SAMSUL BAHRI diduga tanpa hak atau izin telah menggelapkan dana kas Bumdes sebesar Rp 45.000.000,- (Empat Puluh Lima Juta Rupiah).'
-      : ''),
+  const [caseInfo, setCaseInfo] = useState(() => {
+    if (initialOcrData) {
+      return {
+        tindak_pidana: initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || '',
+        pasal_disangkakan: initialOcrData?.caseInfo?.pasal_disangkakan || initialOcrData?.pasal_disangkakan || '',
+        tempus_delicti: initialOcrData?.caseInfo?.tempus_delicti || initialOcrData?.tempus_delicti || '',
+        locus_delicti: initialOcrData?.caseInfo?.locus_delicti || initialOcrData?.locus_delicti || '',
+        uraian_kejadian: initialOcrData?.caseInfo?.uraian_kejadian || initialOcrData?.uraian_kejadian || '',
+      };
+    }
+    if (savedDraft?.caseInfo) {
+      return { ...defaultCaseInfo, ...savedDraft.caseInfo };
+    }
+    if (mode === 'ocr') {
+      return {
+        tindak_pidana: 'Penipuan & Penggelapan Dana Anggaran',
+        pasal_disangkakan: 'Pasal 378 KUHP dan/atau Pasal 372 KUHP',
+        tempus_delicti: 'Senin, 14 September 2026 - Pukul 10.30 WITA',
+        locus_delicti: 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
+        uraian_kejadian: 'Bahwa pada hari Senin tanggal 14 September 2026 sekitar pukul 10.30 WITA, Terlapor Sdr. SAMSUL BAHRI diduga tanpa hak atau izin telah menggelapkan dana kas Bumdes sebesar Rp 45.000.000,- (Empat Puluh Lima Juta Rupiah).',
+      };
+    }
+    return defaultCaseInfo;
   });
 
-  // State 05: Lampiran Bukti (Otomatis sertakan seluruh berkas fisik hasil OCR jika ada)
+  // State 05: Lampiran Bukti
   const [evidenceFiles, setEvidenceFiles] = useState(() => {
     const rawFiles = initialOcrFiles && initialOcrFiles.length > 0
       ? initialOcrFiles
       : (initialOcrFile ? [initialOcrFile] : []);
 
-    if (!rawFiles || rawFiles.length === 0) return [];
+    if (rawFiles && rawFiles.length > 0) {
+      return rawFiles.map((file, idx) => {
+        const isPdf = file.type?.includes('pdf') || file.name?.endsWith('.pdf');
+        const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
+        const mime = isPdf ? 'application/pdf' : 'image/jpeg';
+        return {
+          id: `ocr-file-${Date.now()}-${idx}`,
+          name: file.name,
+          nama_file: file.name,
+          size: file.size,
+          type: mime,
+          mime_type: mime,
+          kategori_bukti: category,
+          file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
+          previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
+          keterangan: `Lembar ke-${idx + 1} surat pengaduan hasil pindai Google Gemini AI`,
+          hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
+            .map(b => b.toString(16).padStart(2, '0')).join('') + '...'
+        };
+      });
+    }
 
-    return rawFiles.map((file, idx) => {
-      const isPdf = file.type?.includes('pdf') || file.name?.endsWith('.pdf');
-      const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
-      const mime = isPdf ? 'application/pdf' : 'image/jpeg';
-      return {
-        id: `ocr-file-${Date.now()}-${idx}`,
-        name: file.name,
-        nama_file: file.name,
-        size: file.size,
-        type: mime,
-        mime_type: mime,
-        kategori_bukti: category,
-        file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
-        previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
-        keterangan: `Lembar ke-${idx + 1} surat pengaduan hasil pindai Google Gemini AI`,
-        hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
-          .map(b => b.toString(16).padStart(2, '0')).join('') + '...'
-      };
-    });
+    if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles) && savedDraft.evidenceFiles.length > 0) {
+      return savedDraft.evidenceFiles;
+    }
+
+    return [];
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
+
+  // Auto-Save Draft Sinkronisasi Otomatis dengan Debouncing (400ms)
+  useEffect(() => {
+    if (isSubmitting) return;
+
+    const hasAnyContent = 
+      Boolean(pelapor.nama?.trim()) ||
+      Boolean(pelapor.nik?.trim()) ||
+      Boolean(pelapor.alamat?.trim()) ||
+      Boolean(pelapor.kontak?.trim()) ||
+      saksiList.some(s => Boolean(s.nama?.trim()) || Boolean(s.nik?.trim())) ||
+      terlaporList.some(t => Boolean(t.nama?.trim()) || Boolean(t.nik?.trim())) ||
+      Boolean(caseInfo.tindak_pidana?.trim()) ||
+      Boolean(caseInfo.uraian_kejadian?.trim()) ||
+      evidenceFiles.length > 0;
+
+    if (!hasAnyContent) return;
+
+    setSaveStatus('saving');
+    const timer = setTimeout(() => {
+      try {
+        const sanitizedEvidence = (evidenceFiles || []).map(f => ({
+          id: f.id,
+          name: f.name || f.nama_file || 'Berkas',
+          nama_file: f.nama_file || f.name || 'Berkas',
+          size: f.size || 0,
+          type: f.type || 'application/pdf',
+          mime_type: f.mime_type || f.type || 'application/pdf',
+          kategori_bukti: f.kategori_bukti || 'DOKUMEN_PDF',
+          file_size_formatted: f.file_size_formatted || '0 KB',
+          keterangan: f.keterangan || '',
+          hash_sha256: f.hash_sha256 || '',
+          file_url: f.file_url || ''
+        }));
+
+        const draftPayload = {
+          mode,
+          pelapor,
+          saksiList,
+          terlaporList,
+          caseInfo,
+          evidenceFiles: sanitizedEvidence,
+          savedAt: new Date().toISOString(),
+        };
+
+        saveDumasDraft(draftPayload, currentUserProfile?.id);
+        const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setLastSavedTime(timeStr);
+        setSaveStatus('saved');
+      } catch (err) {
+        console.warn('Gagal menyimpan auto-save draf dumas:', err);
+        setSaveStatus('idle');
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [pelapor, saksiList, terlaporList, caseInfo, evidenceFiles, mode, currentUserProfile?.id, isSubmitting]);
+
+  // Handler Reset Draf Manual
+  const handleResetDraft = () => {
+    const confirmReset = window.confirm(
+      'Apakah Anda yakin ingin mengosongkan seluruh formulir dan menghapus draf tersimpan? Seluruh isian data yang belum disubmit akan hilang.'
+    );
+    if (!confirmReset) return;
+
+    clearDumasDraft(currentUserProfile?.id);
+    setPelapor(defaultPelapor);
+    setSaksiList(defaultSaksi);
+    setTerlaporList(defaultTerlapor);
+    setCaseInfo(defaultCaseInfo);
+    setEvidenceFiles([]);
+    setLastSavedTime(null);
+    setSaveStatus('idle');
+    setIsDraftRestored(false);
+    setFormError(null);
+  };
 
   // Handlers Saksi
   const handleAddSaksi = () => {
@@ -316,6 +485,38 @@ export default function DumasFormView({
       const primaryTerlapor = terlaporList[0] || {};
       const generatedNo = generateDumasNumber(Date.now().toString().slice(-2));
 
+      // Saring entitas saksi yang memiliki nama terisi
+      const cleanedSaksiList = (saksiList || [])
+        .filter((s) => s && s.nama && s.nama.trim() !== '')
+        .map((s, idx) => ({
+          id: s.id || `saksi-${idx + 1}-${Date.now()}`,
+          nama: s.nama.trim(),
+          nik: (s.nik || '').trim(),
+          ttl: (s.ttl || '').trim(),
+          pekerjaan: (s.pekerjaan || '').trim(),
+          agama: (s.agama || 'Islam').trim(),
+          alamat: (s.alamat || '').trim(),
+          kontak: (s.kontak || '').trim(),
+          role_label: s.role_label || (idx === 0 ? 'Saksi Fakta' : idx === 1 ? 'Saksi Terkait' : `Saksi ${idx + 1}`),
+        }));
+
+      // Saring entitas terlapor
+      const cleanedTerlaporList = (terlaporList || [])
+        .filter((t) => t && t.nama && t.nama.trim() !== '')
+        .map((t, idx) => ({
+          id: t.id || `terlapor-${idx + 1}-${Date.now()}`,
+          nama: t.nama.trim(),
+          nik: (t.nik || '').trim(),
+          ttl: (t.ttl || '').trim(),
+          pekerjaan: (t.pekerjaan || '').trim(),
+          agama: (t.agama || 'Islam').trim(),
+          alamat: (t.alamat || '').trim(),
+          kontak: (t.kontak || '').trim(),
+          role_label: t.role_label || (idx === 0 ? 'Terlapor Utama' : `Terlapor Tambahan ${idx}`),
+        }));
+
+      console.log("[Dumas Form] Data saksi yang disiapkan:", cleanedSaksiList);
+
       const newDumasData = {
         nomor_lp: generatedNo,
         tanggal_lapor: new Date().toISOString(),
@@ -332,8 +533,10 @@ export default function DumasFormView({
         pelapor_kontak: pelapor.kontak,
         pelapor_alamat: pelapor.alamat,
         
-        saksi_list: saksiList,
-        terlapor_list: terlaporList,
+        saksi_list: cleanedSaksiList,
+        saksi: cleanedSaksiList,
+        terlapor_list: cleanedTerlaporList.length > 0 ? cleanedTerlaporList : terlaporList,
+        terlapor: cleanedTerlaporList.length > 0 ? cleanedTerlaporList : terlaporList,
 
         terlapor_nama: primaryTerlapor.nama,
         terlapor_nik: primaryTerlapor.nik,
@@ -351,7 +554,14 @@ export default function DumasFormView({
         uraian_kejadian: caseInfo.uraian_kejadian,
       };
 
-      await onSubmitDumas(newDumasData, evidenceFiles);
+      const result = await onSubmitDumas(newDumasData, evidenceFiles);
+      // HANYA bersihkan draf jika penyimpanan ke Supabase berhasil
+      if (result && result.success !== false) {
+        clearDumasDraft(currentUserProfile?.id);
+        setIsDraftRestored(false);
+        setLastSavedTime(null);
+        setSaveStatus('idle');
+      }
     } catch (err) {
       console.error('Error saat menyimpan dumas:', err);
       setFormError('Terjadi kesalahan sistem saat menyimpan data.');
@@ -383,6 +593,44 @@ export default function DumasFormView({
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Status Auto-Save Persistence */}
+          {saveStatus === 'saving' && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              fontFamily: 'JetBrains Mono, monospace',
+              color: '#F59E0B',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              fontWeight: 500
+            }}>
+              <Clock size={12} className="animate-spin" />
+              Menyimpan draf...
+            </span>
+          )}
+          {saveStatus === 'saved' && lastSavedTime && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              fontFamily: 'JetBrains Mono, monospace',
+              color: '#10B981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              fontWeight: 500
+            }} title="Data form tersimpan otomatis di browser lokal">
+              <CheckCircle2 size={12} />
+              Draf tersimpan ({lastSavedTime})
+            </span>
+          )}
+
           {mode === 'ocr' ? (
             <span style={{
               display: 'inline-flex',
@@ -437,6 +685,54 @@ export default function DumasFormView({
           }}>
             <AlertCircle size={16} color="#F87171" style={{ flexShrink: 0 }} />
             <span>{formError}</span>
+          </div>
+        )}
+
+        {/* Banner Draf Dipulihkan */}
+        {isDraftRestored && !initialOcrData && (
+          <div style={{
+            padding: '12px 18px',
+            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            fontFamily: 'JetBrains Mono, monospace'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <CheckCircle2 size={16} color="#10B981" style={{ flexShrink: 0 }} />
+              <div>
+                <span style={{ color: '#E2E8F0', fontSize: '12px', fontWeight: 600 }}>
+                  Draf Formulir Berhasil Dipulihkan
+                </span>
+                <p style={{ color: '#94A3B8', fontSize: '11px', margin: '2px 0 0 0', fontFamily: 'Inter, sans-serif' }}>
+                  Data isian sebelumnya telah dimuat kembali secara otomatis dari penyimpanan lokal browser Anda.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetDraft}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#EF4444',
+                fontSize: '11px',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap'
+              }}
+              title="Hapus draf tersimpan dan mulai form kosong"
+            >
+              <RotateCcw size={12} />
+              Reset Draf
+            </button>
           </div>
         )}
 
@@ -536,12 +832,15 @@ export default function DumasFormView({
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <label className="dumas-form-label">
+                  <label htmlFor="nama_pelapor" className="dumas-form-label">
                     NAMA LENGKAP <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input 
+                    id="nama_pelapor"
+                    name="nama_pelapor"
                     type="text"
                     required
+                    autoComplete="name"
                     value={pelapor.nama}
                     onChange={(e) => setPelapor({ ...pelapor, nama: e.target.value })}
                     placeholder="Nama lengkap beserta gelar"
@@ -550,13 +849,16 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label className="dumas-form-label">
+                  <label htmlFor="nik_pelapor" className="dumas-form-label">
                     NIK (NOMOR INDUK KEPENDUDUKAN) <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input 
+                    id="nik_pelapor"
+                    name="nik_pelapor"
                     type="text"
                     required
                     maxLength={16}
+                    autoComplete="off"
                     value={pelapor.nik}
                     onChange={(e) => setPelapor({ ...pelapor, nik: e.target.value })}
                     placeholder="74**************"
@@ -565,11 +867,14 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label className="dumas-form-label">
+                  <label htmlFor="ttl_pelapor" className="dumas-form-label">
                     TEMPAT, TANGGAL LAHIR
                   </label>
                   <input 
+                    id="ttl_pelapor"
+                    name="ttl_pelapor"
                     type="text"
+                    autoComplete="off"
                     value={pelapor.ttl}
                     onChange={(e) => setPelapor({ ...pelapor, ttl: e.target.value })}
                     placeholder="Contoh: Kolaka, 19 Mei 1989"
@@ -579,11 +884,14 @@ export default function DumasFormView({
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
-                    <label className="dumas-form-label">
+                    <label htmlFor="pekerjaan_pelapor" className="dumas-form-label">
                       PEKERJAAN
                     </label>
                     <input 
+                      id="pekerjaan_pelapor"
+                      name="pekerjaan_pelapor"
                       type="text"
+                      autoComplete="off"
                       value={pelapor.pekerjaan}
                       onChange={(e) => setPelapor({ ...pelapor, pekerjaan: e.target.value })}
                       placeholder="Wiraswasta / PNS"
@@ -591,10 +899,12 @@ export default function DumasFormView({
                     />
                   </div>
                   <div>
-                    <label className="dumas-form-label">
+                    <label htmlFor="agama_pelapor" className="dumas-form-label">
                       AGAMA
                     </label>
                     <select
+                      id="agama_pelapor"
+                      name="agama_pelapor"
                       value={pelapor.agama}
                       onChange={(e) => setPelapor({ ...pelapor, agama: e.target.value })}
                       className="dumas-form-select"
@@ -611,11 +921,14 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label className="dumas-form-label">
+                  <label htmlFor="alamat_pelapor" className="dumas-form-label">
                     ALAMAT DOMISILI KTP
                   </label>
                   <input 
+                    id="alamat_pelapor"
+                    name="alamat_pelapor"
                     type="text"
+                    autoComplete="street-address"
                     value={pelapor.alamat}
                     onChange={(e) => setPelapor({ ...pelapor, alamat: e.target.value })}
                     placeholder="Alamat lengkap domisili KTP"
@@ -624,11 +937,14 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label className="dumas-form-label">
+                  <label htmlFor="kontak_pelapor" className="dumas-form-label">
                     NOMOR HP / WHATSAPP
                   </label>
                   <input 
+                    id="kontak_pelapor"
+                    name="kontak_pelapor"
                     type="text"
+                    autoComplete="tel"
                     value={pelapor.kontak}
                     onChange={(e) => setPelapor({ ...pelapor, kontak: e.target.value })}
                     placeholder="08************"
@@ -716,9 +1032,12 @@ export default function DumasFormView({
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div>
-                        <label className="dumas-form-label">NAMA LENGKAP</label>
+                        <label htmlFor={`saksi_nama_${idx}`} className="dumas-form-label">NAMA LENGKAP</label>
                         <input 
+                          id={`saksi_nama_${idx}`}
+                          name={`saksi_nama_${idx}`}
                           type="text"
+                          autoComplete="name"
                           value={saksi.nama}
                           onChange={(e) => handleSaksiChange(idx, 'nama', e.target.value)}
                           placeholder="Nama lengkap saksi"
@@ -728,10 +1047,13 @@ export default function DumasFormView({
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div>
-                          <label className="dumas-form-label">NIK</label>
+                          <label htmlFor={`saksi_nik_${idx}`} className="dumas-form-label">NIK</label>
                           <input 
+                            id={`saksi_nik_${idx}`}
+                            name={`saksi_nik_${idx}`}
                             type="text"
                             maxLength={16}
+                            autoComplete="off"
                             value={saksi.nik}
                             onChange={(e) => handleSaksiChange(idx, 'nik', e.target.value)}
                             placeholder="74********"
@@ -739,9 +1061,12 @@ export default function DumasFormView({
                           />
                         </div>
                         <div>
-                          <label className="dumas-form-label">TTL</label>
+                          <label htmlFor={`saksi_ttl_${idx}`} className="dumas-form-label">TTL</label>
                           <input 
+                            id={`saksi_ttl_${idx}`}
+                            name={`saksi_ttl_${idx}`}
                             type="text"
+                            autoComplete="off"
                             value={saksi.ttl}
                             onChange={(e) => handleSaksiChange(idx, 'ttl', e.target.value)}
                             placeholder="Tempat, Tgl Lahir"
@@ -752,9 +1077,12 @@ export default function DumasFormView({
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div>
-                          <label className="dumas-form-label">PEKERJAAN</label>
+                          <label htmlFor={`saksi_pekerjaan_${idx}`} className="dumas-form-label">PEKERJAAN</label>
                           <input 
+                            id={`saksi_pekerjaan_${idx}`}
+                            name={`saksi_pekerjaan_${idx}`}
                             type="text"
+                            autoComplete="off"
                             value={saksi.pekerjaan}
                             onChange={(e) => handleSaksiChange(idx, 'pekerjaan', e.target.value)}
                             placeholder="Pekerjaan"
@@ -762,9 +1090,12 @@ export default function DumasFormView({
                           />
                         </div>
                         <div>
-                          <label className="dumas-form-label">AGAMA</label>
+                          <label htmlFor={`saksi_agama_${idx}`} className="dumas-form-label">AGAMA</label>
                           <input 
+                            id={`saksi_agama_${idx}`}
+                            name={`saksi_agama_${idx}`}
                             type="text"
+                            autoComplete="off"
                             value={saksi.agama}
                             onChange={(e) => handleSaksiChange(idx, 'agama', e.target.value)}
                             placeholder="Agama"
@@ -774,9 +1105,12 @@ export default function DumasFormView({
                       </div>
 
                       <div>
-                        <label className="dumas-form-label">ALAMAT DOMISILI</label>
+                        <label htmlFor={`saksi_alamat_${idx}`} className="dumas-form-label">ALAMAT DOMISILI</label>
                         <input 
+                          id={`saksi_alamat_${idx}`}
+                          name={`saksi_alamat_${idx}`}
                           type="text"
+                          autoComplete="street-address"
                           value={saksi.alamat}
                           onChange={(e) => handleSaksiChange(idx, 'alamat', e.target.value)}
                           placeholder="Alamat domisili KTP"
@@ -785,9 +1119,12 @@ export default function DumasFormView({
                       </div>
 
                       <div>
-                        <label className="dumas-form-label">NOMOR HP / WA</label>
+                        <label htmlFor={`saksi_kontak_${idx}`} className="dumas-form-label">NOMOR HP / WA</label>
                         <input 
+                          id={`saksi_kontak_${idx}`}
+                          name={`saksi_kontak_${idx}`}
                           type="text"
+                          autoComplete="tel"
                           value={saksi.kontak}
                           onChange={(e) => handleSaksiChange(idx, 'kontak', e.target.value)}
                           placeholder="08********"
@@ -878,12 +1215,15 @@ export default function DumasFormView({
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div>
-                        <label className="dumas-form-label">
+                        <label htmlFor={`terlapor_nama_${idx}`} className="dumas-form-label">
                           NAMA LENGKAP <span style={{ color: '#EF4444' }}>*</span>
                         </label>
                         <input 
+                          id={`terlapor_nama_${idx}`}
+                          name={`terlapor_nama_${idx}`}
                           type="text"
                           required
+                          autoComplete="name"
                           value={terlapor.nama}
                           onChange={(e) => handleTerlaporChange(idx, 'nama', e.target.value)}
                           placeholder="Nama lengkap pihak terlapor"
@@ -894,10 +1234,13 @@ export default function DumasFormView({
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div>
-                          <label className="dumas-form-label">NIK</label>
+                          <label htmlFor={`terlapor_nik_${idx}`} className="dumas-form-label">NIK</label>
                           <input 
+                            id={`terlapor_nik_${idx}`}
+                            name={`terlapor_nik_${idx}`}
                             type="text"
                             maxLength={16}
+                            autoComplete="off"
                             value={terlapor.nik}
                             onChange={(e) => handleTerlaporChange(idx, 'nik', e.target.value)}
                             placeholder="74********"
@@ -905,9 +1248,12 @@ export default function DumasFormView({
                           />
                         </div>
                         <div>
-                          <label className="dumas-form-label">TTL</label>
+                          <label htmlFor={`terlapor_ttl_${idx}`} className="dumas-form-label">TTL</label>
                           <input 
+                            id={`terlapor_ttl_${idx}`}
+                            name={`terlapor_ttl_${idx}`}
                             type="text"
+                            autoComplete="off"
                             value={terlapor.ttl}
                             onChange={(e) => handleTerlaporChange(idx, 'ttl', e.target.value)}
                             placeholder="Tempat, Tgl Lahir"
@@ -918,9 +1264,12 @@ export default function DumasFormView({
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div>
-                          <label className="dumas-form-label">PEKERJAAN</label>
+                          <label htmlFor={`terlapor_pekerjaan_${idx}`} className="dumas-form-label">PEKERJAAN</label>
                           <input 
+                            id={`terlapor_pekerjaan_${idx}`}
+                            name={`terlapor_pekerjaan_${idx}`}
                             type="text"
+                            autoComplete="off"
                             value={terlapor.pekerjaan}
                             onChange={(e) => handleTerlaporChange(idx, 'pekerjaan', e.target.value)}
                             placeholder="Pekerjaan"
@@ -928,9 +1277,12 @@ export default function DumasFormView({
                           />
                         </div>
                         <div>
-                          <label className="dumas-form-label">AGAMA</label>
+                          <label htmlFor={`terlapor_agama_${idx}`} className="dumas-form-label">AGAMA</label>
                           <input 
+                            id={`terlapor_agama_${idx}`}
+                            name={`terlapor_agama_${idx}`}
                             type="text"
+                            autoComplete="off"
                             value={terlapor.agama}
                             onChange={(e) => handleTerlaporChange(idx, 'agama', e.target.value)}
                             placeholder="Agama"
@@ -940,9 +1292,12 @@ export default function DumasFormView({
                       </div>
 
                       <div>
-                        <label className="dumas-form-label">ALAMAT DOMISILI</label>
+                        <label htmlFor={`terlapor_alamat_${idx}`} className="dumas-form-label">ALAMAT DOMISILI</label>
                         <input 
+                          id={`terlapor_alamat_${idx}`}
+                          name={`terlapor_alamat_${idx}`}
                           type="text"
+                          autoComplete="street-address"
                           value={terlapor.alamat}
                           onChange={(e) => handleTerlaporChange(idx, 'alamat', e.target.value)}
                           placeholder="Alamat domisili terlapor"
@@ -951,9 +1306,12 @@ export default function DumasFormView({
                       </div>
 
                       <div>
-                        <label className="dumas-form-label">NOMOR HP / WA</label>
+                        <label htmlFor={`terlapor_kontak_${idx}`} className="dumas-form-label">NOMOR HP / WA</label>
                         <input 
+                          id={`terlapor_kontak_${idx}`}
+                          name={`terlapor_kontak_${idx}`}
                           type="text"
+                          autoComplete="tel"
                           value={terlapor.kontak}
                           onChange={(e) => handleTerlaporChange(idx, 'kontak', e.target.value)}
                           placeholder="08********"
@@ -1011,12 +1369,15 @@ export default function DumasFormView({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             <div>
-              <label className="dumas-form-label">
+              <label htmlFor="tindak_pidana" className="dumas-form-label">
                 DUGAAN TINDAK PIDANA <span style={{ color: '#EF4444' }}>*</span>
               </label>
               <input 
+                id="tindak_pidana"
+                name="tindak_pidana"
                 type="text"
                 required
+                autoComplete="off"
                 value={caseInfo.tindak_pidana}
                 onChange={(e) => setCaseInfo({ ...caseInfo, tindak_pidana: e.target.value })}
                 placeholder="Contoh: Penggelapan Dana Kas / Penipuan"
@@ -1026,11 +1387,14 @@ export default function DumasFormView({
             </div>
 
             <div>
-              <label className="dumas-form-label">
+              <label htmlFor="pasal_disangkakan" className="dumas-form-label">
                 DUGAAN PASAL YANG DISANGKAKAN
               </label>
               <input 
+                id="pasal_disangkakan"
+                name="pasal_disangkakan"
                 type="text"
+                autoComplete="off"
                 value={caseInfo.pasal_disangkakan}
                 onChange={(e) => setCaseInfo({ ...caseInfo, pasal_disangkakan: e.target.value })}
                 placeholder="Contoh: Pasal 372 KUHP dan/atau Pasal 378 KUHP"
@@ -1040,11 +1404,14 @@ export default function DumasFormView({
             </div>
 
             <div>
-              <label className="dumas-form-label">
+              <label htmlFor="tempus_delicti" className="dumas-form-label">
                 WAKTU KEJADIAN (TEMPUS DELICTI)
               </label>
               <input 
+                id="tempus_delicti"
+                name="tempus_delicti"
                 type="text"
+                autoComplete="off"
                 value={caseInfo.tempus_delicti}
                 onChange={(e) => setCaseInfo({ ...caseInfo, tempus_delicti: e.target.value })}
                 placeholder="Contoh: Senin, 14 September 2026 - Pukul 10.30 WITA"
@@ -1053,11 +1420,14 @@ export default function DumasFormView({
             </div>
 
             <div>
-              <label className="dumas-form-label">
+              <label htmlFor="locus_delicti" className="dumas-form-label">
                 TEMPAT KEJADIAN (LOCUS DELICTI)
               </label>
               <input 
+                id="locus_delicti"
+                name="locus_delicti"
                 type="text"
+                autoComplete="off"
                 value={caseInfo.locus_delicti}
                 onChange={(e) => setCaseInfo({ ...caseInfo, locus_delicti: e.target.value })}
                 placeholder="Contoh: Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur"
@@ -1066,11 +1436,14 @@ export default function DumasFormView({
             </div>
 
             <div style={{ gridColumn: '1 / -1' }}>
-              <label className="dumas-form-label">
+              <label htmlFor="uraian_kejadian" className="dumas-form-label">
                 RINGKASAN POSISI KASUS / URAIAN SINGKAT KEJADIAN
               </label>
               <textarea 
+                id="uraian_kejadian"
+                name="uraian_kejadian"
                 rows={4}
+                autoComplete="off"
                 value={caseInfo.uraian_kejadian}
                 onChange={(e) => setCaseInfo({ ...caseInfo, uraian_kejadian: e.target.value })}
                 placeholder="Jelaskan secara kronologis duduk perkara aduan masyarakat..."
@@ -1127,7 +1500,7 @@ export default function DumasFormView({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             {/* Upload PDF */}
-            <label style={{
+            <label htmlFor="upload_pdf_bukti" style={{
               border: '1px dashed #292F42',
               backgroundColor: '#0B0D13',
               padding: '16px',
@@ -1139,9 +1512,12 @@ export default function DumasFormView({
               transition: 'all 0.2s'
             }}>
               <input 
+                id="upload_pdf_bukti"
+                name="upload_pdf_bukti"
                 type="file" 
                 accept="application/pdf"
                 multiple
+                aria-label="Unggah Berkas Bukti Dokumen Surat PDF"
                 style={{ display: 'none' }}
                 onChange={(e) => handleFileUpload(e, 'DOKUMEN_PDF')}
               />
@@ -1169,7 +1545,7 @@ export default function DumasFormView({
             </label>
 
             {/* Upload JPG */}
-            <label style={{
+            <label htmlFor="upload_jpg_bukti" style={{
               border: '1px dashed #292F42',
               backgroundColor: '#0B0D13',
               padding: '16px',
@@ -1181,9 +1557,12 @@ export default function DumasFormView({
               transition: 'all 0.2s'
             }}>
               <input 
+                id="upload_jpg_bukti"
+                name="upload_jpg_bukti"
                 type="file" 
                 accept="image/jpeg,image/png"
                 multiple
+                aria-label="Unggah Berkas Bukti Objek Fisik JPG/PNG"
                 style={{ display: 'none' }}
                 onChange={(e) => handleFileUpload(e, 'OBJEK_FISIK_JPG')}
               />
@@ -1301,23 +1680,48 @@ export default function DumasFormView({
             <span>Kembali ke Pilihan Mode</span>
           </button>
 
-          <button 
-            type="submit"
-            disabled={isSubmitting}
-            className="dumas-btn-submit"
-          >
-            {isSubmitting ? (
-              <>
-                <div style={{ width: '14px', height: '14px', border: '2px solid #FFFFFF', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                <span>Menerbitkan Nomor Dumas...</span>
-              </>
-            ) : (
-              <>
-                <Save size={15} />
-                <span>Simpan &amp; Lanjutkan Ambil Register</span>
-              </>
-            )}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={handleResetDraft}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontFamily: 'JetBrains Mono, monospace',
+                color: '#F87171',
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              title="Hapus draf lokal dan kosongkan formulir"
+            >
+              <RotateCcw size={13} />
+              <span>Reset Draf</span>
+            </button>
+
+            <button 
+              type="submit"
+              disabled={isSubmitting}
+              className="dumas-btn-submit"
+            >
+              {isSubmitting ? (
+                <>
+                  <div style={{ width: '14px', height: '14px', border: '2px solid #FFFFFF', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                  <span>Menerbitkan Nomor Dumas...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={15} />
+                  <span>Simpan &amp; Lanjutkan Ambil Register</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
       </form>
