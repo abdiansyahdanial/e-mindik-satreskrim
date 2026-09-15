@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  ArrowLeft, 
-  Copy, 
-  Check, 
-  FileText, 
-  Printer, 
-  ChevronRight, 
-  Database, 
-  Image as ImageIcon, 
-  FileSignature, 
-  ShieldCheck, 
+import {
+  ArrowLeft,
+  Copy,
+  Check,
+  FileText,
+  Printer,
+  ChevronRight,
+  Database,
+  Image as ImageIcon,
+  FileSignature,
+  ShieldCheck,
   AlertCircle,
   Eye,
   Download
@@ -29,13 +29,13 @@ export default function DumasDetailView({
 
   if (!perkara) {
     return (
-      <div 
+      <div
         className="max-w-7xl mx-auto px-4 py-12 text-center text-slate-400 font-mono"
         style={{ padding: '48px 24px', textAlign: 'center', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace' }}
       >
         <AlertCircle size={36} color="#EF4444" style={{ margin: '0 auto 12px auto' }} />
         <p className="text-sm">Data Laporan Dumas tidak ditemukan.</p>
-        <button 
+        <button
           type="button"
           onClick={onBack}
           className="mt-4 px-4 py-2 rounded-lg bg-[#121721] hover:bg-[#1B1F2C] border border-[#292F42] text-xs text-slate-300 font-mono transition-colors cursor-pointer"
@@ -97,7 +97,7 @@ export default function DumasDetailView({
   };
 
   return (
-    <div 
+    <div
       className="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-6 bg-[#080B10] text-slate-200 font-sans dumas-detail-wrapper"
       style={{
         maxWidth: '80rem',
@@ -112,11 +112,11 @@ export default function DumasDetailView({
         gap: '24px'
       }}
     >
-      
+
       {/* ========================================================= */}
       {/* 1. COMMAND BAR ATAS */}
       {/* ========================================================= */}
-      <header 
+      <header
         className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-[#292F42] dumas-command-bar"
         style={{
           display: 'flex',
@@ -130,7 +130,7 @@ export default function DumasDetailView({
       >
         {/* Tombol Kembali Kiri */}
         <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button 
+          <button
             type="button"
             onClick={onBack}
             className="bg-[#121721] hover:bg-[#1B1F2C] border border-[#292F42] px-3.5 py-2 rounded-lg text-xs font-mono text-slate-300 flex items-center gap-2 transition-colors cursor-pointer dumas-btn-back"
@@ -151,7 +151,7 @@ export default function DumasDetailView({
             <ArrowLeft size={14} color="#FF352D" />
             <span>&lt;- Daftar Dumas</span>
           </button>
-          
+
           <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-slate-400" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8' }}>
             <span className="w-2 h-2 rounded-full bg-[#E52E2E]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E52E2E' }}></span>
             <span className="uppercase tracking-wider">E-Mindik Satreskrim Koltim</span>
@@ -159,7 +159,7 @@ export default function DumasDetailView({
         </div>
 
         {/* Box Nomor Register Tengah */}
-        <div 
+        <div
           className="bg-[#0B0D13] border border-[#292F42] px-3 py-1 rounded-md text-xs font-mono font-bold text-slate-100 flex items-center gap-2 shadow-inner dumas-reg-box"
           style={{
             backgroundColor: '#0B0D13',
@@ -180,7 +180,7 @@ export default function DumasDetailView({
           <code className="text-slate-100 font-bold" style={{ color: '#F1F5F9' }}>
             {perkara?.nomor_lp || 'DUMAS/B/01/SPKT/Polres Kolaka Timur/Polda Sultra'}
           </code>
-          <button 
+          <button
             type="button"
             onClick={handleCopyNo}
             className="p-1 text-slate-400 hover:text-slate-200 cursor-pointer"
@@ -223,7 +223,7 @@ export default function DumasDetailView({
       {/* ========================================================= */}
       {/* 2. BANNER STATUS BERKAS (QUICK STATUS BAR) */}
       {/* ========================================================= */}
-      <section 
+      <section
         className="bg-[#121721] border border-[#292F42] rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-md dumas-quick-status-bar"
         style={{
           backgroundColor: '#121721',
@@ -239,7 +239,7 @@ export default function DumasDetailView({
         }}
       >
         <div className="flex items-center gap-3.5" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div 
+          <div
             className="w-10 h-10 rounded-lg bg-red-950/60 border border-red-800 flex items-center justify-center text-red-400 font-mono font-bold text-base"
             style={{
               width: '40px',
@@ -263,7 +263,7 @@ export default function DumasDetailView({
               Status Administrasi Berkas
             </div>
             <div className="flex items-center gap-2.5 mt-1" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-              <span 
+              <span
                 className="bg-amber-950/70 text-amber-300 border border-amber-800/80 px-2.5 py-1 rounded text-xs font-mono font-bold inline-flex items-center gap-1.5 dumas-badge-status-tahap"
                 style={{
                   display: 'inline-flex',
@@ -288,7 +288,7 @@ export default function DumasDetailView({
         </div>
 
         <div className="flex items-center gap-3 text-xs font-mono" style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
-          <div 
+          <div
             className="bg-[#0B0D13] px-3 py-1.5 rounded-md border border-[#292F42]"
             style={{
               backgroundColor: '#0B0D13',
@@ -306,7 +306,7 @@ export default function DumasDetailView({
             </span>
           </div>
 
-          <button 
+          <button
             type="button"
             onClick={() => setIsSchemaModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1F2C] hover:bg-[#252B3B] text-slate-300 border border-[#292F42] transition-colors cursor-pointer"
@@ -350,9 +350,9 @@ export default function DumasDetailView({
 
         {/* Card Grid Container */}
         <div className="space-y-4 font-mono" style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontFamily: 'JetBrains Mono, monospace' }}>
-          
+
           {/* Card 01: Identitas Pelapor / Korban */}
-          <article 
+          <article
             className="border-l-4 border-l-emerald-500 rounded-xl bg-[#121721] border border-[#292F42] overflow-hidden mb-4 shadow-sm dumas-dossier-card card-pelapor"
             style={{
               backgroundColor: '#121721',
@@ -363,7 +363,7 @@ export default function DumasDetailView({
               boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
             }}
           >
-            <div 
+            <div
               className="bg-[#10141D] border-b border-[#292F42] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
               style={{
                 backgroundColor: '#10141D',
@@ -379,7 +379,7 @@ export default function DumasDetailView({
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="w-2 h-2 rounded-full bg-emerald-500" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-400" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#10B981' }}>
-                  Card 01 : Identitas Pelapor / Korban
+                  Identitas Pelapor / Korban
                 </span>
               </div>
               <span className="text-[10px] bg-emerald-950/70 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(6, 78, 59, 0.7)', color: '#6EE7B7', border: '1px solid #059669', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
@@ -388,7 +388,7 @@ export default function DumasDetailView({
             </div>
 
             {/* Grid 4 Kolom Pelapor + Full Row Alamat */}
-            <div 
+            <div
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 dumas-grid-4cols"
               style={{
                 display: 'grid',
@@ -433,7 +433,7 @@ export default function DumasDetailView({
           </article>
 
           {/* Card 02: Data Pihak Terlapor */}
-          <article 
+          <article
             className="border-l-4 border-l-[#E52E2E] rounded-xl bg-[#121721] border border-[#292F42] overflow-hidden mb-4 shadow-sm dumas-dossier-card card-terlapor"
             style={{
               backgroundColor: '#121721',
@@ -444,7 +444,7 @@ export default function DumasDetailView({
               boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
             }}
           >
-            <div 
+            <div
               className="bg-[#10141D] border-b border-[#292F42] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
               style={{
                 backgroundColor: '#10141D',
@@ -460,7 +460,7 @@ export default function DumasDetailView({
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="w-2 h-2 rounded-full bg-[#E52E2E]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E52E2E' }}></span>
                 <span className="text-xs font-bold uppercase tracking-wider text-[#FF352D]" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#FF352D' }}>
-                  Card 02 : Data Pihak Terlapor
+                  Data Pihak Terlapor
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -473,7 +473,7 @@ export default function DumasDetailView({
               </div>
             </div>
 
-            <div 
+            <div
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 dumas-grid-4cols"
               style={{
                 display: 'grid',
@@ -516,7 +516,7 @@ export default function DumasDetailView({
           </article>
 
           {/* Card 03: Delik & Dugaan Pidana */}
-          <article 
+          <article
             className="border-l-4 border-l-amber-500 rounded-xl bg-[#121721] border border-[#292F42] overflow-hidden mb-4 shadow-sm dumas-dossier-card card-delik"
             style={{
               backgroundColor: '#121721',
@@ -527,7 +527,7 @@ export default function DumasDetailView({
               boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
             }}
           >
-            <div 
+            <div
               className="bg-[#10141D] border-b border-[#292F42] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
               style={{
                 backgroundColor: '#10141D',
@@ -543,7 +543,7 @@ export default function DumasDetailView({
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="w-2 h-2 rounded-full bg-amber-500" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#F59E0B' }}></span>
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-400" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#F59E0B' }}>
-                  Card 03 : Delik &amp; Dugaan Pidana
+                  Delik &amp; Dugaan Pidana
                 </span>
               </div>
               <span className="text-[10px] bg-amber-950/70 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(120, 53, 15, 0.7)', color: '#FDE68A', border: '1px solid #B45309', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
@@ -551,7 +551,7 @@ export default function DumasDetailView({
               </span>
             </div>
 
-            <div 
+            <div
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 dumas-grid-4cols"
               style={{
                 display: 'grid',
@@ -580,7 +580,7 @@ export default function DumasDetailView({
           </article>
 
           {/* Card 04: Ringkasan Kronologi Kasus */}
-          <article 
+          <article
             className="rounded-xl bg-[#121721] border border-[#292F42] p-4 shadow-sm space-y-2.5"
             style={{
               backgroundColor: '#121721',
@@ -597,16 +597,16 @@ export default function DumasDetailView({
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="w-2 h-2 rounded-full bg-[#E52E2E]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E52E2E' }}></span>
                 <span className="text-xs font-bold uppercase tracking-wider text-white" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#FFFFFF' }}>
-                  Card 04 : Ringkasan Kronologi Kasus
+                  Ringkasan Kronologi Kasus
                 </span>
               </div>
               <span className="text-[10px] font-mono text-slate-500 bg-[#0B0D13] border border-[#292F42] px-2 py-0.5 rounded" style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', backgroundColor: '#0B0D13', border: '1px solid #292F42', padding: '2px 8px', borderRadius: '4px' }}>
                 Sumber: Form Aduan SPKT Satreskrim
               </span>
             </div>
-            
+
             {/* Kotak Terminal Narasi */}
-            <div 
+            <div
               className="bg-[#0B0D13] p-4 rounded-lg border border-[#292F42] text-xs font-mono text-slate-300 leading-relaxed dumas-terminal-narrative"
               style={{
                 backgroundColor: '#0B0D13',
@@ -645,7 +645,7 @@ export default function DumasDetailView({
         </div>
 
         {/* Grid Kartu Responsif 3 Kolom */}
-        <div 
+        <div
           className="grid grid-cols-1 md:grid-cols-3 gap-4 dumas-evidence-responsive-grid"
           style={{
             display: 'grid',
@@ -657,7 +657,7 @@ export default function DumasDetailView({
             perkara.lampiran_barang_bukti.map((bb, idx) => {
               const isPdf = bb?.kategori_bukti === 'DOKUMEN_PDF';
               return (
-                <div 
+                <div
                   key={bb?.id || idx}
                   className="bg-[#121721] border border-[#292F42] rounded-xl p-4 flex flex-col justify-between shadow-sm hover:border-red-500/40 transition-colors dumas-evidence-card-box"
                   style={{
@@ -675,7 +675,7 @@ export default function DumasDetailView({
                     {/* Header Item Bukti */}
                     <div className="flex items-start justify-between gap-2" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                       <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div 
+                        <div
                           className="w-10 h-10 rounded-lg bg-red-950/70 border border-red-800 flex items-center justify-center text-red-400 shrink-0"
                           style={{
                             width: '40px',
@@ -708,7 +708,7 @@ export default function DumasDetailView({
 
                     {/* Preview Thumbnail Kotak untuk JPG */}
                     {!isPdf && (
-                      <div 
+                      <div
                         className="mt-3 w-full h-24 rounded-lg bg-[#0B0D13] border border-[#292F42] flex items-center justify-center text-slate-500 text-xs font-mono overflow-hidden"
                         style={{
                           marginTop: '12px',
@@ -730,7 +730,7 @@ export default function DumasDetailView({
                     )}
 
                     {/* Metadata Box */}
-                    <div 
+                    <div
                       className="mt-3.5 p-2.5 rounded-lg bg-[#0B0D13] border border-[#292F42] flex flex-col gap-1.5 text-[11px] font-mono text-slate-400"
                       style={{
                         marginTop: '14px',
@@ -768,7 +768,7 @@ export default function DumasDetailView({
 
                   {/* Tombol Aksi: Lihat/Perbesar & Unduh */}
                   <div className="mt-3.5 pt-3 border-t border-[#292F42] flex gap-2" style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #292F42', display: 'flex', gap: '8px' }}>
-                    <button 
+                    <button
                       type="button"
                       onClick={() => openEvidencePreview(bb)}
                       className="flex-1 py-2 px-3 rounded-lg bg-[#1B1F2C] hover:bg-[#252B3B] border border-[#292F42] text-slate-100 text-xs font-mono font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
@@ -793,7 +793,7 @@ export default function DumasDetailView({
                       <span>{isPdf ? 'Lihat PDF' : 'Perbesar Foto'}</span>
                     </button>
 
-                    <button 
+                    <button
                       type="button"
                       onClick={() => handleDownloadEvidence(bb)}
                       className="p-2 rounded-lg bg-[#121721] hover:bg-[#1B1F2C] border border-[#292F42] text-slate-300 hover:text-white cursor-pointer transition-colors"
@@ -817,7 +817,7 @@ export default function DumasDetailView({
               );
             })
           ) : (
-            <div 
+            <div
               className="col-span-full py-8 text-center bg-[#121721] rounded-xl border border-[#292F42] text-slate-500 text-xs font-mono"
               style={{
                 gridColumn: '1 / -1',
@@ -840,7 +840,7 @@ export default function DumasDetailView({
       {/* ========================================================= */}
       {/* 5. BAGIAN C: AKSI KEDINASAN (CETAK BERKAS) */}
       {/* ========================================================= */}
-      <section 
+      <section
         className="bg-[#121721] border border-[#292F42] border-l-4 border-l-[#E52E2E] rounded-xl p-5 flex flex-col gap-4 shadow-lg dumas-action-banner"
         style={{
           backgroundColor: '#121721',
@@ -855,7 +855,7 @@ export default function DumasDetailView({
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#292F42] pb-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #292F42', paddingBottom: '12px' }}>
           <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div 
+            <div
               className="w-9 h-9 rounded-lg bg-red-950/60 border border-red-800 flex items-center justify-center text-red-400"
               style={{
                 width: '38px',
@@ -892,7 +892,7 @@ export default function DumasDetailView({
           </div>
         </div>
 
-        <div 
+        <div
           className="bg-[#0B0D13] p-4 rounded-lg border border-[#292F42] flex flex-wrap items-center justify-between gap-3.5"
           style={{
             backgroundColor: '#0B0D13',
@@ -913,7 +913,7 @@ export default function DumasDetailView({
 
           <div className="flex flex-wrap items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             {/* Tombol [CETAK DUMAS] */}
-            <button 
+            <button
               type="button"
               onClick={() => window.print()}
               className="bg-[#E52E2E] hover:bg-[#C82323] text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors shadow-md dumas-btn-cetak-primary"
@@ -938,7 +938,7 @@ export default function DumasDetailView({
             </button>
 
             {/* Tombol [CETAK TANDA TERIMA LAPORAN (STTL)] */}
-            <button 
+            <button
               type="button"
               onClick={() => window.print()}
               className="bg-[#121721] hover:bg-[#1B1F2C] border border-[#E52E2E]/60 text-red-400 hover:text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors dumas-btn-cetak-secondary"
@@ -962,7 +962,7 @@ export default function DumasDetailView({
             </button>
 
             {/* Tombol Lanjut Buat Sprin */}
-            <button 
+            <button
               type="button"
               onClick={() => onOpenGeneratorForDumas && onOpenGeneratorForDumas(perkara)}
               className="bg-[#E52E2E]/20 hover:bg-[#E52E2E]/30 text-red-400 border border-red-800/80 px-4 py-2.5 rounded-lg text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-colors"
@@ -992,7 +992,7 @@ export default function DumasDetailView({
       {/* MODAL PRATINJAU BERKAS / FOTO DOKUMEN (CENTERED OVERLAY) */}
       {/* ========================================================= */}
       {activeViewer && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 dumas-modal-overlay"
           style={{
             position: 'fixed',
@@ -1009,7 +1009,7 @@ export default function DumasDetailView({
             if (e.target === e.currentTarget) setActiveViewer(null);
           }}
         >
-          <div 
+          <div
             className="relative w-full max-w-2xl bg-[#0E1118] border border-[#292F42] rounded-2xl shadow-2xl overflow-hidden dumas-modal-container"
             style={{
               position: 'relative',
@@ -1022,7 +1022,7 @@ export default function DumasDetailView({
               overflow: 'hidden'
             }}
           >
-            <div 
+            <div
               className="p-3.5 px-5 bg-[#0B0D13] border-b border-[#292F42] flex items-center justify-between"
               style={{
                 padding: '14px 20px',
@@ -1039,7 +1039,7 @@ export default function DumasDetailView({
                   {activeViewer.title}
                 </span>
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={() => setActiveViewer(null)}
                 className="text-slate-400 hover:text-white cursor-pointer bg-transparent border-0"
@@ -1051,7 +1051,7 @@ export default function DumasDetailView({
 
             <div className="p-6" style={{ padding: '24px' }}>
               {activeViewer.type === 'pdf' ? (
-                <div 
+                <div
                   className="p-5 bg-[#0B0D13] rounded-lg border border-[#292F42] font-mono text-xs flex flex-col gap-3"
                   style={{
                     padding: '20px',
@@ -1084,7 +1084,7 @@ export default function DumasDetailView({
                   </div>
                 </div>
               ) : (
-                <div 
+                <div
                   className="bg-[#0B0D13] p-5 rounded-lg border border-[#292F42] flex flex-col items-center"
                   style={{
                     backgroundColor: '#0B0D13',
@@ -1096,7 +1096,7 @@ export default function DumasDetailView({
                     alignItems: 'center'
                   }}
                 >
-                  <div 
+                  <div
                     className="w-full max-w-md h-44 rounded-lg bg-[#121721] border border-[#292F42] flex items-center justify-center text-slate-400 font-mono text-xs p-4 text-center"
                     style={{
                       width: '100%',
@@ -1126,7 +1126,7 @@ export default function DumasDetailView({
               )}
             </div>
 
-            <div 
+            <div
               className="p-3.5 px-5 bg-[#0B0D13] border-t border-[#292F42] flex items-center justify-between text-xs font-mono"
               style={{
                 padding: '14px 20px',
@@ -1143,7 +1143,7 @@ export default function DumasDetailView({
                 <ShieldCheck size={14} />
                 Status File: Terverifikasi Digital Signature
               </span>
-              <button 
+              <button
                 type="button"
                 onClick={() => setActiveViewer(null)}
                 className="px-3.5 py-1.5 rounded-md bg-[#1B1F2C] hover:bg-[#252B3B] text-slate-300 border border-[#292F42] cursor-pointer transition-colors"
@@ -1167,7 +1167,7 @@ export default function DumasDetailView({
       {/* MODAL SKEMA DATABASE SUPABASE (CENTERED OVERLAY) */}
       {/* ========================================================= */}
       {isSchemaModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 dumas-modal-overlay"
           style={{
             position: 'fixed',
@@ -1184,7 +1184,7 @@ export default function DumasDetailView({
             if (e.target === e.currentTarget) setIsSchemaModalOpen(false);
           }}
         >
-          <div 
+          <div
             className="relative w-full max-w-4xl bg-[#0E1118] border border-[#292F42] rounded-2xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden dumas-modal-container"
             style={{
               position: 'relative',
@@ -1200,7 +1200,7 @@ export default function DumasDetailView({
               overflow: 'hidden'
             }}
           >
-            <div 
+            <div
               className="p-3.5 px-5 bg-[#0B0D13] border-b border-[#292F42] flex items-center justify-between"
               style={{
                 padding: '14px 20px',
@@ -1217,7 +1217,7 @@ export default function DumasDetailView({
                   SKEMA DATABASE SUPABASE (POSTGRESQL SCHEMA DUMAS)
                 </h3>
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsSchemaModalOpen(false)}
                 className="text-slate-400 hover:text-white cursor-pointer bg-transparent border-0"
@@ -1227,13 +1227,13 @@ export default function DumasDetailView({
               </button>
             </div>
 
-            <div 
+            <div
               className="p-5 overflow-y-auto font-mono text-xs text-slate-300 flex flex-col gap-4"
               style={{ padding: '20px', overflowY: 'auto', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '16px' }}
             >
               <div>
                 <span className="text-amber-400 font-bold" style={{ color: '#F59E0B', fontWeight: 700 }}>-- 1. TABEL UTAMA: LAPORAN PENGADUAN (DUMAS)</span>
-                <pre 
+                <pre
                   className="mt-1.5 p-3.5 bg-[#121721] rounded-lg border border-[#292F42] overflow-x-auto text-slate-200 leading-relaxed"
                   style={{
                     marginTop: '6px',
@@ -1246,7 +1246,7 @@ export default function DumasDetailView({
                     lineHeight: 1.5
                   }}
                 >
-{`CREATE TABLE IF NOT EXISTS public.laporan_pengaduan (
+                  {`CREATE TABLE IF NOT EXISTS public.laporan_pengaduan (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nomor_lp VARCHAR(120) UNIQUE NOT NULL,
     tanggal_lapor TIMESTAMPTZ DEFAULT NOW(),
@@ -1285,7 +1285,7 @@ export default function DumasDetailView({
 
               <div>
                 <span className="text-amber-400 font-bold" style={{ color: '#F59E0B', fontWeight: 700 }}>-- 2. TABEL RELASI: LAMPIRAN BARANG BUKTI DIGITAL</span>
-                <pre 
+                <pre
                   className="mt-1.5 p-3.5 bg-[#121721] rounded-lg border border-[#292F42] overflow-x-auto text-slate-200 leading-relaxed"
                   style={{
                     marginTop: '6px',
@@ -1298,7 +1298,7 @@ export default function DumasDetailView({
                     lineHeight: 1.5
                   }}
                 >
-{`CREATE TABLE IF NOT EXISTS public.lampiran_barang_bukti (
+                  {`CREATE TABLE IF NOT EXISTS public.lampiran_barang_bukti (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     laporan_id UUID REFERENCES public.laporan_pengaduan(id) ON DELETE CASCADE,
     kategori_bukti VARCHAR(60), -- 'DOKUMEN_PDF' | 'OBJEK_FISIK_JPG'
@@ -1314,7 +1314,7 @@ export default function DumasDetailView({
               </div>
             </div>
 
-            <div 
+            <div
               className="p-3.5 px-5 bg-[#0B0D13] border-t border-[#292F42] flex justify-end"
               style={{
                 padding: '14px 20px',
@@ -1324,7 +1324,7 @@ export default function DumasDetailView({
                 justifyContent: 'flex-end'
               }}
             >
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsSchemaModalOpen(false)}
                 className="px-4 py-1.5 rounded-md bg-[#1B1F2C] hover:bg-[#252B3B] text-slate-300 text-xs font-mono border border-[#292F42] cursor-pointer transition-colors"
