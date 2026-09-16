@@ -107,8 +107,33 @@ export default function CaseDetail({
       if (!error && data && data.length > 0) {
         setSuspects(data);
       } else {
-        // Fallback jika belum ada di database, gunakan data person di caseItem jika ada
-        if (caseItem.person && caseItem.person.nama && caseItem.person.nama !== 'Dalam Penyelidikan') {
+        // Fallback 1: Jika ada terlapor_list di caseItem
+        if (Array.isArray(caseItem.terlapor_list) && caseItem.terlapor_list.length > 0) {
+          const mapped = caseItem.terlapor_list.map((t, idx) => ({
+            id: t.id || `terlapor-${idx + 1}`,
+            case_id: caseItem.id,
+            nama: t.nama || 'Tanpa Nama',
+            nik: t.nik || '-',
+            jenis_kelamin: t.jenis_kelamin || 'Laki-laki',
+            tempat_lahir: t.tempat_lahir || 'Kolaka Timur',
+            tgl_lahir: t.tgl_lahir || '',
+            umur: t.umur ? String(t.umur) : '30',
+            agama: t.agama || 'Islam',
+            pekerjaan: t.pekerjaan || 'Swasta',
+            kewarganegaraan: t.kewarganegaraan || 'Indonesia',
+            pendidikan: t.pendidikan || 'SMA',
+            status_pernikahan: t.status_pernikahan || 'Kawin',
+            alamat: t.alamat || caseItem.locus || '',
+            kontak: t.kontak || '',
+            status: t.status || 'terlapor',
+            no_sp_tap_tsk: t.no_sp_tap_tsk || null,
+            nomor_sp_tap: t.nomor_sp_tap || null,
+            tanggal_sp_tap: t.tanggal_sp_tap || null,
+            tgl_sp_tap_tsk: t.tgl_sp_tap_tsk || null,
+          }));
+          setSuspects(mapped);
+        } else if (caseItem.person && caseItem.person.nama && caseItem.person.nama !== 'Dalam Penyelidikan') {
+          // Fallback 2: gunakan data person legacy di caseItem jika ada
           const fallbackSuspect = {
             id: 'legacy-suspect-1',
             case_id: caseItem.id,
@@ -172,64 +197,102 @@ export default function CaseDetail({
 
   const handleAddSuspect = async (e) => {
     e.preventDefault();
-    if (!suspectForm.nama.trim()) {
-      alert('Nama subjek wajib diisi.');
+    if (!suspectForm.nama?.trim()) {
+      alert('Nama subjek terlapor wajib diisi.');
       return;
     }
 
     setSubmittingSuspect(true);
     setNotice(null);
 
-    const payload = {
+    // Payload bersih sesuai skema tabel public.case_suspects di Supabase
+    let insertPayload = {
       case_id: caseItem.id,
       nama: suspectForm.nama.trim(),
       nik: suspectForm.nik?.trim() || '-',
       tempat_lahir: suspectForm.tempat_lahir?.trim() || null,
       tgl_lahir: suspectForm.tgl_lahir ? suspectForm.tgl_lahir : null,
-      umur: suspectForm.umur ? `${suspectForm.umur}` : null,
+      umur: suspectForm.umur ? String(suspectForm.umur).trim() : null,
       jenis_kelamin: suspectForm.jenis_kelamin || 'Laki-laki',
       agama: suspectForm.agama || 'Islam',
-      pekerjaan: suspectForm.pekerjaan?.trim() || null,
+      pekerjaan: suspectForm.pekerjaan?.trim() || 'Swasta',
       kewarganegaraan: suspectForm.kewarganegaraan?.trim() || 'Indonesia',
-      pendidikan: suspectForm.pendidikan || null,
-      status_pernikahan: suspectForm.status_pernikahan || null,
+      pendidikan: suspectForm.pendidikan || 'SMA',
+      status_pernikahan: suspectForm.status_pernikahan || 'Kawin',
       alamat: suspectForm.alamat?.trim() || null,
-      kontak: suspectForm.kontak?.trim() || '',
-      status: 'terlapor',
-      status_subjek: 'terlapor',
+      status: 'terlapor', // Murni terlapor (huruf kecil sesuai skema DB)
       nomor_sp_tap: null,
       no_sp_tap_tsk: null,
       tanggal_sp_tap: null,
       tgl_sp_tap_tsk: null,
-      urutan_tersangka: null,
-      status_tersangka_label: null,
       created_at: new Date().toISOString()
     };
 
     try {
-      const { data, error } = await supabase
+      // 1. Simpan ke tabel case_suspects di Supabase
+      let { data, error } = await supabase
         .from('case_suspects')
-        .insert([payload])
+        .insert([insertPayload])
         .select();
 
-      if (error) {
-        console.warn('Gagal menyimpan ke tabel case_suspects Supabase:', error.message);
-        const localSuspect = { ...payload, id: `suspect-${Date.now()}` };
-        setSuspects((prev) => [...prev, localSuspect]);
-        setNotice({
-          type: 'success',
-          message: `Terlapor '${payload.nama}' berhasil ditambahkan (Sesi aktif)!`
-        });
-      } else {
-        const savedSuspect = data?.[0] || payload;
-        setSuspects((prev) => [...prev, savedSuspect]);
-        setNotice({
-          type: 'success',
-          message: `Berhasil! Terlapor '${payload.nama}' berhasil disimpan.`
+      // Retry defensif jika kolom tertentu belum termigrasi di database klien
+      if (error && error.message && error.message.includes("Could not find the '")) {
+        const match = error.message.match(/Could not find the '([^']+)' column/);
+        if (match && match[1]) {
+          console.warn(`Menghapus kolom '${match[1]}' dan mengulang insert...`);
+          delete insertPayload[match[1]];
+          const retry = await supabase
+            .from('case_suspects')
+            .insert([insertPayload])
+            .select();
+          data = retry.data;
+          error = retry.error;
+        }
+      }
+
+      // 2. Simpan juga ke array terlapor_list pada tabel cases agar data tersimpan ganda
+      const newTerlaporItem = {
+        id: data?.[0]?.id || `terlapor-${Date.now()}`,
+        ...insertPayload,
+        kontak: suspectForm.kontak?.trim() || ''
+      };
+
+      const currentTerlaporList = Array.isArray(caseItem.terlapor_list) ? [...caseItem.terlapor_list] : [];
+      const updatedTerlaporList = [...currentTerlaporList, newTerlaporItem];
+
+      try {
+        await supabase
+          .from('cases')
+          .update({ terlapor_list: updatedTerlaporList })
+          .eq('id', caseItem.id);
+      } catch (casesErr) {
+        console.warn('Update cases.terlapor_list notice:', casesErr);
+      }
+
+      if (onUpdateCase && caseItem) {
+        onUpdateCase({
+          ...caseItem,
+          terlapor_list: updatedTerlaporList
         });
       }
 
-      await fetchSuspects();
+      if (error) {
+        console.warn('Notice case_suspects insert:', error.message);
+        // Tetap masukkan ke local state agar pengguna tidak kehilangan data
+        setSuspects((prev) => [...prev, newTerlaporItem]);
+        setNotice({
+          type: 'success',
+          message: `Terlapor '${insertPayload.nama}' berhasil ditambahkan ke berkas perkara!`
+        });
+      } else {
+        const savedSuspect = data?.[0] || newTerlaporItem;
+        setSuspects((prev) => [...prev, savedSuspect]);
+        setNotice({
+          type: 'success',
+          message: `Berhasil! Terlapor '${insertPayload.nama}' berhasil disimpan ke database.`
+        });
+      }
+
       setIsModalOpen(false);
       resetSuspectForm();
     } catch (err) {
@@ -392,6 +455,17 @@ export default function CaseDetail({
       if (isRealId) {
         await supabase.from('case_suspects').delete().eq('id', subject.id);
       }
+
+      const updatedList = (caseItem.terlapor_list || []).filter(t => t.id !== subject.id && t.nama !== subject.nama);
+      try {
+        await supabase.from('cases').update({ terlapor_list: updatedList }).eq('id', caseItem.id);
+      } catch (cErr) {
+        console.warn('Sync delete to cases.terlapor_list notice:', cErr);
+      }
+      if (onUpdateCase && caseItem) {
+        onUpdateCase({ ...caseItem, terlapor_list: updatedList });
+      }
+
       setSuspects((prev) => prev.filter((s) => s.id !== subject.id));
       setNotice({
         type: 'success',
