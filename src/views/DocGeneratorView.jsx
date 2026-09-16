@@ -129,9 +129,11 @@ export default function DocGeneratorView({
   const [editDescription, setEditDescription] = useState('');
 
   const activePersonnel = personnel.length > 0 ? personnel : mockPersonnel;
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
   // 1. Fetch templates real-time from Supabase
   const fetchTemplates = async () => {
+    setIsLoadingTemplates(true);
     try {
       const { data, error } = await supabase
         .from('document_templates')
@@ -150,6 +152,8 @@ export default function DocGeneratorView({
       setAllTemplates(merged);
     } catch (err) {
       console.warn('Could not fetch supabase templates:', err);
+    } finally {
+      setIsLoadingTemplates(false);
     }
   };
 
@@ -374,9 +378,12 @@ export default function DocGeneratorView({
   const isCurrentParentDoc = Boolean(activeParentConfig);
 
   // 2. Fetch Suspects for currentCase from Supabase (BAGIAN 3 & 4)
+  const [isLoadingSuspects, setIsLoadingSuspects] = useState(false);
+
   useEffect(() => {
     if (!currentCase?.id) return;
     const loadSuspects = async () => {
+      setIsLoadingSuspects(true);
       try {
         const { data, error } = await supabase
           .from('case_suspects')
@@ -455,13 +462,16 @@ export default function DocGeneratorView({
         }
       } catch (e) {
         console.warn('Error loading case suspects:', e);
+      } finally {
+        setIsLoadingSuspects(false);
       }
     };
 
     loadSuspects();
   }, [currentCase?.id, initialSuspectId]);
 
-  const selectedSuspect = caseSuspects.find(s => s.id === selectedSuspectId) || caseSuspects[0] || null;
+  const suspectList = caseSuspects || [];
+  const selectedSuspect = suspectList.find(s => s.id === selectedSuspectId) || suspectList[0] || null;
   const selectedTemplate = currentTemplate;
   const activeCase = currentCase;
   const prevTemplateIdRef = useRef(currentTemplate?.id || selectedTemplateCode);
@@ -1572,7 +1582,7 @@ export default function DocGeneratorView({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '340px', overflowY: 'auto', paddingRight: '2px' }}>
-              {allTemplates.map((t) => {
+              {(allTemplates || []).map((t) => {
                 const isSelected = selectedTemplateCode === t.code;
                 const isCloud = Boolean(t.file_path || t.file_url);
                 return (
@@ -1693,7 +1703,7 @@ export default function DocGeneratorView({
                       className="form-select"
                       style={{ borderColor: 'var(--accent-amber)', fontWeight: 600 }}
                     >
-                      {caseSuspects.map((s, idx) => {
+                      {(caseSuspects || []).map((s, idx) => {
                         const isEst = s.status === 'tersangka' || s.no_sp_tap_tsk;
                         return (
                           <option key={s.id || idx} value={s.id}>
@@ -1865,7 +1875,7 @@ export default function DocGeneratorView({
                     className="form-select"
                     style={{ borderColor: 'var(--accent-red)', fontWeight: 600 }}
                   >
-                    {caseSuspects.map((s) => {
+                    {(caseSuspects || []).map((s) => {
                       const isEst = s.status === 'tersangka' || s.no_sp_tap_tsk;
                       return (
                         <option key={s.id} value={s.id}>
@@ -1937,7 +1947,7 @@ export default function DocGeneratorView({
                     className="form-select"
                     style={{ borderColor: '#C084FC', fontWeight: 600 }}
                   >
-                    {registeredVictims.map((v, vIdx) => (
+                    {(registeredVictims || []).map((v, vIdx) => (
                       <option key={v.id || vIdx} value={v.id || v.nama || `vic-${vIdx}`}>
                         {vIdx + 1}. {v.nama || 'Tanpa Nama'} {v.nik ? `(NIK: ${v.nik})` : ''} - {v.jenis_kelamin || 'Laki-laki'} {vIdx === 0 ? '(Utama)' : ''}
                       </option>
@@ -2434,12 +2444,16 @@ export default function DocGeneratorView({
                   return null;
                 }
 
-                return dynamicList.map((field, idx) => {
+                return (dynamicList || []).map((field, idx) => {
                   if (!field) return null;
                   const fieldKey = (field.field_key || field.key || `FIELD_${idx}`).replace(/[{}]/g, '').trim();
                   const upperFieldKey = fieldKey.toUpperCase();
                   let fieldLabel = field.field_label || field.label || fieldKey;
                   let placeholder = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
+                  const fieldType = field.field_type || field.type || 'text';
+                  const isRequired = field.is_required !== undefined 
+                    ? Boolean(field.is_required) 
+                    : (field.isRequired !== undefined ? Boolean(field.isRequired) : Boolean(field.required));
 
                   if (isSpTapDoc) {
                     if (upperFieldKey === 'NOMOR_SURAT' || upperFieldKey === 'DOC_NO') {
@@ -2469,6 +2483,7 @@ export default function DocGeneratorView({
                       {fieldType === 'select_personnel' ? (
                         <select
                           value={currentVal}
+                          required={Boolean(isRequired)}
                           onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                           className="form-select"
                         >
@@ -2484,11 +2499,12 @@ export default function DocGeneratorView({
                       ) : fieldType === 'select' && Array.isArray(field.options) ? (
                         <select
                           value={currentVal}
+                          required={Boolean(isRequired)}
                           onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                           className="form-select"
                         >
                           <option value="">-- Pilih Pilihan --</option>
-                          {field.options.map((opt, oIdx) => (
+                          {(field.options || []).map((opt, oIdx) => (
                             <option key={oIdx} value={opt}>{opt}</option>
                           ))}
                         </select>
@@ -2496,6 +2512,7 @@ export default function DocGeneratorView({
                         <input
                           type={(/^\d{4}-\d{2}-\d{2}$/.test(currentVal) || !currentVal) ? "date" : "text"}
                           value={currentVal}
+                          required={Boolean(isRequired)}
                           onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                           className="form-input mono"
                           placeholder={placeholder || '... Januari 2026'}
@@ -2503,6 +2520,7 @@ export default function DocGeneratorView({
                       ) : fieldType === 'textarea' ? (
                         <textarea
                           value={currentVal}
+                          required={Boolean(isRequired)}
                           onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                           className="form-textarea"
                           placeholder={placeholder}
@@ -2511,6 +2529,7 @@ export default function DocGeneratorView({
                         <input
                           type="text"
                           value={currentVal}
+                          required={Boolean(isRequired)}
                           onChange={(e) => handleInputChange(fieldKey, e.target.value)}
                           className="form-input mono"
                           placeholder={placeholder}

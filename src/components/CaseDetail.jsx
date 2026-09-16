@@ -678,25 +678,6 @@ export default function CaseDetail({
                     <button
                       type="button"
                       onClick={() => {
-                        resetSuspectForm('terlapor');
-                        setIsModalOpen(true);
-                      }}
-                      className="btn btn-secondary btn-sm"
-                      style={{
-                        borderColor: 'rgba(245, 158, 11, 0.4)',
-                        color: '#F59E0B',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <UserPlus size={14} />
-                      <span>+ Tambah Terlapor</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
                         resetSuspectForm();
                         setIsModalOpen(true);
                       }}
@@ -711,27 +692,6 @@ export default function CaseDetail({
                     >
                       <UserPlus size={14} />
                       <span>+ Tambah Terlapor</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (typeof onGenerateDocForCase === 'function') {
-                          onGenerateDocForCase(caseItem, 'SP_TAP_TSK');
-                        }
-                      }}
-                      className="btn btn-primary btn-sm"
-                      style={{
-                        background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
-                        boxShadow: '0 2px 10px rgba(239, 68, 68, 0.3)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                      title="Penerbitan Surat Penetapan Tersangka via Modul Dokumen"
-                    >
-                      <FileCheck2 size={14} />
-                      <span>Buat SP.Tap TSK</span>
                     </button>
                   </div>
                 </div>
@@ -795,7 +755,7 @@ export default function CaseDetail({
                         : 'Belum ada subjek perkara (terlapor maupun tersangka) yang tercatat.'}
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      Gunakan tombol <strong>"+ Tambah Terlapor"</strong> atau <strong>"+ Tetapkan Tersangka"</strong> di atas.
+                      Gunakan tombol <strong>"+ Tambah Terlapor"</strong> di atas. Penetapan status tersangka resmi diterbitkan melalui Modul Generate Dokumen.
                     </div>
                   </div>
                 ) : (
@@ -1428,15 +1388,11 @@ export default function CaseDetail({
                   type="submit" 
                   disabled={submittingSuspect} 
                   className="btn btn-primary btn-sm" 
-                  style={{ background: suspectForm.status === 'terlapor' ? '#D97706' : 'var(--accent-red)' }}
+                  style={{ background: '#D97706', borderColor: '#D97706' }}
                 >
-                  <FileCheck2 size={14} />
+                  <UserPlus size={14} />
                   <span>
-                    {submittingSuspect 
-                      ? 'Menyimpan...' 
-                      : suspectForm.status === 'terlapor' 
-                      ? 'Simpan Data Terlapor' 
-                      : 'Simpan & Tetapkan Tersangka'}
+                    {submittingSuspect ? 'Menyimpan...' : 'Simpan Data Terlapor'}
                   </span>
                 </button>
               </div>
