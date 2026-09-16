@@ -496,6 +496,8 @@ export function mapOcrResultToDumasForm(ocrData) {
     locus_delicti: lOcus,
     tempat_kejadian: lOcus,
     uraian_kejadian: uRaian,
+    ringkasan_posisi_kasus: uRaian,
+    kronologis: uRaian,
   };
 
   return {

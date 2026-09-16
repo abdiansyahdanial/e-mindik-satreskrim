@@ -59,10 +59,17 @@ const defaultTerlapor = [
 
 const defaultCaseInfo = {
   tindak_pidana: '',
+  dugaan_tindak_pidana: '',
+  pasal: '',
+  dugaan_pasal: '',
   pasal_disangkakan: '',
   tempus_delicti: '',
+  waktu_kejadian: '',
   locus_delicti: '',
+  tempat_kejadian: '',
   uraian_kejadian: '',
+  ringkasan_posisi_kasus: '',
+  kronologis: '',
 };
 
 export default function DumasFormView({
@@ -213,23 +220,25 @@ export default function DumasFormView({
   const [caseInfo, setCaseInfo] = useState(() => {
     if (initialOcrData) {
       const src = initialOcrData?.caseInfo || initialOcrData?.peristiwa || initialOcrData?.perkara || initialOcrData;
-      const tPidana = src.tindak_pidana || src.dugaan_tindak_pidana || initialOcrData.tindak_pidana || initialOcrData.dugaan_tindak_pidana || '';
-      const pSal = src.pasal || src.dugaan_pasal || src.pasal_disangkakan || initialOcrData.pasal || initialOcrData.dugaan_pasal || initialOcrData.pasal_disangkakan || '';
-      const tEmpus = src.tempus_delicti || src.waktu_kejadian || initialOcrData.tempus_delicti || initialOcrData.waktu_kejadian || '';
-      const lOcus = src.locus_delicti || src.tempat_kejadian || initialOcrData.locus_delicti || initialOcrData.tempat_kejadian || '';
-      const uRaian = src.uraian_kejadian || src.ringkasan_kasus || src.kronologis || initialOcrData.uraian_kejadian || initialOcrData.ringkasan_kasus || initialOcrData.kronologis || '';
+      const dugaanTindakPidana = src.tindak_pidana || src.dugaan_tindak_pidana || src.peristiwa?.tindak_pidana || initialOcrData.tindak_pidana || initialOcrData.dugaan_tindak_pidana || initialOcrData.peristiwa?.tindak_pidana || '';
+      const dugaanPasal = src.pasal || src.dugaan_pasal || src.pasal_disangkakan || src.peristiwa?.pasal || initialOcrData.pasal || initialOcrData.dugaan_pasal || initialOcrData.pasal_disangkakan || initialOcrData.peristiwa?.pasal || '';
+      const tempusDelicti = src.tempus_delicti || src.waktu_kejadian || src.peristiwa?.tempus_delicti || initialOcrData.tempus_delicti || initialOcrData.waktu_kejadian || initialOcrData.peristiwa?.tempus_delicti || '';
+      const locusDelicti = src.locus_delicti || src.tempat_kejadian || src.peristiwa?.locus_delicti || initialOcrData.locus_delicti || initialOcrData.tempat_kejadian || initialOcrData.peristiwa?.locus_delicti || '';
+      const uraianKejadian = src.uraian_kejadian || src.ringkasan_kasus || src.kronologis || src.peristiwa?.uraian_kejadian || initialOcrData.uraian_kejadian || initialOcrData.ringkasan_posisi_kasus || initialOcrData.ringkasan_kasus || initialOcrData.kronologis || initialOcrData.peristiwa?.uraian_kejadian || '';
 
       return {
-        tindak_pidana: tPidana,
-        dugaan_tindak_pidana: tPidana,
-        pasal: pSal,
-        dugaan_pasal: pSal,
-        pasal_disangkakan: pSal,
-        tempus_delicti: tEmpus,
-        waktu_kejadian: tEmpus,
-        locus_delicti: lOcus,
-        tempat_kejadian: lOcus,
-        uraian_kejadian: uRaian,
+        tindak_pidana: dugaanTindakPidana,
+        dugaan_tindak_pidana: dugaanTindakPidana,
+        pasal: dugaanPasal,
+        dugaan_pasal: dugaanPasal,
+        pasal_disangkakan: dugaanPasal,
+        tempus_delicti: tempusDelicti,
+        waktu_kejadian: tempusDelicti,
+        locus_delicti: locusDelicti,
+        tempat_kejadian: locusDelicti,
+        uraian_kejadian: uraianKejadian,
+        ringkasan_posisi_kasus: uraianKejadian,
+        kronologis: uraianKejadian,
       };
     }
     if (savedDraft?.caseInfo) {
@@ -247,6 +256,8 @@ export default function DumasFormView({
         locus_delicti: 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
         tempat_kejadian: 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
         uraian_kejadian: 'Bahwa pada hari Senin tanggal 14 September 2026 sekitar pukul 10.30 WITA, Terlapor Sdr. SAMSUL BAHRI diduga tanpa hak atau izin telah menggelapkan dana kas Bumdes sebesar Rp 45.000.000,- (Empat Puluh Lima Juta Rupiah).',
+        ringkasan_posisi_kasus: 'Bahwa pada hari Senin tanggal 14 September 2026 sekitar pukul 10.30 WITA, Terlapor Sdr. SAMSUL BAHRI diduga tanpa hak atau izin telah menggelapkan dana kas Bumdes sebesar Rp 45.000.000,- (Empat Puluh Lima Juta Rupiah).',
+        kronologis: 'Bahwa pada hari Senin tanggal 14 September 2026 sekitar pukul 10.30 WITA, Terlapor Sdr. SAMSUL BAHRI diduga tanpa hak atau izin telah menggelapkan dana kas Bumdes sebesar Rp 45.000.000,- (Empat Puluh Lima Juta Rupiah).',
       };
     }
     return defaultCaseInfo;
@@ -257,24 +268,26 @@ export default function DumasFormView({
     if (initialOcrData) {
       const src = initialOcrData?.caseInfo || initialOcrData?.peristiwa || initialOcrData?.perkara || initialOcrData;
       setCaseInfo(prev => {
-        const tPidana = src.tindak_pidana || src.dugaan_tindak_pidana || initialOcrData.tindak_pidana || initialOcrData.dugaan_tindak_pidana || prev.tindak_pidana || '';
-        const pSal = src.pasal || src.dugaan_pasal || src.pasal_disangkakan || initialOcrData.pasal || initialOcrData.dugaan_pasal || initialOcrData.pasal_disangkakan || prev.pasal_disangkakan || '';
-        const tEmpus = src.tempus_delicti || src.waktu_kejadian || initialOcrData.tempus_delicti || initialOcrData.waktu_kejadian || prev.tempus_delicti || '';
-        const lOcus = src.locus_delicti || src.tempat_kejadian || initialOcrData.locus_delicti || initialOcrData.tempat_kejadian || prev.locus_delicti || '';
-        const uRaian = src.uraian_kejadian || src.ringkasan_kasus || src.kronologis || initialOcrData.uraian_kejadian || initialOcrData.ringkasan_kasus || initialOcrData.kronologis || prev.uraian_kejadian || '';
+        const dugaanTindakPidana = src.tindak_pidana || src.dugaan_tindak_pidana || src.peristiwa?.tindak_pidana || initialOcrData.tindak_pidana || initialOcrData.dugaan_tindak_pidana || initialOcrData.peristiwa?.tindak_pidana || prev.dugaan_tindak_pidana || prev.tindak_pidana || '';
+        const dugaanPasal = src.pasal || src.dugaan_pasal || src.pasal_disangkakan || src.peristiwa?.pasal || initialOcrData.pasal || initialOcrData.dugaan_pasal || initialOcrData.pasal_disangkakan || initialOcrData.peristiwa?.pasal || prev.dugaan_pasal || prev.pasal_disangkakan || '';
+        const tempusDelicti = src.tempus_delicti || src.waktu_kejadian || src.peristiwa?.tempus_delicti || initialOcrData.tempus_delicti || initialOcrData.waktu_kejadian || initialOcrData.peristiwa?.tempus_delicti || prev.tempus_delicti || prev.waktu_kejadian || '';
+        const locusDelicti = src.locus_delicti || src.tempat_kejadian || src.peristiwa?.locus_delicti || initialOcrData.locus_delicti || initialOcrData.tempat_kejadian || initialOcrData.peristiwa?.locus_delicti || prev.locus_delicti || prev.tempat_kejadian || '';
+        const uraianKejadian = src.uraian_kejadian || src.ringkasan_kasus || src.kronologis || src.peristiwa?.uraian_kejadian || initialOcrData.uraian_kejadian || initialOcrData.ringkasan_posisi_kasus || initialOcrData.ringkasan_kasus || initialOcrData.kronologis || initialOcrData.peristiwa?.uraian_kejadian || prev.uraian_kejadian || prev.ringkasan_posisi_kasus || '';
 
         return {
           ...prev,
-          tindak_pidana: tPidana,
-          dugaan_tindak_pidana: tPidana,
-          pasal: pSal,
-          dugaan_pasal: pSal,
-          pasal_disangkakan: pSal,
-          tempus_delicti: tEmpus,
-          waktu_kejadian: tEmpus,
-          locus_delicti: lOcus,
-          tempat_kejadian: lOcus,
-          uraian_kejadian: uRaian,
+          tindak_pidana: dugaanTindakPidana,
+          dugaan_tindak_pidana: dugaanTindakPidana,
+          pasal: dugaanPasal,
+          dugaan_pasal: dugaanPasal,
+          pasal_disangkakan: dugaanPasal,
+          tempus_delicti: tempusDelicti,
+          waktu_kejadian: tempusDelicti,
+          locus_delicti: locusDelicti,
+          tempat_kejadian: locusDelicti,
+          uraian_kejadian: uraianKejadian,
+          ringkasan_posisi_kasus: uraianKejadian,
+          kronologis: uraianKejadian,
         };
       });
     }
@@ -1498,8 +1511,8 @@ export default function DumasFormView({
                 name="uraian_kejadian"
                 rows={4}
                 autoComplete="off"
-                value={caseInfo.uraian_kejadian || caseInfo.ringkasan_kasus || caseInfo.kronologis || ''}
-                onChange={(e) => setCaseInfo({ ...caseInfo, uraian_kejadian: e.target.value, ringkasan_kasus: e.target.value, kronologis: e.target.value })}
+                value={caseInfo.uraian_kejadian || caseInfo.ringkasan_posisi_kasus || caseInfo.ringkasan_kasus || caseInfo.kronologis || ''}
+                onChange={(e) => setCaseInfo({ ...caseInfo, uraian_kejadian: e.target.value, ringkasan_posisi_kasus: e.target.value, ringkasan_kasus: e.target.value, kronologis: e.target.value })}
                 placeholder="Jelaskan secara kronologis duduk perkara aduan masyarakat..."
                 className="dumas-form-textarea"
               />

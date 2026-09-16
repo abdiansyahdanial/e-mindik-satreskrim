@@ -54,30 +54,43 @@ export default async function handler(req, res) {
 
     // Prompt kedinasan Satreskrim untuk ekstraksi entitas formil
     const systemPrompt = `Anda adalah asisten AI resmi Satreskrim Kepolisian Republik Indonesia (POLRI).
-TUGAS UTAMA: Ekstraksi OCR murni. DILARANG MERINGKAS, MENGUBAH, ATAU MEMOTONG TEKS APAPUN, terutama pada bagian 'uraian_kejadian' atau 'kronologis'. Salin seluruh teks kejadian secara lengkap, utuh, dan verbatim (kata per kata) persis sesuai yang tertulis pada dokumen fisik ke dalam properti JSON terkait. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.
+TUGAS UTAMA: Ekstraksi OCR murni. Wajib sertakan objek peristiwa/tindak_pidana, pasal, tempus_delicti, locus_delicti, dan uraian_kejadian secara lengkap.
+DILARANG MERINGKAS, MENGUBAH, ATAU MEMOTONG TEKS APAPUN, terutama pada bagian 'uraian_kejadian' atau 'kronologis'. Salin seluruh teks kejadian secara lengkap, utuh, dan verbatim (kata per kata) persis sesuai yang tertulis pada dokumen fisik ke dalam properti JSON terkait. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.
 
-PETUNJUK EKSTRAKSI ADMINISTRASI PENYIDIKAN:
-1. Nomor & Tanggal Surat:
-   - Cari nomor surat pengaduan / agenda / register jika ada (misal: "B/12/IX/2026/Reskrim" atau nomor agenda).
-   - Ekstrak tanggal surat dibuat atau tanggal tanda terima berkas.
-2. Identitas Pelapor / Pengadu (pelapor):
-   - Ekstrak: nama lengkap (pelapor_nama), NIK (pelapor_nik), TTL (pelapor_ttl), pekerjaan (pelapor_pekerjaan), agama (pelapor_agama), alamat domisili (pelapor_alamat), kontak/HP (pelapor_kontak).
-3. Pihak Terlapor (terlapor_list):
-   - Ekstrak seluruh pihak terlapor baik dari klausul terlapor maupun kronologis kejadian.
-   - Ekstrak tiap entitas: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label ("Terlapor Utama" atau "Terlapor Tambahan").
-4. Saksi-Saksi (saksi_list):
-   - Ekstrak saksi yang diajukan atau saksi yang tercantum dalam narasi peristiwa.
-   - Ekstrak tiap entitas: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label ("Saksi Fakta" atau "Saksi Terkait").
-   - Jika kolom bertanda strip ("-"), bersihkan menjadi string kosong "".
-5. Peristiwa & Dugaan Pasal Pidana (WAJIB di dalam objek "peristiwa"):
+PETUNJUK PRIORITAS EKSTRAKSI ADMINISTRASI PENYIDIKAN:
+1. Peristiwa & Dugaan Pasal Pidana (PRIORITAS UTAMA - WAJIB DI AWAL):
    - tindak_pidana: Ekstrak jenis dugaan tindak pidana (misal: "Penggelapan", "Penipuan", "Penganiayaan", dll).
    - pasal: Ekstrak pasal KUHP / UU pidana yang dicantumkan (misal: "Pasal 372 KUHP").
    - tempus_delicti: Ekstrak waktu/hari/tanggal/jam kejadian secara lengkap.
    - locus_delicti: Ekstrak tempat/lokasi TKP kejadian secara lengkap.
    - uraian_kejadian: Ekstrak narasi kronologis kejadian secara lengkap, utuh, dan verbatim (kata demi kata) sesuai dokumen tanpa diringkas atau dipotong.
+2. Nomor & Tanggal Surat:
+   - Cari nomor surat pengaduan / agenda / register jika ada (misal: "B/12/IX/2026/Reskrim" atau nomor agenda).
+   - Ekstrak tanggal surat dibuat atau tanggal tanda terima berkas.
+3. Identitas Pelapor / Pengadu (pelapor):
+   - Ekstrak: nama lengkap (pelapor_nama), NIK (pelapor_nik), TTL (pelapor_ttl), pekerjaan (pelapor_pekerjaan), agama (pelapor_agama), alamat domisili (pelapor_alamat), kontak/HP (pelapor_kontak).
+4. Saksi-Saksi (saksi_list):
+   - Ekstrak saksi yang diajukan atau saksi yang tercantum dalam narasi peristiwa.
+   - Ekstrak tiap entitas: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label ("Saksi Fakta" atau "Saksi Terkait").
+   - Jika kolom bertanda strip ("-"), bersihkan menjadi string kosong "".
+5. Pihak Terlapor (terlapor_list):
+   - Ekstrak seluruh pihak terlapor baik dari klausul terlapor maupun kronologis kejadian.
+   - Ekstrak tiap entitas: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label ("Terlapor Utama" atau "Terlapor Tambahan").
 
 FORMAT WAJIB JSON MURNI (Valid JSON Object):
 {
+  "tindak_pidana": "",
+  "pasal": "",
+  "tempus_delicti": "",
+  "locus_delicti": "",
+  "uraian_kejadian": "",
+  "peristiwa": {
+    "tindak_pidana": "",
+    "pasal": "",
+    "tempus_delicti": "",
+    "locus_delicti": "",
+    "uraian_kejadian": ""
+  },
   "nomor_surat": "",
   "tanggal_surat": "",
   "pelapor_nama": "",
@@ -87,30 +100,18 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
   "pelapor_agama": "Islam",
   "pelapor_alamat": "",
   "pelapor_kontak": "",
-  "terlapor_list": [
-    { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "kontak": "", "role_label": "Terlapor Utama" }
-  ],
   "saksi_list": [
     { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "kontak": "", "role_label": "Saksi Fakta" }
   ],
-  "peristiwa": {
-    "tindak_pidana": "",
-    "pasal": "",
-    "tempus_delicti": "",
-    "locus_delicti": "",
-    "uraian_kejadian": ""
-  },
-  "tindak_pidana": "",
-  "pasal": "",
-  "tempus_delicti": "",
-  "locus_delicti": "",
-  "uraian_kejadian": ""
+  "terlapor_list": [
+    { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "kontak": "", "role_label": "Terlapor Utama" }
+  ]
 }`;
 
     const userMessageContent = [
       {
         type: "text",
-        text: "Analisis seluruh lembar dokumen fisik di atas. Ekstrak objek 'peristiwa' (tindak_pidana, pasal, tempus_delicti, locus_delicti, uraian_kejadian verbatim). Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.",
+        text: "Analisis seluruh lembar dokumen fisik di atas. Wajib sertakan objek peristiwa/tindak_pidana, pasal, tempus_delicti, locus_delicti, dan uraian_kejadian secara lengkap. Ekstrak objek 'peristiwa' dan field-field terkait di urutan paling awal. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.",
       },
       ...formattedImages,
     ];
@@ -126,7 +127,7 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
       ],
       response_format: { type: "json_object" },
       temperature: 0.1,
-      max_tokens: 800,
+      max_tokens: 950,
     };
 
     // Sembunyikan reasoning format pada model Qwen agar kompatibel penuh dengan json_object mode
