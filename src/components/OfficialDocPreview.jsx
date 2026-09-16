@@ -44,8 +44,14 @@ export default function OfficialDocPreview({
   const lastRenderedKeyRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
-  const nomorSurat = formValues?.NOMOR_SURAT || formValues?.nomor_surat || '';
-  const tanggalSurat = formValues?.TANGGAL_SURAT || formValues?.tanggal_surat || '';
+  const isSpTap = Boolean(
+    (template?.code || '').toUpperCase().includes('TAP_TSK') ||
+    (template?.title || template?.name || '').toUpperCase().includes('PENETAPAN TERSANGKA') ||
+    (template?.title || template?.name || '').toUpperCase().includes('SP.TAP')
+  );
+
+  const nomorSurat = formValues?.nomor_sp_tap_tsk || formValues?.no_sp_tap_tsk || formValues?.NOMOR_SURAT || formValues?.nomor_surat || formValues?.DOC_NO || formValues?.doc_no || '';
+  const tanggalSurat = formValues?.TANGGAL_SURAT || formValues?.tanggal_surat || formValues?.DOC_DATE || formValues?.doc_date || '';
 
   // Dynamic variable map from active case & form values
   const currentDataMap = selectedCase ? buildMindikVariables(
@@ -471,6 +477,29 @@ export default function OfficialDocPreview({
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Header / Judul Surat Ketetapan di Preview (SP.Tap TSK) */}
+      {isSpTap && (
+        <div style={{
+          textAlign: 'center',
+          padding: '12px 16px',
+          background: '#0F172A',
+          border: '1px solid #334155',
+          borderRadius: '8px',
+          marginBottom: '2px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '1px' }}>
+            SURAT KETETAPAN
+          </div>
+          <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--accent-amber)', marginTop: '4px', fontFamily: 'monospace' }}>
+            Nomor: {formValues?.nomor_sp_tap_tsk || formValues?.no_sp_tap_tsk || formValues?.NOMOR_SURAT || formValues?.nomor_surat || formValues?.DOC_NO || activeSuspect?.no_sp_tap_tsk || activeSuspect?.nomor_sp_tap || '................................................'}
+          </div>
+          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+            Tentang Penetapan Tersangka ({activeSuspect?.status_tersangka_label || (activeSuspect?.nama ? `Tersangka: ${activeSuspect.nama}` : 'Tersangka')})
           </div>
         </div>
       )}

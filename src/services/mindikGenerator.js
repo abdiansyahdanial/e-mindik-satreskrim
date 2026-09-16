@@ -591,20 +591,20 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const isKapDoc = tplCode === 'BA_KAP' || tplCode === 'SPRIN_KAP_DAN_BA' || tplCode.includes('KAP');
   const isHanDoc = tplCode === 'SPRIN_HAN' || tplCode === 'BA_HAN' || tplCode === 'SPRIN_HAN_DAN_BA' || tplCode.includes('HAN');
 
-  const rawNomorSurat = cleanInput.NOMOR_SURAT || cleanInput.doc_no || cleanInput.DOC_NO || cleanInput.nomor_surat || '';
-  const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.DOC_DATE || cleanInput.tanggal_surat || cleanInput.doc_date || new Date().toISOString().split('T')[0];
+  const rawNomorSurat = cleanInput.NOMOR_SURAT || cleanInput.doc_no || cleanInput.DOC_NO || cleanInput.nomor_surat || cleanInput.nomor_sp_tap_tsk || cleanInput.no_sp_tap_tsk || cleanInput.nomor_sp_tap || '';
+  const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.DOC_DATE || cleanInput.tanggal_surat || cleanInput.doc_date || cleanInput.tanggal_sp_tap || cleanInput.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0];
 
   const suspectNomorSpTap = activeSuspect?.nomor_sp_tap || activeSuspect?.no_sp_tap_tsk || '';
   const suspectTanggalSpTap = activeSuspect?.tanggal_sp_tap || activeSuspect?.tgl_sp_tap_tsk || '';
 
-  // Kop Nomor Surat paling atas (Nomor : ...): gunakan murni {NOMOR_SURAT} dari dokumen yang sedang dibuka.
-  // Khusus format SP_TAP_TSK: sinkronkan dari nomor_sp_tap tersangka jika tersedia
+  // Kop Nomor Surat paling atas (Nomor : ...): gunakan murni exact string dari form input yang sedang aktif.
+  // Khusus format SP_TAP_TSK: utamakan input mentah (raw exact string) dari pengguna di form, fallback ke suspectNomorSpTap
   const effectiveNomorSurat = isSpTap 
-    ? (suspectNomorSpTap || rawNomorSurat)
+    ? (rawNomorSurat || suspectNomorSpTap)
     : rawNomorSurat;
 
   const effectiveTanggalSurat = isSpTap 
-    ? (suspectTanggalSpTap || rawTanggalSurat)
+    ? (rawTanggalSurat || suspectTanggalSpTap)
     : (isKapDoc && cleanInput.TANGGAL_KAP ? cleanInput.TANGGAL_KAP : (isHanDoc && cleanInput.TANGGAL_MULAI_HAN ? cleanInput.TANGGAL_MULAI_HAN : rawTanggalSurat));
 
   const nomorSurat = effectiveNomorSurat;
@@ -651,8 +651,12 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   // C. RUJUKAN TINGKAT TERSANGKA (dari activeSuspect / input form)
   // Rujukan SP TAP TSK di dalam isi surat rujukan huruf f: gunakan {NO_SP_TAP_TSK} atau {selectedSuspect?.nomor_sp_tap || '-'}
-  const noSpTapTsk = cleanInput.NO_SP_TAP_TSK || cleanInput.no_sp_tap_tsk || suspectNomorSpTap || '-';
-  const rawTglSpTapTsk = cleanInput.TGL_SP_TAP_TSK || cleanInput.tgl_sp_tap_tsk || cleanInput.TANGGAL_SP_TAP_TSK || cleanInput.tanggal_sp_tap_tsk || suspectTanggalSpTap || activeCase?.tgl_sp_tap_tsk || activeCase?.tanggal_penetapan || '';
+  const noSpTapTsk = isSpTap 
+    ? (effectiveNomorSurat || suspectNomorSpTap || '-')
+    : (cleanInput.NO_SP_TAP_TSK || cleanInput.no_sp_tap_tsk || cleanInput.NOMOR_SP_TAP || cleanInput.nomor_sp_tap || cleanInput.NOMOR_SP_TAP_TSK || cleanInput.nomor_sp_tap_tsk || suspectNomorSpTap || '-');
+  const rawTglSpTapTsk = isSpTap 
+    ? (effectiveTanggalSurat || suspectTanggalSpTap || '')
+    : (cleanInput.TGL_SP_TAP_TSK || cleanInput.tgl_sp_tap_tsk || cleanInput.TANGGAL_SP_TAP_TSK || cleanInput.tanggal_sp_tap_tsk || cleanInput.TANGGAL_SP_TAP || cleanInput.tanggal_sp_tap || suspectTanggalSpTap || activeCase?.tgl_sp_tap_tsk || activeCase?.tanggal_penetapan || '');
   const tglSpTapTsk = formatTanggalIndonesia(rawTglSpTapTsk);
 
   const noSprinKap = cleanInput.NO_SPRIN_KAP || cleanInput.no_sprin_kap || activeSuspect?.no_sprin_kap || '';
@@ -1547,6 +1551,19 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.doc_date = tanggalSurat;
 
   // Sisipkan tag header baru tanpa menimpa tag yang sudah ada (Universal Header Naskah Dinas)
+  if (isSpTap && effectiveNomorSurat) {
+    finalPayload.NOMOR_SURAT = effectiveNomorSurat;
+    finalPayload.nomor_surat = effectiveNomorSurat;
+    finalPayload.DOC_NO = effectiveNomorSurat;
+    finalPayload.doc_no = effectiveNomorSurat;
+    finalPayload.NOMOR_SP_TAP = effectiveNomorSurat;
+    finalPayload.nomor_sp_tap = effectiveNomorSurat;
+    finalPayload.NO_SP_TAP_TSK = effectiveNomorSurat;
+    finalPayload.no_sp_tap_tsk = effectiveNomorSurat;
+    finalPayload.NOMOR_SP_TAP_TSK = effectiveNomorSurat;
+    finalPayload.nomor_sp_tap_tsk = effectiveNomorSurat;
+  }
+
   finalPayload.NOMOR_SURAT_HEADER = formatNomorSuratHeader(finalPayload.NOMOR_SURAT || nomorSurat);
   finalPayload.nomor_surat_header = finalPayload.NOMOR_SURAT_HEADER;
 
