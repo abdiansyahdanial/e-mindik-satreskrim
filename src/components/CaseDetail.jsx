@@ -183,17 +183,17 @@ export default function CaseDetail({
     const payload = {
       case_id: caseItem.id,
       nama: suspectForm.nama.trim(),
-      nik: suspectForm.nik.trim() || '-',
-      jenis_kelamin: suspectForm.jenis_kelamin,
-      tempat_lahir: suspectForm.tempat_lahir.trim(),
+      nik: suspectForm.nik?.trim() || '-',
+      tempat_lahir: suspectForm.tempat_lahir?.trim() || null,
       tgl_lahir: suspectForm.tgl_lahir ? suspectForm.tgl_lahir : null,
       umur: suspectForm.umur ? `${suspectForm.umur}` : null,
-      agama: suspectForm.agama,
-      pekerjaan: suspectForm.pekerjaan.trim(),
-      kewarganegaraan: suspectForm.kewarganegaraan.trim(),
-      pendidikan: suspectForm.pendidikan,
-      status_pernikahan: suspectForm.status_pernikahan,
-      alamat: suspectForm.alamat.trim(),
+      jenis_kelamin: suspectForm.jenis_kelamin || 'Laki-laki',
+      agama: suspectForm.agama || 'Islam',
+      pekerjaan: suspectForm.pekerjaan?.trim() || null,
+      kewarganegaraan: suspectForm.kewarganegaraan?.trim() || 'Indonesia',
+      pendidikan: suspectForm.pendidikan || null,
+      status_pernikahan: suspectForm.status_pernikahan || null,
+      alamat: suspectForm.alamat?.trim() || null,
       kontak: suspectForm.kontak?.trim() || '',
       status: 'terlapor',
       status_subjek: 'terlapor',
@@ -201,6 +201,8 @@ export default function CaseDetail({
       no_sp_tap_tsk: null,
       tanggal_sp_tap: null,
       tgl_sp_tap_tsk: null,
+      urutan_tersangka: null,
+      status_tersangka_label: null,
       created_at: new Date().toISOString()
     };
 
@@ -216,14 +218,14 @@ export default function CaseDetail({
         setSuspects((prev) => [...prev, localSuspect]);
         setNotice({
           type: 'success',
-          message: `${isTsk ? 'Tersangka' : 'Terlapor'} '${payload.nama}' berhasil ditambahkan (Sesi aktif)!`
+          message: `Terlapor '${payload.nama}' berhasil ditambahkan (Sesi aktif)!`
         });
       } else {
         const savedSuspect = data?.[0] || payload;
         setSuspects((prev) => [...prev, savedSuspect]);
         setNotice({
           type: 'success',
-          message: `Berhasil! ${isTsk ? 'Tersangka' : 'Terlapor'} '${payload.nama}' berhasil disimpan.`
+          message: `Berhasil! Terlapor '${payload.nama}' berhasil disimpan.`
         });
       }
 
@@ -359,6 +361,7 @@ export default function CaseDetail({
         });
       }
 
+      const isTsk = editingSuspect?.status === 'tersangka';
       setNotice({
         type: 'success',
         message: `Data ${isTsk ? 'Tersangka' : 'Terlapor'} '${payload.nama}' berhasil diperbarui!`
@@ -669,7 +672,7 @@ export default function CaseDetail({
                         Manajemen Subjek Perkara ({suspects.length})
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                        Identitas yuridis Terlapor (calon tersangka) dan Tersangka Resmi (SP.TAP.TSK)
+                        Identitas yuridis Terlapor. Penetapan status Tersangka resmi dilakukan melalui modul Generate Dokumen.
                       </div>
                     </div>
                   </div>
@@ -752,10 +755,10 @@ export default function CaseDetail({
                         ? 'Belum ada pihak yang ditetapkan sebagai tersangka pada perkara ini.'
                         : subjekTab === 'terlapor'
                         ? 'Belum ada data Terlapor yang tercatat.'
-                        : 'Belum ada subjek perkara (terlapor maupun tersangka) yang tercatat.'}
+                        : 'Belum ada subjek perkara (terlapor) yang tercatat.'}
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      Gunakan tombol <strong>"+ Tambah Terlapor"</strong> di atas. Penetapan status tersangka resmi diterbitkan melalui Modul Generate Dokumen.
+                      Gunakan tombol <strong>"+ Tambah Terlapor"</strong> di atas untuk menambahkan.
                     </div>
                   </div>
                 ) : (
