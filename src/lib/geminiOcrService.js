@@ -274,19 +274,29 @@ export async function scanSuratPengaduan(files, options = {}) {
           }))
         : [],
 
-      // Normalisasi defensif Peristiwa & Dugaan Pasal Pidana
-      tindak_pidana: sanitizeField(
+      // Normalisasi defensif Peristiwa & Dugaan Pasal Pidana (Mendukung key ringkas & standar)
+      pidana: sanitizeField(
+        parsedData.pidana ||
         parsedData.tindak_pidana ||
         parsedData.dugaan_tindak_pidana ||
+        parsedData.peristiwa?.pidana ||
         parsedData.peristiwa?.tindak_pidana ||
-        parsedData.peristiwa?.dugaan_tindak_pidana ||
+        parsedData.perkara?.tindak_pidana
+      ),
+      tindak_pidana: sanitizeField(
+        parsedData.pidana ||
+        parsedData.tindak_pidana ||
+        parsedData.dugaan_tindak_pidana ||
+        parsedData.peristiwa?.pidana ||
+        parsedData.peristiwa?.tindak_pidana ||
         parsedData.perkara?.tindak_pidana
       ),
       dugaan_tindak_pidana: sanitizeField(
+        parsedData.pidana ||
         parsedData.dugaan_tindak_pidana ||
         parsedData.tindak_pidana ||
+        parsedData.peristiwa?.pidana ||
         parsedData.peristiwa?.dugaan_tindak_pidana ||
-        parsedData.peristiwa?.tindak_pidana ||
         parsedData.perkara?.tindak_pidana
       ),
       pasal: sanitizeField(
@@ -314,40 +324,72 @@ export async function scanSuratPengaduan(files, options = {}) {
         parsedData.peristiwa?.pasal ||
         parsedData.perkara?.pasal_disangkakan
       ),
-      tempus_delicti: sanitizeField(
+      waktu: sanitizeField(
+        parsedData.waktu ||
         parsedData.tempus_delicti ||
         parsedData.waktu_kejadian ||
+        parsedData.peristiwa?.waktu ||
         parsedData.peristiwa?.tempus_delicti ||
-        parsedData.peristiwa?.waktu_kejadian ||
+        parsedData.perkara?.tempus_delicti
+      ),
+      tempus_delicti: sanitizeField(
+        parsedData.waktu ||
+        parsedData.tempus_delicti ||
+        parsedData.waktu_kejadian ||
+        parsedData.peristiwa?.waktu ||
+        parsedData.peristiwa?.tempus_delicti ||
         parsedData.perkara?.tempus_delicti
       ),
       waktu_kejadian: sanitizeField(
+        parsedData.waktu ||
         parsedData.waktu_kejadian ||
         parsedData.tempus_delicti ||
+        parsedData.peristiwa?.waktu ||
         parsedData.peristiwa?.waktu_kejadian ||
-        parsedData.peristiwa?.tempus_delicti ||
         parsedData.perkara?.waktu_kejadian
       ),
-      locus_delicti: sanitizeField(
+      tkp: sanitizeField(
+        parsedData.tkp ||
         parsedData.locus_delicti ||
         parsedData.tempat_kejadian ||
+        parsedData.peristiwa?.tkp ||
         parsedData.peristiwa?.locus_delicti ||
-        parsedData.peristiwa?.tempat_kejadian ||
+        parsedData.perkara?.locus_delicti
+      ),
+      locus_delicti: sanitizeField(
+        parsedData.tkp ||
+        parsedData.locus_delicti ||
+        parsedData.tempat_kejadian ||
+        parsedData.peristiwa?.tkp ||
+        parsedData.peristiwa?.locus_delicti ||
         parsedData.perkara?.locus_delicti
       ),
       tempat_kejadian: sanitizeField(
+        parsedData.tkp ||
         parsedData.tempat_kejadian ||
         parsedData.locus_delicti ||
+        parsedData.peristiwa?.tkp ||
         parsedData.peristiwa?.tempat_kejadian ||
-        parsedData.peristiwa?.locus_delicti ||
         parsedData.perkara?.tempat_kejadian
       ),
-      uraian_kejadian: sanitizeField(
+      uraian: sanitizeField(
+        parsedData.uraian ||
         parsedData.uraian_kejadian ||
-        parsedData.ringkasan_kasus ||
+        parsedData.ringkasan_posisi_kasus ||
         parsedData.kronologis ||
+        parsedData.ringkasan_kasus ||
+        parsedData.peristiwa?.uraian ||
         parsedData.peristiwa?.uraian_kejadian ||
-        parsedData.peristiwa?.kronologis ||
+        parsedData.perkara?.uraian_kejadian
+      ),
+      uraian_kejadian: sanitizeField(
+        parsedData.uraian ||
+        parsedData.uraian_kejadian ||
+        parsedData.ringkasan_posisi_kasus ||
+        parsedData.kronologis ||
+        parsedData.ringkasan_kasus ||
+        parsedData.peristiwa?.uraian ||
+        parsedData.peristiwa?.uraian_kejadian ||
         parsedData.perkara?.uraian_kejadian
       ),
       peristiwa: parsedData.peristiwa || null,
@@ -477,24 +519,28 @@ export function mapOcrResultToDumasForm(ocrData) {
 
   // 4. Ekstrak Perkara & Delik
   const rawPerkara = ocrData.peristiwa || ocrData.perkara || {};
-  const tPidana = sanitizeField(ocrData.tindak_pidana || ocrData.dugaan_tindak_pidana || rawPerkara.tindak_pidana || rawPerkara.dugaan_tindak_pidana);
+  const tPidana = sanitizeField(ocrData.pidana || ocrData.tindak_pidana || ocrData.dugaan_tindak_pidana || rawPerkara.pidana || rawPerkara.tindak_pidana || rawPerkara.dugaan_tindak_pidana);
   const pSal = sanitizeField(ocrData.pasal || ocrData.dugaan_pasal || ocrData.pasal_disangkakan || rawPerkara.pasal || rawPerkara.dugaan_pasal || rawPerkara.pasal_disangkakan);
-  const tEmpus = sanitizeField(ocrData.tempus_delicti || ocrData.waktu_kejadian || rawPerkara.tempus_delicti || rawPerkara.waktu_kejadian);
-  const lOcus = sanitizeField(ocrData.locus_delicti || ocrData.tempat_kejadian || rawPerkara.locus_delicti || rawPerkara.tempat_kejadian);
-  const uRaian = sanitizeField(ocrData.uraian_kejadian || ocrData.ringkasan_kasus || ocrData.kronologis || rawPerkara.uraian_kejadian || rawPerkara.kronologis);
+  const tEmpus = sanitizeField(ocrData.waktu || ocrData.tempus_delicti || ocrData.waktu_kejadian || rawPerkara.waktu || rawPerkara.tempus_delicti || rawPerkara.waktu_kejadian);
+  const lOcus = sanitizeField(ocrData.tkp || ocrData.locus_delicti || ocrData.tempat_kejadian || rawPerkara.tkp || rawPerkara.locus_delicti || rawPerkara.tempat_kejadian);
+  const uRaian = sanitizeField(ocrData.uraian || ocrData.uraian_kejadian || ocrData.ringkasan_posisi_kasus || ocrData.ringkasan_kasus || ocrData.kronologis || rawPerkara.uraian || rawPerkara.uraian_kejadian || rawPerkara.kronologis);
 
   const mappedCaseInfo = {
     nomor_surat: sanitizeField(ocrData.nomor_surat || rawPerkara.nomor_surat),
     tanggal_surat: sanitizeField(ocrData.tanggal_surat || rawPerkara.tanggal_surat),
+    pidana: tPidana,
     tindak_pidana: tPidana,
     dugaan_tindak_pidana: tPidana,
     pasal: pSal,
     dugaan_pasal: pSal,
     pasal_disangkakan: pSal,
+    waktu: tEmpus,
     tempus_delicti: tEmpus,
     waktu_kejadian: tEmpus,
+    tkp: lOcus,
     locus_delicti: lOcus,
     tempat_kejadian: lOcus,
+    uraian: uRaian,
     uraian_kejadian: uRaian,
     ringkasan_posisi_kasus: uRaian,
     kronologis: uRaian,
