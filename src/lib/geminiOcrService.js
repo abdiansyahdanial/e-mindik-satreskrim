@@ -185,7 +185,15 @@ export async function scanSuratPengaduan(files, options = {}) {
 
     if (!response.ok) {
       const errJson = await response.json().catch(() => ({}));
-      throw new Error(errJson.error || `Server OCR mengembalikan status HTTP ${response.status}`);
+      const is429 = response.status === 429 || errJson.isRateLimit;
+      const errorMsg = is429
+        ? (errJson.error || 'Batas kuota token pemindaian AI (Rate Limit 429) tercapai. Harap tunggu sekitar 30 detik sebelum mencoba kembali atau lanjutkan dengan Input Manual.')
+        : (errJson.error || `Server OCR mengembalikan status HTTP ${response.status}`);
+      
+      const customErr = new Error(errorMsg);
+      customErr.isRateLimit = is429;
+      customErr.status = response.status;
+      throw customErr;
     }
 
     const resJson = await response.json();

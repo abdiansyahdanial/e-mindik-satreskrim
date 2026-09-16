@@ -13,7 +13,8 @@ import {
   RefreshCw,
   Cpu,
   Plus,
-  Layers
+  Layers,
+  Clock
 } from 'lucide-react';
 import { scanSuratPengaduan } from '../../lib/geminiOcrService';
 
@@ -27,6 +28,18 @@ export default function DumasModeSelectModal({
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [ocrError, setOcrError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState(0);
+
+  // Timer hitung mundur saat terkena rate limit 429
+  React.useEffect(() => {
+    let timer;
+    if (retryCountdown > 0) {
+      timer = setTimeout(() => {
+        setRetryCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [retryCountdown]);
 
   const fileInputRef = useRef(null);
 
@@ -120,14 +133,37 @@ export default function DumasModeSelectModal({
         }, 600);
       } else {
         setIsScanning(false);
-        setOcrError(result.error || 'Gagal mengekstrak data dari dokumen. Pastikan gambar jelas dan teks terbaca.');
+        setOcrError({
+          isRateLimit: false,
+          message: result.error || 'Gagal mengekstrak data dari dokumen. Pastikan gambar jelas dan teks terbaca.'
+        });
       }
     } catch (err) {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       setIsScanning(false);
-      setOcrError(err.message || 'Terjadi kesalahan sistem saat pemindaian dokumen.');
+
+      const isRateLimit = err?.isRateLimit ||
+        err?.status === 429 ||
+        String(err?.message || '').includes('429') ||
+        String(err?.message || '').toLowerCase().includes('rate limit') ||
+        String(err?.message || '').toLowerCase().includes('kuota') ||
+        String(err?.message || '').toLowerCase().includes('token') ||
+        String(err?.message || '').toLowerCase().includes('tokens per minute');
+
+      if (isRateLimit) {
+        setRetryCountdown(30);
+        setOcrError({
+          isRateLimit: true,
+          message: 'Batas kuota request pemindaian AI (Rate Limit 429) tercapai. Sistem sedang membatasi volume request per menit. Silakan tunggu sekitar 30 detik untuk mencoba kembali, atau lanjutkan pengisian administrasi sekarang dengan opsi Input Manual.'
+        });
+      } else {
+        setOcrError({
+          isRateLimit: false,
+          message: err.message || 'Terjadi kesalahan sistem saat pemindaian dokumen.'
+        });
+      }
     }
   };
 
@@ -448,63 +484,130 @@ export default function DumasModeSelectModal({
           {ocrError && (
             <div style={{
               marginBottom: '20px',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
+              backgroundColor: ocrError.isRateLimit ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.1)',
+              border: ocrError.isRateLimit ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(239, 68, 68, 0.4)',
               borderRadius: '12px',
-              padding: '14px 18px',
+              padding: '16px 20px',
               display: 'flex',
               alignItems: 'flex-start',
-              gap: '12px'
+              gap: '14px',
+              boxShadow: ocrError.isRateLimit ? '0 0 20px rgba(245, 158, 11, 0.15)' : 'none'
             }}>
-              <AlertTriangle size={20} color="#EF4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+              {ocrError.isRateLimit ? (
+                <Clock size={22} color="#F59E0B" style={{ flexShrink: 0, marginTop: '2px' }} />
+              ) : (
+                <AlertTriangle size={20} color="#EF4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+              )}
               <div style={{ flex: 1 }}>
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: 700, color: '#F87171', fontFamily: 'JetBrains Mono, monospace' }}>
-                  PEMINDAIAN DOKUMEN BELUM BERHASIL
+                <h4 style={{
+                  margin: '0 0 6px 0',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: ocrError.isRateLimit ? '#FBBF24' : '#F87171',
+                  fontFamily: 'JetBrains Mono, monospace'
+                }}>
+                  {ocrError.isRateLimit ? 'BATAS KUOTA AI TERCAPAI (RATE LIMIT 429)' : 'PEMINDAIAN DOKUMEN BELUM BERHASIL'}
                 </h4>
-                <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#CBD5E1', lineHeight: 1.5 }}>
-                  {ocrError}
+                <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#E2E8F0', lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}>
+                  {typeof ocrError === 'string' ? ocrError : ocrError.message}
                 </p>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={triggerFileInput}
-                    style={{
-                      background: 'rgba(229, 46, 46, 0.2)',
-                      border: '1px solid #E52E2E',
-                      color: '#FF6B6B',
-                      borderRadius: '6px',
-                      padding: '5px 12px',
-                      fontSize: '11px',
-                      fontFamily: 'JetBrains Mono, monospace',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <RefreshCw size={12} />
-                    Pilih Berkas Lain
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOcrError(null);
-                      if (onSelectMode) onSelectMode('manual');
-                    }}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid #475569',
-                      color: '#CBD5E1',
-                      borderRadius: '6px',
-                      padding: '5px 12px',
-                      fontSize: '11px',
-                      fontFamily: 'JetBrains Mono, monospace',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Lanjutkan Input Manual
-                  </button>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {ocrError.isRateLimit ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOcrError(null);
+                          if (onSelectMode) onSelectMode('manual');
+                        }}
+                        style={{
+                          background: 'linear-gradient(90deg, #F59E0B 0%, #D97706 100%)',
+                          border: 'none',
+                          color: '#000000',
+                          borderRadius: '6px',
+                          padding: '6px 14px',
+                          fontSize: '11px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)'
+                        }}
+                      >
+                        <span>Lanjutkan Input Manual</span>
+                        <ArrowRight size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={retryCountdown > 0}
+                        onClick={handleExecuteScan}
+                        style={{
+                          background: retryCountdown > 0 ? 'rgba(255, 255, 255, 0.05)' : 'rgba(245, 158, 11, 0.2)',
+                          border: retryCountdown > 0 ? '1px solid #475569' : '1px solid #F59E0B',
+                          color: retryCountdown > 0 ? '#94A3B8' : '#FBBF24',
+                          borderRadius: '6px',
+                          padding: '6px 14px',
+                          fontSize: '11px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          fontWeight: 600,
+                          cursor: retryCountdown > 0 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <RefreshCw size={12} className={retryCountdown > 0 ? '' : 'spin-on-hover'} />
+                        <span>
+                          {retryCountdown > 0 ? `Coba Pindai Lagi (${retryCountdown}s)` : 'Coba Pindai Ulang'}
+                        </span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={triggerFileInput}
+                        style={{
+                          background: 'rgba(229, 46, 46, 0.2)',
+                          border: '1px solid #E52E2E',
+                          color: '#FF6B6B',
+                          borderRadius: '6px',
+                          padding: '5px 12px',
+                          fontSize: '11px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <RefreshCw size={12} />
+                        Pilih Berkas Lain
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOcrError(null);
+                          if (onSelectMode) onSelectMode('manual');
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid #475569',
+                          color: '#CBD5E1',
+                          borderRadius: '6px',
+                          padding: '5px 12px',
+                          fontSize: '11px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Lanjutkan Input Manual
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
               <button

@@ -15,7 +15,6 @@ import DocPreviewModal from './components/DocPreviewModal';
 import UserManagementModal from './components/UserManagementModal';
 import DumasView from './views/DumasView';
 import { fetchDumasRecords } from './services/dumasService';
-import { mockDocuments } from './data/mockDocuments';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -25,20 +24,11 @@ export default function App() {
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
-  // Core Data States - 100% PURE REAL-TIME SUPABASE (NO FALLBACK REVERT)
+  // Core Data States - 100% PURE REAL-TIME SUPABASE (NO MOCK / NO DUMMY FALLBACK)
   const [cases, setCases] = useState([]);
   const [dumasList, setDumasList] = useState([]);
   const [personnel, setPersonnel] = useState([]);
-  const [documents, setDocuments] = useState(() => {
-    try {
-      const saved = localStorage.getItem('emindik_archive_documents');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return mockDocuments;
-  });
+  const [documents, setDocuments] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Modal States
@@ -239,6 +229,41 @@ export default function App() {
       } catch (e) {
         console.warn('Dumas sync error:', e);
       }
+
+      // 4. Documents (Arsip Dokumen): read pure real-time data from Supabase
+      try {
+        // Bersihkan cache localStorage lama jika masih menyimpan data dummy
+        try {
+          const cached = localStorage.getItem('emindik_archive_documents');
+          if (cached && (cached.includes('Sp.Sidik/88') || cached.includes('doc-001') || cached.includes('SPDP B/45'))) {
+            localStorage.removeItem('emindik_archive_documents');
+          }
+        } catch {}
+
+        const { data: docsData, error: docsErr } = await supabase
+          .from('documents')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!docsErr && docsData) {
+          setDocuments(docsData);
+        } else {
+          // Fallback periksa jika tabel diberi nama arsip_dokumen
+          const { data: arsipData, error: arsipErr } = await supabase
+            .from('arsip_dokumen')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!arsipErr && arsipData) {
+            setDocuments(arsipData);
+          } else {
+            setDocuments([]);
+          }
+        }
+      } catch (e) {
+        console.warn('Documents sync error:', e);
+        setDocuments([]);
+      }
     };
 
     loadSupabaseData();
@@ -359,13 +384,10 @@ export default function App() {
       
       // Update state in memory after successful deletion
       setCases((prev) => prev.filter((c) => c.id !== caseId));
-      setDocuments((prev) => {
-        const updated = prev.filter((d) => d.case_id !== caseId);
-        try {
-          localStorage.setItem('emindik_archive_documents', JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
+      setDocuments((prev) => prev.filter((d) => d.case_id !== caseId));
+      try {
+        localStorage.removeItem('emindik_archive_documents');
+      } catch {}
       showToast('Berkas perkara dan riwayat mindik berhasil dihapus dari database Supabase!');
     } catch (err) {
       console.error('Gagal menghapus perkara:', err);
@@ -574,26 +596,27 @@ export default function App() {
   };
 
   const handleSaveDocument = async (newDoc) => {
-    setDocuments((prev) => {
-      const updated = [newDoc, ...prev];
-      try {
-        localStorage.setItem('emindik_archive_documents', JSON.stringify(updated));
-      } catch (err) {
-        console.warn('LocalStorage save error:', err);
-      }
-      return updated;
-    });
+    const docToSave = {
+      ...newDoc,
+      id: newDoc.id || `doc-${Date.now()}`,
+    };
+
+    setDocuments((prev) => [docToSave, ...prev]);
     showToast(`Dokumen ${newDoc.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
 
     try {
-      await supabase.from('documents').insert([newDoc]);
+      const { error: insErr } = await supabase.from('documents').insert([docToSave]);
+      if (insErr) {
+        console.warn('Insert to documents failed, trying arsip_dokumen:', insErr.message);
+        await supabase.from('arsip_dokumen').insert([docToSave]).catch(() => {});
+      }
     } catch (err) {
       console.warn('Insert document notice:', err);
     }
   };
 
   const handleDeleteDocument = async (doc) => {
-    if (!doc) return;
+    if (!doc || !doc.id) return;
 
     // 1. Hapus file fisik dari Supabase Storage jika ada
     const fileUrl = doc.file_url || doc.storage_path || doc.url || '';
@@ -623,23 +646,22 @@ export default function App() {
       }
     }
 
-    // 2. Hapus baris dokumen dari tabel Supabase
+    // 2. Hapus baris dokumen dari tabel Supabase secara riil ke database!
     try {
-      if (doc.id && !String(doc.id).startsWith('doc-')) {
-        await supabase.from('documents').delete().eq('id', doc.id);
+      const { error: delErr } = await supabase.from('documents').delete().eq('id', doc.id);
+      if (delErr) {
+        console.warn('Gagal hapus dari documents, mencoba arsip_dokumen:', delErr.message);
+        await supabase.from('arsip_dokumen').delete().eq('id', doc.id).catch(() => {});
       }
     } catch (dbErr) {
       console.warn('Delete document database row error:', dbErr);
     }
 
-    // 3. Update state dokumen lokal & localStorage
-    setDocuments((prev) => {
-      const updated = prev.filter((d) => d.id !== doc.id);
-      try {
-        localStorage.setItem('emindik_archive_documents', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
+    // 3. Update state dokumen lokal & bersihkan cache localStorage
+    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+    try {
+      localStorage.removeItem('emindik_archive_documents');
+    } catch {}
 
     showToast(`Dokumen '${doc.doc_title || doc.title || 'Mindik'}' berhasil dihapus dari arsip!`);
   };

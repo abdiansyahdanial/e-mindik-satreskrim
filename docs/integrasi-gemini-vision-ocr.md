@@ -43,11 +43,12 @@ import Groq from 'groq-sdk';
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 ```
 
-Urutan prioritas model vision:
-1. **Prioritas Utama**: `llama-3.2-11b-vision-preview` (dapat dikustomisasi lewat `GROQ_VISION_MODEL`)
-2. **Fallback 1**: `llama-3.2-90b-vision-preview`
-3. **Fallback 2**: `qwen/qwen3.8-27b` (dengan `reasoning_format: "hidden"` untuk kompatibilitas penuh dengan `response_format: { type: "json_object" }`).
-4. **Format Output**: `response_format: { type: "json_object" }`, `temperature: 0.1` (faktual & presisi tinggi) dengan System Prompt kedinasan Satreskrim.
+Konfigurasi model vision resmi Groq:
+1. **Model Resmi**: `llama-3.2-11b-vision-preview` (dapat dikustomisasi lewat `GROQ_VISION_MODEL`)
+2. **Batas Parameter Token**: `max_tokens: 1024` (optimal & aman dari batas kuota 1000 OTPM).
+3. **Suhu Generasi**: `temperature: 0.1` (faktual, deterministik, & presisi tinggi kedinasan).
+4. **Format Output**: `response_format: { type: "json_object" }` dengan System Prompt kedinasan Satreskrim.
+5. **Penanganan Error 429**: Mendukung pendeteksian otomatis Rate Limit 429 di UI dengan timer hitung mundur 30 detik serta tombol transisi cepat ke Input Manual.
 
 ---
 

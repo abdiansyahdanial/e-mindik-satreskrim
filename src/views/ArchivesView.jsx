@@ -126,7 +126,7 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                     <FolderOpen size={40} color="#ff352d" style={{ opacity: 0.6 }} />
                     <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)' }}>
-                      Belum Ada Arsip Dokumen
+                      Belum Ada Dokumen yang Diarsipkan
                     </div>
                     <p style={{ fontSize: '12px', margin: 0, maxWidth: '380px', lineHeight: 1.4 }}>
                       Dokumen administrasi penyidikan yang digenerate akan otomatis tercatat dan tersimpan di sini.

@@ -109,50 +109,24 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
       ...formattedImages,
     ];
 
-    // Model vision utama sesuai instruksi: llama-3.2-11b-vision-preview
-    // Disertai fallback candidate model vision lain jika sewaktu-waktu mengalami rotasi/dekomisi di platform Groq
-    const candidateModels = [
-      process.env.GROQ_VISION_MODEL || "llama-3.2-11b-vision-preview",
-      "llama-3.2-90b-vision-preview",
-      "qwen/qwen3.8-27b",
-    ];
+    // Model vision resmi Groq sesuai spesifikasi kepolisian: llama-3.2-11b-vision-preview
+    const model = process.env.GROQ_VISION_MODEL || "llama-3.2-11b-vision-preview";
 
-    let completion = null;
-    let selectedModel = candidateModels[0];
-    let lastError = null;
+    const requestParams = {
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessageContent },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+      max_tokens: 1024,
+    };
 
-    for (const model of candidateModels) {
-      try {
-        selectedModel = model;
-        const requestParams = {
-          model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessageContent },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.1,
-        };
-
-        // Jika model berbasis Qwen reasoning, sembunyikan reasoning format agar kompatibel dengan json_object mode
-        if (model.includes("qwen")) {
-          requestParams.reasoning_format = "hidden";
-        }
-
-        completion = await groq.chat.completions.create(requestParams);
-
-        if (completion && completion.choices?.[0]?.message?.content) {
-          break;
-        }
-      } catch (err) {
-        lastError = err;
-        console.warn(`[Groq OCR Server] Model ${model} gagal:`, err.message || err);
-        // Jika model decommissioned atau rate limited, coba model berikutnya di daftar candidateModels
-      }
-    }
+    const completion = await groq.chat.completions.create(requestParams);
 
     if (!completion || !completion.choices?.[0]?.message?.content) {
-      throw lastError || new Error("Gagal menerima respons ekstraksi dari Groq Vision AI.");
+      throw new Error("Gagal menerima respons ekstraksi dari Groq Vision AI.");
     }
 
     const rawContent = completion.choices[0].message.content.trim();
@@ -162,10 +136,26 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
     return res.status(200).json({
       success: true,
       data: parsedData,
-      modelUsed: selectedModel,
+      modelUsed: model,
     });
   } catch (error) {
     console.error("[Groq Serverless OCR Error]:", error);
+
+    const errorMessage = String(error?.message || '');
+    const isRateLimit = error?.status === 429 || 
+      errorMessage.includes('429') || 
+      errorMessage.toLowerCase().includes('rate limit') ||
+      errorMessage.toLowerCase().includes('tokens per minute') ||
+      errorMessage.toLowerCase().includes('rate_limit');
+
+    if (isRateLimit) {
+      return res.status(429).json({
+        success: false,
+        isRateLimit: true,
+        error: "Batas kuota request pemindaian AI (Rate Limit 429) tercapai. Silakan coba kembali dalam 30 detik atau gunakan opsi Input Manual.",
+      });
+    }
+
     return res.status(500).json({
       success: false,
       error: "Gagal memproses OCR di server: " + (error.message || error),

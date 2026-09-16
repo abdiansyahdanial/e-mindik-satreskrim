@@ -524,3 +524,38 @@ CREATE POLICY "Allow authenticated all lampiran_barang_bukti"
     USING (true)
     WITH CHECK (true);
 
+-- ==============================================================================
+-- 10. TABEL ARSIP DOKUMEN MINDIK (PUBLIC.DOCUMENTS)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.documents (
+    id TEXT PRIMARY KEY DEFAULT ('doc-' || gen_random_uuid()::text),
+    case_id TEXT REFERENCES public.cases(id) ON DELETE CASCADE,
+    template_id TEXT,
+    template_code TEXT,
+    doc_title TEXT NOT NULL,
+    doc_number TEXT,
+    meta_values JSONB DEFAULT '{}'::jsonb,
+    file_url TEXT,
+    storage_path TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Documents are viewable by all users" ON public.documents;
+CREATE POLICY "Documents are viewable by all users" 
+ON public.documents FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Documents can be inserted by all users" ON public.documents;
+CREATE POLICY "Documents can be inserted by all users" 
+ON public.documents FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Documents can be updated by all users" ON public.documents;
+CREATE POLICY "Documents can be updated by all users" 
+ON public.documents FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Documents can be deleted by all users" ON public.documents;
+CREATE POLICY "Documents can be deleted by all users" 
+ON public.documents FOR DELETE USING (true);
+
+
