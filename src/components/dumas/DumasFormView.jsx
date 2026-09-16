@@ -212,12 +212,24 @@ export default function DumasFormView({
   // State 04: Peristiwa, Delik, & Dugaan Pasal
   const [caseInfo, setCaseInfo] = useState(() => {
     if (initialOcrData) {
+      const src = initialOcrData?.caseInfo || initialOcrData?.peristiwa || initialOcrData?.perkara || initialOcrData;
+      const tPidana = src.tindak_pidana || src.dugaan_tindak_pidana || initialOcrData.tindak_pidana || initialOcrData.dugaan_tindak_pidana || '';
+      const pSal = src.pasal || src.dugaan_pasal || src.pasal_disangkakan || initialOcrData.pasal || initialOcrData.dugaan_pasal || initialOcrData.pasal_disangkakan || '';
+      const tEmpus = src.tempus_delicti || src.waktu_kejadian || initialOcrData.tempus_delicti || initialOcrData.waktu_kejadian || '';
+      const lOcus = src.locus_delicti || src.tempat_kejadian || initialOcrData.locus_delicti || initialOcrData.tempat_kejadian || '';
+      const uRaian = src.uraian_kejadian || src.ringkasan_kasus || src.kronologis || initialOcrData.uraian_kejadian || initialOcrData.ringkasan_kasus || initialOcrData.kronologis || '';
+
       return {
-        tindak_pidana: initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || '',
-        pasal_disangkakan: initialOcrData?.caseInfo?.pasal_disangkakan || initialOcrData?.pasal_disangkakan || '',
-        tempus_delicti: initialOcrData?.caseInfo?.tempus_delicti || initialOcrData?.tempus_delicti || '',
-        locus_delicti: initialOcrData?.caseInfo?.locus_delicti || initialOcrData?.locus_delicti || '',
-        uraian_kejadian: initialOcrData?.caseInfo?.uraian_kejadian || initialOcrData?.uraian_kejadian || '',
+        tindak_pidana: tPidana,
+        dugaan_tindak_pidana: tPidana,
+        pasal: pSal,
+        dugaan_pasal: pSal,
+        pasal_disangkakan: pSal,
+        tempus_delicti: tEmpus,
+        waktu_kejadian: tEmpus,
+        locus_delicti: lOcus,
+        tempat_kejadian: lOcus,
+        uraian_kejadian: uRaian,
       };
     }
     if (savedDraft?.caseInfo) {
@@ -226,14 +238,47 @@ export default function DumasFormView({
     if (mode === 'ocr') {
       return {
         tindak_pidana: 'Penipuan & Penggelapan Dana Anggaran',
+        dugaan_tindak_pidana: 'Penipuan & Penggelapan Dana Anggaran',
+        pasal: 'Pasal 378 KUHP dan/atau Pasal 372 KUHP',
+        dugaan_pasal: 'Pasal 378 KUHP dan/atau Pasal 372 KUHP',
         pasal_disangkakan: 'Pasal 378 KUHP dan/atau Pasal 372 KUHP',
         tempus_delicti: 'Senin, 14 September 2026 - Pukul 10.30 WITA',
+        waktu_kejadian: 'Senin, 14 September 2026 - Pukul 10.30 WITA',
         locus_delicti: 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
+        tempat_kejadian: 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
         uraian_kejadian: 'Bahwa pada hari Senin tanggal 14 September 2026 sekitar pukul 10.30 WITA, Terlapor Sdr. SAMSUL BAHRI diduga tanpa hak atau izin telah menggelapkan dana kas Bumdes sebesar Rp 45.000.000,- (Empat Puluh Lima Juta Rupiah).',
       };
     }
     return defaultCaseInfo;
   });
+
+  // Sinkronisasi otomatis ke state caseInfo saat data hasil scan OCR diterima
+  useEffect(() => {
+    if (initialOcrData) {
+      const src = initialOcrData?.caseInfo || initialOcrData?.peristiwa || initialOcrData?.perkara || initialOcrData;
+      setCaseInfo(prev => {
+        const tPidana = src.tindak_pidana || src.dugaan_tindak_pidana || initialOcrData.tindak_pidana || initialOcrData.dugaan_tindak_pidana || prev.tindak_pidana || '';
+        const pSal = src.pasal || src.dugaan_pasal || src.pasal_disangkakan || initialOcrData.pasal || initialOcrData.dugaan_pasal || initialOcrData.pasal_disangkakan || prev.pasal_disangkakan || '';
+        const tEmpus = src.tempus_delicti || src.waktu_kejadian || initialOcrData.tempus_delicti || initialOcrData.waktu_kejadian || prev.tempus_delicti || '';
+        const lOcus = src.locus_delicti || src.tempat_kejadian || initialOcrData.locus_delicti || initialOcrData.tempat_kejadian || prev.locus_delicti || '';
+        const uRaian = src.uraian_kejadian || src.ringkasan_kasus || src.kronologis || initialOcrData.uraian_kejadian || initialOcrData.ringkasan_kasus || initialOcrData.kronologis || prev.uraian_kejadian || '';
+
+        return {
+          ...prev,
+          tindak_pidana: tPidana,
+          dugaan_tindak_pidana: tPidana,
+          pasal: pSal,
+          dugaan_pasal: pSal,
+          pasal_disangkakan: pSal,
+          tempus_delicti: tEmpus,
+          waktu_kejadian: tEmpus,
+          locus_delicti: lOcus,
+          tempat_kejadian: lOcus,
+          uraian_kejadian: uRaian,
+        };
+      });
+    }
+  }, [initialOcrData]);
 
   // State 05: Lampiran Bukti
   const [evidenceFiles, setEvidenceFiles] = useState(() => {
@@ -551,11 +596,16 @@ export default function DumasFormView({
         terlapor_kontak: primaryTerlapor.kontak,
         terlapor_status: primaryTerlapor.role_label || 'Terlapor Utama',
 
-        tindak_pidana: caseInfo.tindak_pidana,
-        pasal_disangkakan: caseInfo.pasal_disangkakan,
-        tempus_delicti: caseInfo.tempus_delicti,
-        locus_delicti: caseInfo.locus_delicti,
-        uraian_kejadian: caseInfo.uraian_kejadian,
+        tindak_pidana: caseInfo.tindak_pidana || caseInfo.dugaan_tindak_pidana || '',
+        dugaan_tindak_pidana: caseInfo.tindak_pidana || caseInfo.dugaan_tindak_pidana || '',
+        pasal_disangkakan: caseInfo.pasal_disangkakan || caseInfo.pasal || caseInfo.dugaan_pasal || '',
+        pasal: caseInfo.pasal_disangkakan || caseInfo.pasal || caseInfo.dugaan_pasal || '',
+        dugaan_pasal: caseInfo.pasal_disangkakan || caseInfo.pasal || caseInfo.dugaan_pasal || '',
+        tempus_delicti: caseInfo.tempus_delicti || caseInfo.waktu_kejadian || '',
+        waktu_kejadian: caseInfo.tempus_delicti || caseInfo.waktu_kejadian || '',
+        locus_delicti: caseInfo.locus_delicti || caseInfo.tempat_kejadian || '',
+        tempat_kejadian: caseInfo.locus_delicti || caseInfo.tempat_kejadian || '',
+        uraian_kejadian: caseInfo.uraian_kejadian || caseInfo.ringkasan_kasus || caseInfo.kronologis || '',
       };
 
       const result = await onSubmitDumas(newDumasData, evidenceFiles);
@@ -1382,8 +1432,8 @@ export default function DumasFormView({
                 type="text"
                 required
                 autoComplete="off"
-                value={caseInfo.tindak_pidana}
-                onChange={(e) => setCaseInfo({ ...caseInfo, tindak_pidana: e.target.value })}
+                value={caseInfo.tindak_pidana || caseInfo.dugaan_tindak_pidana || ''}
+                onChange={(e) => setCaseInfo({ ...caseInfo, tindak_pidana: e.target.value, dugaan_tindak_pidana: e.target.value })}
                 placeholder="Contoh: Penggelapan Dana Kas / Penipuan"
                 className="dumas-form-input"
                 style={{ fontWeight: 600 }}
@@ -1399,8 +1449,8 @@ export default function DumasFormView({
                 name="pasal_disangkakan"
                 type="text"
                 autoComplete="off"
-                value={caseInfo.pasal_disangkakan}
-                onChange={(e) => setCaseInfo({ ...caseInfo, pasal_disangkakan: e.target.value })}
+                value={caseInfo.pasal_disangkakan || caseInfo.pasal || caseInfo.dugaan_pasal || ''}
+                onChange={(e) => setCaseInfo({ ...caseInfo, pasal_disangkakan: e.target.value, pasal: e.target.value, dugaan_pasal: e.target.value })}
                 placeholder="Contoh: Pasal 372 KUHP dan/atau Pasal 378 KUHP"
                 className="dumas-form-input"
                 style={{ fontWeight: 600 }}
@@ -1416,8 +1466,8 @@ export default function DumasFormView({
                 name="tempus_delicti"
                 type="text"
                 autoComplete="off"
-                value={caseInfo.tempus_delicti}
-                onChange={(e) => setCaseInfo({ ...caseInfo, tempus_delicti: e.target.value })}
+                value={caseInfo.tempus_delicti || caseInfo.waktu_kejadian || ''}
+                onChange={(e) => setCaseInfo({ ...caseInfo, tempus_delicti: e.target.value, waktu_kejadian: e.target.value })}
                 placeholder="Contoh: Senin, 14 September 2026 - Pukul 10.30 WITA"
                 className="dumas-form-input"
               />
@@ -1432,8 +1482,8 @@ export default function DumasFormView({
                 name="locus_delicti"
                 type="text"
                 autoComplete="off"
-                value={caseInfo.locus_delicti}
-                onChange={(e) => setCaseInfo({ ...caseInfo, locus_delicti: e.target.value })}
+                value={caseInfo.locus_delicti || caseInfo.tempat_kejadian || ''}
+                onChange={(e) => setCaseInfo({ ...caseInfo, locus_delicti: e.target.value, tempat_kejadian: e.target.value })}
                 placeholder="Contoh: Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur"
                 className="dumas-form-input"
               />
@@ -1448,8 +1498,8 @@ export default function DumasFormView({
                 name="uraian_kejadian"
                 rows={4}
                 autoComplete="off"
-                value={caseInfo.uraian_kejadian}
-                onChange={(e) => setCaseInfo({ ...caseInfo, uraian_kejadian: e.target.value })}
+                value={caseInfo.uraian_kejadian || caseInfo.ringkasan_kasus || caseInfo.kronologis || ''}
+                onChange={(e) => setCaseInfo({ ...caseInfo, uraian_kejadian: e.target.value, ringkasan_kasus: e.target.value, kronologis: e.target.value })}
                 placeholder="Jelaskan secara kronologis duduk perkara aduan masyarakat..."
                 className="dumas-form-textarea"
               />

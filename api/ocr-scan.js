@@ -69,12 +69,12 @@ PETUNJUK EKSTRAKSI ADMINISTRASI PENYIDIKAN:
    - Ekstrak saksi yang diajukan atau saksi yang tercantum dalam narasi peristiwa.
    - Ekstrak tiap entitas: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label ("Saksi Fakta" atau "Saksi Terkait").
    - Jika kolom bertanda strip ("-"), bersihkan menjadi string kosong "".
-5. Perkara & Delik Pidana:
-   - Ekstrak tindak_pidana (dugaan perbuatan pidana, misal: "Penipuan", "Penggelapan", "Penganiayaan").
-   - Ekstrak pasal_disangkakan jika tertera.
-   - Ekstrak tempus_delicti (waktu peristiwa kejadian).
-   - Ekstrak locus_delicti (tempat peristiwa kejadian).
-   - Ekstrak uraian_kejadian (salin seluruh teks kronologis kejadian secara lengkap, utuh, dan verbatim kata demi kata sesuai dokumen fisik tanpa diringkas atau dipotong).
+5. Peristiwa & Dugaan Pasal Pidana (WAJIB di dalam objek "peristiwa"):
+   - tindak_pidana: Ekstrak jenis dugaan tindak pidana (misal: "Penggelapan", "Penipuan", "Penganiayaan", dll).
+   - pasal: Ekstrak pasal KUHP / UU pidana yang dicantumkan (misal: "Pasal 372 KUHP").
+   - tempus_delicti: Ekstrak waktu/hari/tanggal/jam kejadian secara lengkap.
+   - locus_delicti: Ekstrak tempat/lokasi TKP kejadian secara lengkap.
+   - uraian_kejadian: Ekstrak narasi kronologis kejadian secara lengkap, utuh, dan verbatim (kata demi kata) sesuai dokumen tanpa diringkas atau dipotong.
 
 FORMAT WAJIB JSON MURNI (Valid JSON Object):
 {
@@ -93,8 +93,15 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
   "saksi_list": [
     { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "kontak": "", "role_label": "Saksi Fakta" }
   ],
+  "peristiwa": {
+    "tindak_pidana": "",
+    "pasal": "",
+    "tempus_delicti": "",
+    "locus_delicti": "",
+    "uraian_kejadian": ""
+  },
   "tindak_pidana": "",
-  "pasal_disangkakan": "",
+  "pasal": "",
   "tempus_delicti": "",
   "locus_delicti": "",
   "uraian_kejadian": ""
@@ -103,7 +110,7 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
     const userMessageContent = [
       {
         type: "text",
-        text: "Analisis seluruh lembar dokumen fisik di atas. Salin seluruh teks uraian_kejadian secara verbatim kata per kata tanpa meringkas. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.",
+        text: "Analisis seluruh lembar dokumen fisik di atas. Ekstrak objek 'peristiwa' (tindak_pidana, pasal, tempus_delicti, locus_delicti, uraian_kejadian verbatim). Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.",
       },
       ...formattedImages,
     ];
@@ -134,8 +141,56 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
     }
 
     const rawContent = completion.choices[0].message.content.trim();
-    const cleanJson = rawContent.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
+    // 3. Proteksi pembersihan format codeblock markdown (misal ```json ... ``` atau ``` ... ```)
+    let cleanJson = rawContent;
+    const codeBlockMatch = cleanJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (codeBlockMatch && codeBlockMatch[1]) {
+      cleanJson = codeBlockMatch[1].trim();
+    } else {
+      cleanJson = cleanJson.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    }
+
+    // Jika ada teks pengantar di luar {}, potong secara presisi dari { pertama sampai } terakhir
+    const firstBrace = cleanJson.indexOf('{');
+    const lastBrace = cleanJson.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleanJson = cleanJson.substring(firstBrace, lastBrace + 1).trim();
+    }
+
     const parsedData = JSON.parse(cleanJson);
+
+    // Sinkronkan data objek peristiwa dan flat keys secara defensif
+    const pObj = parsedData.peristiwa || parsedData.perkara || {};
+    const finalTindakPidana = parsedData.tindak_pidana || parsedData.dugaan_tindak_pidana || pObj.tindak_pidana || pObj.dugaan_tindak_pidana || "";
+    const finalPasal = parsedData.pasal || parsedData.pasal_disangkakan || parsedData.dugaan_pasal || pObj.pasal || pObj.pasal_disangkakan || pObj.dugaan_pasal || "";
+    const finalTempus = parsedData.tempus_delicti || parsedData.waktu_kejadian || pObj.tempus_delicti || pObj.waktu_kejadian || "";
+    const finalLocus = parsedData.locus_delicti || parsedData.tempat_kejadian || pObj.locus_delicti || pObj.tempat_kejadian || "";
+    const finalUraian = parsedData.uraian_kejadian || parsedData.kronologis || parsedData.ringkasan_kasus || pObj.uraian_kejadian || pObj.kronologis || pObj.ringkasan_kasus || "";
+
+    parsedData.peristiwa = {
+      ...pObj,
+      tindak_pidana: finalTindakPidana,
+      dugaan_tindak_pidana: finalTindakPidana,
+      pasal: finalPasal,
+      dugaan_pasal: finalPasal,
+      pasal_disangkakan: finalPasal,
+      tempus_delicti: finalTempus,
+      waktu_kejadian: finalTempus,
+      locus_delicti: finalLocus,
+      tempat_kejadian: finalLocus,
+      uraian_kejadian: finalUraian,
+    };
+    parsedData.tindak_pidana = finalTindakPidana;
+    parsedData.dugaan_tindak_pidana = finalTindakPidana;
+    parsedData.pasal = finalPasal;
+    parsedData.dugaan_pasal = finalPasal;
+    parsedData.pasal_disangkakan = finalPasal;
+    parsedData.tempus_delicti = finalTempus;
+    parsedData.waktu_kejadian = finalTempus;
+    parsedData.locus_delicti = finalLocus;
+    parsedData.tempat_kejadian = finalLocus;
+    parsedData.uraian_kejadian = finalUraian;
 
     return res.status(200).json({
       success: true,

@@ -274,11 +274,83 @@ export async function scanSuratPengaduan(files, options = {}) {
           }))
         : [],
 
-      tindak_pidana: sanitizeField(parsedData.tindak_pidana || parsedData.perkara?.tindak_pidana),
-      pasal_disangkakan: sanitizeField(parsedData.pasal_disangkakan || parsedData.perkara?.pasal_disangkakan || parsedData.perkara?.pasal_sangkaan),
-      tempus_delicti: sanitizeField(parsedData.tempus_delicti || parsedData.perkara?.tempus_delicti || parsedData.perkara?.waktu_kejadian),
-      locus_delicti: sanitizeField(parsedData.locus_delicti || parsedData.perkara?.locus_delicti || parsedData.perkara?.tempat_kejadian),
-      uraian_kejadian: sanitizeField(parsedData.uraian_kejadian || parsedData.perkara?.uraian_kejadian || parsedData.perkara?.uraian_singkat),
+      // Normalisasi defensif Peristiwa & Dugaan Pasal Pidana
+      tindak_pidana: sanitizeField(
+        parsedData.tindak_pidana ||
+        parsedData.dugaan_tindak_pidana ||
+        parsedData.peristiwa?.tindak_pidana ||
+        parsedData.peristiwa?.dugaan_tindak_pidana ||
+        parsedData.perkara?.tindak_pidana
+      ),
+      dugaan_tindak_pidana: sanitizeField(
+        parsedData.dugaan_tindak_pidana ||
+        parsedData.tindak_pidana ||
+        parsedData.peristiwa?.dugaan_tindak_pidana ||
+        parsedData.peristiwa?.tindak_pidana ||
+        parsedData.perkara?.tindak_pidana
+      ),
+      pasal: sanitizeField(
+        parsedData.pasal ||
+        parsedData.dugaan_pasal ||
+        parsedData.pasal_disangkakan ||
+        parsedData.peristiwa?.pasal ||
+        parsedData.peristiwa?.dugaan_pasal ||
+        parsedData.peristiwa?.pasal_disangkakan ||
+        parsedData.perkara?.pasal
+      ),
+      dugaan_pasal: sanitizeField(
+        parsedData.dugaan_pasal ||
+        parsedData.pasal ||
+        parsedData.pasal_disangkakan ||
+        parsedData.peristiwa?.dugaan_pasal ||
+        parsedData.peristiwa?.pasal ||
+        parsedData.perkara?.dugaan_pasal
+      ),
+      pasal_disangkakan: sanitizeField(
+        parsedData.pasal_disangkakan ||
+        parsedData.pasal ||
+        parsedData.dugaan_pasal ||
+        parsedData.peristiwa?.pasal_disangkakan ||
+        parsedData.peristiwa?.pasal ||
+        parsedData.perkara?.pasal_disangkakan
+      ),
+      tempus_delicti: sanitizeField(
+        parsedData.tempus_delicti ||
+        parsedData.waktu_kejadian ||
+        parsedData.peristiwa?.tempus_delicti ||
+        parsedData.peristiwa?.waktu_kejadian ||
+        parsedData.perkara?.tempus_delicti
+      ),
+      waktu_kejadian: sanitizeField(
+        parsedData.waktu_kejadian ||
+        parsedData.tempus_delicti ||
+        parsedData.peristiwa?.waktu_kejadian ||
+        parsedData.peristiwa?.tempus_delicti ||
+        parsedData.perkara?.waktu_kejadian
+      ),
+      locus_delicti: sanitizeField(
+        parsedData.locus_delicti ||
+        parsedData.tempat_kejadian ||
+        parsedData.peristiwa?.locus_delicti ||
+        parsedData.peristiwa?.tempat_kejadian ||
+        parsedData.perkara?.locus_delicti
+      ),
+      tempat_kejadian: sanitizeField(
+        parsedData.tempat_kejadian ||
+        parsedData.locus_delicti ||
+        parsedData.peristiwa?.tempat_kejadian ||
+        parsedData.peristiwa?.locus_delicti ||
+        parsedData.perkara?.tempat_kejadian
+      ),
+      uraian_kejadian: sanitizeField(
+        parsedData.uraian_kejadian ||
+        parsedData.ringkasan_kasus ||
+        parsedData.kronologis ||
+        parsedData.peristiwa?.uraian_kejadian ||
+        parsedData.peristiwa?.kronologis ||
+        parsedData.perkara?.uraian_kejadian
+      ),
+      peristiwa: parsedData.peristiwa || null,
     };
 
     // 5. Mapping langsung ke state struktur Dumas
@@ -404,15 +476,26 @@ export function mapOcrResultToDumasForm(ocrData) {
         ];
 
   // 4. Ekstrak Perkara & Delik
-  const rawPerkara = ocrData.perkara || {};
+  const rawPerkara = ocrData.peristiwa || ocrData.perkara || {};
+  const tPidana = sanitizeField(ocrData.tindak_pidana || ocrData.dugaan_tindak_pidana || rawPerkara.tindak_pidana || rawPerkara.dugaan_tindak_pidana);
+  const pSal = sanitizeField(ocrData.pasal || ocrData.dugaan_pasal || ocrData.pasal_disangkakan || rawPerkara.pasal || rawPerkara.dugaan_pasal || rawPerkara.pasal_disangkakan);
+  const tEmpus = sanitizeField(ocrData.tempus_delicti || ocrData.waktu_kejadian || rawPerkara.tempus_delicti || rawPerkara.waktu_kejadian);
+  const lOcus = sanitizeField(ocrData.locus_delicti || ocrData.tempat_kejadian || rawPerkara.locus_delicti || rawPerkara.tempat_kejadian);
+  const uRaian = sanitizeField(ocrData.uraian_kejadian || ocrData.ringkasan_kasus || ocrData.kronologis || rawPerkara.uraian_kejadian || rawPerkara.kronologis);
+
   const mappedCaseInfo = {
     nomor_surat: sanitizeField(ocrData.nomor_surat || rawPerkara.nomor_surat),
     tanggal_surat: sanitizeField(ocrData.tanggal_surat || rawPerkara.tanggal_surat),
-    tindak_pidana: sanitizeField(ocrData.tindak_pidana || rawPerkara.tindak_pidana),
-    pasal_disangkakan: sanitizeField(ocrData.pasal_disangkakan || rawPerkara.pasal_disangkakan),
-    tempus_delicti: sanitizeField(ocrData.tempus_delicti || rawPerkara.tempus_delicti),
-    locus_delicti: sanitizeField(ocrData.locus_delicti || rawPerkara.locus_delicti),
-    uraian_kejadian: sanitizeField(ocrData.uraian_kejadian || rawPerkara.uraian_kejadian),
+    tindak_pidana: tPidana,
+    dugaan_tindak_pidana: tPidana,
+    pasal: pSal,
+    dugaan_pasal: pSal,
+    pasal_disangkakan: pSal,
+    tempus_delicti: tEmpus,
+    waktu_kejadian: tEmpus,
+    locus_delicti: lOcus,
+    tempat_kejadian: lOcus,
+    uraian_kejadian: uRaian,
   };
 
   return {
@@ -420,6 +503,7 @@ export function mapOcrResultToDumasForm(ocrData) {
     saksiList: mappedSaksiList,
     terlaporList: mappedTerlaporList,
     caseInfo: mappedCaseInfo,
+    peristiwa: mappedCaseInfo,
     rawExtracted: ocrData,
   };
 }
