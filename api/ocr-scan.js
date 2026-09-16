@@ -54,7 +54,7 @@ export default async function handler(req, res) {
 
     // Prompt kedinasan Satreskrim untuk ekstraksi entitas formil
     const systemPrompt = `Anda adalah asisten AI resmi Satreskrim Kepolisian Republik Indonesia (POLRI).
-Tugas Anda adalah membaca gambar lembar dokumen fisik pengaduan masyarakat (Dumas) atau Laporan Polisi, lalu melakukan OCR dan ekstraksi data secara terstruktur, faktual, dan presisi tinggi ke dalam format JSON murni.
+Ekstrak data dokumen ke JSON ringkas. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.
 
 PETUNJUK EKSTRAKSI ADMINISTRASI PENYIDIKAN:
 1. Nomor & Tanggal Surat:
@@ -104,13 +104,13 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
     const userMessageContent = [
       {
         type: "text",
-        text: "Analisis seluruh lembar dokumen fisik di atas. Ekstrak data sesuai format JSON kedinasan Reskrim tanpa teks pengantar atau penutup.",
+        text: "Ekstrak data dokumen ke JSON ringkas. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.",
       },
       ...formattedImages,
     ];
 
-    // Model vision resmi Groq sesuai spesifikasi kepolisian: llama-3.2-11b-vision-preview
-    const model = process.env.GROQ_VISION_MODEL || "llama-3.2-11b-vision-preview";
+    // Model vision aktif katalog Groq: qwen/qwen3.8-27b
+    const model = process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
 
     const requestParams = {
       model,
@@ -120,8 +120,13 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
       ],
       response_format: { type: "json_object" },
       temperature: 0.1,
-      max_tokens: 1024,
+      max_tokens: 800,
     };
+
+    // Sembunyikan reasoning format pada model Qwen agar kompatibel penuh dengan json_object mode
+    if (model.includes("qwen")) {
+      requestParams.reasoning_format = "hidden";
+    }
 
     const completion = await groq.chat.completions.create(requestParams);
 
