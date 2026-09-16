@@ -54,6 +54,7 @@ export default function DocGeneratorView({
   personnel = [],
   initialCase = null, 
   initialTemplate = null,
+  initialSuspectId = null,
   onSaveDocument,
   onOpenTemplateStudio,
   userRole = 'anggota'
@@ -73,9 +74,38 @@ export default function DocGeneratorView({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatorNotice, setGeneratorNotice] = useState(null);
 
-  // Multi-Tersangka States
+  // Multi-Tersangka & Penetapan Tersangka States
   const [caseSuspects, setCaseSuspects] = useState([]);
-  const [selectedSuspectId, setSelectedSuspectId] = useState('');
+  const [selectedSuspectId, setSelectedSuspectId] = useState(initialSuspectId || '');
+  const [urutanTersangka, setUrutanTersangka] = useState(1);
+
+  // Helper konversi angka ke Romawi untuk label status tersangka (I, II, III, IV, dst.)
+  const getRomanUrutan = (num) => {
+    const n = parseInt(num, 10) || 1;
+    const map = [
+      { v: 10, s: 'X' },
+      { v: 9, s: 'IX' },
+      { v: 5, s: 'V' },
+      { v: 4, s: 'IV' },
+      { v: 1, s: 'I' }
+    ];
+    let res = '';
+    let rem = n;
+    for (const item of map) {
+      while (rem >= item.v) {
+        res += item.s;
+        rem -= item.v;
+      }
+    }
+    return res || 'I';
+  };
+
+  // Sync selectedSuspectId if initialSuspectId changes from props
+  useEffect(() => {
+    if (initialSuspectId) {
+      setSelectedSuspectId(initialSuspectId);
+    }
+  }, [initialSuspectId]);
 
   // Multi-Korban States
   const [selectedVictimId, setSelectedVictimId] = useState('');
@@ -143,6 +173,13 @@ export default function DocGeneratorView({
   // Helper identifikasi dokumen perorangan (1 surat untuk 1 tersangka) dari whitelist 24 dokumen resmi
   const isIndividualDoc = isIndividualSuspectDoc(currentTemplate);
 
+  // Helper identifikasi dokumen Penetapan Tersangka (SP.Tap TSK)
+  const isSpTapDoc = (() => {
+    const c = (currentTemplate?.code || '').toUpperCase().trim();
+    const t = (currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
+    return c === 'SP_TAP_TSK' || c.includes('TAP_TSK') || t.includes('PENETAPAN TERSANGKA') || t.includes('SP.TAP');
+  })();
+
   // Helper sinkronisasi nilai profil tersangka ke variabel tunggal template mindik
   const syncSuspectValues = (suspect, isSpTap = false) => {
     if (!suspect) return {};
@@ -159,6 +196,10 @@ export default function DocGeneratorView({
     const umur = rawUmur
       ? (String(rawUmur).includes('Tahun') ? String(rawUmur) : `${rawUmur} Tahun`)
       : '';
+
+    const rawUrutan = suspect.urutan_tersangka || urutanTersangka || 1;
+    const roman = getRomanUrutan(rawUrutan);
+    const labelTsk = suspect.status_tersangka_label || `Tersangka ${roman}`;
 
     const values = {
       NAMA_TERSANGKA: suspect.nama || '',
@@ -187,6 +228,16 @@ export default function DocGeneratorView({
       status_kawin: suspect.status_pernikahan || suspect.status_kawin || suspect.marital_status || '',
       ALAMAT: suspect.alamat || '',
       alamat: suspect.alamat || '',
+      KONTAK: suspect.kontak || suspect.phone || suspect.no_hp || '',
+      kontak: suspect.kontak || suspect.phone || suspect.no_hp || '',
+      KONTAK_TERSANGKA: suspect.kontak || suspect.phone || suspect.no_hp || '',
+      kontak_tersangka: suspect.kontak || suspect.phone || suspect.no_hp || '',
+
+      // Status & Urutan Administrasi Tersangka
+      URUTAN_TERSANGKA: rawUrutan,
+      urutan_tersangka: rawUrutan,
+      STATUS_TERSANGKA_LABEL: labelTsk,
+      status_tersangka_label: labelTsk,
 
       // Rujukan tingkat tersangka
       NO_SP_TAP_TSK: spTapNum,
@@ -202,16 +253,14 @@ export default function DocGeneratorView({
     };
 
     // Khusus SP_TAP_TSK, sinkronkan nomor dan tanggal surat dari selectedSuspect
-    // Untuk template perorangan lainnya, pertahankan penomoran surat aktif default-nya
+    // Jika belum ada, berikan format standar SP.Tap/...
     if (isSpTap) {
-      if (spTapNum) {
-        values.NOMOR_SURAT = spTapNum;
-        values.nomor_surat = spTapNum;
-      }
-      if (spTapDate) {
-        values.TANGGAL_SURAT = spTapDate;
-        values.tanggal_surat = spTapDate;
-      }
+      const defaultSpTap = spTapNum || `SP.Tap/  /  /${new Date().getFullYear()}/Reskrim`;
+      const defaultSpTapDate = spTapDate || new Date().toISOString().split('T')[0];
+      values.NOMOR_SURAT = defaultSpTap;
+      values.nomor_surat = defaultSpTap;
+      values.TANGGAL_SURAT = defaultSpTapDate;
+      values.tanggal_surat = defaultSpTapDate;
     }
 
     return values;
@@ -338,12 +387,39 @@ export default function DocGeneratorView({
         if (!error && data && data.length > 0) {
           setCaseSuspects(data);
           setSelectedSuspectId(prev => {
+            if (initialSuspectId && data.some(s => s.id === initialSuspectId)) return initialSuspectId;
             if (prev && data.some(s => s.id === prev)) return prev;
             return data[0].id;
           });
         } else {
-          // Fallback ke person di caseItem
-          if (currentCase?.person?.nama && currentCase?.person?.nama !== 'Dalam Penyelidikan') {
+          // Fallback ke daftar terlapor_list di currentCase atau person legacy
+          let fallbacks = [];
+          if (Array.isArray(currentCase?.terlapor_list) && currentCase.terlapor_list.length > 0) {
+            fallbacks = currentCase.terlapor_list.map((t, idx) => ({
+              id: t.id || `terlapor-${idx}`,
+              case_id: currentCase?.id,
+              nama: t.nama,
+              nik: t.nik || '-',
+              jenis_kelamin: t.jenis_kelamin || 'Laki-laki',
+              tempat_lahir: t.tempat_lahir || '',
+              tgl_lahir: t.tgl_lahir || '',
+              umur: t.umur || '',
+              agama: t.agama || '',
+              pekerjaan: t.pekerjaan || '',
+              kewarganegaraan: t.kewarganegaraan || 'Indonesia',
+              pendidikan: t.pendidikan || '',
+              status_pernikahan: t.status_pernikahan || '',
+              alamat: t.alamat || '',
+              kontak: t.kontak || '',
+              status: t.status || 'terlapor',
+              no_sp_tap_tsk: t.no_sp_tap_tsk || '',
+              nomor_sp_tap: t.no_sp_tap_tsk || '',
+              tanggal_sp_tap: t.tgl_sp_tap_tsk || '',
+              tgl_sp_tap_tsk: t.tgl_sp_tap_tsk || '',
+              urutan_tersangka: t.urutan_tersangka || (idx + 1),
+              status_tersangka_label: t.status_tersangka_label || ''
+            }));
+          } else if (currentCase?.person?.nama && currentCase?.person?.nama !== 'Dalam Penyelidikan') {
             const fallback = {
               id: 'legacy-suspect-1',
               case_id: currentCase?.id,
@@ -359,17 +435,23 @@ export default function DocGeneratorView({
               pendidikan: currentCase?.person?.pendidikan || 'SMA',
               status_pernikahan: currentCase?.person?.marital_status || 'Kawin',
               alamat: currentCase?.person?.alamat || currentCase?.locus || '',
-              status: 'tersangka',
+              kontak: currentCase?.person?.kontak || '',
+              status: currentCase?.references?.no_sp_tap_tsk ? 'tersangka' : 'terlapor',
               no_sp_tap_tsk: currentCase?.references?.no_sp_tap_tsk || '',
+              nomor_sp_tap: currentCase?.references?.no_sp_tap_tsk || '',
+              tanggal_sp_tap: currentCase?.references?.tgl_sp_tap_tsk || '',
+              tgl_sp_tap_tsk: currentCase?.references?.tgl_sp_tap_tsk || '',
               no_sprin_kap: currentCase?.references?.no_sprin_kap || '',
               no_sprin_han: currentCase?.references?.no_sprin_han || '',
             };
-            setCaseSuspects([fallback]);
-            setSelectedSuspectId(fallback.id);
-          } else {
-            setCaseSuspects([]);
-            setSelectedSuspectId('');
+            fallbacks = [fallback];
           }
+
+          setCaseSuspects(fallbacks);
+          setSelectedSuspectId(prev => {
+            if (initialSuspectId && fallbacks.some(s => s.id === initialSuspectId)) return initialSuspectId;
+            return fallbacks[0]?.id || '';
+          });
         }
       } catch (e) {
         console.warn('Error loading case suspects:', e);
@@ -377,7 +459,7 @@ export default function DocGeneratorView({
     };
 
     loadSuspects();
-  }, [currentCase?.id]);
+  }, [currentCase?.id, initialSuspectId]);
 
   const selectedSuspect = caseSuspects.find(s => s.id === selectedSuspectId) || caseSuspects[0] || null;
   const selectedTemplate = currentTemplate;
@@ -419,16 +501,14 @@ export default function DocGeneratorView({
     if (!selectedTemplate) return;
 
     const code = (selectedTemplate.code || '').toUpperCase().trim();
-    const isSpTap = code === 'SP_TAP_TSK' || (selectedTemplate.name || '').toUpperCase().includes('TAP');
+    const isSpTap = code === 'SP_TAP_TSK' || (selectedTemplate.name || '').toUpperCase().includes('TAP') || (selectedTemplate.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
 
     if (isSpTap) {
-      // Khusus SP TAP TSK: sinkronkan dari data penetapan tersangka jika tersedia
-      if (selectedSuspect?.nomor_sp_tap) {
-        setNomorSurat(selectedSuspect.nomor_sp_tap);
-      }
-      if (selectedSuspect?.tanggal_sp_tap) {
-        setTanggalSurat(selectedSuspect.tanggal_sp_tap);
-      }
+      // Khusus SP TAP TSK: sinkronkan dari data penetapan tersangka jika tersedia atau berikan format standar
+      const existingNo = selectedSuspect?.nomor_sp_tap || selectedSuspect?.no_sp_tap_tsk;
+      const existingDate = selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk;
+      setNomorSurat(existingNo || `SP.Tap/  /  /${new Date().getFullYear()}/Reskrim`);
+      setTanggalSurat(existingDate || new Date().toISOString().split('T')[0]);
     } else {
       // DOKUMEN LAIN (SPDP, SPRINT, BA, dll.):
       // Ambil format/nomor default dari master template aktif atau preset Mindik
@@ -459,15 +539,15 @@ export default function DocGeneratorView({
   useEffect(() => {
     if (!selectedSuspect) return;
 
-    const isSpTap = (currentTemplate?.code || '').toUpperCase().trim() === 'SP_TAP_TSK' || 
-                    (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') ||
-                    (currentTemplate?.name || '').toLowerCase().includes('tap') ||
-                    (currentTemplate?.title || '').toLowerCase().includes('tap') ||
-                    (currentTemplate?.title || '').toLowerCase().includes('penetapan tersangka');
-    const isIndiv = isIndividualDoc;
+    if (selectedSuspect.urutan_tersangka) {
+      setUrutanTersangka(Number(selectedSuspect.urutan_tersangka) || 1);
+    } else if (isSpTapDoc) {
+      const establishedCount = caseSuspects.filter(s => s.status === 'tersangka' || s.no_sp_tap_tsk).length;
+      setUrutanTersangka(establishedCount + 1);
+    }
 
-    if (isIndiv || isSpTap) {
-      const suspectFields = syncSuspectValues(selectedSuspect, isSpTap);
+    if (isIndividualDoc || isSpTapDoc) {
+      const suspectFields = syncSuspectValues(selectedSuspect, isSpTapDoc);
       setFormValues(prev => ({
         ...prev,
         ...suspectFields,
@@ -477,29 +557,57 @@ export default function DocGeneratorView({
         nama_terlapor: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.nama_terlapor || '',
       }));
     }
-  }, [selectedSuspect, isIndividualDoc]);
+  }, [selectedSuspect, isIndividualDoc, isSpTapDoc]);
 
   // Handler ganti tersangka pilihan
   const handleSuspectChange = (suspectId) => {
     setSelectedSuspectId(suspectId);
     const found = caseSuspects.find(s => s.id === suspectId);
     if (found) {
-      const isSpTap = (currentTemplate?.code || '').toUpperCase().trim() === 'SP_TAP_TSK' || 
-                      (currentTemplate?.code || '').toUpperCase().includes('TAP_TSK') ||
-                      (currentTemplate?.title || '').toLowerCase().includes('tap') ||
-                      (currentTemplate?.title || '').toLowerCase().includes('penetapan tersangka') ||
-                      (currentTemplate?.name || '').toLowerCase().includes('tap');
-      const suspectFields = syncSuspectValues(found, isSpTap);
+      let nextUrutan = found.urutan_tersangka;
+      if (!nextUrutan) {
+        if (isSpTapDoc) {
+          const establishedCount = caseSuspects.filter(s => (s.status === 'tersangka' || s.no_sp_tap_tsk) && s.id !== suspectId).length;
+          nextUrutan = establishedCount + 1;
+        } else {
+          nextUrutan = 1;
+        }
+      }
+      const numUrutan = Number(nextUrutan) || 1;
+      setUrutanTersangka(numUrutan);
 
-      setFormValues(prev => ({
-        ...prev,
-        ...suspectFields,
-        ALAMAT: found.alamat || prev.ALAMAT || prev.alamat || '',
-        alamat: found.alamat || prev.ALAMAT || prev.alamat || '',
-        // NAMA_TERLAPOR tetap murni dari data Laporan Polisi (LP) awal
-        NAMA_TERLAPOR: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.NAMA_TERLAPOR || '',
-        nama_terlapor: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.nama_terlapor || '',
-      }));
+      const suspectFields = syncSuspectValues(found, isSpTapDoc);
+
+      setFormValues(prev => {
+        const next = {
+          ...prev,
+          ...suspectFields,
+          URUTAN_TERSANGKA: numUrutan,
+          urutan_tersangka: numUrutan,
+          STATUS_TERSANGKA_LABEL: `Tersangka ${getRomanUrutan(numUrutan)}`,
+          status_tersangka_label: `Tersangka ${getRomanUrutan(numUrutan)}`,
+          ALAMAT: found.alamat || prev.ALAMAT || prev.alamat || '',
+          alamat: found.alamat || prev.ALAMAT || prev.alamat || '',
+          // NAMA_TERLAPOR tetap murni dari data Laporan Polisi (LP) awal
+          NAMA_TERLAPOR: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.NAMA_TERLAPOR || '',
+          nama_terlapor: currentCase?.nama_terlapor || currentCase?.terlapor_name || currentCase?.terlapor || prev.nama_terlapor || '',
+        };
+
+        if (isSpTapDoc) {
+          const sNo = found.nomor_sp_tap || found.no_sp_tap_tsk || `SP.Tap/  /  /${new Date().getFullYear()}/Reskrim`;
+          const sDate = found.tanggal_sp_tap || found.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0];
+          next.NOMOR_SURAT = sNo;
+          next.nomor_surat = sNo;
+          next.DOC_NO = sNo;
+          next.doc_no = sNo;
+          next.TANGGAL_SURAT = sDate;
+          next.tanggal_surat = sDate;
+          next.DOC_DATE = sDate;
+          next.doc_date = sDate;
+        }
+
+        return next;
+      });
     }
   };
 
@@ -957,7 +1065,9 @@ export default function DocGeneratorView({
     if (selectedSuspect?.id) {
       let targetColNo = null;
       let targetColDate = null;
-      if (tplCode.includes('TAP_TSK') || tplCode.includes('PENETAPAN TERSANGKA') || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA')) {
+      const isSpTapTskTpl = tplCode.includes('TAP_TSK') || tplCode.includes('PENETAPAN TERSANGKA') || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
+
+      if (isSpTapTskTpl) {
         targetColNo = 'no_sp_tap_tsk';
         targetColDate = 'tanggal_sp_tap';
       } else if (tplCode.includes('KAP')) {
@@ -977,6 +1087,8 @@ export default function DocGeneratorView({
       }
 
       const suspectUpdates = {};
+      const romanLabel = `Tersangka ${getRomanUrutan(urutanTersangka)}`;
+
       if (targetColNo && enteredNo) {
         selectedSuspect[targetColNo] = enteredNo;
         suspectUpdates[targetColNo] = enteredNo;
@@ -985,6 +1097,10 @@ export default function DocGeneratorView({
           suspectUpdates.nomor_sp_tap = enteredNo;
           selectedSuspect.status = 'tersangka';
           suspectUpdates.status = 'tersangka';
+          selectedSuspect.urutan_tersangka = urutanTersangka;
+          suspectUpdates.urutan_tersangka = urutanTersangka;
+          selectedSuspect.status_tersangka_label = romanLabel;
+          suspectUpdates.status_tersangka_label = romanLabel;
         }
       }
       if (targetColDate && docDate) {
@@ -993,7 +1109,7 @@ export default function DocGeneratorView({
         if (targetColDate === 'tanggal_sp_tap') {
           selectedSuspect.tgl_sp_tap_tsk = docDate;
           suspectUpdates.tanggal_sp_tap = docDate;
-          delete suspectUpdates.tgl_sp_tap_tsk;
+          suspectUpdates.tgl_sp_tap_tsk = docDate;
         }
       }
 
@@ -1003,6 +1119,46 @@ export default function DocGeneratorView({
           await supabase.from('case_suspects').update(suspectUpdates).eq('id', selectedSuspect.id);
         } catch (e) {
           console.warn(`Auto-save case_suspects error:`, e);
+        }
+
+        // Sinkronkan ke references dan terlapor_list pada tabel cases
+        if (targetColNo === 'no_sp_tap_tsk' && currentCase) {
+          currentCase.references = currentCase.references || {};
+          currentCase.references.no_sp_tap_tsk = enteredNo;
+          currentCase.references.tgl_sp_tap_tsk = docDate;
+          currentCase.references.tanggal_sp_tap = docDate;
+
+          let updatedTerlaporList = null;
+          if (Array.isArray(currentCase.terlapor_list)) {
+            updatedTerlaporList = currentCase.terlapor_list.map(t => {
+              if (t.id === selectedSuspect.id || (t.nama && t.nama.toLowerCase() === selectedSuspect.nama.toLowerCase())) {
+                return {
+                  ...t,
+                  status: 'tersangka',
+                  urutan_tersangka: urutanTersangka,
+                  status_tersangka_label: romanLabel,
+                  no_sp_tap_tsk: enteredNo,
+                  nomor_sp_tap: enteredNo,
+                  tanggal_sp_tap: docDate,
+                  tgl_sp_tap_tsk: docDate
+                };
+              }
+              return t;
+            });
+            currentCase.terlapor_list = updatedTerlaporList;
+          }
+
+          try {
+            const caseUpdates = {
+              references: currentCase.references
+            };
+            if (updatedTerlaporList) {
+              caseUpdates.terlapor_list = updatedTerlaporList;
+            }
+            await supabase.from('cases').update(caseUpdates).eq('id', currentCase.id);
+          } catch (e) {
+            console.warn('Auto-save case terlapor_list / references error:', e);
+          }
         }
       }
     }
@@ -1022,15 +1178,32 @@ export default function DocGeneratorView({
     }
 
     try {
+      const romanLabel = `Tersangka ${getRomanUrutan(urutanTersangka)}`;
+      const enrichedFormValues = {
+        ...formValues,
+        URUTAN_TERSANGKA: urutanTersangka,
+        urutan_tersangka: urutanTersangka,
+        STATUS_TERSANGKA_LABEL: romanLabel,
+        status_tersangka_label: romanLabel,
+      };
+
       const res = await generateAndDownloadDocx({
         template: currentTemplate,
         caseData: currentCase,
         activeCase: currentCase,
-        activeSuspect: selectedSuspect,
+        activeSuspect: selectedSuspect ? {
+          ...selectedSuspect,
+          urutan_tersangka: urutanTersangka,
+          status_tersangka_label: romanLabel,
+          no_sp_tap_tsk: docNumber || selectedSuspect.no_sp_tap_tsk,
+          nomor_sp_tap: docNumber || selectedSuspect.nomor_sp_tap,
+          tanggal_sp_tap: docDate || selectedSuspect.tanggal_sp_tap,
+          tgl_sp_tap_tsk: docDate || selectedSuspect.tgl_sp_tap_tsk,
+        } : null,
         suspectsList: caseSuspects,
         activeVictim: selectedVictim,
         victimsList: registeredVictims,
-        formValues,
+        formValues: enrichedFormValues,
         personnelList: activePersonnel
       });
 
@@ -1483,8 +1656,161 @@ export default function DocGeneratorView({
               )}
             </div>
 
-            {/* Selector Tersangka untuk Dokumen Perorangan (BAGIAN 4.1) */}
-            {isIndividualDoc && (
+            {/* PANEL KHUSUS SP.TAP TSK: PENETAPAN TERSANGKA RESMI */}
+            {isSpTapDoc && (
+              <div style={{
+                padding: '14px',
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(239, 68, 68, 0.08) 100%)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '16px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Shield size={16} color="var(--accent-amber)" />
+                    <span style={{ color: 'var(--accent-amber)', fontWeight: 800, fontSize: '12px', letterSpacing: '0.4px' }}>
+                      PENETAPAN TERSANGKA (SP.TAP TSK)
+                    </span>
+                  </div>
+                  <span className="badge badge-amber" style={{ fontSize: '9.5px', padding: '2px 8px' }}>
+                    ALUR FORMIL PENYIDIKAN
+                  </span>
+                </div>
+
+                {/* Dropdown: Pilih Terlapor yang Ditetapkan */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label className="form-label" style={{ fontSize: '11px', color: '#fff', marginBottom: '4px', fontWeight: 600 }}>
+                    Pilih Terlapor yang Ditetapkan (dataPerkara.terlapor_list) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                  </label>
+                  {caseSuspects.length === 0 ? (
+                    <div style={{ fontSize: '12px', color: '#FCA5A5', padding: '6px 0' }}>
+                      Belum ada terlapor terdaftar pada perkara ini. Tambahkan data Terlapor di Detail Perkara.
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedSuspectId}
+                      onChange={(e) => handleSuspectChange(e.target.value)}
+                      className="form-select"
+                      style={{ borderColor: 'var(--accent-amber)', fontWeight: 600 }}
+                    >
+                      {caseSuspects.map((s, idx) => {
+                        const isEst = s.status === 'tersangka' || s.no_sp_tap_tsk;
+                        return (
+                          <option key={s.id || idx} value={s.id}>
+                            {idx + 1}. {s.nama} (NIK: {s.nik || '-'}) — {isEst ? `[Sudah Ditetapkan Tersangka - No: ${s.no_sp_tap_tsk || s.nomor_sp_tap || '-'}]` : '[Status: Terlapor (Belum Ditetapkan)]'}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  )}
+                </div>
+
+                {/* Selector Urutan Administrasi Tersangka */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '11px', color: '#fff', marginBottom: '4px', fontWeight: 600 }}>
+                      Urutan Administrasi Tersangka <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    </label>
+                    <select
+                      value={urutanTersangka}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10) || 1;
+                        setUrutanTersangka(val);
+                        const roman = getRomanUrutan(val);
+                        const lbl = `Tersangka ${roman}`;
+                        setFormValues(prev => ({
+                          ...prev,
+                          URUTAN_TERSANGKA: val,
+                          urutan_tersangka: val,
+                          STATUS_TERSANGKA_LABEL: lbl,
+                          status_tersangka_label: lbl
+                        }));
+                      }}
+                      className="form-select"
+                      style={{ borderColor: 'rgba(245, 158, 11, 0.5)', fontWeight: 600 }}
+                    >
+                      <option value="1">Tersangka I (Pertama)</option>
+                      <option value="2">Tersangka II (Kedua)</option>
+                      <option value="3">Tersangka III (Ketiga)</option>
+                      <option value="4">Tersangka IV (Keempat)</option>
+                      <option value="5">Tersangka V (Kelima)</option>
+                      <option value="6">Tersangka VI (Keenam)</option>
+                      <option value="7">Tersangka VII (Ketujuh)</option>
+                      <option value="8">Tersangka VIII (Kedelapan)</option>
+                    </select>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                      Mengisi tag <code>{'{status_tersangka_label}'}</code> & <code>{'{urutan_tersangka}'}</code>
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '11px', color: '#fff', marginBottom: '4px', fontWeight: 600 }}>
+                      Status Formil Terkini
+                    </label>
+                    <div style={{
+                      padding: '8px 10px',
+                      background: 'rgba(0, 0, 0, 0.25)',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      fontSize: '11.5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      minHeight: '38px'
+                    }}>
+                      {selectedSuspect?.status === 'tersangka' || selectedSuspect?.no_sp_tap_tsk ? (
+                        <span style={{ color: 'var(--accent-red)', fontWeight: 700 }}>
+                          ● {selectedSuspect.status_tersangka_label || `Tersangka ${getRomanUrutan(urutanTersangka)}`} (Ditetapkan)
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--accent-amber)', fontWeight: 700 }}>
+                          ● Terlapor (Siap Ditetapkan)
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                      Label Dokumen: <strong style={{ color: '#fff' }}>Tersangka {getRomanUrutan(urutanTersangka)}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Profil Terlapor Terpilih */}
+                {selectedSuspect && (
+                  <div style={{
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                    background: 'rgba(0, 0, 0, 0.25)',
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    borderLeft: '3px solid var(--accent-amber)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                      <span>Nama: <strong style={{ color: '#fff' }}>{selectedSuspect.nama}</strong></span>
+                      <span>NIK: <strong style={{ color: '#fff' }}>{selectedSuspect.nik || '-'}</strong></span>
+                      <span>JK: <strong style={{ color: '#fff' }}>{selectedSuspect.jenis_kelamin || 'Laki-laki'}</strong></span>
+                    </div>
+                    <div>TTL / Umur: <strong style={{ color: '#fff' }}>{selectedSuspect.tempat_lahir || '-'}, {selectedSuspect.tgl_lahir || '-'} ({selectedSuspect.umur ? `${selectedSuspect.umur} Thn` : '-'})</strong></div>
+                    <div>Pekerjaan: <strong style={{ color: '#fff' }}>{selectedSuspect.pekerjaan || '-'}</strong> | Agama: <strong style={{ color: '#fff' }}>{selectedSuspect.agama || '-'}</strong></div>
+                    <div>Alamat: <strong style={{ color: '#fff' }}>{selectedSuspect.alamat || '-'}</strong></div>
+                    {selectedSuspect.no_sp_tap_tsk && (
+                      <div style={{ color: 'var(--accent-amber)', marginTop: '2px', fontWeight: 600 }}>
+                        Nomor SP.Tap saat ini: {selectedSuspect.no_sp_tap_tsk} ({selectedSuspect.tgl_sp_tap_tsk || selectedSuspect.tanggal_sp_tap || '-'})
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
+                  ℹ️ <em>Saat tombol <strong>Render & Download Naskah</strong> atau <strong>Simpan Pembaruan Rujukan</strong> ditekan, Terlapor ini otomatis berstatus <strong>Tersangka</strong> dengan nomor SP.Tap yang ter-mirroring ke seluruh dokumen turunan.</em>
+                </div>
+              </div>
+            )}
+
+            {/* Selector Tersangka untuk Dokumen Turunan Perorangan (Surat Panggilan, SPDP, Penahanan, dll) */}
+            {isIndividualDoc && !isSpTapDoc && (
               <div style={{
                 padding: '12px',
                 background: 'rgba(239, 68, 68, 0.08)',
@@ -1501,9 +1827,36 @@ export default function DocGeneratorView({
                   </span>
                 </div>
 
+                {/* Banner Peringatan jika belum ada tersangka yang ditetapkan */}
+                {!caseSuspects.some(s => s.status === 'tersangka' || s.no_sp_tap_tsk || s.nomor_sp_tap) && (
+                  <div style={{
+                    padding: '8px 10px',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    borderRadius: 'var(--radius-sm)',
+                    marginBottom: '8px',
+                    fontSize: '11px',
+                    color: '#FDE68A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px'
+                  }}>
+                    <span>⚠️ Perhatian: Belum ada Tersangka yang ditetapkan dengan SP.Tap TSK pada perkara ini. Disarankan menerbitkan SP.Tap TSK terlebih dahulu.</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTemplateCode('SP_TAP_TSK')}
+                      className="btn btn-sm"
+                      style={{ background: 'var(--accent-amber)', color: '#000', fontWeight: 700, whiteSpace: 'nowrap', fontSize: '10px', padding: '3px 8px' }}
+                    >
+                      Buat SP.Tap TSK
+                    </button>
+                  </div>
+                )}
+
                 {caseSuspects.length === 0 ? (
                   <div style={{ fontSize: '12px', color: '#FCA5A5', padding: '6px 0' }}>
-                    Belum ada tersangka ditetapkan pada perkara ini. Tetapkan tersangka di Detail Perkara.
+                    Belum ada subjek tersangka terdaftar pada perkara ini.
                   </div>
                 ) : (
                   <select
@@ -1512,11 +1865,14 @@ export default function DocGeneratorView({
                     className="form-select"
                     style={{ borderColor: 'var(--accent-red)', fontWeight: 600 }}
                   >
-                    {caseSuspects.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nama} (NIK: {s.nik || '-'}) {s.no_sp_tap_tsk ? `• SP.TAP.TSK: ${s.no_sp_tap_tsk}` : ''}
-                      </option>
-                    ))}
+                    {caseSuspects.map((s) => {
+                      const isEst = s.status === 'tersangka' || s.no_sp_tap_tsk;
+                      return (
+                        <option key={s.id} value={s.id}>
+                          {s.nama} ({s.status_tersangka_label || (isEst ? 'Tersangka' : 'Terlapor')} {s.no_sp_tap_tsk ? `• SP.Tap: ${s.no_sp_tap_tsk}` : '• Belum ada SP.Tap'})
+                        </option>
+                      );
+                    })}
                   </select>
                 )}
 
@@ -1531,11 +1887,15 @@ export default function DocGeneratorView({
                     borderTop: '1px dashed rgba(239, 68, 68, 0.2)',
                     paddingTop: '6px'
                   }}>
-                    <div>Nama: <strong style={{ color: '#FFF' }}>{selectedSuspect.nama}</strong> | NIK: <strong style={{ color: '#FFF' }}>{selectedSuspect.nik || '-'}</strong></div>
+                    <div>Nama: <strong style={{ color: '#FFF' }}>{selectedSuspect.nama}</strong> | NIK: <strong style={{ color: '#FFF' }}>{selectedSuspect.nik || '-'}</strong> | Status: <strong style={{ color: selectedSuspect.no_sp_tap_tsk ? 'var(--accent-red)' : 'var(--accent-amber)' }}>{selectedSuspect.status_tersangka_label || (selectedSuspect.no_sp_tap_tsk ? 'Tersangka' : 'Terlapor')}</strong></div>
                     <div>TTL: <strong style={{ color: '#FFF' }}>{selectedSuspect.tempat_lahir || '-'}, {selectedSuspect.tgl_lahir || '-'}</strong></div>
-                    {selectedSuspect.no_sp_tap_tsk && (
-                      <div style={{ color: 'var(--accent-purple)' }}>
+                    {selectedSuspect.no_sp_tap_tsk ? (
+                      <div style={{ color: 'var(--accent-purple)', fontWeight: 600 }}>
                         Rujukan SP.TAP.TSK: <strong>{selectedSuspect.no_sp_tap_tsk}</strong> (Otomatis mengisi tag)
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--accent-amber)', fontSize: '10.5px' }}>
+                        ⚠️ Belum memiliki rujukan SP.Tap TSK resmi.
                       </div>
                     )}
                     {selectedSuspect.no_sprin_kap && (
@@ -2077,10 +2437,18 @@ export default function DocGeneratorView({
                 return dynamicList.map((field, idx) => {
                   if (!field) return null;
                   const fieldKey = (field.field_key || field.key || `FIELD_${idx}`).replace(/[{}]/g, '').trim();
-                  const fieldLabel = field.field_label || field.label || fieldKey;
-                  const fieldType = field.field_type || field.type || 'text';
-                  const isRequired = field.is_required !== undefined ? field.is_required : !!field.required;
-                  const placeholder = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
+                  const upperFieldKey = fieldKey.toUpperCase();
+                  let fieldLabel = field.field_label || field.label || fieldKey;
+                  let placeholder = field.default_value !== undefined ? field.default_value : (field.placeholder || '');
+
+                  if (isSpTapDoc) {
+                    if (upperFieldKey === 'NOMOR_SURAT' || upperFieldKey === 'DOC_NO') {
+                      fieldLabel = 'Nomor SP.Tap TSK';
+                      placeholder = `SP.Tap/  /  /${new Date().getFullYear()}/Reskrim`;
+                    } else if (upperFieldKey === 'TANGGAL_SURAT' || upperFieldKey === 'DOC_DATE') {
+                      fieldLabel = 'Tanggal Penetapan Tersangka';
+                    }
+                  }
                   const currentVal = formValues[fieldKey] !== undefined 
                     ? formValues[fieldKey] 
                     : (formValues[fieldKey.toUpperCase()] !== undefined 

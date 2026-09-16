@@ -45,6 +45,7 @@ export default function App() {
   const [selectedCaseForDetail, setSelectedCaseForDetail] = useState(null);
   const [caseForGenerator, setCaseForGenerator] = useState(null);
   const [templateForGenerator, setTemplateForGenerator] = useState(null);
+  const [suspectForGenerator, setSuspectForGenerator] = useState(null);
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const [selectedDocForPreview, setSelectedDocForPreview] = useState(null);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
@@ -292,6 +293,36 @@ export default function App() {
       if (error) {
         console.error('Insert case error:', error);
         alert(`Gagal menyimpan perkara ke database: ${error.message}`);
+      } else {
+        // Insert seluruh terlapor_list ke tabel case_suspects di Supabase dengan status murni terlapor
+        if (Array.isArray(newCase.terlapor_list) && newCase.terlapor_list.length > 0) {
+          const suspectsPayload = newCase.terlapor_list.map((t) => ({
+            case_id: newCase.id,
+            nama: t.nama || 'Dalam Penyelidikan',
+            nik: t.nik || '-',
+            jenis_kelamin: t.jenis_kelamin || 'Laki-laki',
+            tempat_lahir: t.tempat_lahir || 'Kolaka Timur',
+            tgl_lahir: t.tgl_lahir || null,
+            umur: t.umur ? String(t.umur) : null,
+            agama: t.agama || 'Islam',
+            pekerjaan: t.pekerjaan || 'Wiraswasta',
+            kewarganegaraan: t.kewarganegaraan || 'Indonesia',
+            pendidikan: t.pendidikan || 'SMA',
+            status_pernikahan: t.status_pernikahan || 'Kawin',
+            alamat: t.alamat || newCase.locus || '',
+            status: 'terlapor', // Formil murni terlapor
+            no_sp_tap_tsk: null,
+            nomor_sp_tap: null,
+            tanggal_sp_tap: null,
+            tgl_sp_tap_tsk: null,
+            created_at: new Date().toISOString(),
+          }));
+          try {
+            await supabase.from('case_suspects').insert(suspectsPayload);
+          } catch (csErr) {
+            console.warn('Insert initial case_suspects notice:', csErr);
+          }
+        }
       }
     } catch (err) {
       console.warn('Insert case notice:', err);
@@ -613,8 +644,14 @@ export default function App() {
     showToast(`Dokumen '${doc.doc_title || doc.title || 'Mindik'}' berhasil dihapus dari arsip!`);
   };
 
-  const handleOpenGeneratorForCase = (caseItem) => {
+  const handleOpenGeneratorForCase = (caseItem, templateCode = null, suspectId = null) => {
     setCaseForGenerator(caseItem);
+    if (templateCode) {
+      setTemplateForGenerator(typeof templateCode === 'object' ? templateCode : { code: templateCode });
+    } else {
+      setTemplateForGenerator(null);
+    }
+    setSuspectForGenerator(suspectId || null);
     setActiveTab('generator');
   };
 
@@ -751,6 +788,7 @@ export default function App() {
               userRole={userRole}
               initialCase={caseForGenerator}
               initialTemplate={templateForGenerator}
+              initialSuspectId={suspectForGenerator}
               onSaveDocument={handleSaveDocument}
               onOpenTemplateStudio={() => setActiveTab('admin-templates')}
             />
@@ -797,7 +835,7 @@ export default function App() {
           caseItem={selectedCaseForDetail}
           personnel={personnel}
           onClose={() => setSelectedCaseForDetail(null)}
-          onGenerateDocForCase={(c) => handleOpenGeneratorForCase(c)}
+          onGenerateDocForCase={(c, tpl, suspId) => handleOpenGeneratorForCase(c, tpl, suspId)}
           onUpdateCase={handleUpdateCase}
           caseDocuments={documents.filter((d) => d.case_id === selectedCaseForDetail.id)}
         />

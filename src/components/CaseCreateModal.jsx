@@ -100,6 +100,67 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
     setVictims((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // State Daftar Terlapor murni formil (Array Objek Terlapor)
+  const [terlaporList, setTerlaporList] = useState([
+    {
+      id: `ter-${Date.now()}-1`,
+      nama: '',
+      nik: '',
+      tempat_lahir: 'Kolaka Timur',
+      tgl_lahir: '1990-01-01',
+      umur: '36',
+      jenis_kelamin: 'Laki-laki',
+      pekerjaan: 'Wiraswasta',
+      agama: 'Islam',
+      alamat: 'Desa Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
+      kontak: '',
+    },
+  ]);
+
+  const handleAddTerlapor = () => {
+    setTerlaporList((prev) => [
+      ...prev,
+      {
+        id: `ter-${Date.now()}-${prev.length + 1}`,
+        nama: '',
+        nik: '',
+        tempat_lahir: 'Kolaka Timur',
+        tgl_lahir: '',
+        umur: '',
+        jenis_kelamin: 'Laki-laki',
+        pekerjaan: '',
+        agama: 'Islam',
+        alamat: formData.locus || '',
+        kontak: '',
+      },
+    ]);
+  };
+
+  const handleUpdateTerlapor = (index, prop, value) => {
+    setTerlaporList((prev) =>
+      prev.map((t, i) => {
+        if (i !== index) return t;
+        const updated = { ...t, [prop]: value };
+        if (prop === 'tgl_lahir' && value) {
+          const birthYear = new Date(value).getFullYear();
+          if (!isNaN(birthYear)) {
+            const currentYear = new Date().getFullYear();
+            updated.umur = String(Math.max(1, currentYear - birthYear));
+          }
+        }
+        return updated;
+      })
+    );
+  };
+
+  const handleRemoveTerlapor = (index) => {
+    if (terlaporList.length <= 1) {
+      alert('Minimal harus ada 1 pihak terlapor pada berkas perkara.');
+      return;
+    }
+    setTerlaporList((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => {
@@ -204,13 +265,34 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
         is_penangan: num === penanganIdx,
       }));
 
+    const cleanedTerlaporList = terlaporList.map((t, idx) => ({
+      ...t,
+      nama: t.nama?.trim() || (idx === 0 ? 'Dalam Penyelidikan' : `Terlapor ${idx + 1}`),
+      nik: t.nik?.trim() || '-',
+      tempat_lahir: t.tempat_lahir?.trim() || 'Kolaka Timur',
+      tgl_lahir: t.tgl_lahir || null,
+      umur: t.umur ? String(t.umur).trim() : null,
+      jenis_kelamin: t.jenis_kelamin || 'Laki-laki',
+      pekerjaan: t.pekerjaan?.trim() || 'Wiraswasta',
+      agama: t.agama || 'Islam',
+      alamat: t.alamat?.trim() || formData.locus.trim(),
+      kontak: t.kontak?.trim() || '',
+      status: 'terlapor', // Formil murni terlapor saat berkas dibuat
+      nomor_sp_tap: null,
+      no_sp_tap_tsk: null,
+      tanggal_sp_tap: null,
+      tgl_sp_tap_tsk: null,
+    }));
+
+    const namaTerlaporJoined = cleanedTerlaporList.map((t) => t.nama).filter(Boolean).join(', ') || 'Dalam Penyelidikan';
+
     const newCase = {
       id: `case-${Date.now().toString().slice(-6)}`,
       // Standar kolom Laporan Polisi
       nomor_lp: formData.nomor_lp.trim(),
       tanggal_lp: formData.tanggal_lp,
       nama_pelapor: formData.nama_pelapor.trim(),
-      nama_terlapor: formData.nama_terlapor.trim() || 'Dalam Penyelidikan',
+      nama_terlapor: namaTerlaporJoined,
       tindak_pidana: formData.tindak_pidana.trim(),
       dasar_pasal_uu: formData.dasar_pasal_uu.trim(),
       pasal: formData.pasal.trim() || formData.dasar_pasal_uu.trim(),
@@ -264,7 +346,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
       // Kompatibilitas skema lama
       no_lp: formData.nomor_lp.trim(),
       pelapor_name: formData.nama_pelapor.trim(),
-      terlapor_name: formData.nama_terlapor.trim() || 'Dalam Penyelidikan',
+      terlapor_name: namaTerlaporJoined,
       pasal_uu: formData.dasar_pasal_uu.trim(),
       sprin_val_date: '30 (tiga puluh) hari',
       sprin_loc: 'Tirawuta',
@@ -272,11 +354,16 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
       status: 'active',
       created_at: new Date().toISOString(),
       person: {
-        nama: formData.nama_terlapor.trim() || 'Dalam Penyelidikan',
-        nik: '-',
-        gender: 'Laki-laki',
-        alamat: formData.locus.trim(),
+        nama: cleanedTerlaporList[0]?.nama || 'Dalam Penyelidikan',
+        nik: cleanedTerlaporList[0]?.nik || '-',
+        gender: cleanedTerlaporList[0]?.jenis_kelamin || 'Laki-laki',
+        alamat: cleanedTerlaporList[0]?.alamat || formData.locus.trim(),
+        pob_dob: `${cleanedTerlaporList[0]?.tempat_lahir || 'Kolaka Timur'}, ${cleanedTerlaporList[0]?.tgl_lahir || ''}`,
+        pekerjaan: cleanedTerlaporList[0]?.pekerjaan || 'Wiraswasta',
+        agama: cleanedTerlaporList[0]?.agama || 'Islam',
       },
+      // Data Terlapor (Array Objek Standar formil)
+      terlapor_list: cleanedTerlaporList,
       // Data Korban (Array Objek Standar 10 Field)
       victims: victims,
       references: {
@@ -284,6 +371,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
         no_spdp: '',
         no_p21_kn: '',
         victims: victims,
+        terlapor_list: cleanedTerlaporList,
         penyidik_penangan_index: penanganIdx,
         penyidik_penangan: {
           index: penanganIdx,
@@ -425,34 +513,20 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                 </div>
               </div>
 
-              {/* Baris 2: Pelapor & Terlapor */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">
-                    Nama Pelapor / Korban <span style={{ color: 'var(--accent-red)' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="nama_pelapor"
-                    value={formData.nama_pelapor}
-                    onChange={handleChange}
-                    placeholder="Nama lengkap pelapor..."
-                    className="form-input"
-                    required
-                  />
-                </div>
-
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Nama Terlapor (Cukup Nama Biasa)</label>
-                  <input
-                    type="text"
-                    name="nama_terlapor"
-                    value={formData.nama_terlapor}
-                    onChange={handleChange}
-                    placeholder="Nama terlapor (atau 'Dalam Penyelidikan')"
-                    className="form-input"
-                  />
-                </div>
+              {/* Baris 2: Pelapor */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">
+                  Nama Pelapor / Saksi Pelapor <span style={{ color: 'var(--accent-red)' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  name="nama_pelapor"
+                  value={formData.nama_pelapor}
+                  onChange={handleChange}
+                  placeholder="Nama lengkap pelapor sesuai kartu identitas..."
+                  className="form-input"
+                  required
+                />
               </div>
 
               {/* Baris 3: Tindak Pidana, Dasar Pasal UU, Pasal */}
@@ -534,7 +608,266 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
               </div>
             </div>
 
-            {/* SECTION 2: IDENTITAS KORBAN / SAKSI KORBAN */}
+            {/* SECTION 2: DAFTAR TERLAPOR (terlapor_list) */}
+            <div
+              style={{
+                padding: '16px',
+                background: 'rgba(15, 23, 42, 0.65)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={18} color="#F59E0B" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}>
+                    2. DAFTAR TERLAPOR ({terlaporList.length})
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      background: 'rgba(245, 158, 11, 0.15)',
+                      color: '#FDE68A',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Status Formil: Terlapor
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddTerlapor}
+                  className="btn"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    background: 'rgba(245, 158, 11, 0.2)',
+                    color: '#FDE68A',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>+ Tambah Terlapor</span>
+                </button>
+              </div>
+
+              {/* Catatan Formil Penyidikan */}
+              <div
+                style={{
+                  padding: '10px 12px',
+                  background: 'rgba(245, 158, 11, 0.07)',
+                  border: '1px dashed rgba(245, 158, 11, 0.35)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '11.5px',
+                  color: '#FDE68A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <Info size={15} color="#F59E0B" style={{ flexShrink: 0 }} />
+                <span>
+                  Status awal seluruh subjek pada Berkas Perkara murni sebagai <strong>Terlapor</strong>. Penetapan status Tersangka beserta penomoran resmi <strong>SP.Tap Tsk</strong> diterbitkan saat dokumen penetapan dibuat di Modul Generate Dokumen.
+                </span>
+              </div>
+
+              {/* List Kartu Terlapor */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {terlaporList.map((t, idx) => (
+                  <div
+                    key={t.id || idx}
+                    style={{
+                      padding: '14px',
+                      background: 'rgba(30, 41, 59, 0.55)',
+                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#FEF3C7' }}>
+                          Terlapor #{idx + 1}
+                        </span>
+                        {idx === 0 && (
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              background: 'rgba(245, 158, 11, 0.15)',
+                              color: '#FDE68A',
+                              border: '1px solid rgba(245, 158, 11, 0.3)',
+                            }}
+                          >
+                            Utama
+                          </span>
+                        )}
+                      </div>
+                      {terlaporList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTerlapor(idx)}
+                          className="btn-danger-ghost"
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            cursor: 'pointer',
+                            color: '#F87171',
+                            background: 'transparent',
+                            border: 'none',
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>Hapus</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Baris 1: Nama, NIK, Jenis Kelamin */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>
+                          Nama Lengkap Terlapor <span style={{ color: 'var(--accent-red)' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={t.nama}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'nama', e.target.value)}
+                          placeholder="Nama terlapor (atau 'Dalam Penyelidikan')..."
+                          className="form-input"
+                          required
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>NIK (16 Digit)</label>
+                        <input
+                          type="text"
+                          value={t.nik}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'nik', e.target.value)}
+                          placeholder="7405..."
+                          className="form-input mono"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>Jenis Kelamin</label>
+                        <select
+                          value={t.jenis_kelamin}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'jenis_kelamin', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="Laki-laki">Laki-laki</option>
+                          <option value="Perempuan">Perempuan</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Baris 2: Tempat Lahir, Tanggal Lahir, Umur */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.8fr', gap: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>Tempat Lahir</label>
+                        <input
+                          type="text"
+                          value={t.tempat_lahir}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'tempat_lahir', e.target.value)}
+                          placeholder="Contoh: Kolaka Timur"
+                          className="form-input"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>Tanggal Lahir</label>
+                        <input
+                          type="date"
+                          value={t.tgl_lahir}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'tgl_lahir', e.target.value)}
+                          className="form-input mono"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>Umur (Thn)</label>
+                        <input
+                          type="text"
+                          value={t.umur}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'umur', e.target.value)}
+                          placeholder="30"
+                          className="form-input mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Baris 3: Pekerjaan, Agama, Kontak */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>Pekerjaan</label>
+                        <input
+                          type="text"
+                          value={t.pekerjaan}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'pekerjaan', e.target.value)}
+                          placeholder="Wiraswasta / Petani / dll"
+                          className="form-input"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>Agama</label>
+                        <select
+                          value={t.agama}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'agama', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="Islam">Islam</option>
+                          <option value="Kristen Protestan">Kristen Protestan</option>
+                          <option value="Katolik">Katolik</option>
+                          <option value="Hindu">Hindu</option>
+                          <option value="Buddha">Buddha</option>
+                          <option value="Konghucu">Konghucu</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '11px' }}>Kontak / No. HP</label>
+                        <input
+                          type="text"
+                          value={t.kontak}
+                          onChange={(e) => handleUpdateTerlapor(idx, 'kontak', e.target.value)}
+                          placeholder="0812..."
+                          className="form-input mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Baris 4: Alamat */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '11px' }}>Alamat Tempat Tinggal</label>
+                      <input
+                        type="text"
+                        value={t.alamat}
+                        onChange={(e) => handleUpdateTerlapor(idx, 'alamat', e.target.value)}
+                        placeholder="Alamat domisili lengkap..."
+                        className="form-input"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SECTION 3: IDENTITAS KORBAN / SAKSI KORBAN */}
             <div
               style={{
                 padding: '16px',
@@ -550,7 +883,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <UserCheck size={18} color="#C084FC" />
                   <span style={{ fontSize: '13px', fontWeight: 700, color: '#C084FC' }}>
-                    2. IDENTITAS KORBAN / SAKSI KORBAN ({victims.length})
+                    3. IDENTITAS KORBAN / SAKSI KORBAN ({victims.length})
                   </span>
                   <span
                     style={{
@@ -813,7 +1146,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Award size={18} color="var(--accent-cyan)" />
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                    3. PEJABAT & TIM PENYIDIK PENANDATANGAN MINDIK
+                    4. PEJABAT & TIM PENYIDIK PENANDATANGAN MINDIK
                   </span>
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>

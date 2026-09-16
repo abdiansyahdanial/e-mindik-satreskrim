@@ -746,6 +746,13 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const statusKawin = cleanInput.STATUS_KAWIN || cleanInput.status_kawin || activeSuspect?.status_pernikahan || activeSuspect?.status_kawin || activeSuspect?.marital_status || '';
   const alamat = cleanInput.ALAMAT || cleanInput.alamat || activeSuspect?.alamat || activeCase?.alamat_tersangka || '';
 
+  // E.1.1 STATUS & URUTAN ADMINISTRASI TERSANGKA
+  const rawUrutanTsk = cleanInput.URUTAN_TERSANGKA || cleanInput.urutan_tersangka || activeSuspect?.urutan_tersangka || 1;
+  const urutanTersangka = Number(rawUrutanTsk) || 1;
+  const romanUrutan = urutanTersangka === 1 ? 'I' : urutanTersangka === 2 ? 'II' : urutanTersangka === 3 ? 'III' : urutanTersangka === 4 ? 'IV' : urutanTersangka === 5 ? 'V' : String(urutanTersangka);
+  const statusTersangkaLabel = cleanInput.STATUS_TERSANGKA_LABEL || cleanInput.status_tersangka_label || activeSuspect?.status_tersangka_label || `Tersangka ${romanUrutan}`;
+  const kontakTersangka = cleanInput.KONTAK_TERSANGKA || cleanInput.kontak_tersangka || activeSuspect?.kontak || activeSuspect?.phone || activeSuspect?.no_hp || '';
+
   // E.2. IDENTITAS KORBAN (10 Field Standar Mindik)
   const rawVictimsList = Array.isArray(victimsList) && victimsList.length > 0
     ? victimsList
@@ -964,6 +971,36 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     STATUS_KAWIN: statusKawin,
     ALAMAT: alamat,
 
+    // E.1. IDENTITAS TERSANGKA LENGKAP & STATUS TERSANGKA
+    NIK_TERSANGKA: nik,
+    nik_tersangka: nik,
+    TTL_TERSANGKA: ttl,
+    ttl_tersangka: ttl,
+    TEMPAT_LAHIR_TERSANGKA: tempatLahir,
+    tempat_lahir_tersangka: tempatLahir,
+    TGL_LAHIR_TERSANGKA: formattedTglLahirSuspect,
+    tgl_lahir_tersangka: formattedTglLahirSuspect,
+    JENIS_KELAMIN_TERSANGKA: jenisKelamin,
+    jenis_kelamin_tersangka: jenisKelamin,
+    AGAMA_TERSANGKA: agama,
+    agama_tersangka: agama,
+    PEKERJAAN_TERSANGKA: pekerjaan,
+    pekerjaan_tersangka: pekerjaan,
+    KEWARGANEGARAAN_TERSANGKA: kewarganegaraan,
+    kewarganegaraan_tersangka: kewarganegaraan,
+    PENDIDIKAN_TERSANGKA: pendidikan,
+    pendidikan_tersangka: pendidikan,
+    STATUS_KAWIN_TERSANGKA: statusKawin,
+    status_kawin_tersangka: statusKawin,
+    ALAMAT_TERSANGKA: alamat,
+    alamat_tersangka: alamat,
+    KONTAK_TERSANGKA: kontakTersangka,
+    kontak_tersangka: kontakTersangka,
+    STATUS_TERSANGKA_LABEL: statusTersangkaLabel,
+    status_tersangka_label: statusTersangkaLabel,
+    URUTAN_TERSANGKA: urutanTersangka,
+    urutan_tersangka: urutanTersangka,
+
     // E.2. IDENTITAS KORBAN (10 Tag Standar Mindik)
     KORBAN_NAMA: korbanNama,
     korban_nama: korbanNama,
@@ -1123,6 +1160,12 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     no_sp_tap: noSpTapTsk,
     SP_TAP_TSK: noSpTapTsk,
     sp_tap_tsk: noSpTapTsk,
+    NOMOR_SP_TAP_TSK: noSpTapTsk,
+    nomor_sp_tap_tsk: noSpTapTsk,
+    STATUS_TERSANGKA_LABEL: statusTersangkaLabel,
+    status_tersangka_label: statusTersangkaLabel,
+    URUTAN_TERSANGKA: urutanTersangka,
+    urutan_tersangka: urutanTersangka,
 
     no_sprin_kap: noSprinKap,
     tgl_sprin_kap: tglSprinKap,
@@ -1278,15 +1321,21 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
           pendidikan: s.pendidikan || '',
           kewarganegaraan: s.kewarganegaraan || 'Indonesia',
           status_kawin: s.status_pernikahan || s.marital_status || '',
-          alamat: s.alamat || '',
+          status_tersangka_label: s.status_tersangka_label || `Tersangka ${idx === 0 ? 'I' : idx === 1 ? 'II' : idx === 2 ? 'III' : idx === 3 ? 'IV' : idx + 1}`,
+          urutan_tersangka: s.urutan_tersangka || (idx + 1),
           nomor_sp_tap: s.nomor_sp_tap || s.no_sp_tap_tsk || '',
-          tanggal_sp_tap: formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk || '')
+          nomor_sp_tap_tsk: s.nomor_sp_tap || s.no_sp_tap_tsk || '',
+          tanggal_sp_tap: formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk || ''),
+          tgl_sp_tap_tsk: formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk || '')
         };
       }),
 
-    terlapor_list: (Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : [])
-      .filter((s) => s.status === 'terlapor')
-      .map((s, idx) => {
+    terlapor_list: (() => {
+      const fromSuspects = (Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : [])
+        .filter((s) => s.status === 'terlapor');
+      const fromCase = Array.isArray(activeCase?.terlapor_list) ? activeCase.terlapor_list : [];
+      const combined = fromSuspects.length > 0 ? fromSuspects : fromCase;
+      return combined.map((s, idx) => {
         const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
         const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
         return {
@@ -1303,9 +1352,11 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
           pendidikan: s.pendidikan || '',
           kewarganegaraan: s.kewarganegaraan || 'Indonesia',
           status_kawin: s.status_pernikahan || s.marital_status || '',
-          alamat: s.alamat || ''
+          alamat: s.alamat || '',
+          kontak: s.kontak || s.phone || s.no_hp || ''
         };
-      }),
+      });
+    })(),
 
     korban_list: (rawVictimsList.length > 0 ? rawVictimsList : (korbanNama ? [{
       nama: korbanNama,
