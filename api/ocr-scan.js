@@ -1,120 +1,162 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from 'groq-sdk';
 
+/**
+ * Serverless Handler untuk OCR Scan Dokumen Dumas / LP menggunakan Groq Vision SDK
+ * Endpoint: /api/ocr-scan
+ */
 export default async function handler(req, res) {
   // Hanya izinkan metode POST
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY belum dikonfigurasi di server." });
+    return res.status(500).json({
+      success: false,
+      error: "GROQ_API_KEY belum dikonfigurasi di environment server.",
+    });
   }
 
   try {
     const { images } = req.body || {};
     if (!images || !Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({ error: "Payload gambar tidak valid atau kosong." });
+      return res.status(400).json({
+        success: false,
+        error: "Payload gambar tidak valid atau kosong.",
+      });
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    // Inisialisasi Groq client resmi
+    const groq = new Groq({ apiKey });
 
-    // System instruction & prompt kedinasan Reskrim
-    const systemPrompt = `Anda adalah asisten cerdas penyidik Satreskrim Kepolisian Republik Indonesia (POLRI).
-Tugas Anda adalah melakukan ekstraksi data dari dokumen pengaduan masyarakat (Dumas) / laporan polisi fisik secara terstruktur, faktual, dan presisi tinggi ke dalam format JSON murni.
+    // Format gambar ke format OpenAI/Groq image_url
+    const formattedImages = images.map((img) => {
+      let dataUrl = "";
+      if (typeof img === "string") {
+        dataUrl = img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}`;
+      } else if (img.base64Data) {
+        dataUrl = img.base64Data.startsWith("data:")
+          ? img.base64Data
+          : `data:${img.mimeType || "image/jpeg"};base64,${img.base64Data}`;
+      } else if (img.data) {
+        dataUrl = img.data.startsWith("data:")
+          ? img.data
+          : `data:${img.mimeType || "image/jpeg"};base64,${img.data}`;
+      } else if (img.url) {
+        dataUrl = img.url;
+      }
+      return {
+        type: "image_url",
+        image_url: { url: dataUrl },
+      };
+    });
 
-ATURAN EKSTRAKSI ADMINISTRASI RESKRIM:
-1. Pelapor:
-   - Ekstrak nama lengkap, NIK, tempat/tgl lahir (TTL), agama, pekerjaan, alamat domisili, dan nomor kontak/HP.
-2. Saksi-Saksi (saksi_list):
-   - Deteksi dari blok klausul "mengajukan saksi sebagai berikut:" ataupun dari narasi kronologis peristiwa.
-   - Ekstrak: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label (Saksi Fakta / Saksi Terkait).
-   - ATURAN STRIP: Jika kolom NIK/TTL bertanda strip ("-"), jangan abaikan saksi. Bersihkan tanda strip menjadi string kosong "".
+    // Prompt kedinasan Satreskrim untuk ekstraksi entitas formil
+    const systemPrompt = `Anda adalah asisten AI resmi Satreskrim Kepolisian Republik Indonesia (POLRI).
+Tugas Anda adalah membaca gambar lembar dokumen fisik pengaduan masyarakat (Dumas) atau Laporan Polisi, lalu melakukan OCR dan ekstraksi data secara terstruktur, faktual, dan presisi tinggi ke dalam format JSON murni.
+
+PETUNJUK EKSTRAKSI ADMINISTRASI PENYIDIKAN:
+1. Nomor & Tanggal Surat:
+   - Cari nomor surat pengaduan / agenda / register jika ada (misal: "B/12/IX/2026/Reskrim" atau nomor agenda).
+   - Ekstrak tanggal surat dibuat atau tanggal tanda terima berkas.
+2. Identitas Pelapor / Pengadu (pelapor):
+   - Ekstrak: nama lengkap (pelapor_nama), NIK (pelapor_nik), TTL (pelapor_ttl), pekerjaan (pelapor_pekerjaan), agama (pelapor_agama), alamat domisili (pelapor_alamat), kontak/HP (pelapor_kontak).
 3. Pihak Terlapor (terlapor_list):
-   - Deteksi dari kalimat "diduga dilakukan oleh Terlapor:" serta pihak terkait dalam aliran dana/rekening/kronologis.
-   - Ekstrak: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label (Terlapor Utama / Terlapor Tambahan).
-4. Perkara:
-   - Ekstrak tindak_pidana, pasal_disangkakan, locus_delicti, tempus_delicti, dan uraian_kejadian (ringkasan kronologi kejadian yang padat, utuh, dan berurutan).
+   - Ekstrak seluruh pihak terlapor baik dari klausul terlapor maupun kronologis kejadian.
+   - Ekstrak tiap entitas: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label ("Terlapor Utama" atau "Terlapor Tambahan").
+4. Saksi-Saksi (saksi_list):
+   - Ekstrak saksi yang diajukan atau saksi yang tercantum dalam narasi peristiwa.
+   - Ekstrak tiap entitas: nama, nik, ttl, pekerjaan, agama, alamat, kontak, role_label ("Saksi Fakta" atau "Saksi Terkait").
+   - Jika kolom bertanda strip ("-"), bersihkan menjadi string kosong "".
+5. Perkara & Delik Pidana:
+   - Ekstrak tindak_pidana (dugaan perbuatan pidana, misal: "Penipuan", "Penggelapan", "Penganiayaan").
+   - Ekstrak pasal_disangkakan jika tertera.
+   - Ekstrak tempus_delicti (waktu peristiwa kejadian).
+   - Ekstrak locus_delicti (tempat peristiwa kejadian).
+   - Ekstrak uraian_kejadian (uraian ringkas kronologis peristiwa secara jelas dan utuh).
 
-FORMAT SKEMA JSON (Wajib valid JSON):
+FORMAT WAJIB JSON MURNI (Valid JSON Object):
 {
+  "nomor_surat": "",
+  "tanggal_surat": "",
   "pelapor_nama": "",
   "pelapor_nik": "",
   "pelapor_ttl": "",
   "pelapor_pekerjaan": "",
-  "pelapor_agama": "",
+  "pelapor_agama": "Islam",
   "pelapor_alamat": "",
   "pelapor_kontak": "",
   "terlapor_list": [
-    { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "", "alamat": "", "kontak": "", "role_label": "Terlapor Utama" }
+    { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "kontak": "", "role_label": "Terlapor Utama" }
   ],
   "saksi_list": [
-    { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "", "alamat": "", "kontak": "", "role_label": "Saksi Fakta" }
+    { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "kontak": "", "role_label": "Saksi Fakta" }
   ],
   "tindak_pidana": "",
   "pasal_disangkakan": "",
   "tempus_delicti": "",
   "locus_delicti": "",
-  "uraian_kejadian": ""
+  "uraian_kejadian": "",
+  "uraian_ringkas": ""
 }`;
 
-    // Siapkan konten multimodal untuk Gemini
-    const contents = [
-      ...images.map((img) => ({
-        inlineData: {
-          mimeType: img.mimeType || "image/jpeg",
-          data: img.base64Data || img.data,
-        },
-      })),
+    const userMessageContent = [
       {
-        text: "Analisis seluruh lembar dokumen fisik di atas secara terpadu dan ekstrak seluruh entitas sesuai skema JSON kedinasan Reskrim."
-      }
+        type: "text",
+        text: "Analisis seluruh lembar dokumen fisik di atas. Ekstrak data sesuai format JSON kedinasan Reskrim tanpa teks pengantar atau penutup.",
+      },
+      ...formattedImages,
     ];
 
-    // Daftar model dengan fallback cerdas
+    // Model vision utama sesuai instruksi: llama-3.2-11b-vision-preview
+    // Disertai fallback candidate model vision lain jika sewaktu-waktu mengalami rotasi/dekomisi di platform Groq
     const candidateModels = [
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-flash-latest",
-      "gemini-3.6-flash",
-      "gemini-flash-lite-latest",
+      process.env.GROQ_VISION_MODEL || "llama-3.2-11b-vision-preview",
+      "llama-3.2-90b-vision-preview",
+      "qwen/qwen3.8-27b",
     ];
 
-    let response = null;
-    let lastError = null;
+    let completion = null;
     let selectedModel = candidateModels[0];
+    let lastError = null;
 
     for (const model of candidateModels) {
       try {
         selectedModel = model;
-        response = await ai.models.generateContent({
+        const requestParams = {
           model,
-          contents,
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: "application/json",
-            temperature: 0.1,
-          },
-        });
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessageContent },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+        };
 
-        if (response && response.text) {
+        // Jika model berbasis Qwen reasoning, sembunyikan reasoning format agar kompatibel dengan json_object mode
+        if (model.includes("qwen")) {
+          requestParams.reasoning_format = "hidden";
+        }
+
+        completion = await groq.chat.completions.create(requestParams);
+
+        if (completion && completion.choices?.[0]?.message?.content) {
           break;
         }
       } catch (err) {
         lastError = err;
-        console.warn(`[OCR Server] Model ${model} gagal:`, err.message);
-        if (err.message && (err.message.includes('503') || err.message.includes('UNAVAILABLE'))) {
-          await new Promise((r) => setTimeout(r, 800));
-        }
+        console.warn(`[Groq OCR Server] Model ${model} gagal:`, err.message || err);
+        // Jika model decommissioned atau rate limited, coba model berikutnya di daftar candidateModels
       }
     }
 
-    if (!response || !response.text) {
-      throw lastError || new Error("Gagal menerima respons dari Gemini AI.");
+    if (!completion || !completion.choices?.[0]?.message?.content) {
+      throw lastError || new Error("Gagal menerima respons ekstraksi dari Groq Vision AI.");
     }
 
-    const rawText = response.text.trim();
-    const cleanJson = rawText.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    const rawContent = completion.choices[0].message.content.trim();
+    const cleanJson = rawContent.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
     const parsedData = JSON.parse(cleanJson);
 
     return res.status(200).json({
@@ -123,7 +165,7 @@ FORMAT SKEMA JSON (Wajib valid JSON):
       modelUsed: selectedModel,
     });
   } catch (error) {
-    console.error("[Serverless OCR Error]:", error);
+    console.error("[Groq Serverless OCR Error]:", error);
     return res.status(500).json({
       success: false,
       error: "Gagal memproses OCR di server: " + (error.message || error),

@@ -197,6 +197,8 @@ export async function scanSuratPengaduan(files, options = {}) {
 
     // 4. Normalisasi skema data (Mendukung skema flat maupun nested)
     const normalizedData = {
+      nomor_surat: sanitizeField(parsedData.nomor_surat || parsedData.no_surat || parsedData.perkara?.nomor_surat),
+      tanggal_surat: sanitizeField(parsedData.tanggal_surat || parsedData.tgl_surat || parsedData.perkara?.tanggal_surat),
       pelapor_nama: sanitizeField(parsedData.pelapor_nama || parsedData.pelapor?.nama_lengkap || parsedData.pelapor?.nama),
       pelapor_nik: sanitizeField(parsedData.pelapor_nik || parsedData.pelapor?.nik),
       pelapor_ttl: sanitizeField(parsedData.pelapor_ttl || parsedData.pelapor?.ttl || (parsedData.pelapor?.tempat_lahir ? `${parsedData.pelapor.tempat_lahir}, ${parsedData.pelapor.tgl_lahir || ''}` : '')),
@@ -396,6 +398,8 @@ export function mapOcrResultToDumasForm(ocrData) {
   // 4. Ekstrak Perkara & Delik
   const rawPerkara = ocrData.perkara || {};
   const mappedCaseInfo = {
+    nomor_surat: sanitizeField(ocrData.nomor_surat || rawPerkara.nomor_surat),
+    tanggal_surat: sanitizeField(ocrData.tanggal_surat || rawPerkara.tanggal_surat),
     tindak_pidana: sanitizeField(ocrData.tindak_pidana || rawPerkara.tindak_pidana),
     pasal_disangkakan: sanitizeField(ocrData.pasal_disangkakan || rawPerkara.pasal_disangkakan),
     tempus_delicti: sanitizeField(ocrData.tempus_delicti || rawPerkara.tempus_delicti),

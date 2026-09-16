@@ -1,16 +1,17 @@
-# Integrasi Google Gemini Vision API: Smart Scan OCR Dumas
+# Integrasi Groq Vision API: Smart Scan OCR Dumas & Mindik
 
-Dokumentasi fitur pemindaian cerdas (Smart Scan OCR) untuk dokumen fisik pengaduan masyarakat (Dumas) dan Laporan Polisi menggunakan Google Gemini Vision AI pada Satreskrim Polres Kolaka Timur.
+Dokumentasi fitur pemindaian cerdas (Smart Scan OCR) untuk dokumen fisik pengaduan masyarakat (Dumas) dan Laporan Polisi menggunakan Groq Vision SDK pada Satreskrim Polres Kolaka Timur.
 
 ---
 
 ## 1. Ikhtisar & Arsitektur
 
 Fitur ini mengotomatiskan pembacaan dokumen fisik (surat pengaduan bermeterai / lembar laporan pengaduan masyarakat) menjadi entitas data terstruktur format JSON standar kedinasan kepolisian:
-- **Pelapor**: Nama lengkap, NIK, TTL/Umur, Pekerjaan, Agama, Alamat domisili, Nomor Kontak/HP.
-- **Saksi-saksi**: Multi-saksi terstruktur (Nama, Pekerjaan, Alamat, Kontak).
-- **Terlapor**: Multi-terlapor (Nama, Pekerjaan, Alamat, Kontak).
-- **Perkara**: Dugaan Tindak Pidana, Pasal yang disangkakan, Tempus Delicti, Locus Delicti, dan Uraian Singkat Kejadian.
+- **Nomor & Tanggal Surat**: `nomor_surat`, `tanggal_surat`.
+- **Pelapor**: Nama lengkap, NIK, TTL, Pekerjaan, Agama, Alamat domisili, Nomor Kontak/HP.
+- **Saksi-saksi**: Multi-saksi terstruktur (`saksi_list`: Nama, NIK, TTL, Pekerjaan, Agama, Alamat, Kontak, Role).
+- **Terlapor**: Multi-terlapor (`terlapor_list`: Nama, NIK, TTL, Pekerjaan, Agama, Alamat, Kontak, Role).
+- **Perkara**: Dugaan Tindak Pidana, Dugaan Pasal, Tempus Delicti, Locus Delicti, dan Uraian Singkat Kejadian / Kronologis.
 
 ### File Terkait
 - Endpoint Serverless OCR (Backend): `api/ocr-scan.js`
@@ -25,24 +26,28 @@ Fitur ini mengotomatiskan pembacaan dokumen fisik (surat pengaduan bermeterai / 
 
 ## 2. Kredensial & Environment Variable
 
-Kredensial disimpan secara aman di backend serverless tanpa bocor ke bundle JavaScript browser:
+Kredensial disimpan secara aman di backend serverless tanpa bocor ke bundle JavaScript browser dan terdaftar di `.gitignore`:
 
 ```env
-# Google Gemini API (Server-Side Only)
-GEMINI_API_KEY=AQ.Ab8RN6...YOUR_ACTUAL_KEY...
+# Groq Cloud API Key for Vision & OCR (Server-Side Only)
+GROQ_API_KEY=gsk_your_groq_api_key_here
 ```
 
 ---
 
 ## 3. Model AI & Fallback Strategy
 
-Google Gemini API memiliki urutan prioritas model vision berdaya tahan tinggi:
-1. **Prioritas Utama**: `gemini-2.0-flash`
-2. **Fallback 1**: `gemini-1.5-flash`
-3. **Fallback 2**: `gemini-1.5-pro`
-4. **Fallback Resilient (Produksi Aktif)**: `gemini-flash-latest` dan `gemini-flash-lite-latest` (Menjamin pemrosesan tetap berjalan mulus meskipun versi terdahulu telah didepresiasi oleh Google atau sedang overload).
-5. **Penanganan 503 (Overloaded / High Demand)**: Dilengkapi mekanisme *exponential backoff retry* otomatis (1s -> 2s) sebelum beralih ke model berikutnya.
-6. **Konfigurasi Output**: `responseMimeType: "application/json"`, `temperature: 0.1` (faktual & presisi tinggi), dengan System Prompt kedinasan Satreskrim.
+Endpoint `api/ocr-scan.js` menginisialisasi Groq client resmi:
+```javascript
+import Groq from 'groq-sdk';
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+```
+
+Urutan prioritas model vision:
+1. **Prioritas Utama**: `llama-3.2-11b-vision-preview` (dapat dikustomisasi lewat `GROQ_VISION_MODEL`)
+2. **Fallback 1**: `llama-3.2-90b-vision-preview`
+3. **Fallback 2**: `qwen/qwen3.8-27b` (dengan `reasoning_format: "hidden"` untuk kompatibilitas penuh dengan `response_format: { type: "json_object" }`).
+4. **Format Output**: `response_format: { type: "json_object" }`, `temperature: 0.1` (faktual & presisi tinggi) dengan System Prompt kedinasan Satreskrim.
 
 ---
 
@@ -50,10 +55,8 @@ Google Gemini API memiliki urutan prioritas model vision berdaya tahan tinggi:
 
 1. Penyidik membuka modul Dumas, klik **"Registrasi Dumas Baru"**.
 2. Pada modal muncul **OPSI A: SMART SCAN BERKAS FISIK**:
-   - Penyidik dapat mengklik tombol **`[ Mulai Pindai Berkas Fisik ]`** atau menyeret file (Drag & Drop) foto lembar surat pengaduan (JPG/PNG/PDF).
-3. **Tactical HUD Loading Overlay** muncul seketika:
-   - Efek scanline laser merah, radar radar pulse taktis, dan progres bertahap (*Inisialisasi -> Gemini Vision Engine -> Ekstraksi Entitas -> Pemetaan Skema*).
+   - Penyidik dapat mengklik tombol **`[ Mulai Pindai Berkas Fisik ]`** atau menyeret file (Drag & Drop) foto lembar surat pengaduan (JPG/PNG).
+3. **Tactical HUD Loading Overlay** memvisualisasikan tahapan pemindaian.
 4. Setelah AI menyelesaikan analisis:
-   - Data otomatis disuntikkan ke state `pelapor`, `saksiList`, `terlaporList`, dan `caseInfo`.
-   - File fisik yang dipindai otomatis masuk ke daftar **Lampiran Barang Bukti** perkara.
-   - Modal tertutup dan penyidik diarahkan ke tampilan formulir dengan banner verifikasi AI.
+   - Data otomatis disuntikkan ke state formulir Dumas (`pelapor`, `saksiList`, `terlaporList`, dan `caseInfo`).
+   - Dokumen fisik yang dipindai otomatis masuk ke daftar **Lampiran Barang Bukti** perkara.
