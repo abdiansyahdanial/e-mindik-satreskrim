@@ -54,7 +54,7 @@ export default async function handler(req, res) {
 
     // Prompt kedinasan Satreskrim untuk ekstraksi entitas formil
     const systemPrompt = `Anda adalah asisten AI resmi Satreskrim Kepolisian Republik Indonesia (POLRI).
-Ekstrak data dokumen ke JSON ringkas. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.
+TUGAS UTAMA: Ekstraksi OCR murni. DILARANG MERINGKAS, MENGUBAH, ATAU MEMOTONG TEKS APAPUN, terutama pada bagian 'uraian_kejadian' atau 'kronologis'. Salin seluruh teks kejadian secara lengkap, utuh, dan verbatim (kata per kata) persis sesuai yang tertulis pada dokumen fisik ke dalam properti JSON terkait. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.
 
 PETUNJUK EKSTRAKSI ADMINISTRASI PENYIDIKAN:
 1. Nomor & Tanggal Surat:
@@ -74,7 +74,7 @@ PETUNJUK EKSTRAKSI ADMINISTRASI PENYIDIKAN:
    - Ekstrak pasal_disangkakan jika tertera.
    - Ekstrak tempus_delicti (waktu peristiwa kejadian).
    - Ekstrak locus_delicti (tempat peristiwa kejadian).
-   - Ekstrak uraian_kejadian (uraian ringkas kronologis peristiwa secara jelas dan utuh).
+   - Ekstrak uraian_kejadian (salin seluruh teks kronologis kejadian secara lengkap, utuh, dan verbatim kata demi kata sesuai dokumen fisik tanpa diringkas atau dipotong).
 
 FORMAT WAJIB JSON MURNI (Valid JSON Object):
 {
@@ -97,14 +97,13 @@ FORMAT WAJIB JSON MURNI (Valid JSON Object):
   "pasal_disangkakan": "",
   "tempus_delicti": "",
   "locus_delicti": "",
-  "uraian_kejadian": "",
-  "uraian_ringkas": ""
+  "uraian_kejadian": ""
 }`;
 
     const userMessageContent = [
       {
         type: "text",
-        text: "Ekstrak data dokumen ke JSON ringkas. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.",
+        text: "Analisis seluruh lembar dokumen fisik di atas. Salin seluruh teks uraian_kejadian secara verbatim kata per kata tanpa meringkas. Hanya kembalikan raw JSON tanpa format code block atau kata pengantar.",
       },
       ...formattedImages,
     ];

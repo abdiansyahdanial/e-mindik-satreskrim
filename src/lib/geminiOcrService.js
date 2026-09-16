@@ -299,9 +299,9 @@ export async function scanSuratPengaduan(files, options = {}) {
     const rawMsg = err.message || '';
 
     if (rawMsg.includes('API_KEY') || rawMsg.includes('403') || rawMsg.includes('UNAUTHENTICATED')) {
-      friendlyMessage = 'Kredensial API Gemini belum dikonfigurasi di server atau kuota habis.';
+      friendlyMessage = 'Kredensial API OCR belum dikonfigurasi di server atau kuota habis.';
     } else if (rawMsg.includes('503') || rawMsg.includes('UNAVAILABLE')) {
-      friendlyMessage = 'Layanan Google Gemini AI sedang mengalami lonjakan beban. Silakan ulangi dalam beberapa detik.';
+      friendlyMessage = 'Layanan Smart OCR sedang mengalami lonjakan beban. Silakan ulangi dalam beberapa detik.';
     } else if (rawMsg.includes('NetworkError') || rawMsg.includes('Failed to fetch')) {
       friendlyMessage = 'Gagal terhubung ke endpoint backend OCR. Pastikan server dev atau backend aktif.';
     } else if (rawMsg) {

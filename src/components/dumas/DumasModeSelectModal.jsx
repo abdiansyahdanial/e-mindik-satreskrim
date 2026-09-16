@@ -111,7 +111,7 @@ export default function DumasModeSelectModal({
     const totalPages = selectedFiles.length;
     setScanStep(`Mempersiapkan ${totalPages} lembar berkas fisik...`);
 
-    const t1 = setTimeout(() => setScanStep(`Mengirimkan ${totalPages} lembar citra ke Gemini Vision Engine...`), 1000);
+    const t1 = setTimeout(() => setScanStep(`Mengirimkan ${totalPages} lembar citra ke Smart OCR Engine...`), 1000);
     const t2 = setTimeout(() => setScanStep('Mengekstrak Pelapor, Saksi (termasuk klausul/kronologi), Terlapor, & Perkara...'), 2400);
     const t3 = setTimeout(() => setScanStep('Memetakan skema formulir kedinasan Reskrim...'), 3800);
 
@@ -278,7 +278,7 @@ export default function DumasModeSelectModal({
               marginBottom: '20px'
             }}>
               <Cpu size={14} className="hud-radar-pulse" />
-              <span>SAT RESKRIM // GEMINI VISION OCR (MULTI-PAGE)</span>
+              <span>SAT RESKRIM // SMART OCR RESKRIM (MULTI-PAGE)</span>
             </div>
 
             {/* Tactical Radar / Scanner Icon */}
@@ -319,7 +319,7 @@ export default function DumasModeSelectModal({
               margin: '0 0 8px 0',
               textTransform: 'uppercase'
             }}>
-              Memindai {selectedFiles.length > 1 ? `${selectedFiles.length} Lembar Dokumen` : 'Dokumen'} via Gemini AI Presisi...
+              Memindai {selectedFiles.length > 1 ? `${selectedFiles.length} Lembar Dokumen` : 'Dokumen'} via Smart OCR Presisi...
             </h3>
 
             {/* Sub-step indicator */}
@@ -696,7 +696,7 @@ export default function DumasModeSelectModal({
                     gap: '4px'
                   }}>
                     <Layers size={12} />
-                    GEMINI VISION 0.1 TEMP
+                    SMART OCR RESKRIM
                   </span>
                 </div>
 

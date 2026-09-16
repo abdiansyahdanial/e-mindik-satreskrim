@@ -258,7 +258,7 @@ export default function DumasFormView({
           previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
           file: file,
           rawFile: file,
-          keterangan: `Lembar ke-${idx + 1} surat pengaduan hasil pindai Google Gemini AI`,
+          keterangan: `Lembar ke-${idx + 1} surat pengaduan hasil pindai Smart OCR Reskrim`,
           hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
             .map(b => b.toString(16).padStart(2, '0')).join('') + '...'
         };
@@ -759,7 +759,7 @@ export default function DumasFormView({
               <Sparkles size={18} color="#FF352D" style={{ flexShrink: 0 }} />
               <div>
                 <strong style={{ color: '#FF352D' }}>
-                  HASIL SMART SCAN GEMINI VISION AKTIF
+                  HASIL SMART OCR RESKRIM AKTIF
                   {initialOcrFiles && initialOcrFiles.length > 1 ? ` (${initialOcrFiles.length} LEMBAR BERKAS): ` : ': '}
                 </strong>
                 <span>Entitas Pelapor, Saksi, Terlapor, &amp; Perkara telah diekstrak secara otomatis. Harap verifikasi keakuratan data dengan berkas fisik sebelum menyimpan.</span>
