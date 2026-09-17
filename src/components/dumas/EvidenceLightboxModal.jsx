@@ -10,6 +10,7 @@ import {
   ShieldCheck, 
   Info
 } from 'lucide-react';
+import { formatR2PublicUrl } from '../../lib/r2Client';
 
 export default function EvidenceLightboxModal({
   isOpen = true,
@@ -30,19 +31,10 @@ export default function EvidenceLightboxModal({
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === '+' || e.key === '=') {
-        setZoom(prev => Math.min(prev + 0.25, 3));
-      } else if (e.key === '-') {
-        setZoom(prev => Math.max(prev - 0.25, 0.5));
-      } else if (e.key === 'r' || e.key === 'R') {
-        setRotation(prev => (prev + 90) % 360);
-      } else if (e.key === '0') {
-        setZoom(1);
-        setRotation(0);
-        setPosition({ x: 0, y: 0 });
-      }
+      if (e.key === 'Escape' && onClose) onClose();
+      if (e.key === '+' || e.key === '=') setZoom(prev => Math.min(prev + 0.25, 3));
+      if (e.key === '-') setZoom(prev => Math.max(prev - 0.25, 0.5));
+      if (e.key === 'r' || e.key === 'R') setRotation(prev => (prev + 90) % 360);
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -57,8 +49,9 @@ export default function EvidenceLightboxModal({
     evidence.nama_file?.toLowerCase().endsWith('.pdf') ||
     evidence.name?.toLowerCase().endsWith('.pdf');
 
-  const fileUrl = evidence.file_url || evidence.previewUrl || null;
-  const fileName = evidence.nama_file || evidence.name || 'Barang_Bukti';
+  const rawUrl = evidence.url || evidence.fileUrl || evidence.file_url || evidence.previewUrl || null;
+  const fileUrl = formatR2PublicUrl(rawUrl);
+  const fileName = evidence.nama_berkas || evidence.nama_file || evidence.name || 'Barang_Bukti';
   const fileSize = evidence.file_size_formatted || `${((evidence.file_size_bytes || evidence.size || 0) / 1024).toFixed(0)} KB`;
   const keterangan = evidence.keterangan || 'Barang bukti digital dalam perkara laporan pengaduan';
   const hash = evidence.hash_sha256 || 'SHA-256 Valid';
@@ -556,6 +549,12 @@ export default function EvidenceLightboxModal({
                     border: '1px solid #1E293B'
                   }}
                   draggable={false}
+                  onLoad={() => {
+                    console.log("Memuat URL bukti di Lightbox:", fileUrl);
+                  }}
+                  onError={() => {
+                    console.error("Gagal memuat gambar bukti dari R2 di Lightbox:", fileUrl);
+                  }}
                 />
               ) : (
                 /* High-Quality Simulated Police Photographic Evidence */

@@ -19,6 +19,7 @@ import {
 import AddEvidenceModal from './AddEvidenceModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
 import { deleteEvidenceFromDumas } from '../../services/dumasService.js';
+import { formatR2PublicUrl } from '../../lib/r2Client.js';
 
 export default function DumasDetailView({
   dumasItem,
@@ -848,7 +849,8 @@ export default function DumasDetailView({
           {(perkara?.lampiran_barang_bukti && perkara.lampiran_barang_bukti.length > 0) ? (
             perkara.lampiran_barang_bukti.map((bb, idx) => {
               const isPdf = bb?.kategori_bukti === 'DOKUMEN_PDF' || bb?.nama_file?.toLowerCase().endsWith('.pdf');
-              const previewSrc = bb?.file_url || bb?.previewUrl || null;
+              const rawSrc = bb?.url || bb?.fileUrl || bb?.file_url || bb?.previewUrl || null;
+              const previewSrc = formatR2PublicUrl(rawSrc);
 
               return (
                 <div
@@ -931,6 +933,17 @@ export default function DumasDetailView({
                             src={previewSrc} 
                             alt={bb?.nama_file || 'Barang Bukti'} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            className="object-cover rounded border border-zinc-800"
+                            onLoad={() => {
+                              console.log("Memuat URL bukti di Detail:", previewSrc);
+                            }}
+                            onError={(e) => {
+                              console.error("Gagal memuat gambar bukti dari R2 di Detail:", previewSrc);
+                              e.currentTarget.style.display = 'none';
+                              if (e.currentTarget.nextElementSibling) {
+                                e.currentTarget.nextElementSibling.style.display = 'flex';
+                              }
+                            }}
                           />
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px' }}>

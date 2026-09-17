@@ -58,18 +58,16 @@ export default async function handler(req, res) {
 
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
 
-    // URL publik atau URL baca objek
+    // URL publik Cloudflare R2 untuk render gambar langsung di browser (r2.dev / public domain)
     const accountId = process.env.R2_ACCOUNT_ID || '18927f2f5d2b4e49a1c521c5c7e73073';
-    const endpointClean = (process.env.R2_ENDPOINT || `https://${accountId}.r2.cloudflarestorage.com`).replace(/\/+$/, '');
-    const publicUrlEnv = process.env.R2_PUBLIC_URL || '';
-    const fileUrl = publicUrlEnv 
-      ? `${publicUrlEnv.replace(/\/+$/, '')}/${key}` 
-      : `${endpointClean}/${bucketName}/${key}`;
+    const publicBaseUrl = (process.env.R2_PUBLIC_URL || `https://pub-${accountId}.r2.dev`).replace(/\/+$/, '');
+    const fileUrl = `${publicBaseUrl}/${key}`;
 
     return res.status(200).json({
       success: true,
       uploadUrl,
       fileUrl,
+      url: fileUrl,
       publicUrl: fileUrl,
       key,
     });

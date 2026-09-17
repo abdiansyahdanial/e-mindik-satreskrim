@@ -25,6 +25,7 @@ import {
 import EvidenceQrSyncModal from './EvidenceQrSyncModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
 import { supabase } from '../../supabaseClient';
+import { formatR2PublicUrl } from '../../lib/r2Client';
 
 const defaultPelapor = {
   nama: '',
@@ -347,7 +348,8 @@ export default function DumasFormView({
         console.log('[LAPTOP] Sinyal barang bukti baru diterima:', payload);
 
         if (payload && (payload.url || payload.fileUrl)) {
-          const resolvedUrl = payload.url || payload.fileUrl || payload.file_url;
+          const rawUrl = payload.url || payload.fileUrl || payload.file_url;
+          const resolvedUrl = formatR2PublicUrl(rawUrl);
           const resolvedName = payload.nama_berkas || payload.fileName || payload.name || payload.nama_file || 'Foto_Bukti_HP.jpg';
           const resolvedSize = payload.ukuran || payload.fileSize || payload.size || 0;
           const resolvedType = payload.tipe || payload.type || payload.mime_type || (resolvedName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
@@ -405,7 +407,7 @@ export default function DumasFormView({
         bc = new BroadcastChannel('polres_mobile_bridge');
         bc.onmessage = (event) => {
           if (event.data && (event.data.url || event.data.fileUrl)) {
-            const resolvedUrl = event.data.url || event.data.fileUrl;
+            const resolvedUrl = formatR2PublicUrl(event.data.url || event.data.fileUrl);
             const newEvidence = {
               ...event.data,
               url: resolvedUrl,
@@ -431,7 +433,7 @@ export default function DumasFormView({
         try {
           const parsed = JSON.parse(e.newValue);
           if (parsed && (parsed.url || parsed.fileUrl)) {
-            const resolvedUrl = parsed.url || parsed.fileUrl;
+            const resolvedUrl = formatR2PublicUrl(parsed.url || parsed.fileUrl);
             setDaftarBukti((prev) => {
               if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
                 return prev;
@@ -663,7 +665,8 @@ export default function DumasFormView({
 
   const handleEvidenceFromQr = (evidenceItem) => {
     if (!evidenceItem) return;
-    const resolvedUrl = evidenceItem.url || evidenceItem.fileUrl;
+    const rawUrl = evidenceItem.url || evidenceItem.fileUrl;
+    const resolvedUrl = formatR2PublicUrl(rawUrl);
     setDaftarBukti(prev => {
       if (prev.some(item => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl) || (evidenceItem.key && item.key === evidenceItem.key))) {
         return prev;
@@ -2078,7 +2081,8 @@ export default function DumasFormView({
               }}>
                 {evidenceFiles.map((file, idx) => {
                   const isPdf = file.kategori_bukti === 'DOKUMEN_PDF' || file.name?.toLowerCase().endsWith('.pdf') || file.nama_berkas?.toLowerCase().endsWith('.pdf');
-                  const fileUrl = file.url || file.previewUrl || file.fileUrl || file.file_url;
+                  const rawUrl = file.url || file.previewUrl || file.fileUrl || file.file_url;
+                  const fileUrl = formatR2PublicUrl(rawUrl);
                   const displayName = file.nama_berkas || file.name || file.nama_file || 'Barang Bukti';
                   const displaySize = file.file_size_formatted || (file.ukuran ? `${(file.ukuran / 1024).toFixed(0)} KB` : (file.size ? `${(file.size / 1024).toFixed(0)} KB` : '180 KB'));
 
@@ -2105,8 +2109,8 @@ export default function DumasFormView({
                         <div 
                           role="button"
                           tabIndex={0}
-                          onClick={() => setPreviewEvidence(file)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setPreviewEvidence(file); }}
+                          onClick={() => setPreviewEvidence({ ...file, url: fileUrl })}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setPreviewEvidence({ ...file, url: fileUrl }); }}
                           style={{
                             width: '52px',
                             height: '52px',
@@ -2123,11 +2127,27 @@ export default function DumasFormView({
                           title="Klik untuk melihat preview resolusi penuh dari R2"
                         >
                           {!isPdf && fileUrl ? (
-                            <img 
-                              src={fileUrl} 
-                              alt={displayName} 
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            />
+                            <>
+                              <img 
+                                src={fileUrl} 
+                                alt={displayName || "Barang Bukti"} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                className="object-cover rounded border border-zinc-800"
+                                onLoad={() => {
+                                  console.log("Memuat URL bukti:", fileUrl);
+                                }}
+                                onError={(e) => {
+                                  console.error("Gagal memuat gambar bukti dari R2:", fileUrl);
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.nextElementSibling) {
+                                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                                  }
+                                }}
+                              />
+                              <div style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                                <ImageIcon size={22} color="#F87171" />
+                              </div>
+                            </>
                           ) : (
                             isPdf ? <FileText size={22} color="#38BDF8" /> : <ImageIcon size={22} color="#F87171" />
                           )}

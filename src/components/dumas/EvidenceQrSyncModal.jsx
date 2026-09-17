@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../../supabaseClient';
+import { formatR2PublicUrl } from '../../lib/r2Client';
 
 export default function EvidenceQrSyncModal({
   isOpen = true,
@@ -94,7 +95,8 @@ export default function EvidenceQrSyncModal({
         return;
       }
 
-      const fileUrl = data.url || data.fileUrl || data.file_url || data.previewUrl;
+      const rawUrl = data.url || data.fileUrl || data.file_url || data.previewUrl;
+      const fileUrl = formatR2PublicUrl(rawUrl);
       const fileName = data.nama_berkas || data.nama_file || data.name || data.fileName || 'Foto_Bukti_HP.jpg';
       const fileSize = data.ukuran || data.fileSize || data.size || 184500;
       const mimeType = data.tipe || data.type || data.mime_type || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');

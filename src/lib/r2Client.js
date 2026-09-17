@@ -36,6 +36,31 @@ export const detectMimeType = (fileName = '') => {
 };
 
 /**
+ * Normalisasi URL R2 ke URL domain publik (r2.dev)
+ * Mengubah endpoint S3 internal (private) menjadi URL publik yang dapat dirender oleh tag <img>
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export const formatR2PublicUrl = (url = '') => {
+  if (!url || typeof url !== 'string') return '';
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+
+  // Ubah endpoint private S3 Cloudflare R2:
+  // https://<accountId>.r2.cloudflarestorage.com/<bucket>/<key> -> https://pub-<accountId>.r2.dev/<key>
+  const s3Match = url.match(/https?:\/\/([a-zA-Z0-9_-]+)\.r2\.cloudflarestorage\.com\/[^/]+\/(.+)/);
+  if (s3Match) {
+    const accountId = s3Match[1] || '18927f2f5d2b4e49a1c521c5c7e73073';
+    const key = s3Match[2];
+    const publicBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_R2_PUBLIC_URL) 
+      || `https://pub-${accountId}.r2.dev`;
+    return `${publicBase.replace(/\/+$/, '')}/${key}`;
+  }
+
+  return url;
+};
+
+/**
  * Mengunggah file (File, Blob, Uint8Array) ke Cloudflare R2
  * menggunakan pola Presigned PUT URL via serverless endpoint /api/r2-presign.
  *
@@ -239,7 +264,7 @@ export default {
   getR2FileUrl,
   checkR2FileExists,
   deleteR2File,
-  detectMimeType,
+  formatR2PublicUrl,
   getR2ConfigStatus,
   getR2Client,
 };
