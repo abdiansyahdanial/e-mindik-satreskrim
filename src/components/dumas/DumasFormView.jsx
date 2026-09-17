@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -87,8 +87,10 @@ export default function DumasFormView({
   initialOcrData = null,
   onBack,
   onSubmitDumas,
-  currentUserProfile
+  currentUserProfile,
+  perkaraId: propPerkaraId = null
 }) {
+  const perkaraId = propPerkaraId || initialOcrData?.id || initialOcrData?.perkara_id || null;
   // 0. Safe Hydration Draf Tersimpan dari LocalStorage
   const [savedDraft] = useState(() => {
     // Jika ada data OCR baru yang dipassing dari modal, utamakan data OCR baru
@@ -314,7 +316,23 @@ export default function DumasFormView({
   }, [initialOcrData]);
 
   // State 05: Lampiran Barang Bukti (Pemisahan: scan OCR awal murni hanya untuk ekstraksi form, BUKAN barang bukti)
+  // Fallback LocalStorage: inisialisasi state dari localStorage 'temp_dumas_bb' agar tidak kosong saat refresh
   const [daftarBukti, setDaftarBukti] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const tempBb = localStorage.getItem('temp_dumas_bb');
+        if (tempBb) {
+          const parsed = JSON.parse(tempBb);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            console.log('[LOCALSTORAGE RESTORE] Berhasil memulihkan bukti dari temp_dumas_bb:', parsed);
+            return parsed;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal membaca temp_dumas_bb dari localStorage:', e);
+    }
+
     if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles) && savedDraft.evidenceFiles.length > 0) {
       return savedDraft.evidenceFiles;
     }
@@ -324,6 +342,19 @@ export default function DumasFormView({
   const evidenceFiles = daftarBukti;
   const setEvidenceFiles = setDaftarBukti;
 
+  // Sinkronisasi otomatis daftarBukti ke LocalStorage ('temp_dumas_bb') saat tahap pengisian form
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        if (daftarBukti && daftarBukti.length > 0) {
+          localStorage.setItem('temp_dumas_bb', JSON.stringify(daftarBukti));
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal menyimpan temp_dumas_bb ke localStorage:', e);
+    }
+  }, [daftarBukti]);
+
   const [toastEvidence, setToastEvidence] = useState(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [previewEvidence, setPreviewEvidence] = useState(null);
@@ -332,10 +363,190 @@ export default function DumasFormView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
-  // Token Sesi Sinkronisasi Kamera HP (Stand-by Listener Bagian 05)
-  const [activeToken, setActiveToken] = useState(() => 
-    `POLRES-KOLTIM-BB-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
-  );
+  // Token Sesi Sinkronisasi Kamera HP (Disimpan di sessionStorage agar stabil saat browser direfresh)
+  const [activeToken, setActiveToken] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedToken = sessionStorage.getItem('temp_dumas_token');
+      if (savedToken) return savedToken;
+    }
+    const newToken = `POLRES-KOLTIM-BB-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('temp_dumas_token', newToken);
+    }
+    return newToken;
+  });
+
+  const tokenSesi = activeToken;
+
+  const handleTokenChange = (newToken) => {
+    setActiveToken(newToken);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('temp_dumas_token', newToken);
+    }
+  };
+
+  // Ref pelacak URL yang sudah disimpan ke DB untuk mencegah insert duplikat saat broadcast berulang
+  const insertedUrlsRef = useRef(new Set());
+
+  // 1. Simpan Data Bukti ke Database Supabase Saat Broadcast Diterima
+  const simpanBuktiKeDatabase = useCallback(async (payload) => {
+    if (!payload) return;
+    const targetUrl = payload.url || payload.fileUrl || payload.file_url;
+    if (!targetUrl) return;
+
+    if (insertedUrlsRef.current.has(targetUrl)) {
+      console.log('[DB PERSIST] Bukti sudah pernah tersimpan ke database, lewati:', targetUrl);
+      return;
+    }
+    insertedUrlsRef.current.add(targetUrl);
+
+    console.log('[DB PERSIST] Menyimpan bukti ke Supabase...', payload);
+
+    const bbPayload = {
+      id_perkara: perkaraId || null, // hubungkan jika ID perkara sudah ada
+      token_sesi: tokenSesi,
+      nama_berkas: payload.nama_berkas || payload.nama_file || payload.fileName || payload.name || 'Foto_Bukti_HP.jpg',
+      file_url: targetUrl,
+      tipe_berkas: payload.tipe || payload.type || payload.mime_type || 'image/jpeg',
+      ukuran_berkas: payload.ukuran || payload.fileSize || payload.size || 0,
+      storage_provider: 'cloudflare_r2',
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('barang_bukti')
+        .insert([bbPayload])
+        .select();
+
+      if (error) {
+        console.warn("Gagal persistensi BB ke tabel barang_bukti, mencoba tabel lampiran_barang_bukti:", error.message);
+        // Fallback ke tabel lampiran_barang_bukti jika tabel barang_bukti belum dimigrasi di database
+        const fallbackPayload = {
+          laporan_id: perkaraId || null,
+          file_path: tokenSesi || payload.key || '',
+          nama_file: bbPayload.nama_berkas,
+          file_url: targetUrl,
+          mime_type: bbPayload.tipe_berkas,
+          file_size_bytes: bbPayload.ukuran_berkas,
+          kategori_bukti: payload.kategori_bukti || (bbPayload.nama_berkas.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'),
+          keterangan: payload.keterangan || `Foto bukti via HP R2 [token:${tokenSesi}]`,
+          created_at: new Date().toISOString()
+        };
+
+        const { data: fbData, error: fbError } = await supabase
+          .from('lampiran_barang_bukti')
+          .insert([fallbackPayload])
+          .select();
+
+        if (fbError) {
+          console.error("Gagal persistensi BB ke Supabase:", fbError);
+        } else {
+          console.log("BB berhasil disimpan permanen ke lampiran_barang_bukti:", fbData);
+        }
+      } else {
+        console.log("BB berhasil disimpan permanen:", data);
+      }
+    } catch (dbErr) {
+      console.error("Kesalahan jaringan saat menyimpan bukti ke Supabase:", dbErr);
+    }
+  }, [perkaraId, tokenSesi]);
+
+  // 2. Muat Ulang Data (Fetch on Mount) Saat Komponen Dimuat / Di-refresh
+  useEffect(() => {
+    const fetchBuktiTersimpan = async () => {
+      if (!perkaraId && !tokenSesi) return;
+
+      console.log(`[DB FETCH] Mengambil data bukti tersimpan (perkaraId: ${perkaraId}, tokenSesi: ${tokenSesi})...`);
+
+      try {
+        let query = supabase.from('barang_bukti').select('*');
+        if (perkaraId) {
+          query = query.eq('id_perkara', perkaraId);
+        } else if (tokenSesi) {
+          query = query.eq('token_sesi', tokenSesi);
+        }
+
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          console.log('[DB FETCH] Data bukti ditemukan di tabel barang_bukti:', data);
+          setDaftarBukti((prev) => {
+            const existingUrls = new Set(prev.map(p => p.url || p.fileUrl || p.file_url));
+            const newItems = data
+              .filter(item => !existingUrls.has(item.file_url))
+              .map(item => ({
+                id: item.id,
+                nama: item.nama_berkas,
+                nama_berkas: item.nama_berkas,
+                nama_file: item.nama_berkas,
+                name: item.nama_berkas,
+                url: item.file_url,
+                fileUrl: item.file_url,
+                file_url: item.file_url,
+                previewUrl: item.file_url,
+                tipe: item.tipe_berkas,
+                type: item.tipe_berkas,
+                mime_type: item.tipe_berkas,
+                ukuran: item.ukuran_berkas,
+                size: item.ukuran_berkas,
+                fileSize: item.ukuran_berkas,
+                file_size_formatted: `${(item.ukuran_berkas / 1024).toFixed(0)} KB`,
+                kategori_bukti: item.nama_berkas?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+                storage_provider: item.storage_provider || 'cloudflare_r2',
+                created_at: item.created_at
+              }));
+            return [...prev, ...newItems];
+          });
+          return;
+        }
+
+        // Fallback: cek ke lampiran_barang_bukti jika barang_bukti kosong/belum dibuat
+        let fbQuery = supabase.from('lampiran_barang_bukti').select('*');
+        if (perkaraId) {
+          fbQuery = fbQuery.eq('laporan_id', perkaraId);
+        } else if (tokenSesi) {
+          fbQuery = fbQuery.eq('file_path', tokenSesi);
+        }
+
+        const { data: fbData, error: fbError } = await fbQuery;
+        if (!fbError && fbData && fbData.length > 0) {
+          console.log('[DB FETCH] Data bukti ditemukan di tabel lampiran_barang_bukti:', fbData);
+          setDaftarBukti((prev) => {
+            const existingUrls = new Set(prev.map(p => p.url || p.fileUrl || p.file_url));
+            const newItems = fbData
+              .filter(item => !existingUrls.has(item.file_url))
+              .map(item => ({
+                id: item.id,
+                nama: item.nama_file,
+                nama_berkas: item.nama_file,
+                nama_file: item.nama_file,
+                name: item.nama_file,
+                url: item.file_url,
+                fileUrl: item.file_url,
+                file_url: item.file_url,
+                previewUrl: item.file_url,
+                tipe: item.mime_type,
+                type: item.mime_type,
+                mime_type: item.mime_type,
+                ukuran: item.file_size_bytes,
+                size: item.file_size_bytes,
+                fileSize: item.file_size_bytes,
+                file_size_formatted: `${(item.file_size_bytes / 1024).toFixed(0)} KB`,
+                kategori_bukti: item.kategori_bukti || (item.nama_file?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'),
+                keterangan: item.keterangan,
+                created_at: item.created_at
+              }));
+            return [...prev, ...newItems];
+          });
+        }
+      } catch (err) {
+        console.warn('[DB FETCH] Pengecekan Supabase awal selesai (offline/pending):', err);
+      }
+    };
+
+    fetchBuktiTersimpan();
+  }, [perkaraId, tokenSesi]);
+
 
   // Stand-by Realtime Listener di Channel mobile_sync_${activeToken}
   useEffect(() => {
@@ -344,7 +555,7 @@ export default function DumasFormView({
     const channel = supabase.channel(`mobile_sync_${activeToken}`);
 
     channel
-      .on('broadcast', { event: 'evidence_uploaded' }, ({ payload }) => {
+      .on('broadcast', { event: 'evidence_uploaded' }, async ({ payload }) => {
         console.log('[LAPTOP] Sinyal barang bukti baru diterima:', payload);
 
         if (payload && (payload.url || payload.fileUrl)) {
@@ -384,14 +595,16 @@ export default function DumasFormView({
 
           // 1. Tambahkan data foto R2 langsung ke state lampiran form Bagian 05:
           setDaftarBukti((prev) => {
-            // Cegah duplikasi ID jika ada re-trigger
             if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
               return prev;
             }
             return [...prev, newEvidence];
           });
 
-          // 2. Mainkan efek visual / notifikasi toast sukses:
+          // 2. Simpan permanen ke Supabase
+          await simpanBuktiKeDatabase(newEvidence);
+
+          // 3. Notifikasi toast sukses:
           setToastEvidence(newEvidence);
           setTimeout(() => setToastEvidence(null), 6000);
         }
@@ -405,7 +618,7 @@ export default function DumasFormView({
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         bc = new BroadcastChannel('polres_mobile_bridge');
-        bc.onmessage = (event) => {
+        bc.onmessage = async (event) => {
           if (event.data && (event.data.url || event.data.fileUrl)) {
             const resolvedUrl = formatR2PublicUrl(event.data.url || event.data.fileUrl);
             const newEvidence = {
@@ -421,29 +634,32 @@ export default function DumasFormView({
               }
               return [...prev, newEvidence];
             });
+            await simpanBuktiKeDatabase(newEvidence);
             setToastEvidence(newEvidence);
             setTimeout(() => setToastEvidence(null), 6000);
           }
         };
-      } catch (_e) {}
+      } catch {}
     }
 
-    const handleStorage = (e) => {
+    const handleStorage = async (e) => {
       if (e.key === `polres_mobile_evidence_${activeToken}` && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (parsed && (parsed.url || parsed.fileUrl)) {
             const resolvedUrl = formatR2PublicUrl(parsed.url || parsed.fileUrl);
+            const newEvidence = { ...parsed, url: resolvedUrl, isNew: true };
             setDaftarBukti((prev) => {
               if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
                 return prev;
               }
-              return [...prev, { ...parsed, url: resolvedUrl, isNew: true }];
+              return [...prev, newEvidence];
             });
+            await simpanBuktiKeDatabase(newEvidence);
             setToastEvidence(parsed);
             setTimeout(() => setToastEvidence(null), 6000);
           }
-        } catch (_err) {}
+        } catch {}
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -453,7 +669,7 @@ export default function DumasFormView({
       if (bc) bc.close();
       window.removeEventListener('storage', handleStorage);
     };
-  }, [activeToken]);
+  }, [activeToken, simpanBuktiKeDatabase]);
 
   // Auto-Save Draft Sinkronisasi Otomatis dengan Debouncing (400ms)
   useEffect(() => {
@@ -486,7 +702,8 @@ export default function DumasFormView({
           file_size_formatted: f.file_size_formatted || '0 KB',
           keterangan: f.keterangan || '',
           hash_sha256: f.hash_sha256 || '',
-          file_url: f.file_url || ''
+          file_url: f.file_url || f.url || f.fileUrl || '',
+          url: f.url || f.fileUrl || f.file_url || ''
         }));
 
         const draftPayload = {
@@ -520,6 +737,10 @@ export default function DumasFormView({
     if (!confirmReset) return;
 
     clearDumasDraft(currentUserProfile?.id);
+    try {
+      localStorage.removeItem('temp_dumas_bb');
+      sessionStorage.removeItem('temp_dumas_token');
+    } catch {}
     setPelapor(defaultPelapor);
     setSaksiList(defaultSaksi);
     setTerlaporList(defaultTerlapor);
@@ -663,22 +884,30 @@ export default function DumasFormView({
     processRawFiles(files);
   };
 
-  const handleEvidenceFromQr = (evidenceItem) => {
+  const handleEvidenceFromQr = async (evidenceItem) => {
     if (!evidenceItem) return;
     const rawUrl = evidenceItem.url || evidenceItem.fileUrl;
     const resolvedUrl = formatR2PublicUrl(rawUrl);
+    const itemWithResolvedUrl = { ...evidenceItem, url: resolvedUrl, isNew: true };
     setDaftarBukti(prev => {
       if (prev.some(item => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl) || (evidenceItem.key && item.key === evidenceItem.key))) {
         return prev;
       }
-      return [...prev, { ...evidenceItem, url: resolvedUrl, isNew: true }];
+      return [...prev, itemWithResolvedUrl];
     });
-    setToastEvidence(evidenceItem);
+    await simpanBuktiKeDatabase(itemWithResolvedUrl);
+    setToastEvidence(itemWithResolvedUrl);
     setTimeout(() => setToastEvidence(null), 6000);
   };
 
   const handleRemoveEvidence = (idToRemove) => {
-    setEvidenceFiles(prev => prev.filter(f => f.id !== idToRemove));
+    setEvidenceFiles(prev => {
+      const updated = prev.filter(f => f.id !== idToRemove);
+      try {
+        localStorage.setItem('temp_dumas_bb', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   };
 
   // Submit Handler
@@ -787,6 +1016,10 @@ export default function DumasFormView({
       // HANYA bersihkan draf jika penyimpanan ke Supabase berhasil
       if (result && result.success !== false) {
         clearDumasDraft(currentUserProfile?.id);
+        try {
+          localStorage.removeItem('temp_dumas_bb');
+          sessionStorage.removeItem('temp_dumas_token');
+        } catch {}
         setIsDraftRestored(false);
         setLastSavedTime(null);
         setSaveStatus('idle');
@@ -2055,7 +2288,12 @@ export default function DumasFormView({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setEvidenceFiles([])}
+                  onClick={() => {
+                    setEvidenceFiles([]);
+                    try {
+                      localStorage.removeItem('temp_dumas_bb');
+                    } catch {}
+                  }}
                   style={{
                     background: 'rgba(239, 68, 68, 0.1)',
                     border: '1px solid rgba(239, 68, 68, 0.3)',
@@ -2378,7 +2616,7 @@ export default function DumasFormView({
         setDaftarBukti={setDaftarBukti}
         activeToken={activeToken}
         syncToken={activeToken}
-        onTokenChange={setActiveToken}
+        onTokenChange={handleTokenChange}
         dumasNo={caseInfo?.nomor_lp || 'DUMAS-BARU'}
       />
 
