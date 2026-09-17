@@ -18,12 +18,15 @@ export default function EvidenceQrSyncModal({
   isOpen = true,
   onClose,
   onEvidenceReceived,
+  setDaftarBukti,
+  activeToken: propActiveToken,
+  token: propToken,
   syncToken: propSyncToken,
   onTokenChange,
   _dumasNo
 }) {
   const [internalToken, setInternalToken] = useState(() => generateNewToken());
-  const syncToken = propSyncToken || internalToken;
+  const syncToken = propActiveToken || propToken || propSyncToken || internalToken;
   const [sessionTimeoutSeconds, setSessionTimeoutSeconds] = useState(300); // 5 menit sesi stabil
   const [isExpired, setIsExpired] = useState(false);
   const [receivedCount, setReceivedCount] = useState(0);
@@ -85,36 +88,59 @@ export default function EvidenceQrSyncModal({
 
     const handleReceivedEvidence = (data) => {
       if (!data) return;
-      if (data.token && data.token !== syncToken) return;
+      // Normalisasi token check jika token terlampir
+      if (data.token && syncToken && data.token.trim().toUpperCase() !== syncToken.trim().toUpperCase()) {
+        console.warn('[REALTIME BRIDGE] Abaikan data karena token tidak cocok:', data.token, 'vs', syncToken);
+        return;
+      }
 
-      const fileUrl = data.fileUrl || data.file_url || data.previewUrl;
-      const fileName = data.fileName || data.name || data.nama_file || 'Foto_Bukti_HP.jpg';
-      const fileSize = data.fileSize || data.size || 184500;
-      const mimeType = data.type || data.mime_type || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+      const fileUrl = data.url || data.fileUrl || data.file_url || data.previewUrl;
+      const fileName = data.nama_berkas || data.nama_file || data.name || data.fileName || 'Foto_Bukti_HP.jpg';
+      const fileSize = data.ukuran || data.fileSize || data.size || 184500;
+      const mimeType = data.tipe || data.type || data.mime_type || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
       const isPdf = mimeType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf');
 
       const evidenceItem = {
-        id: `bb-r2-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        name: fileName,
+        id: data.id || `bb_${Date.now()}`,
+        nama_berkas: fileName,
         nama_file: fileName,
-        size: fileSize,
+        name: fileName,
+        url: fileUrl,
+        fileUrl: fileUrl,
+        file_url: fileUrl,
+        previewUrl: fileUrl,
+        tipe: mimeType,
         type: mimeType,
         mime_type: mimeType,
+        ukuran: fileSize,
+        size: fileSize,
+        fileSize: fileSize,
         kategori_bukti: isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
         file_size_formatted: data.file_size_formatted || `${(fileSize / 1024).toFixed(0)} KB`,
-        file_url: fileUrl,
-        fileUrl: fileUrl,
-        previewUrl: fileUrl,
         key: data.key,
         keterangan: data.keterangan || 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)',
         hash_sha256: data.hash_sha256 || Array.from(crypto.getRandomValues(new Uint8Array(16)))
           .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
-        diunggah_pada: data.timestamp || new Date().toISOString()
+        uploaded_at: data.uploaded_at || data.timestamp || new Date().toISOString(),
+        diunggah_pada: data.uploaded_at || data.timestamp || new Date().toISOString(),
+        isNew: true
       };
+
+      console.log('[LAPTOP MODAL] Sinyal barang bukti baru diterima:', evidenceItem);
 
       setReceivedCount(prev => prev + 1);
       setJustReceived(true);
-      setTimeout(() => setJustReceived(false), 3000);
+      setTimeout(() => setJustReceived(false), 4000);
+
+      // 1. Tambahkan data foto R2 langsung ke state lampiran form Bagian 05 jika ada setDaftarBukti:
+      if (setDaftarBukti) {
+        setDaftarBukti((prev) => {
+          if (prev.some((item) => (item.url && item.url === fileUrl) || (item.fileUrl && item.fileUrl === fileUrl))) {
+            return prev;
+          }
+          return [...prev, evidenceItem];
+        });
+      }
 
       if (onEvidenceReceived) {
         onEvidenceReceived(evidenceItem);
@@ -123,9 +149,7 @@ export default function EvidenceQrSyncModal({
 
     // A. Supabase Realtime channel (Koneksi lintas-perangkat HP ke Laptop)
     console.log(`[REALTIME BRIDGE] Membuka listener channel laptop: mobile_sync_${syncToken}`);
-    const channel = supabase.channel(`mobile_sync_${syncToken}`, {
-      config: { broadcast: { ack: true } }
-    });
+    const channel = supabase.channel(`mobile_sync_${syncToken}`);
 
     channel
       .on('broadcast', { event: 'evidence_uploaded' }, ({ payload }) => {
@@ -163,7 +187,7 @@ export default function EvidenceQrSyncModal({
       if (bc) bc.close();
       window.removeEventListener('storage', handleStorage);
     };
-  }, [isOpen, isExpired, syncToken, onEvidenceReceived]);
+  }, [isOpen, isExpired, syncToken, onEvidenceReceived, setDaftarBukti]);
 
   // Handle ESC Key to Close
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Camera, 
   UploadCloud, 
@@ -33,6 +33,20 @@ export default function MobileUploadView() {
   };
 
   const [token] = useState(getUrlToken);
+
+  // Pre-subscribe channel WebSocket Supabase agar siap kirim instan begitu upload R2 selesai
+  useEffect(() => {
+    if (!token) return;
+    console.log(`[MOBILE SYNC] Pre-subscribing channel mobile_sync_${token}...`);
+    const ch = supabase.channel(`mobile_sync_${token}`);
+    ch.subscribe((status) => {
+      console.log(`[MOBILE SYNC] Status koneksi awal HP (${token}):`, status);
+    });
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [token]);
 
   const handleFileCapture = (e) => {
     const file = e.target.files?.[0];
@@ -106,59 +120,78 @@ export default function MobileUploadView() {
       const finalUrl = fileUrl;
       console.log('[MOBILE UPLOAD] Sukses terunggah ke Cloudflare R2:', finalUrl);
 
-      // 3. Siapkan payload data foto resmi
-      const evidencePayload = {
-        token,
-        fileName: selectedFile.name,
-        name: selectedFile.name,
-        nama_file: selectedFile.name,
-        fileSize: selectedFile.size,
-        size: selectedFile.size,
-        file_size_formatted: `${(selectedFile.size / 1024).toFixed(0)} KB`,
+      // 3. Siapkan payload data foto resmi & reaktif
+      const evidenceData = {
+        id: `bb_${Date.now()}`,
+        nama_berkas: targetName,
+        nama_file: targetName,
+        name: targetName,
+        fileName: targetName,
+        url: finalUrl, // URL publik Cloudflare R2 yang valid
         fileUrl: finalUrl,
         file_url: finalUrl,
         previewUrl: finalUrl,
-        key: key,
+        tipe: mimeType,
         type: mimeType,
         mime_type: mimeType,
+        ukuran: selectedFile.size,
+        size: selectedFile.size,
+        fileSize: selectedFile.size,
+        file_size_formatted: `${(selectedFile.size / 1024).toFixed(0)} KB`,
         kategori_bukti: selectedFile.name?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
         keterangan: 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)',
-        timestamp: new Date().toISOString()
+        uploaded_at: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        token: token,
+        key: key
       };
 
-      console.log(`[MOBILE UPLOAD] Mengirim payload ke channel mobile_sync_${token}...`);
+      console.log(`[MOBILE] Mengirim broadcast ke channel mobile_sync_${token}...`, evidenceData);
 
       // 4. Kirim broadcast lewat Supabase Realtime channel mobile_sync_${token}
-      const syncChannel = supabase.channel(`mobile_sync_${token}`, {
-        config: { broadcast: { ack: true } }
-      });
+      const syncChannel = supabase.channel(`mobile_sync_${token}`);
 
-      await new Promise((resolve) => {
-        syncChannel.subscribe(async (status) => {
-          console.log(`[MOBILE UPLOAD] Status koneksi channel HP: ${status}`);
-          if (status === 'SUBSCRIBED') {
-            try {
-              const res = await syncChannel.send({
-                type: 'broadcast',
-                event: 'evidence_uploaded',
-                payload: evidencePayload,
-              });
-              console.log('[MOBILE UPLOAD] Broadcast hasil pengiriman:', res);
-            } catch (broadcastErr) {
-              console.warn('[MOBILE UPLOAD] Broadcast send error:', broadcastErr);
-            }
-            resolve();
-          }
+      if (syncChannel.state === 'joined') {
+        const res = await syncChannel.send({
+          type: 'broadcast',
+          event: 'evidence_uploaded',
+          payload: evidenceData
         });
-        // Timeout batas broadcast 4 detik
-        setTimeout(resolve, 4000);
-      });
+        console.log('[MOBILE] Event broadcast terkirim ke laptop (instant):', res, evidenceData);
+      } else {
+        await new Promise((resolve) => {
+          let resolved = false;
+          syncChannel.subscribe(async (status) => {
+            console.log(`[MOBILE] Status koneksi channel HP: ${status}`);
+            if (status === 'SUBSCRIBED' && !resolved) {
+              resolved = true;
+              try {
+                const res = await syncChannel.send({
+                  type: 'broadcast',
+                  event: 'evidence_uploaded',
+                  payload: evidenceData
+                });
+                console.log('[MOBILE] Event broadcast terkirim ke laptop:', res, evidenceData);
+              } catch (broadcastErr) {
+                console.warn('[MOBILE] Broadcast send error:', broadcastErr);
+              }
+              resolve();
+            }
+          });
+          setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              resolve();
+            }
+          }, 4000);
+        });
+      }
 
       // BroadcastChannel & LocalStorage fallback (untuk simulasi / uji coba tab perangkat yang sama)
       try {
         if (typeof BroadcastChannel !== 'undefined') {
           const bc = new BroadcastChannel('polres_mobile_bridge');
-          bc.postMessage(evidencePayload);
+          bc.postMessage(evidenceData);
           bc.close();
         }
       } catch (bcErr) {
@@ -167,7 +200,7 @@ export default function MobileUploadView() {
 
       try {
         if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(`polres_mobile_evidence_${token}`, JSON.stringify(evidencePayload));
+          localStorage.setItem(`polres_mobile_evidence_${token}`, JSON.stringify(evidenceData));
         }
       } catch (_lsErr) {}
 

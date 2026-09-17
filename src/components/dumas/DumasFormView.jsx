@@ -13,7 +13,8 @@ import {
   Clock,
   Smartphone,
   UploadCloud,
-  Eye
+  Eye,
+  X
 } from 'lucide-react';
 import { 
   generateDumasNumber, 
@@ -312,12 +313,17 @@ export default function DumasFormView({
   }, [initialOcrData]);
 
   // State 05: Lampiran Barang Bukti (Pemisahan: scan OCR awal murni hanya untuk ekstraksi form, BUKAN barang bukti)
-  const [evidenceFiles, setEvidenceFiles] = useState(() => {
+  const [daftarBukti, setDaftarBukti] = useState(() => {
     if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles) && savedDraft.evidenceFiles.length > 0) {
       return savedDraft.evidenceFiles;
     }
     return [];
   });
+  // Backward-compatible alias
+  const evidenceFiles = daftarBukti;
+  const setEvidenceFiles = setDaftarBukti;
+
+  const [toastEvidence, setToastEvidence] = useState(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [previewEvidence, setPreviewEvidence] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -326,64 +332,70 @@ export default function DumasFormView({
   const [formError, setFormError] = useState(null);
 
   // Token Sesi Sinkronisasi Kamera HP (Stand-by Listener Bagian 05)
-  const [mobileSyncToken, setMobileSyncToken] = useState(() => 
+  const [activeToken, setActiveToken] = useState(() => 
     `POLRES-KOLTIM-BB-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
   );
 
-  // Stand-by Realtime Listener di Channel mobile_sync_${mobileSyncToken}
+  // Stand-by Realtime Listener di Channel mobile_sync_${activeToken}
   useEffect(() => {
-    if (!mobileSyncToken) return;
+    if (!activeToken) return;
 
-    const handleIncomingEvidence = (payload) => {
-      if (!payload) return;
-      if (payload.token && payload.token !== mobileSyncToken) return;
-
-      const fileUrl = payload.fileUrl || payload.file_url || payload.previewUrl;
-      const fileName = payload.fileName || payload.name || payload.nama_file || 'Foto_Bukti_HP.jpg';
-      const fileSize = payload.fileSize || payload.size || 0;
-      const mimeType = payload.type || payload.mime_type || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-      const isPdf = mimeType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf');
-
-      const newEvidence = {
-        id: `bb-r2-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        name: fileName,
-        nama_file: fileName,
-        size: fileSize,
-        file_size_formatted: payload.file_size_formatted || `${(fileSize / 1024).toFixed(0)} KB`,
-        type: mimeType,
-        mime_type: mimeType,
-        kategori_bukti: isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
-        fileUrl: fileUrl,
-        file_url: fileUrl,
-        previewUrl: fileUrl,
-        key: payload.key,
-        keterangan: payload.keterangan || 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)',
-        hash_sha256: payload.hash_sha256 || Array.from(crypto.getRandomValues(new Uint8Array(16)))
-          .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
-        diunggah_pada: payload.timestamp || new Date().toISOString()
-      };
-
-      setEvidenceFiles(prev => {
-        // Cegah duplikasi jika bukti dengan URL atau key yang sama sudah ada
-        if (prev.some(item => (item.fileUrl && item.fileUrl === fileUrl) || (payload.key && item.key === payload.key))) {
-          return prev;
-        }
-        return [...prev, newEvidence];
-      });
-    };
-
-    console.log(`[DUMAS REALTIME] Stand-by di channel mobile_sync_${mobileSyncToken}...`);
-    const channel = supabase.channel(`mobile_sync_${mobileSyncToken}`, {
-      config: { broadcast: { ack: true } }
-    });
+    const channel = supabase.channel(`mobile_sync_${activeToken}`);
 
     channel
       .on('broadcast', { event: 'evidence_uploaded' }, ({ payload }) => {
-        console.log('[DUMAS REALTIME] Bukti diterima dari HP:', payload);
-        handleIncomingEvidence(payload);
+        console.log('[LAPTOP] Sinyal barang bukti baru diterima:', payload);
+
+        if (payload && (payload.url || payload.fileUrl)) {
+          const resolvedUrl = payload.url || payload.fileUrl || payload.file_url;
+          const resolvedName = payload.nama_berkas || payload.fileName || payload.name || payload.nama_file || 'Foto_Bukti_HP.jpg';
+          const resolvedSize = payload.ukuran || payload.fileSize || payload.size || 0;
+          const resolvedType = payload.tipe || payload.type || payload.mime_type || (resolvedName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+          const isPdf = resolvedType.includes('pdf') || resolvedName.toLowerCase().endsWith('.pdf');
+
+          const newEvidence = {
+            id: payload.id || `bb_${Date.now()}`,
+            nama_berkas: resolvedName,
+            nama_file: resolvedName,
+            name: resolvedName,
+            fileName: resolvedName,
+            url: resolvedUrl,
+            fileUrl: resolvedUrl,
+            file_url: resolvedUrl,
+            previewUrl: resolvedUrl,
+            ukuran: resolvedSize,
+            size: resolvedSize,
+            fileSize: resolvedSize,
+            file_size_formatted: `${(resolvedSize / 1024).toFixed(0)} KB`,
+            tipe: resolvedType,
+            type: resolvedType,
+            mime_type: resolvedType,
+            kategori_bukti: isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+            keterangan: payload.keterangan || 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)',
+            uploaded_at: payload.uploaded_at || new Date().toISOString(),
+            diunggah_pada: payload.uploaded_at || new Date().toISOString(),
+            key: payload.key,
+            hash_sha256: payload.hash_sha256 || Array.from(crypto.getRandomValues(new Uint8Array(16)))
+              .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
+            isNew: true
+          };
+
+          // 1. Tambahkan data foto R2 langsung ke state lampiran form Bagian 05:
+          setDaftarBukti((prev) => {
+            // Cegah duplikasi ID jika ada re-trigger
+            if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
+              return prev;
+            }
+            return [...prev, newEvidence];
+          });
+
+          // 2. Mainkan efek visual / notifikasi toast sukses:
+          setToastEvidence(newEvidence);
+          setTimeout(() => setToastEvidence(null), 6000);
+        }
       })
       .subscribe((status) => {
-        console.log(`[DUMAS REALTIME] Status channel ${mobileSyncToken}:`, status);
+        console.log(`[LAPTOP] Status listener mobile_sync_${activeToken}:`, status);
       });
 
     // Cross-tab broadcast & localStorage fallback untuk uji coba di laptop
@@ -392,16 +404,43 @@ export default function DumasFormView({
       try {
         bc = new BroadcastChannel('polres_mobile_bridge');
         bc.onmessage = (event) => {
-          handleIncomingEvidence(event.data);
+          if (event.data && (event.data.url || event.data.fileUrl)) {
+            const resolvedUrl = event.data.url || event.data.fileUrl;
+            const newEvidence = {
+              ...event.data,
+              url: resolvedUrl,
+              fileUrl: resolvedUrl,
+              previewUrl: resolvedUrl,
+              isNew: true
+            };
+            setDaftarBukti((prev) => {
+              if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
+                return prev;
+              }
+              return [...prev, newEvidence];
+            });
+            setToastEvidence(newEvidence);
+            setTimeout(() => setToastEvidence(null), 6000);
+          }
         };
       } catch (_e) {}
     }
 
     const handleStorage = (e) => {
-      if (e.key === `polres_mobile_evidence_${mobileSyncToken}` && e.newValue) {
+      if (e.key === `polres_mobile_evidence_${activeToken}` && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          handleIncomingEvidence(parsed);
+          if (parsed && (parsed.url || parsed.fileUrl)) {
+            const resolvedUrl = parsed.url || parsed.fileUrl;
+            setDaftarBukti((prev) => {
+              if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
+                return prev;
+              }
+              return [...prev, { ...parsed, url: resolvedUrl, isNew: true }];
+            });
+            setToastEvidence(parsed);
+            setTimeout(() => setToastEvidence(null), 6000);
+          }
         } catch (_err) {}
       }
     };
@@ -412,7 +451,7 @@ export default function DumasFormView({
       if (bc) bc.close();
       window.removeEventListener('storage', handleStorage);
     };
-  }, [mobileSyncToken]);
+  }, [activeToken]);
 
   // Auto-Save Draft Sinkronisasi Otomatis dengan Debouncing (400ms)
   useEffect(() => {
@@ -624,12 +663,15 @@ export default function DumasFormView({
 
   const handleEvidenceFromQr = (evidenceItem) => {
     if (!evidenceItem) return;
-    setEvidenceFiles(prev => {
-      if (prev.some(item => (item.fileUrl && item.fileUrl === evidenceItem.fileUrl) || (evidenceItem.key && item.key === evidenceItem.key))) {
+    const resolvedUrl = evidenceItem.url || evidenceItem.fileUrl;
+    setDaftarBukti(prev => {
+      if (prev.some(item => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl) || (evidenceItem.key && item.key === evidenceItem.key))) {
         return prev;
       }
-      return [...prev, evidenceItem];
+      return [...prev, { ...evidenceItem, url: resolvedUrl, isNew: true }];
     });
+    setToastEvidence(evidenceItem);
+    setTimeout(() => setToastEvidence(null), 6000);
   };
 
   const handleRemoveEvidence = (idToRemove) => {
@@ -1933,16 +1975,73 @@ export default function DumasFormView({
 
               {/* Status Info Opsi B */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #1E293B', fontSize: '9.5px', fontFamily: 'var(--font-mono)' }}>
-                <span style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10B981' }} />
-                  Rotasi Token 30s
+                <span style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }} />
+                  Live Sync R2 Aktif
                 </span>
                 <span style={{ color: '#94A3B8' }}>
-                  Enkripsi Sesi Aktif
+                  Channel: {activeToken ? activeToken.slice(0, 18) + '...' : 'Stand-by'}
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Notifikasi Toast Visual saat Berkas Bukti R2 Diterima secara Live dari HP */}
+          {toastEvidence && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 78, 59, 0.25) 100%)',
+              border: '1.5px solid #10B981',
+              borderRadius: '10px',
+              padding: '12px 16px',
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              boxShadow: '0 4px 20px rgba(16, 185, 129, 0.25)',
+              transition: 'all 0.3s ease'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(16, 185, 129, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#10B981',
+                  flexShrink: 0
+                }}>
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#34D399', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>✓ FOTO BARANG BUKTI R2 DITERIMA LIVE DARI PONSEL</span>
+                    <span style={{ fontSize: '9px', backgroundColor: '#10B981', color: '#000', padding: '1px 6px', borderRadius: '3px', fontWeight: 800 }}>LIVE SYNC</span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#CBD5E1', marginTop: '3px' }}>
+                    Berkas <strong style={{ color: '#FFFFFF' }}>{toastEvidence.nama_berkas || toastEvidence.name}</strong> ({toastEvidence.file_size_formatted || `${((toastEvidence.ukuran || toastEvidence.size || 0)/1024).toFixed(0)} KB`}) otomatis terlampir di Bagian 05 tanpa refresh.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToastEvidence(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94A3B8',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+                className="hover:text-white"
+                title="Tutup notifikasi"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
           {/* Kartu Daftar Barang Bukti Terpilih (Card-Grid Responsif) */}
           {evidenceFiles.length > 0 ? (
@@ -1978,37 +2077,42 @@ export default function DumasFormView({
                 gap: '12px'
               }}>
                 {evidenceFiles.map((file, idx) => {
-                  const isPdf = file.kategori_bukti === 'DOKUMEN_PDF' || file.name?.toLowerCase().endsWith('.pdf');
+                  const isPdf = file.kategori_bukti === 'DOKUMEN_PDF' || file.name?.toLowerCase().endsWith('.pdf') || file.nama_berkas?.toLowerCase().endsWith('.pdf');
+                  const fileUrl = file.url || file.previewUrl || file.fileUrl || file.file_url;
+                  const displayName = file.nama_berkas || file.name || file.nama_file || 'Barang Bukti';
+                  const displaySize = file.file_size_formatted || (file.ukuran ? `${(file.ukuran / 1024).toFixed(0)} KB` : (file.size ? `${(file.size / 1024).toFixed(0)} KB` : '180 KB'));
+
                   return (
                     <div 
                       key={file.id || idx} 
                       style={{
                         backgroundColor: '#0B0D13',
-                        border: '1px solid #292F42',
+                        border: file.isNew ? '1.5px solid #10B981' : '1px solid #292F42',
+                        boxShadow: file.isNew ? '0 0 16px rgba(16, 185, 129, 0.25)' : '0 2px 8px rgba(0,0,0,0.2)',
                         borderRadius: '10px',
                         padding: '12px',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
                         gap: '10px',
-                        transition: 'border-color 0.2s',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                        transition: 'all 0.25s ease',
+                        position: 'relative'
                       }}
-                      className="hover:border-sky-500/50"
+                      className={file.isNew ? 'ring-1 ring-emerald-500/40' : 'hover:border-sky-500/50'}
                     >
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                        {/* Thumbnail / Icon */}
+                        {/* Thumbnail / Icon dari URL Cloudflare R2 */}
                         <div 
                           role="button"
                           tabIndex={0}
                           onClick={() => setPreviewEvidence(file)}
                           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setPreviewEvidence(file); }}
                           style={{
-                            width: '48px',
-                            height: '48px',
+                            width: '52px',
+                            height: '52px',
                             borderRadius: '8px',
                             backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.15)' : '#1E293B',
-                            border: '1px solid #334155',
+                            border: file.isNew ? '1px solid #10B981' : '1px solid #334155',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -2016,12 +2120,12 @@ export default function DumasFormView({
                             cursor: 'pointer',
                             flexShrink: 0
                           }}
-                          title="Klik untuk melihat preview resolusi penuh"
+                          title="Klik untuk melihat preview resolusi penuh dari R2"
                         >
-                          {!isPdf && (file.previewUrl || file.fileUrl || file.file_url) ? (
+                          {!isPdf && fileUrl ? (
                             <img 
-                              src={file.previewUrl || file.fileUrl || file.file_url} 
-                              alt={file.name || file.nama_file || 'Barang Bukti'} 
+                              src={fileUrl} 
+                              alt={displayName} 
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                             />
                           ) : (
@@ -2042,11 +2146,11 @@ export default function DumasFormView({
                               overflow: 'hidden', 
                               textOverflow: 'ellipsis' 
                             }} 
-                            title={file.name || file.nama_file}
+                            title={displayName}
                           >
-                            {file.name || file.nama_file}
+                            {displayName}
                           </p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginTop: '3px' }}>
                             <span style={{ 
                               fontSize: '9px', 
                               fontFamily: 'JetBrains Mono, monospace', 
@@ -2058,12 +2162,26 @@ export default function DumasFormView({
                             }}>
                               {isPdf ? 'PDF' : 'JPG/PNG'}
                             </span>
-                            <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>
-                              {file.file_size_formatted || `${((file.size || 0)/1024).toFixed(0)} KB`}
+                            <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8' }}>
+                              {displaySize}
                             </span>
+                            {file.isNew && (
+                              <span style={{
+                                fontSize: '8.5px',
+                                fontFamily: 'JetBrains Mono, monospace',
+                                fontWeight: 800,
+                                color: '#064E3B',
+                                backgroundColor: '#34D399',
+                                padding: '1px 5px',
+                                borderRadius: '3px',
+                                letterSpacing: '0.04em'
+                              }}>
+                                BARU DARI HP
+                              </span>
+                            )}
                           </div>
                           {file.keterangan && (
-                            <p style={{ fontSize: '10px', color: '#94A3B8', margin: '4px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <p style={{ fontSize: '10px', color: '#64748B', margin: '4px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {file.keterangan}
                             </p>
                           )}
@@ -2111,10 +2229,10 @@ export default function DumasFormView({
                             gap: '4px'
                           }}
                           className="hover:bg-red-500/20"
-                          title="Batalkan / Hapus Item Bukti"
+                          title="Hapus Item Bukti"
                         >
                           <Trash2 size={12} />
-                          <span>Batalkan</span>
+                          <span>Hapus</span>
                         </button>
                       </div>
                     </div>
@@ -2237,8 +2355,10 @@ export default function DumasFormView({
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         onEvidenceReceived={handleEvidenceFromQr}
-        syncToken={mobileSyncToken}
-        onTokenChange={setMobileSyncToken}
+        setDaftarBukti={setDaftarBukti}
+        activeToken={activeToken}
+        syncToken={activeToken}
+        onTokenChange={setActiveToken}
         dumasNo={caseInfo?.nomor_lp || 'DUMAS-BARU'}
       />
 
