@@ -14,6 +14,7 @@ import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
 import UserManagementModal from './components/UserManagementModal';
 import DumasView from './views/DumasView';
+import MobileUploadView from './views/MobileUploadView';
 import { fetchDumasRecords } from './services/dumasService';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
 
@@ -682,6 +683,11 @@ export default function App() {
     setActiveTab('generator');
     showToast(`Data perkara Dumas ${mappedCase.no_lp || ''} siap diproses di Generator Mindik.`);
   };
+
+  // Handle Public Mobile Upload Route (Dibuka langsung dari pemindaian kamera HP)
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/mobile-upload')) {
+    return <MobileUploadView />;
+  }
 
   // Loading state during auth check
   if (isAuthChecking) {

@@ -7,77 +7,11 @@ import {
   ShieldCheck, 
   Clock, 
   Camera,
-  CheckCircle2
+  CheckCircle2,
+  Copy,
+  Check
 } from 'lucide-react';
-
-/**
- * Komponen QR Code SVG Generator Prosedural untuk Tampilan Polisi Presisi
- */
-function AuthenticQrSvg({ token, size = 180 }) {
-  // Generate deterministic grid pattern based on token hash
-  const gridSize = 25;
-  const cellSize = size / gridSize;
-
-  // Simple pseudo-random hash generator for deterministic QR dots
-  const getDotState = (row, col) => {
-    // 3 Posisi Finder Eyes (Pojok Kiri Atas, Kanan Atas, Kiri Bawah)
-    const isTopLeftEye = row < 7 && col < 7;
-    const isTopRightEye = row < 7 && col >= gridSize - 7;
-    const isBottomLeftEye = row >= gridSize - 7 && col < 7;
-
-    if (isTopLeftEye || isTopRightEye || isBottomLeftEye) {
-      const r = isTopLeftEye ? row : isTopRightEye ? row : row - (gridSize - 7);
-      const c = isTopLeftEye ? col : isTopRightEye ? col - (gridSize - 7) : col;
-
-      // Outer border
-      if (r === 0 || r === 6 || c === 0 || c === 6) return true;
-      // Inner space
-      if (r === 1 || r === 5 || c === 1 || c === 5) return false;
-      // Center solid
-      return true;
-    }
-
-    // Timing patterns
-    if (row === 6 || col === 6) {
-      return (row + col) % 2 === 0;
-    }
-
-    // Hash based pseudo-random filler
-    const charCode = (token.charCodeAt((row * 7 + col * 13) % token.length) || 42);
-    return ((charCode * (row + 1) + col * 17) % 7) > 3;
-  };
-
-  const dots = [];
-  for (let r = 0; r < gridSize; r++) {
-    for (let c = 0; c < gridSize; c++) {
-      if (getDotState(r, c)) {
-        dots.push(
-          <rect
-            key={`${r}-${c}`}
-            x={c * cellSize}
-            y={r * cellSize}
-            width={cellSize - 0.5}
-            height={cellSize - 0.5}
-            rx={cellSize * 0.2}
-            fill="#FFFFFF"
-          />
-        );
-      }
-    }
-  }
-
-  return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox={`0 0 ${size} ${size}`} 
-      style={{ display: 'block', margin: '0 auto' }}
-    >
-      <rect width={size} height={size} fill="#0B0D13" rx="8" />
-      {dots}
-    </svg>
-  );
-}
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function EvidenceQrSyncModal({
   isOpen = true,
@@ -90,16 +24,35 @@ export default function EvidenceQrSyncModal({
   const [syncToken, setSyncToken] = useState(() => generateNewToken());
   const [receivedCount, setReceivedCount] = useState(0);
   const [justReceived, setJustReceived] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   function generateNewToken() {
     return `POLRES-KOLTIM-BB-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
   }
+
+  // Target URL: Arahkan ke domain publik Vercel jika dibuka dari localhost agar ponsel bisa memindai & mengakses langsung
+  const baseUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'https://e-mindik-satreskrim.vercel.app'
+    : (typeof window !== 'undefined' ? window.location.origin : 'https://e-mindik-satreskrim.vercel.app');
+
+  const uploadUrl = `${baseUrl}/mobile-upload?token=${syncToken}`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(uploadUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.warn('Gagal menyalin link:', err);
+    }
+  };
 
   const handleResetSession = useCallback(() => {
     setSyncToken(generateNewToken());
     setTokenRotationSeconds(30);
     setSessionTimeoutSeconds(60);
     setIsExpired(false);
+    setCopied(false);
   }, []);
 
   // 1. Timer Rotasi Token (Setiap 30 Detik berganti)
@@ -320,59 +273,101 @@ export default function EvidenceQrSyncModal({
             Arahkan kamera ponsel ke QR Code di bawah untuk mengambil foto barang bukti secara instan dan aman.
           </p>
 
-          {/* Kartu Wadah QR Code */}
-          <div 
-            style={{
-              position: 'relative',
-              padding: '16px',
-              borderRadius: '14px',
-              backgroundColor: '#0B0D13',
-              border: isExpired ? '1px dashed #EF4444' : '1px solid #292F42',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-              width: '212px',
-              height: '212px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            {!isExpired ? (
-              <>
-                <AuthenticQrSvg token={syncToken} size={180} />
-                
-                {/* Badge Center Logo Polri / Presisi */}
-                <div 
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#121721',
-                    border: '2px solid #E52E2E',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 0 12px rgba(229, 46, 46, 0.5)'
-                  }}
-                >
-                  <Camera size={18} color="#FF352D" />
-                </div>
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <AlertTriangle size={36} color="#EF4444" />
-                <span style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#F87171' }}>
-                  SESI KEDALUWARSA
-                </span>
-                <span style={{ fontSize: '10px', color: '#94A3B8', lineHeight: 1.4 }}>
-                  Batas waktu 60 detik telah berakhir untuk menjaga keamanan berkas perkara.
-                </span>
-              </div>
-            )}
-          </div>
+          {/* Kartu Wadah QR Code Standar (High Contrast Hitam di Atas Putih) */}
+          {!isExpired ? (
+            <div 
+              className="bg-white p-4 rounded-xl inline-flex items-center justify-center shadow-lg"
+              style={{
+                backgroundColor: '#FFFFFF',
+                padding: '16px',
+                borderRadius: '16px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.5)',
+                border: '2px solid #FFFFFF'
+              }}
+            >
+              <QRCodeSVG 
+                value={uploadUrl}
+                size={220}
+                bgColor="#FFFFFF"
+                fgColor="#000000"
+                level="H"
+                includeMargin={false}
+              />
+            </div>
+          ) : (
+            <div 
+              style={{
+                width: '252px',
+                height: '252px',
+                borderRadius: '16px',
+                backgroundColor: '#0B0D13',
+                border: '1px dashed #EF4444',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '16px',
+                textAlign: 'center'
+              }}
+            >
+              <AlertTriangle size={36} color="#EF4444" />
+              <span style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#F87171' }}>
+                SESI KEDALUWARSA
+              </span>
+              <span style={{ fontSize: '10px', color: '#94A3B8', lineHeight: 1.4 }}>
+                Batas waktu 60 detik telah berakhir untuk menjaga keamanan berkas perkara.
+              </span>
+            </div>
+          )}
+
+          {/* Opsi Tambahan: Tautan Salin Manual */}
+          {!isExpired && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '100%' }}>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: copied ? 'rgba(16, 185, 129, 0.15)' : '#1E293B',
+                  border: copied ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #334155',
+                  color: copied ? '#10B981' : '#E2E8F0',
+                  fontSize: '11px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+                className="hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-sky-500"
+                title="Salin tautan upload sesi ke clipboard"
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copied ? 'Tautan Sesi Berhasil Disalin!' : 'Salin Tautan Sesi'}</span>
+              </button>
+              <span 
+                style={{ 
+                  fontSize: '10px', 
+                  fontFamily: 'JetBrains Mono, monospace', 
+                  color: '#64748B', 
+                  maxWidth: '380px', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center'
+                }}
+                title={uploadUrl}
+              >
+                {uploadUrl}
+              </span>
+            </div>
+          )}
 
           {/* Indikator Status & Waktu */}
           {!isExpired ? (
