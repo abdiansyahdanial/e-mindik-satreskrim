@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Camera, 
   UploadCloud, 
@@ -9,6 +9,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { uploadFileToR2 } from '../lib/r2Client';
+import { supabase } from '../supabaseClient';
 
 export default function MobileUploadView() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -17,9 +18,22 @@ export default function MobileUploadView() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Extract token from URL search params
-  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const token = urlParams.get('token') || 'SESI-DEMO-KOLTIM';
+  // Extract token from URL search params or hash robustly
+  const getUrlToken = () => {
+    if (typeof window === 'undefined') return 'SESI-DEMO-KOLTIM';
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromSearch = searchParams.get('token');
+    if (fromSearch) return fromSearch;
+
+    if (window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const fromHash = hashParams.get('token');
+      if (fromHash) return fromHash;
+    }
+    return 'SESI-DEMO-KOLTIM';
+  };
+
+  const [token] = useState(getUrlToken);
 
   const handleFileCapture = (e) => {
     const file = e.target.files?.[0];
@@ -55,21 +69,59 @@ export default function MobileUploadView() {
         fileName
       }));
 
-      // Kirim event sync jika ada broadcast channel atau storage sync
+      const finalUrl = uploadRes?.fileUrl || previewUrl || '';
+      const evidencePayload = {
+        token,
+        fileName: selectedFile.name,
+        name: selectedFile.name,
+        nama_file: selectedFile.name,
+        fileSize: selectedFile.size,
+        size: selectedFile.size,
+        file_size_formatted: `${(selectedFile.size / 1024).toFixed(0)} KB`,
+        fileUrl: finalUrl,
+        file_url: finalUrl,
+        previewUrl: finalUrl,
+        type: selectedFile.type || 'image/jpeg',
+        mime_type: selectedFile.type || 'image/jpeg',
+        kategori_bukti: selectedFile.name?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+        keterangan: 'Foto barang bukti fisik diambil via pemindaian kamera HP penyidik',
+        timestamp: new Date().toISOString()
+      };
+
+      // 1. Cross-Device Real-time Sync via Supabase Broadcast Channel
+      try {
+        const syncChannel = supabase.channel(`mobile_sync_${token}`);
+        await syncChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            syncChannel.send({
+              type: 'broadcast',
+              event: 'evidence_uploaded',
+              payload: evidencePayload
+            });
+          }
+        });
+      } catch (err) {
+        console.warn('Supabase realtime sync notice:', err);
+      }
+
+      // 2. BroadcastChannel Sync (for same-browser tab testing)
       try {
         if (typeof BroadcastChannel !== 'undefined') {
           const bc = new BroadcastChannel('polres_mobile_bridge');
-          bc.postMessage({
-            token,
-            fileName: selectedFile.name,
-            fileSize: selectedFile.size,
-            fileUrl: uploadRes?.fileUrl || previewUrl,
-            timestamp: new Date().toISOString()
-          });
+          bc.postMessage(evidencePayload);
           bc.close();
         }
       } catch (err) {
         console.warn('BroadcastChannel sync skipped:', err);
+      }
+
+      // 3. LocalStorage Sync
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(`polres_mobile_evidence_${token}`, JSON.stringify(evidencePayload));
+        }
+      } catch (_e) {
+        // ignore storage quota
       }
 
       setIsSuccess(true);

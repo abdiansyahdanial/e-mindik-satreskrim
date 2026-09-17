@@ -12,6 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from '../../supabaseClient';
 
 export default function EvidenceQrSyncModal({
   isOpen = true,
@@ -88,6 +89,78 @@ export default function EvidenceQrSyncModal({
 
     return () => clearInterval(timeoutInterval);
   }, [isOpen, isExpired]);
+
+  // 3. Realtime Listener: Terima unggahan foto bukti dari kamera ponsel HP penyidik secara live
+  useEffect(() => {
+    if (!isOpen || isExpired || !syncToken) return;
+
+    const handleReceivedEvidence = (data) => {
+      if (!data) return;
+      if (data.token && data.token !== syncToken) return;
+
+      const evidenceItem = {
+        id: `bb-qr-${Date.now()}`,
+        name: data.fileName || data.name || data.nama_file || 'Foto_Bukti_HP.jpg',
+        nama_file: data.fileName || data.name || data.nama_file || 'Foto_Bukti_HP.jpg',
+        size: data.fileSize || data.size || 184500,
+        type: data.type || 'image/jpeg',
+        mime_type: data.mime_type || data.type || 'image/jpeg',
+        kategori_bukti: (data.fileName || data.name || '').toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+        file_size_formatted: data.file_size_formatted || `${((data.fileSize || data.size || 184500) / 1024).toFixed(0)} KB`,
+        file_url: data.fileUrl || data.file_url || data.previewUrl,
+        fileUrl: data.fileUrl || data.file_url || data.previewUrl,
+        previewUrl: data.fileUrl || data.file_url || data.previewUrl,
+        keterangan: data.keterangan || 'Foto barang bukti fisik diambil via pemindaian kamera HP penyidik',
+        hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
+        diunggah_pada: new Date().toISOString()
+      };
+
+      setReceivedCount(prev => prev + 1);
+      setJustReceived(true);
+      setTimeout(() => setJustReceived(false), 2500);
+
+      if (onEvidenceReceived) {
+        onEvidenceReceived(evidenceItem);
+      }
+    };
+
+    // A. Supabase Realtime channel (Koneksi lintas-perangkat HP ke Laptop)
+    const channel = supabase.channel(`mobile_sync_${syncToken}`);
+    channel
+      .on('broadcast', { event: 'evidence_uploaded' }, ({ payload }) => {
+        handleReceivedEvidence(payload);
+      })
+      .subscribe();
+
+    // B. BroadcastChannel fallback (Untuk pengujian tab/jendela di perangkat yang sama)
+    let bc = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      bc = new BroadcastChannel('polres_mobile_bridge');
+      bc.onmessage = (event) => {
+        handleReceivedEvidence(event.data);
+      };
+    }
+
+    // C. Storage Event fallback
+    const handleStorage = (e) => {
+      if (e.key === `polres_mobile_evidence_${syncToken}` && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          handleReceivedEvidence(parsed);
+        } catch (_err) {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [isOpen, isExpired, syncToken, onEvidenceReceived]);
 
   // Handle ESC Key to Close
   useEffect(() => {

@@ -684,8 +684,8 @@ export default function App() {
     showToast(`Data perkara Dumas ${mappedCase.no_lp || ''} siap diproses di Generator Mindik.`);
   };
 
-  // Handle Public Mobile Upload Route (Dibuka langsung dari pemindaian kamera HP)
-  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/mobile-upload')) {
+  // Handle Public Mobile Upload Route (Dibuka langsung dari pemindaian kamera HP - Tanpa Perlu Login)
+  if (typeof window !== 'undefined' && (window.location.pathname === '/mobile-upload' || window.location.pathname.startsWith('/mobile-upload'))) {
     return <MobileUploadView />;
   }
 
