@@ -27,7 +27,7 @@ import {
 import EvidenceQrSyncModal from './EvidenceQrSyncModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
 import { supabase } from '../../supabaseClient';
-import { formatR2PublicUrl } from '../../lib/r2Client';
+import { formatR2PublicUrl, uploadFileToR2 } from '../../lib/r2Client';
 
 const defaultPelapor = {
   nama: '',
@@ -86,6 +86,76 @@ const defaultCaseInfo = {
 const DRAFT_KEY_BB = 'emindik_draft_daftar_bb_v1';
 const DRAFT_KEY_FORM = 'emindik_draft_form_perkara_v1';
 const STORAGE_KEY = 'emindik_temp_draft_bb';
+const DRAFT_STORAGE_KEY = 'emindik_dumas_evidence_v2';
+
+// LANGKAH 1: Standar Struktur Objek Bukti (Sanitasi Mutlak)
+const sanitizeEvidenceItem = (item, index = 0) => {
+  if (!item || typeof item !== 'object') return null;
+  const rawUrl = item.fileUrl || item.url || '';
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+
+  return {
+    id: String(item.id || `bb_${Date.now()}_${index}`),
+    nama_berkas: String(item.nama_berkas || item.nama || item.name || item.nama_file || 'Dokumen Bukti'),
+    url: rawUrl,
+    fileUrl: rawUrl,
+    tipe: String(item.tipe || item.type || item.mime_type || (rawUrl.includes('.pdf') ? 'application/pdf' : 'image/jpeg')),
+    ukuran: Number(item.ukuran || item.size || item.file_size_bytes || 0),
+    keterangan: String(item.keterangan || 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)'),
+    uploaded_at: String(item.uploaded_at || item.created_at || new Date().toISOString())
+  };
+};
+
+// LANGKAH 5: Isolasi Error Boundary Khusus Kartu Barang Bukti
+class EvidenceErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[EVIDENCE ERROR BOUNDARY] Gagal me-render daftar barang bukti:', error, errorInfo);
+  }
+
+  handleReset = () => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      localStorage.removeItem(DRAFT_KEY_BB);
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    if (this.props.onReset) {
+      this.props.onReset();
+    }
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 bg-red-950/40 border border-red-800/60 rounded-xl text-center flex flex-col items-center gap-3 my-3">
+          <div className="text-red-400 font-semibold text-sm font-mono">
+            ⚠️ Terjadi kesalahan saat memuat kartu barang bukti.
+          </div>
+          <p className="text-zinc-400 text-xs max-w-md">
+            Struktur data bukti lokal mengalami inkonsistensi. Anda dapat mereset daftar barang bukti untuk memulihkan tampilan secara aman.
+          </p>
+          <button
+            type="button"
+            onClick={this.handleReset}
+            className="px-4 py-2 bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 text-red-200 text-xs rounded-lg transition-colors font-mono font-medium"
+          >
+            Reset Form / Hapus Draft Bukti
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Emergency Console Draft Reset Helper
 if (typeof window !== 'undefined') {
@@ -341,55 +411,59 @@ export default function DumasFormView({
     }
   }, [initialOcrData]);
 
-  // State 05: Lampiran Barang Bukti
-  // PERBAIKAN CRASH: Gunakan array kosong sebagai default murni agar render pertama tidak pernah diblokir.
-  // Pembacaan localStorage dipindahkan ke useEffect di bawah untuk keamanan siklus render.
+  // LANGKAH 2: Inisialisasi State Bebas Crash dengan Hydration Aman
   const [daftarBukti, setDaftarBukti] = useState([]);
+  const [isStorageReady, setIsStorageReady] = useState(false);
   // Backward-compatible alias
   const evidenceFiles = daftarBukti;
   const setEvidenceFiles = setDaftarBukti;
 
-  // Hydration aman daftar bukti dari localStorage — dijalankan setelah mount awal selesai
-  // sehingga error JSON.parse tidak pernah menggagalkan render pertama
+  // Muat data dari localStorage HANYA di dalam useEffect mount
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY_BB);
-      if (raw && raw !== 'undefined' && raw !== 'null') {
-        const parsed = JSON.parse(raw);
-        const valid = sanitizeEvidenceList(parsed);
-        if (Array.isArray(valid) && valid.length > 0) {
-          setDaftarBukti(valid);
-          return;
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.map(sanitizeEvidenceItem).filter(Boolean);
+          setDaftarBukti(cleaned);
         }
-      }
-      // Fallback ke kunci penyimpanan lama
-      const fallbackRaw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('temp_dumas_bb');
-      if (fallbackRaw && fallbackRaw !== 'undefined' && fallbackRaw !== 'null') {
-        const parsedFallback = JSON.parse(fallbackRaw);
-        const validFallback = sanitizeEvidenceList(parsedFallback);
-        if (Array.isArray(validFallback) && validFallback.length > 0) {
-          setDaftarBukti(validFallback);
-          return;
-        }
-      }
-      // Fallback ke draft tersimpan via dumasService
-      if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles)) {
-        const validDraft = sanitizeEvidenceList(savedDraft.evidenceFiles);
-        if (validDraft.length > 0) {
-          setDaftarBukti(validDraft);
+      } else {
+        // Fallback ke kunci penyimpanan versi lama jika belum ada v2
+        const rawOld = localStorage.getItem(DRAFT_KEY_BB) || localStorage.getItem(STORAGE_KEY) || localStorage.getItem('temp_dumas_bb');
+        if (rawOld && rawOld !== 'undefined' && rawOld !== 'null') {
+          const parsedOld = JSON.parse(rawOld);
+          if (Array.isArray(parsedOld)) {
+            const cleanedOld = parsedOld.map(sanitizeEvidenceItem).filter(Boolean);
+            if (cleanedOld.length > 0) {
+              setDaftarBukti(cleanedOld);
+            }
+          }
+        } else if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles)) {
+          const validDraft = savedDraft.evidenceFiles.map(sanitizeEvidenceItem).filter(Boolean);
+          if (validDraft.length > 0) {
+            setDaftarBukti(validDraft);
+          }
         }
       }
     } catch (err) {
-      console.warn('[STORAGE] Format draft bukti tidak sesuai, reset ke default:', err);
-      try {
-        localStorage.removeItem(DRAFT_KEY_BB);
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem('temp_dumas_bb');
-      } catch {}
-      // State sudah [] secara default, tidak perlu set ulang
+      console.error('[STORAGE RECOVERY] Gagal membaca draft lama, reset:', err);
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      setDaftarBukti([]);
+    } finally {
+      setIsStorageReady(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Hanya sekali saat mount
+  }, []);
+
+  // Sinkronkan ke localStorage setiap state berubah (Hanya jika storage sudah ready)
+  useEffect(() => {
+    if (!isStorageReady) return;
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(daftarBukti));
+    } catch (err) {
+      console.error('[STORAGE SAVE] Gagal menyimpan ke localStorage:', err);
+    }
+  }, [daftarBukti, isStorageReady]);
 
   // State Dokumen / Riwayat Berkas (Safe 404/PGRST204 Fallback Resilience)
   const [documents, setDocuments] = useState([]);
@@ -703,47 +777,33 @@ export default function DumasFormView({
           const resolvedType = payload.tipe || payload.type || payload.mime_type || (resolvedName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
           const isPdf = resolvedType.includes('pdf') || resolvedName.toLowerCase().endsWith('.pdf');
 
-          const newEvidence = {
+          const sanitized = sanitizeEvidenceItem({
             id: payload.id || `bb_${Date.now()}`,
             nama_berkas: resolvedName,
-            nama_file: resolvedName,
-            name: resolvedName,
-            fileName: resolvedName,
             url: resolvedUrl,
             fileUrl: resolvedUrl,
-            file_url: resolvedUrl,
-            previewUrl: resolvedUrl,
             ukuran: resolvedSize,
-            size: resolvedSize,
-            fileSize: resolvedSize,
-            file_size_formatted: `${(resolvedSize / 1024).toFixed(0)} KB`,
             tipe: resolvedType,
-            type: resolvedType,
-            mime_type: resolvedType,
-            kategori_bukti: isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
             keterangan: payload.keterangan || 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)',
             uploaded_at: payload.uploaded_at || new Date().toISOString(),
-            diunggah_pada: payload.uploaded_at || new Date().toISOString(),
-            key: payload.key,
-            hash_sha256: payload.hash_sha256 || Array.from(crypto.getRandomValues(new Uint8Array(16)))
-              .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
-            isNew: true
-          };
-
-          // 1. Tambahkan data foto R2 langsung ke state lampiran form Bagian 05:
-          setDaftarBukti((prev) => {
-            if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
-              return prev;
-            }
-            return [...prev, newEvidence];
           });
 
-          // 2. Simpan permanen ke Supabase
-          await simpanBuktiKeDatabase(newEvidence);
+          if (sanitized) {
+            // 1. Tambahkan data foto R2 langsung ke state lampiran form Bagian 05:
+            setDaftarBukti((prev) => {
+              if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
+                return prev;
+              }
+              return [...prev, sanitized];
+            });
 
-          // 3. Notifikasi toast sukses:
-          setToastEvidence(newEvidence);
-          setTimeout(() => setToastEvidence(null), 6000);
+            // 2. Simpan permanen ke Supabase
+            await simpanBuktiKeDatabase(sanitized);
+
+            // 3. Notifikasi toast sukses:
+            setToastEvidence(sanitized);
+            setTimeout(() => setToastEvidence(null), 6000);
+          }
         }
       })
       .subscribe((status) => {
@@ -758,22 +818,22 @@ export default function DumasFormView({
         bc.onmessage = async (event) => {
           if (event.data && (event.data.url || event.data.fileUrl)) {
             const resolvedUrl = formatR2PublicUrl(event.data.url || event.data.fileUrl);
-            const newEvidence = {
+            const sanitized = sanitizeEvidenceItem({
               ...event.data,
               url: resolvedUrl,
-              fileUrl: resolvedUrl,
-              previewUrl: resolvedUrl,
-              isNew: true
-            };
-            setDaftarBukti((prev) => {
-              if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
-                return prev;
-              }
-              return [...prev, newEvidence];
+              fileUrl: resolvedUrl
             });
-            await simpanBuktiKeDatabase(newEvidence);
-            setToastEvidence(newEvidence);
-            setTimeout(() => setToastEvidence(null), 6000);
+            if (sanitized) {
+              setDaftarBukti((prev) => {
+                if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
+                  return prev;
+                }
+                return [...prev, sanitized];
+              });
+              await simpanBuktiKeDatabase(sanitized);
+              setToastEvidence(sanitized);
+              setTimeout(() => setToastEvidence(null), 6000);
+            }
           }
         };
       } catch {}
@@ -785,16 +845,22 @@ export default function DumasFormView({
           const parsed = JSON.parse(e.newValue);
           if (parsed && (parsed.url || parsed.fileUrl)) {
             const resolvedUrl = formatR2PublicUrl(parsed.url || parsed.fileUrl);
-            const newEvidence = { ...parsed, url: resolvedUrl, isNew: true };
-            setDaftarBukti((prev) => {
-              if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
-                return prev;
-              }
-              return [...prev, newEvidence];
+            const sanitized = sanitizeEvidenceItem({
+              ...parsed,
+              url: resolvedUrl,
+              fileUrl: resolvedUrl
             });
-            await simpanBuktiKeDatabase(newEvidence);
-            setToastEvidence(parsed);
-            setTimeout(() => setToastEvidence(null), 6000);
+            if (sanitized) {
+              setDaftarBukti((prev) => {
+                if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
+                  return prev;
+                }
+                return [...prev, sanitized];
+              });
+              await simpanBuktiKeDatabase(sanitized);
+              setToastEvidence(sanitized);
+              setTimeout(() => setToastEvidence(null), 6000);
+            }
           }
         } catch {}
       }
@@ -857,7 +923,7 @@ export default function DumasFormView({
     return () => clearTimeout(timer);
   }, [pelapor, saksiList, terlaporList, caseInfo, evidenceFiles, mode, currentUserProfile?.id, isSubmitting]);
 
-  // Handler Reset Draf Manual
+  // Handler Reset Draf Manual & Darurat
   const handleResetDraft = () => {
     const confirmReset = window.confirm(
       'Apakah Anda yakin ingin mengosongkan seluruh formulir dan menghapus draf tersimpan? Seluruh isian data yang belum disubmit akan hilang.'
@@ -867,6 +933,7 @@ export default function DumasFormView({
     clearDumasDraft(currentUserProfile?.id);
     clearDumasDraft(null);
     try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
       localStorage.removeItem(DRAFT_KEY_BB);
       localStorage.removeItem(DRAFT_KEY_FORM);
       localStorage.removeItem(STORAGE_KEY);
@@ -878,7 +945,7 @@ export default function DumasFormView({
     setSaksiList(defaultSaksi);
     setTerlaporList(defaultTerlapor);
     setCaseInfo(defaultCaseInfo);
-    setEvidenceFiles([]);
+    setDaftarBukti([]);
     setLastSavedTime(null);
     setSaveStatus('idle');
     setIsDraftRestored(false);
@@ -961,42 +1028,60 @@ export default function DumasFormView({
   };
 
   // Handlers Upload Bukti (Laptop & QR Code HP)
-  const processRawFiles = (files) => {
+  const processRawFiles = async (files) => {
     if (!files || !files.length) return;
 
-    const newEvidence = files.map(file => {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const isPdf = file.type?.includes('pdf') || file.name?.toLowerCase().endsWith('.pdf');
-      const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
       const mime = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
-      
-      const preview = typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '';
-      
-      return {
-        id: `bb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        name: file.name,
-        nama_file: file.name,
-        nama_berkas: file.name,
-        size: file.size,
-        ukuran: file.size,
-        type: mime,
-        tipe: mime,
-        mime_type: mime,
-        kategori_bukti: category,
-        file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
-        url: preview,
-        fileUrl: preview,
-        previewUrl: preview,
-        file: file,
-        rawFile: file,
-        keterangan: isPdf ? 'Dokumen surat bukti perkara' : 'Dokumentasi objek fisik barang bukti',
-        hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
-          .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
-        uploaded_at: new Date().toISOString(),
-        diunggah_pada: new Date().toISOString()
-      };
-    });
 
-    setEvidenceFiles(prev => [...prev, ...newEvidence]);
+      let finalUrl = '';
+      try {
+        const r2Res = await uploadFileToR2(file, `dumas_laptop_${Date.now()}_${file.name}`, mime);
+        if (r2Res?.success && r2Res?.url) {
+          finalUrl = formatR2PublicUrl(r2Res.url);
+        }
+      } catch (err) {
+        console.warn('[R2 UPLOAD] Upload ke R2 gagal:', err);
+      }
+
+      // Fallback base64 agar data foto tetap ada dan bertahan setelah refresh localStorage
+      if (!finalUrl) {
+        try {
+          finalUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+          });
+        } catch {}
+      }
+
+      if (!finalUrl && typeof URL !== 'undefined' && URL.createObjectURL) {
+        finalUrl = URL.createObjectURL(file);
+      }
+
+      const rawItem = {
+        id: `bb_${Date.now()}_${i}`,
+        nama_berkas: file.name,
+        url: finalUrl,
+        fileUrl: finalUrl,
+        tipe: mime,
+        ukuran: file.size,
+        keterangan: isPdf ? 'Dokumen surat bukti perkara' : 'Foto barang bukti fisik (Upload Laptop Cloudflare R2)',
+        uploaded_at: new Date().toISOString()
+      };
+
+      const sanitized = sanitizeEvidenceItem(rawItem, i);
+      if (sanitized) {
+        setDaftarBukti(prev => {
+          if (prev.some(item => item.url === sanitized.url)) return prev;
+          return [...prev, sanitized];
+        });
+        await simpanBuktiKeDatabase(sanitized);
+      }
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -1029,25 +1114,30 @@ export default function DumasFormView({
     if (!evidenceItem) return;
     const rawUrl = evidenceItem.url || evidenceItem.fileUrl;
     const resolvedUrl = formatR2PublicUrl(rawUrl);
-    const itemWithResolvedUrl = { ...evidenceItem, url: resolvedUrl, isNew: true };
-    setDaftarBukti(prev => {
-      if (prev.some(item => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl) || (evidenceItem.key && item.key === evidenceItem.key))) {
-        return prev;
-      }
-      return [...prev, itemWithResolvedUrl];
+    const sanitized = sanitizeEvidenceItem({
+      ...evidenceItem,
+      url: resolvedUrl,
+      fileUrl: resolvedUrl
     });
-    await simpanBuktiKeDatabase(itemWithResolvedUrl);
-    setToastEvidence(itemWithResolvedUrl);
-    setTimeout(() => setToastEvidence(null), 6000);
+    if (sanitized) {
+      setDaftarBukti(prev => {
+        if (prev.some(item => (item.url && item.url === sanitized.url) || (item.fileUrl && item.fileUrl === sanitized.url))) {
+          return prev;
+        }
+        return [...prev, sanitized];
+      });
+      await simpanBuktiKeDatabase(sanitized);
+      setToastEvidence(sanitized);
+      setTimeout(() => setToastEvidence(null), 6000);
+    }
   };
 
   // Penanganan Tombol Hapus Bukti
   const handleHapusBukti = (idHapus) => {
     setDaftarBukti((prev) => {
-      const updated = prev.filter((item) => item.id !== idHapus && item.url !== idHapus && item.key !== idHapus);
+      const updated = prev.filter((item, idx) => item.id !== idHapus && item.url !== idHapus && `evidence-${idx}` !== idHapus);
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        localStorage.setItem('temp_dumas_bb', JSON.stringify(updated));
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(updated));
       } catch (err) {
         console.error("Gagal menyimpan draft BB ke localStorage setelah hapus:", err);
       }
@@ -1195,6 +1285,7 @@ export default function DumasFormView({
         clearDumasDraft(currentUserProfile?.id);
         clearDumasDraft(null);
         try {
+          localStorage.removeItem(DRAFT_STORAGE_KEY);
           localStorage.removeItem(DRAFT_KEY_BB);
           localStorage.removeItem(DRAFT_KEY_FORM);
           localStorage.removeItem(STORAGE_KEY);
@@ -1202,6 +1293,7 @@ export default function DumasFormView({
           sessionStorage.removeItem('temp_dumas_token');
           sessionStorage.removeItem('emindik_dumas_subview');
         } catch {}
+        setDaftarBukti([]);
         setIsDraftRestored(false);
         setLastSavedTime(null);
         setSaveStatus('idle');
@@ -1295,10 +1387,10 @@ export default function DumasFormView({
               transition: 'all 0.2s ease'
             }}
             className="hover:bg-red-500/20"
-            title="Bersihkan draft dan buat form baru"
+            title="Reset Form / Hapus Draft"
           >
             <RotateCcw size={12} />
-            <span>Reset Form / Buat Baru</span>
+            <span>Reset Form / Hapus Draft</span>
           </button>
 
           {mode === 'ocr' ? (
@@ -1519,11 +1611,11 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label htmlFor="dumas_nik_pelapor" className="dumas-form-label">
+                  <label htmlFor="dumas_nik" className="dumas-form-label">
                     NIK (NOMOR INDUK KEPENDUDUKAN) <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input 
-                    id="dumas_nik_pelapor"
+                    id="dumas_nik"
                     name="nik_pelapor"
                     type="text"
                     required
@@ -1591,27 +1683,27 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label htmlFor="dumas_alamat_pelapor" className="dumas-form-label">
+                  <label htmlFor="dumas_alamat" className="dumas-form-label">
                     ALAMAT DOMISILI KTP
                   </label>
-                  <input 
-                    id="dumas_alamat_pelapor"
+                  <textarea 
+                    id="dumas_alamat"
                     name="alamat_pelapor"
-                    type="text"
+                    rows={3}
                     autoComplete="street-address"
                     value={pelapor.alamat}
                     onChange={(e) => setPelapor({ ...pelapor, alamat: e.target.value })}
                     placeholder="Alamat lengkap domisili KTP"
-                    className="dumas-form-input"
+                    className="dumas-form-textarea"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="dumas_kontak_pelapor" className="dumas-form-label">
+                  <label htmlFor="dumas_no_kontak" className="dumas-form-label">
                     NOMOR HP / WHATSAPP
                   </label>
                   <input 
-                    id="dumas_kontak_pelapor"
+                    id="dumas_no_kontak"
                     name="kontak_pelapor"
                     type="text"
                     autoComplete="tel"
@@ -2074,12 +2166,12 @@ export default function DumasFormView({
             </div>
 
             <div>
-              <label htmlFor="dumas_tempus_delicti" className="dumas-form-label">
+              <label htmlFor="dumas_waktu_kejadian" className="dumas-form-label">
                 WAKTU KEJADIAN (TEMPUS DELICTI)
               </label>
               <input 
-                id="dumas_tempus_delicti"
-                name="tempus_delicti"
+                id="dumas_waktu_kejadian"
+                name="waktu_kejadian"
                 type="text"
                 autoComplete="off"
                 value={caseInfo.waktu || caseInfo.tempus_delicti || caseInfo.waktu_kejadian || ''}
@@ -2090,12 +2182,12 @@ export default function DumasFormView({
             </div>
 
             <div>
-              <label htmlFor="dumas_locus_delicti" className="dumas-form-label">
+              <label htmlFor="dumas_tkp" className="dumas-form-label">
                 TEMPAT KEJADIAN (LOCUS DELICTI)
               </label>
               <input 
-                id="dumas_locus_delicti"
-                name="locus_delicti"
+                id="dumas_tkp"
+                name="tkp"
                 type="text"
                 autoComplete="off"
                 value={caseInfo.tkp || caseInfo.locus_delicti || caseInfo.tempat_kejadian || ''}
@@ -2224,7 +2316,7 @@ export default function DumasFormView({
             
             {/* Opsi A: Konsol Upload Komputer / Laptop */}
             <label 
-              htmlFor="upload_bukti_komputer" 
+              htmlFor="dumas_input_bukti_laptop" 
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -2244,8 +2336,8 @@ export default function DumasFormView({
               className="hover:border-sky-500 hover:bg-[#182234] focus-within:ring-2 focus-within:ring-sky-500/40"
             >
               <input 
-                id="upload_bukti_komputer"
-                name="upload_bukti_komputer"
+                id="dumas_input_bukti_laptop"
+                name="dumas_input_bukti_laptop"
                 type="file" 
                 accept=".pdf,.jpg,.jpeg,.png,.webp"
                 multiple
@@ -2487,257 +2579,111 @@ export default function DumasFormView({
             </div>
           )}
 
-          {/* Kartu Daftar Barang Bukti Terpilih (Card-Grid Responsif) */}
-          {evidenceFiles.length > 0 ? (
-            <div style={{ marginTop: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Daftar Lampiran Bukti yang Akan Disimpan ({evidenceFiles.filter(f => f && (f.url || f.fileUrl || f.previewUrl || f.file_url)).length}):
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      localStorage.removeItem(DRAFT_KEY_BB);
-                      localStorage.removeItem(STORAGE_KEY);
-                      localStorage.removeItem('temp_dumas_bb');
-                    } catch {}
-                    setEvidenceFiles([]);
-                    console.log('[CACHE] Cache barang bukti berhasil dibersihkan.');
-                  }}
-                  style={{
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#EF4444',
-                    fontSize: '10px',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    cursor: 'pointer',
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    fontWeight: 600,
-                    transition: 'all 0.15s'
-                  }}
-                  className="hover:bg-red-500/20"
-                  title="Kosongkan daftar berkas bukti dan bersihkan cache penyimpanan lokal"
-                >
-                  Kosongkan Semua
-                </button>
-              </div>
+          {/* LANGKAH 3: TAMPILAN DEFENSIVE RENDERING PADA DAFTAR BUKTI DIGITAL */}
+          <EvidenceErrorBoundary onReset={() => setDaftarBukti([])}>
+            {Array.isArray(daftarBukti) && daftarBukti.length > 0 ? (
+              <div className="space-y-4">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Daftar Lampiran Bukti yang Akan Disimpan ({daftarBukti.filter(f => f && f.url).length}):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        localStorage.removeItem(DRAFT_STORAGE_KEY);
+                        localStorage.removeItem(DRAFT_KEY_BB);
+                        localStorage.removeItem(STORAGE_KEY);
+                        localStorage.removeItem('temp_dumas_bb');
+                      } catch {}
+                      setDaftarBukti([]);
+                      console.log('[CACHE] Cache barang bukti berhasil dibersihkan.');
+                    }}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      color: '#EF4444',
+                      fontSize: '10px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      cursor: 'pointer',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      fontWeight: 600,
+                      transition: 'all 0.15s'
+                    }}
+                    className="hover:bg-red-500/20"
+                    title="Kosongkan daftar berkas bukti dan bersihkan cache penyimpanan lokal"
+                  >
+                    Reset Form / Hapus Draft
+                  </button>
+                </div>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: '12px'
-              }}>
-                {Array.isArray(evidenceFiles) && evidenceFiles.map((file, idx) => {
-                  if (!file || typeof file !== 'object' || (!file.url && !file.fileUrl && !file.previewUrl && !file.file_url)) return null;
-
-                  const displayName = file?.nama_berkas || file?.name || file?.nama_file || 'Barang Bukti';
-                  const isPdf = file?.kategori_bukti === 'DOKUMEN_PDF' || 
-                                (typeof displayName === 'string' && displayName.toLowerCase().endsWith('.pdf'));
-                  const rawUrl = file?.url || file?.previewUrl || file?.fileUrl || file?.file_url || '';
-                  const fileUrl = formatR2PublicUrl(rawUrl);
-                  const displaySize = file?.file_size_formatted || 
-                    (file?.ukuran ? `${(file.ukuran / 1024).toFixed(0)} KB` : (file?.size ? `${(file.size / 1024).toFixed(0)} KB` : '180 KB'));
-                  const uniqueKey = file?.id || `bb-${idx}`;
-
+                {daftarBukti.map((bukti, index) => {
+                  if (!bukti || !bukti.url) return null;
                   return (
                     <div 
-                      key={uniqueKey} 
-                      style={{
-                        backgroundColor: '#0B0D13',
-                        border: file?.isNew ? '1.5px solid #10B981' : '1px solid #292F42',
-                        boxShadow: file?.isNew ? '0 0 16px rgba(16, 185, 129, 0.25)' : '0 2px 8px rgba(0,0,0,0.2)',
-                        borderRadius: '10px',
-                        padding: '12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        gap: '10px',
-                        transition: 'all 0.25s ease',
-                        position: 'relative'
-                      }}
-                      className={file?.isNew ? 'ring-1 ring-emerald-500/40' : 'hover:border-sky-500/50'}
+                      key={bukti.id || `evidence-${index}`}
+                      className="p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl flex flex-col gap-3 transition-all"
                     >
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                        {/* Thumbnail / Icon dari URL Cloudflare R2 */}
-                        <div 
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setPreviewEvidence({ ...file, url: fileUrl })}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setPreviewEvidence({ ...file, url: fileUrl }); }}
-                          style={{
-                            width: '52px',
-                            height: '52px',
-                            borderRadius: '8px',
-                            backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.15)' : '#1E293B',
-                            border: file?.isNew ? '1px solid #10B981' : '1px solid #334155',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            overflow: 'hidden',
-                            cursor: 'pointer',
-                            flexShrink: 0
-                          }}
-                          title="Klik untuk melihat preview resolusi penuh dari R2"
-                        >
-                          {!isPdf && fileUrl ? (
-                            <>
-                              <img 
-                                src={fileUrl} 
-                                alt={displayName || "Barang Bukti"} 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                className="w-full max-h-64 object-contain bg-zinc-950 rounded border border-zinc-800"
-                                onLoad={() => {
-                                  console.log("Rendering Bukti URL:", file?.url || fileUrl);
-                                }}
-                                onError={(e) => {
-                                  console.error("Gagal memuat gambar bukti dari R2:", fileUrl);
-                                  e.currentTarget.style.display = 'none';
-                                  if (e.currentTarget.nextElementSibling) {
-                                    e.currentTarget.nextElementSibling.style.display = 'flex';
-                                  }
-                                }}
-                              />
-                              <div style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                                <ImageIcon size={22} color="#F87171" />
-                              </div>
-                            </>
-                          ) : (
-                            isPdf ? <FileText size={22} color="#38BDF8" /> : <ImageIcon size={22} color="#F87171" />
-                          )}
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-red-400 uppercase tracking-wide">
+                          {bukti.tipe?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'}
+                        </span>
+                        <span className="text-xs text-zinc-500 font-mono">
+                          {Math.round((bukti.ukuran || 0) / 1024)} KB
+                        </span>
+                      </div>
 
-                        {/* File Details */}
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <p 
-                            style={{ 
-                              fontSize: '12px', 
-                              fontFamily: 'JetBrains Mono, monospace', 
-                              fontWeight: 700, 
-                              color: '#FFFFFF', 
-                              margin: 0, 
-                              whiteSpace: 'nowrap', 
-                              overflow: 'hidden', 
-                              textOverflow: 'ellipsis' 
-                            }} 
-                            title={displayName}
-                          >
-                            {displayName}
-                          </p>
-                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginTop: '3px' }}>
-                            <span style={{ 
-                              fontSize: '9px', 
-                              fontFamily: 'JetBrains Mono, monospace', 
-                              fontWeight: 700,
-                              color: isPdf ? '#38BDF8' : '#F87171',
-                              backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.1)' : 'rgba(229, 46, 46, 0.15)',
-                              padding: '1px 5px',
-                              borderRadius: '4px'
-                            }}>
-                              {isPdf ? 'PDF' : 'JPG/PNG'}
-                            </span>
-                            <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8' }}>
-                              {displaySize}
-                            </span>
-                            {file?.isNew && (
-                              <span style={{
-                                fontSize: '8.5px',
-                                fontFamily: 'JetBrains Mono, monospace',
-                                fontWeight: 800,
-                                color: '#064E3B',
-                                backgroundColor: '#34D399',
-                                padding: '1px 5px',
-                                borderRadius: '3px',
-                                letterSpacing: '0.04em'
-                              }}>
-                                BARU DARI HP
-                              </span>
-                            )}
-                          </div>
-                          {file?.keterangan && (
-                            <p style={{ fontSize: '10px', color: '#64748B', margin: '4px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {file.keterangan}
-                            </p>
-                          )}
+                      <div className="text-sm font-medium text-zinc-200 truncate">
+                        {bukti.nama_berkas}
+                      </div>
+
+                      {/* Pratinjau Gambar R2 */}
+                      <div 
+                        className="relative w-full h-52 bg-black/80 rounded-lg overflow-hidden border border-zinc-800 flex items-center justify-center cursor-pointer"
+                        onClick={() => setPreviewEvidence(bukti)}
+                        title="Klik untuk memperbesar pratinjau"
+                      >
+                        <img
+                          src={bukti.url}
+                          alt={bukti.nama_berkas}
+                          className="max-h-full max-w-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.style.display = 'none';
+                            if (e.currentTarget.nextSibling) {
+                              e.currentTarget.nextSibling.style.display = 'flex';
+                            }
+                          }}
+                        />
+                        <div className="hidden flex-col items-center justify-center text-zinc-500 text-xs gap-1">
+                          <span>⚠️ Gagal memuat pratinjau gambar</span>
+                          <a href={bukti.url} target="_blank" rel="noreferrer" className="text-red-400 underline" onClick={(e) => e.stopPropagation()}>
+                            Buka tautan langsung R2
+                          </a>
                         </div>
                       </div>
 
-                      {/* Action buttons on card */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #1E293B' }}>
+                      <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs text-zinc-400">
+                        <span>{bukti.keterangan}</span>
                         <button
                           type="button"
-                          onClick={() => setPreviewEvidence(file)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#38BDF8',
-                            fontSize: '11px',
-                            fontFamily: 'JetBrains Mono, monospace',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            cursor: 'pointer',
-                            padding: '2px 6px',
-                            borderRadius: '4px'
-                          }}
-                          className="hover:bg-sky-500/10"
+                          onClick={() => setDaftarBukti(prev => prev.filter((_, i) => i !== index))}
+                          className="text-red-400 hover:text-red-300 font-medium transition-colors"
                         >
-                          <Eye size={12} />
-                          <span>Perbesar</span>
-                        </button>
-
-                        <button 
-                          type="button"
-                          onClick={() => handleHapusBukti(file?.id || uniqueKey)}
-                          style={{
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            color: '#F87171',
-                            borderRadius: '6px',
-                            padding: '4px 8px',
-                            fontSize: '10px',
-                            fontFamily: 'JetBrains Mono, monospace',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                          className="hover:bg-red-500/20"
-                          title="Hapus Item Bukti"
-                        >
-                          <Trash2 size={12} />
-                          <span>Hapus</span>
+                          Hapus
                         </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
-          ) : (
-            <div style={{
-              padding: '20px',
-              textAlign: 'center',
-              backgroundColor: '#0B0D13',
-              borderRadius: '10px',
-              border: '1px dashed #292F42',
-              color: '#64748B',
-              fontSize: '11px',
-              fontFamily: 'JetBrains Mono, monospace',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}>
-              <FileText size={20} color="#475569" />
-              <span>Belum ada berkas barang bukti yang dilampirkan.</span>
-              <span style={{ fontSize: '10px', color: '#475569', fontFamily: 'Inter, sans-serif' }}>
-                Pilih opsi di atas jika pelapor menyerahkan barang bukti fisik atau dokumen pendukung.
-              </span>
-            </div>
-          )}
+            ) : (
+              <div className="p-8 text-center border border-dashed border-zinc-800 rounded-xl text-zinc-500 text-sm">
+                Belum ada barang bukti yang diunggah. Silakan pindai QR dengan HP atau unggah dari laptop.
+              </div>
+            )}
+          </EvidenceErrorBoundary>
         </div>
 
         {/* ======================================================= */}
