@@ -80,6 +80,11 @@ const defaultCaseInfo = {
   kronologis: '',
 };
 
+// Kunci Penyimpanan Draf Standar Satreskrim
+const DRAFT_KEY_BB = 'emindik_draft_daftar_bb_v1';
+const DRAFT_KEY_FORM = 'emindik_draft_form_perkara_v1';
+const STORAGE_KEY = 'emindik_temp_draft_bb';
+
 export default function DumasFormView({
   mode = 'manual', // 'manual' | 'ocr'
   _initialOcrFile = null,
@@ -91,11 +96,30 @@ export default function DumasFormView({
   perkaraId: propPerkaraId = null
 }) {
   const perkaraId = propPerkaraId || initialOcrData?.id || initialOcrData?.perkara_id || null;
-  // 0. Safe Hydration Draf Tersimpan dari LocalStorage
+  // 0. Safe Hydration Draf Formulir Tersimpan dari LocalStorage (Pola Lazy Initializer)
   const [savedDraft] = useState(() => {
     // Jika ada data OCR baru yang dipassing dari modal, utamakan data OCR baru
     if (initialOcrData) return null;
-    return loadDumasDraft(currentUserProfile?.id);
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem(DRAFT_KEY_FORM);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object') {
+            console.log('[RECOVERY] Berhasil memuat ulang draft form perkara dari localStorage:', parsed);
+            return parsed;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[RECOVERY ERROR] Gagal parse draft form:', e);
+    }
+    const serviceDraft = loadDumasDraft(currentUserProfile?.id) || loadDumasDraft(null);
+    if (serviceDraft) {
+      console.log('[RECOVERY] Berhasil memuat ulang draft dari dumasService:', serviceDraft);
+      return serviceDraft;
+    }
+    return null;
   });
 
   const [isDraftRestored, setIsDraftRestored] = useState(() => !!savedDraft);
@@ -315,24 +339,21 @@ export default function DumasFormView({
     }
   }, [initialOcrData]);
 
-  // State 05: Lampiran Barang Bukti (Persistensi Otomatis Browser Storage Anti-Hilang Saat Refresh)
-  const STORAGE_KEY = 'emindik_temp_draft_bb';
-
-  // A. Inisialisasi state langsung dari localStorage saat komponen pertama kali dimuat
+  // State 05: Lampiran Barang Bukti (Pola Lazy Initializer Anti-Hilang Saat Refresh)
   const [daftarBukti, setDaftarBukti] = useState(() => {
     try {
       if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('temp_dumas_bb');
+        const saved = localStorage.getItem(DRAFT_KEY_BB) || 
+                      localStorage.getItem(STORAGE_KEY) || 
+                      localStorage.getItem('temp_dumas_bb');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            console.log('[LOCALSTORAGE RESTORE] Berhasil memulihkan draft BB dari localStorage:', parsed);
-            return parsed;
-          }
+          console.log('[RECOVERY] Berhasil memuat ulang draft bukti dari localStorage:', parsed);
+          return Array.isArray(parsed) ? parsed : [];
         }
       }
-    } catch (err) {
-      console.error("Gagal membaca draft BB dari localStorage:", err);
+    } catch (e) {
+      console.error('[RECOVERY ERROR] Gagal parse draft bukti:', e);
     }
 
     if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles) && savedDraft.evidenceFiles.length > 0) {
@@ -344,18 +365,22 @@ export default function DumasFormView({
   const evidenceFiles = daftarBukti;
   const setEvidenceFiles = setDaftarBukti;
 
-  // B. Sinkronkan ke localStorage setiap kali ada berkas baru yang ditambahkan atau dihapus
+  // Sinkronisasi Otomatis ke LocalStorage
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
+        localStorage.setItem(DRAFT_KEY_BB, JSON.stringify(daftarBukti));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(daftarBukti));
-        // Sinkronkan juga key sekunder untuk kompatibilitas
         localStorage.setItem('temp_dumas_bb', JSON.stringify(daftarBukti));
+        console.log('[AUTO-SAVE] Draft bukti tersimpan:', daftarBukti.length, 'item');
       }
-    } catch (err) {
-      console.error("Gagal menyimpan draft BB ke localStorage:", err);
+    } catch (e) {
+      console.error('[AUTO-SAVE ERROR] Gagal menyimpan ke localStorage:', e);
     }
   }, [daftarBukti]);
+
+  // Log status bukti saat render/refresh untuk pemantauan realtime
+  console.log('[STATUS BUKTI SAAT RENDER]:', daftarBukti);
 
   const [toastEvidence, setToastEvidence] = useState(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -718,12 +743,16 @@ export default function DumasFormView({
           savedAt: new Date().toISOString(),
         };
 
+        localStorage.setItem(DRAFT_KEY_FORM, JSON.stringify(draftPayload));
         saveDumasDraft(draftPayload, currentUserProfile?.id);
+        saveDumasDraft(draftPayload, null);
+
         const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         setLastSavedTime(timeStr);
         setSaveStatus('saved');
+        console.log('[AUTO-SAVE] Draft form perkara tersimpan di', DRAFT_KEY_FORM);
       } catch (err) {
-        console.warn('Gagal menyimpan auto-save draf dumas:', err);
+        console.error('[AUTO-SAVE ERROR] Gagal menyimpan draft form:', err);
         setSaveStatus('idle');
       }
     }, 400);
@@ -739,10 +768,14 @@ export default function DumasFormView({
     if (!confirmReset) return;
 
     clearDumasDraft(currentUserProfile?.id);
+    clearDumasDraft(null);
     try {
+      localStorage.removeItem(DRAFT_KEY_BB);
+      localStorage.removeItem(DRAFT_KEY_FORM);
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem('temp_dumas_bb');
       sessionStorage.removeItem('temp_dumas_token');
+      sessionStorage.removeItem('emindik_dumas_subview');
     } catch {}
     setPelapor(defaultPelapor);
     setSaksiList(defaultSaksi);
@@ -1055,10 +1088,14 @@ export default function DumasFormView({
         }
 
         clearDumasDraft(currentUserProfile?.id);
+        clearDumasDraft(null);
         try {
+          localStorage.removeItem(DRAFT_KEY_BB);
+          localStorage.removeItem(DRAFT_KEY_FORM);
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem('temp_dumas_bb');
           sessionStorage.removeItem('temp_dumas_token');
+          sessionStorage.removeItem('emindik_dumas_subview');
         } catch {}
         setIsDraftRestored(false);
         setLastSavedTime(null);
@@ -1132,6 +1169,32 @@ export default function DumasFormView({
               Draf tersimpan ({lastSavedTime})
             </span>
           )}
+
+          {/* Tombol Bersihkan Draft / Buat Baru di Header */}
+          <button
+            type="button"
+            onClick={handleResetDraft}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              fontFamily: 'JetBrains Mono, monospace',
+              color: '#F87171',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              cursor: 'pointer',
+              fontWeight: 600,
+              transition: 'all 0.2s ease'
+            }}
+            className="hover:bg-red-500/20"
+            title="Bersihkan draft dan buat form baru"
+          >
+            <RotateCcw size={12} />
+            <span>Reset Form / Buat Baru</span>
+          </button>
 
           {mode === 'ocr' ? (
             <span style={{
@@ -2624,7 +2687,7 @@ export default function DumasFormView({
               title="Hapus draf lokal dan kosongkan formulir"
             >
               <RotateCcw size={13} />
-              <span>Reset Draf</span>
+              <span>Reset Form / Buat Baru</span>
             </button>
 
             <button 

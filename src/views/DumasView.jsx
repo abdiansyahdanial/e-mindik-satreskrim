@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DumasListView from '../components/dumas/DumasListView';
 import DumasFormView from '../components/dumas/DumasFormView';
 import DumasDetailView from '../components/dumas/DumasDetailView';
@@ -18,8 +18,32 @@ export default function DumasView({
   onHandoverToGenerator,
   onShowToast
 }) {
-  // Sub-view: 'list' | 'form' | 'detail'
-  const [subView, setSubView] = useState('list');
+  // Sub-view: 'list' | 'form' | 'detail' (Rehidrasi otomatis dari sessionStorage / draft agar tidak mental ke list saat refresh)
+  const [subView, setSubView] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const savedSubView = sessionStorage.getItem('emindik_dumas_subview');
+        if (savedSubView && ['list', 'form', 'detail'].includes(savedSubView)) {
+          return savedSubView;
+        }
+        // Jika ada draft aktif di localStorage, otomatis buka form
+        const draftBb = localStorage.getItem('emindik_draft_daftar_bb_v1') || localStorage.getItem('emindik_temp_draft_bb');
+        const draftForm = localStorage.getItem('emindik_draft_form_perkara_v1') || localStorage.getItem('emindik_dumas_form_draft_v1');
+        if (draftBb || draftForm) {
+          return 'form';
+        }
+      }
+    } catch {}
+    return 'list';
+  });
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('emindik_dumas_subview', subView);
+      }
+    } catch {}
+  }, [subView]);
   const [formMode, setFormMode] = useState('manual');
   const [isModeModalOpen, setIsModeModalOpen] = useState(false);
   const [initialOcrFile, setInitialOcrFile] = useState(null);
