@@ -88,6 +88,8 @@ const DRAFT_KEY_FORM = 'emindik_draft_form_perkara_v1';
 const LEGACY_DRAFT_KEY_BB = 'emindik_draft_daftar_bb_v1';
 const LEGACY_STORAGE_KEY = 'emindik_temp_draft_bb';
 const LEGACY_DRAFT_STORAGE_KEY = 'emindik_dumas_evidence_v2';
+// Kunci stabil khusus persistensi daftar bukti (tidak bergantung STORAGE_KEY dinamis)
+const EVIDENCE_STORAGE_KEY = 'emindik_active_dumas_bb';
 
 // LANGKAH 1: Standar Struktur Objek Bukti (Sanitasi Mutlak)
 const sanitizeEvidenceItem = (item, index = 0) => {
@@ -479,8 +481,21 @@ export default function DumasFormView({
   const processedEvidenceUrlsRef = useRef(new Set());
 
   // LANGKAH 2: Inisialisasi State Bebas Crash & Anti-Hilang Saat Refresh
+  // Prioritas baca: (1) EVIDENCE_STORAGE_KEY stabil → (2) ACTIVE_DRAFT_KEY → (3) savedDraft
   const [daftarBukti, setDaftarBukti] = useState(() => {
     try {
+      // Prioritas 1: Baca dari key stabil dedikasi bukti (paling reliabel saat refresh)
+      const evidenceRaw = localStorage.getItem(EVIDENCE_STORAGE_KEY);
+      if (evidenceRaw) {
+        const parsed = JSON.parse(evidenceRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.map(sanitizeEvidenceItem).filter(Boolean);
+          if (cleaned.length > 0) return cleaned;
+        }
+      }
+    } catch {}
+    try {
+      // Prioritas 2: Baca dari ACTIVE_DRAFT_KEY (gabungan form + bukti)
       const activeRaw = safeGetLocalStorage(ACTIVE_DRAFT_KEY, null);
       if (activeRaw && Array.isArray(activeRaw.daftarBukti) && activeRaw.daftarBukti.length > 0) {
         return activeRaw.daftarBukti.map(sanitizeEvidenceItem).filter(Boolean);
@@ -557,6 +572,16 @@ export default function DumasFormView({
       console.error('[STORAGE SAVE] Gagal menyimpan ke localStorage:', err);
     }
   }, [daftarBukti, isStorageReady, STORAGE_KEY, nomorRegisterResmi]);
+
+  // Auto-save daftarBukti ke kunci STABIL (EVIDENCE_STORAGE_KEY) — anti-hilang saat refresh
+  // Terpisah dari STORAGE_KEY yang dinamis, dipicu setiap kali daftarBukti berubah
+  useEffect(() => {
+    try {
+      localStorage.setItem(EVIDENCE_STORAGE_KEY, JSON.stringify(daftarBukti));
+    } catch (e) {
+      console.error('[AUTO-SAVE BUKTI] Gagal auto-save bukti ke EVIDENCE_STORAGE_KEY:', e);
+    }
+  }, [daftarBukti]);
 
   // State Dokumen / Riwayat Berkas (Safe 404/PGRST204 Fallback Resilience)
   const [documents, setDocuments] = useState([]);
@@ -1312,11 +1337,24 @@ export default function DumasFormView({
         finalUrl = URL.createObjectURL(file);
       }
 
+      if (!finalUrl) {
+        console.warn('[UPLOAD] File tidak memiliki URL valid, dilewati:', file.name);
+        continue;
+      }
+
+      // [DEDUP FIX] Cek processedEvidenceUrlsRef SEBELUM sanitasi & insert
+      // Mencegah duplikasi saat file input trigger onchange lebih dari sekali
+      const normalizedUrl = finalUrl.trim();
+      if (processedEvidenceUrlsRef.current.has(normalizedUrl)) {
+        console.warn('[DEDUP UPLOAD] File sudah pernah diproses, lewati duplikat:', file.name, normalizedUrl);
+        continue;
+      }
+
       const rawItem = {
         id: `bb_${Date.now()}_${i}`,
         nama_berkas: file.name,
-        url: finalUrl,
-        fileUrl: finalUrl,
+        url: normalizedUrl,
+        fileUrl: normalizedUrl,
         tipe: mime,
         ukuran: file.size,
         keterangan: isPdf ? 'Dokumen surat bukti perkara' : 'Foto barang bukti fisik (Upload Laptop Cloudflare R2)',
@@ -1325,6 +1363,8 @@ export default function DumasFormView({
 
       const sanitized = sanitizeEvidenceItem(rawItem, i);
       if (sanitized) {
+        // Tandai URL sudah diproses sebelum memanggil handler (hindari race condition)
+        processedEvidenceUrlsRef.current.add(normalizedUrl);
         await handleBuktiBaruDiterima(sanitized);
       }
     }
@@ -1559,6 +1599,8 @@ export default function DumasFormView({
         try {
           localStorage.removeItem(ACTIVE_DRAFT_KEY);
           localStorage.removeItem(DRAFT_KEY_FORM);
+          // Hapus EVIDENCE_STORAGE_KEY stabil setelah submit resmi berhasil
+          localStorage.removeItem(EVIDENCE_STORAGE_KEY);
           sessionStorage.removeItem('emindik_dumas_subview');
         } catch {}
         setIsDraftRestored(false);
