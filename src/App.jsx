@@ -17,6 +17,7 @@ import DumasView from './views/DumasView';
 import MobileUploadView from './views/MobileUploadView';
 import { fetchDumasRecords } from './services/dumasService';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
+import logoSatreskrim from './assets/logo-satreskrim-koltim.png';
 
 export default function App() {
   // Authentication & Role State (3-tier: 'super_admin' | 'admin' | 'anggota')
@@ -720,7 +721,19 @@ export default function App() {
 
 
   return (
-    <div className="app-container">
+    <div className="app-container relative overflow-hidden">
+      {/* Ambient Satreskrim Insignia Watermark Layer */}
+      <div 
+        aria-hidden="true" 
+        className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden"
+      >
+        <img
+          src={logoSatreskrim}
+          alt=""
+          className="w-[580px] max-w-[70vw] select-none opacity-[0.035] grayscale contrast-125 brightness-150 filter -rotate-6 scale-105 transition-opacity duration-700"
+        />
+      </div>
+
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{

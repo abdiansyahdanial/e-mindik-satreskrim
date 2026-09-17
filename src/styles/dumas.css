@@ -6,8 +6,8 @@
 .dumas-container {
   min-height: 100%;
   width: 100%;
-  background-color: #080B10;
-  color: #E2E8F0;
+  background-color: #0B0F17;
+  color: #F8FAFC;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   display: flex;
   flex-direction: column;
@@ -64,7 +64,7 @@
 .dumas-form-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 20px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -76,23 +76,23 @@
 
 @media (min-width: 1024px) {
   .dumas-form-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 .dumas-col-card {
-  background-color: #151822;
-  border: 1px solid #292F42;
-  border-radius: 12px;
+  background-color: #1b2229;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
 .dumas-col-card.card-terlapor {
-  border-color: rgba(229, 46, 46, 0.4);
+  border-color: rgba(255, 53, 45, 0.35);
 }
 
 .dumas-col-header {
@@ -101,15 +101,16 @@
   justify-content: space-between;
   padding-bottom: 12px;
   margin-bottom: 14px;
-  border-bottom: 1px solid rgba(41, 47, 66, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .dumas-badge-col {
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background-color: rgba(229, 46, 46, 0.15);
-  color: #FF352D;
+  background-color: rgba(255, 53, 45, 0.12);
+  border: 1px solid rgba(255, 53, 45, 0.3);
+  color: #ff5740;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -125,9 +126,9 @@
   font-size: 10px;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
-  color: #FF352D;
-  background-color: rgba(229, 46, 46, 0.1);
-  border: 1px solid rgba(229, 46, 46, 0.35);
+  color: #ff352d;
+  background-color: rgba(255, 53, 45, 0.1);
+  border: 1px solid rgba(255, 53, 45, 0.35);
   padding: 3px 10px;
   border-radius: 6px;
   cursor: pointer;
@@ -135,14 +136,14 @@
 }
 
 .dumas-btn-add:hover {
-  background-color: rgba(229, 46, 46, 0.2);
-  border-color: #FF352D;
+  background-color: rgba(255, 53, 45, 0.2);
+  border-color: #ff352d;
 }
 
 /* Sub-Cards for Dynamic Saksi & Terlapor */
 .dumas-subcard {
-  background-color: #0E1118;
-  border: 1px solid #292F42;
+  background-color: #222b34;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 12px;
@@ -153,15 +154,15 @@
 }
 
 .dumas-subcard:hover {
-  border-color: #475569;
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .dumas-subcard.subcard-terlapor {
-  border-color: rgba(229, 46, 46, 0.3);
+  border-color: rgba(255, 53, 45, 0.25);
 }
 
 .dumas-subcard.subcard-terlapor:hover {
-  border-color: #E52E2E;
+  border-color: #ff352d;
 }
 
 .dumas-subcard-header {
@@ -206,43 +207,46 @@
 
 .dumas-form-input {
   width: 100%;
-  background-color: #0B0D13;
-  border: 1px solid #292F42;
+  background-color: #141C2B;
+  border: 1px solid #263347;
   border-radius: 6px;
-  padding: 7px 10px;
-  color: #F1F5F9;
+  padding: 8px 12px;
+  color: #F8FAFC;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   outline: none;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.15s ease-in-out;
   box-sizing: border-box;
 }
 
 .dumas-form-input:focus {
-  border-color: #E52E2E;
-  box-shadow: 0 0 0 1px #E52E2E;
+  border-color: #DC2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+  background-color: #182234;
 }
 
 .dumas-form-input::placeholder {
-  color: #475569;
+  color: #64748B;
 }
 
 .dumas-form-select {
   width: 100%;
-  background-color: #0B0D13;
-  border: 1px solid #292F42;
+  background-color: #141C2B;
+  border: 1px solid #263347;
   border-radius: 6px;
-  padding: 7px 10px;
-  color: #F1F5F9;
+  padding: 8px 12px;
+  color: #F8FAFC;
   font-size: 12px;
   outline: none;
   cursor: pointer;
   box-sizing: border-box;
+  transition: all 0.15s ease-in-out;
 }
 
 .dumas-form-select:focus {
-  border-color: #E52E2E;
-  box-shadow: 0 0 0 1px #E52E2E;
+  border-color: #DC2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+  background-color: #182234;
 }
 
 .dumas-form-textarea {
@@ -673,6 +677,17 @@
   transform: translateY(0);
 }
 
+.dumas-surface-card {
+  background-color: #1b2229;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
 .dumas-search-wrap {
   position: relative;
   width: 100%;
@@ -690,20 +705,21 @@
 
 .dumas-search-input {
   width: 100%;
-  background-color: #0B0D13;
-  border: 1px solid #292F42;
+  background-color: #222b34;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: #FFFFFF;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   padding: 9px 12px 9px 36px;
   border-radius: 8px; /* rounded-lg */
   outline: none;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.15s ease-in-out;
 }
 
 .dumas-search-input:focus {
-  border-color: #E52E2E;
-  box-shadow: 0 0 0 1px #E52E2E;
+  border-color: #ff352d;
+  box-shadow: 0 0 0 2px rgba(255, 53, 45, 0.25);
+  background-color: #252f39;
 }
 
 .dumas-search-input::placeholder {
@@ -711,21 +727,21 @@
 }
 
 .dumas-select {
-  background-color: #0B0D13;
-  border: 1px solid #292F42;
+  background-color: #222b34;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: #E2E8F0;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   padding: 8px 14px;
   border-radius: 8px; /* rounded-lg */
   outline: none;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.15s ease-in-out;
   cursor: pointer;
 }
 
 .dumas-select:focus {
-  border-color: #E52E2E;
-  box-shadow: 0 0 0 1px #E52E2E;
+  border-color: #ff352d;
+  box-shadow: 0 0 0 2px rgba(255, 53, 45, 0.25);
 }
 
 /* ============================================================
@@ -734,9 +750,9 @@
 .dumas-table-container {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid #1F2937;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  background-color: #121721;
+  background-color: #1b2229;
 }
 
 .dumas-table {
@@ -748,8 +764,8 @@
 }
 
 .dumas-table thead tr {
-  background-color: #1A2232;
-  border-bottom: 1px solid #292F42;
+  background-color: #141a1f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .dumas-table th {
@@ -763,13 +779,13 @@
 }
 
 .dumas-table tbody tr {
-  border-bottom: 1px solid rgba(31, 41, 55, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background-color 0.15s ease-in-out;
   cursor: pointer;
 }
 
 .dumas-table tbody tr:hover {
-  background-color: rgba(26, 34, 50, 0.5);
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .dumas-table td {

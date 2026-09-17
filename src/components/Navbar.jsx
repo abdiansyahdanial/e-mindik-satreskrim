@@ -5,8 +5,7 @@ import {
   PlusCircle, 
   FilePlus, 
   LogOut, 
-  ShieldAlert, 
-  UserCheck 
+  ShieldAlert 
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -24,7 +23,6 @@ export default function Navbar({
 
   const isSuperAdmin = userRole === 'super_admin';
   const isAdmin = userRole === 'admin';
-  const isAnggota = userRole === 'anggota' || (!isSuperAdmin && !isAdmin);
 
   // Clock WITA (UTC+8)
   useEffect(() => {
@@ -63,72 +61,99 @@ export default function Navbar({
   return (
     <header className="app-navbar no-print" style={{
       height: 'var(--header-height)',
-      background: '#1e262e',
+      background: '#0E1420',
       backdropFilter: 'blur(16px)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+      borderBottom: '1px solid #1E293B',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: '0 28px',
+      padding: '0 24px',
       position: 'sticky',
       top: 0,
       zIndex: 90,
     }}>
-      {/* Left: Quick Search */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '0 1 380px' }}>
+      {/* Left: Quick Search with Command Palette Clue */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '0 1 400px' }}>
         <div style={{
           position: 'relative',
           width: '100%',
           display: 'flex',
           alignItems: 'center',
         }}>
-          <Search size={16} color="var(--text-secondary)" style={{ position: 'absolute', left: '12px' }} />
+          <Search size={15} color="#64748B" style={{ position: 'absolute', left: '12px', pointerEvents: 'none' }} />
           <input
             type="text"
             value={searchQuery || ''}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari No. LP, Tersangka, Pasal..."
+            placeholder="Cari No. LP, Tersangka, Pasal, Saksi..."
             style={{
               width: '100%',
-              background: '#222b34',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 'var(--radius-full)',
-              padding: '8px 16px 8px 36px',
-              fontSize: '13px',
-              color: 'var(--text-primary)',
+              background: '#141C2B',
+              border: '1px solid #263347',
+              borderRadius: '8px',
+              padding: '7px 70px 7px 34px',
+              fontSize: '12.5px',
+              color: '#F8FAFC',
               outline: 'none',
               transition: 'all var(--transition-fast)',
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = '#ff352d';
-              e.target.style.boxShadow = '0 0 0 2px rgba(255, 53, 45, 0.2)';
+              e.target.style.borderColor = '#DC2626';
+              e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.2)';
+              e.target.style.background = '#182234';
             }}
             onBlur={(e) => {
-              e.target.style.borderColor = 'var(--border-input)';
+              e.target.style.borderColor = '#263347';
               e.target.style.boxShadow = 'none';
+              e.target.style.background = '#141C2B';
             }}
           />
+          <span style={{
+            position: 'absolute',
+            right: '8px',
+            fontSize: '10px',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            color: '#64748B',
+            background: '#0B0F17',
+            border: '1px solid #263347',
+            padding: '1px 5px',
+            borderRadius: '4px',
+            pointerEvents: 'none'
+          }}>
+            Ctrl + K
+          </span>
         </div>
       </div>
 
-      {/* Middle: Live Tactical Clock */}
+      {/* Middle: Live Tactical Clock (UTC+8 WITA) */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        padding: '6px 14px',
-        background: '#222b34',
-        borderRadius: 'var(--radius-full)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        fontSize: '12px',
-        color: '#94a3b8',
+        padding: '5px 14px',
+        background: '#141C2B',
+        borderRadius: '6px',
+        border: '1px solid #263347',
+        fontSize: '11.5px',
+        color: '#94A3B8',
       }}>
-        <Clock size={14} color="#94a3b8" />
-        <span className="mono" style={{ fontWeight: 600 }}>{timeStr || 'Memuat waktu...'}</span>
+        <span style={{
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          background: '#10B981',
+          boxShadow: '0 0 6px rgba(16, 185, 129, 0.8)',
+          display: 'inline-block'
+        }} />
+        <Clock size={13} color="#64748B" />
+        <span className="mono" style={{ fontWeight: 600, letterSpacing: '0.02em', color: '#CBD5E1' }}>
+          {timeStr || 'Memuat waktu...'}
+        </span>
       </div>
 
       {/* Right: Actions & Officer Profile & Logout */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {/* Quick Action: New Case */}
         <button 
           onClick={onNewCase}
@@ -156,13 +181,13 @@ export default function Navbar({
             onClick={onOpenUserManagement}
             className="btn btn-secondary btn-sm"
             style={{
-              borderColor: 'rgba(255, 53, 45, 0.3)',
-              color: '#ffffff',
-              background: '#222b34'
+              borderColor: 'rgba(168, 85, 247, 0.4)',
+              color: '#C084FC',
+              background: '#141C2B'
             }}
             title="Kelola Peran Akun (RBAC)"
           >
-            <ShieldAlert size={14} color="#ff352d" />
+            <ShieldAlert size={14} color="#A855F7" />
             <span>Kelola RBAC</span>
           </button>
         )}
@@ -171,48 +196,49 @@ export default function Navbar({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          padding: '6px 12px',
-          background: '#222b34',
+          gap: '9px',
+          padding: '5px 12px',
+          background: '#141C2B',
           border: isSuperAdmin 
-            ? '1px solid #b81d18' 
-            : '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: 'var(--radius-lg)',
+            ? '1px solid rgba(220, 38, 38, 0.4)' 
+            : '1px solid #263347',
+          borderRadius: '8px',
           marginLeft: '4px',
         }}>
           <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: '#222b34',
+            width: '30px',
+            height: '30px',
+            borderRadius: '6px',
+            background: isSuperAdmin ? 'rgba(220, 38, 38, 0.15)' : '#182234',
             border: isSuperAdmin 
-              ? '1.5px solid #ff352d' 
-              : '1px solid rgba(255, 255, 255, 0.15)',
+              ? '1px solid rgba(220, 38, 38, 0.4)' 
+              : '1px solid rgba(255, 255, 255, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 800,
-            fontSize: '11.5px',
-            color: '#ffffff',
+            fontSize: '11px',
+            color: isSuperAdmin ? '#F87171' : '#F8FAFC',
           }}>
             {officerInitials || 'P'}
           </div>
-          <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+          <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
+            <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#F8FAFC' }}>
               {officerName}
             </div>
-            <div style={{ fontSize: '10px', color: isSuperAdmin ? '#ff352d' : isAdmin ? '#e2e8f0' : 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span>{officerJabatan}</span>
-              <span className="mono" style={{ color: 'var(--text-muted)' }}>• {officerNrp}</span>
+            <div style={{ fontSize: '10px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '1px' }}>
+              <span>{officerPangkat && officerPangkat !== '-' ? `${officerPangkat} • ` : ''}{officerJabatan}</span>
+              <span className="mono" style={{ color: '#64748B' }}>• {officerNrp}</span>
               <span 
                 style={{
-                  fontSize: '8.5px',
+                  fontSize: '8px',
+                  fontFamily: 'var(--font-mono)',
                   padding: '1px 5px',
-                  borderRadius: '4px',
+                  borderRadius: '3px',
                   fontWeight: 700,
-                  background: isSuperAdmin ? 'linear-gradient(135deg, #b81d18, #ff352d)' : '#2a343f',
-                  color: '#ffffff',
-                  border: isSuperAdmin ? '1px solid rgba(255, 53, 45, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)'
+                  background: isSuperAdmin ? 'rgba(220, 38, 38, 0.18)' : '#1E293B',
+                  color: isSuperAdmin ? '#FCA5A5' : isAdmin ? '#38BDF8' : '#34D399',
+                  border: isSuperAdmin ? '1px solid rgba(220, 38, 38, 0.35)' : '1px solid #334155'
                 }}
               >
                 {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
@@ -227,10 +253,10 @@ export default function Navbar({
             type="button"
             onClick={() => setIsLogoutModalOpen(true)}
             className="btn btn-secondary btn-sm"
-            style={{ padding: '7px 10px', color: 'var(--accent-red)' }}
+            style={{ padding: '6px 10px', color: '#F87171', borderColor: 'rgba(220, 38, 38, 0.3)' }}
             title="Keluar dari Sesi E-Mindik"
           >
-            <LogOut size={15} />
+            <LogOut size={14} />
             <span>Keluar</span>
           </button>
         )}

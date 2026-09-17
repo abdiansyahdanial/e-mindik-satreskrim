@@ -115,8 +115,8 @@ export default function AddEvidenceModal({
           style={{
             width: '100%',
             maxWidth: '520px',
-            backgroundColor: '#121721',
-            border: '1px solid #292F42',
+            backgroundColor: '#1b2229',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
             borderRadius: '16px',
             boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
             overflow: 'hidden',
@@ -126,18 +126,18 @@ export default function AddEvidenceModal({
         >
           {/* Header */}
           <div 
-            className="p-4 px-5 bg-[#0B0D13] border-b border-[#292F42] flex items-center justify-between"
+            className="p-4 px-5 bg-[#141a1f] border-b border-white/[0.08] flex items-center justify-between"
             style={{
               padding: '16px 20px',
-              backgroundColor: '#0B0D13',
-              borderBottom: '1px solid #292F42',
+              backgroundColor: '#141a1f',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}
           >
             <div>
-              <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#FF352D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#ff352d', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 ADMINISTRASI BUKTI PERKARA
               </span>
               <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', margin: 0, fontFamily: 'JetBrains Mono, monospace' }}>
@@ -174,9 +174,9 @@ export default function AddEvidenceModal({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  border: '1px dashed #334155',
+                  border: '1px dashed rgba(255, 255, 255, 0.16)',
                   borderRadius: '10px',
-                  backgroundColor: '#0B0D13',
+                  backgroundColor: '#222b34',
                   padding: '16px 12px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -184,7 +184,7 @@ export default function AddEvidenceModal({
                   justifyContent: 'center',
                   gap: '8px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  transition: 'all 0.15s ease-out',
                   color: '#E2E8F0'
                 }}
               >
@@ -206,7 +206,7 @@ export default function AddEvidenceModal({
                 <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, textAlign: 'center' }}>
                   Upload dari Laptop
                 </span>
-                <span style={{ fontSize: '9px', color: '#64748B', textAlign: 'center' }}>
+                <span style={{ fontSize: '9px', color: '#94a3b8', textAlign: 'center' }}>
                   PDF, JPG, PNG lokal
                 </span>
               </button>
@@ -216,9 +216,9 @@ export default function AddEvidenceModal({
                 type="button"
                 onClick={() => setIsQrModalOpen(true)}
                 style={{
-                  border: '1px dashed #7F1D1D',
+                  border: '1px dashed rgba(255, 53, 45, 0.45)',
                   borderRadius: '10px',
-                  backgroundColor: '#0B0D13',
+                  backgroundColor: '#222b34',
                   padding: '16px 12px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -226,7 +226,7 @@ export default function AddEvidenceModal({
                   justifyContent: 'center',
                   gap: '8px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  transition: 'all 0.15s ease-out',
                   color: '#E2E8F0'
                 }}
               >
@@ -235,12 +235,12 @@ export default function AddEvidenceModal({
                     width: '38px',
                     height: '38px',
                     borderRadius: '8px',
-                    backgroundColor: 'rgba(229, 46, 46, 0.15)',
-                    border: '1px solid rgba(229, 46, 46, 0.4)',
+                    backgroundColor: 'rgba(255, 53, 45, 0.15)',
+                    border: '1px solid rgba(255, 53, 45, 0.4)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#FF352D'
+                    color: '#ff352d'
                   }}
                 >
                   <Smartphone size={20} />
@@ -248,7 +248,7 @@ export default function AddEvidenceModal({
                 <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, textAlign: 'center' }}>
                   Pindai via QR HP
                 </span>
-                <span style={{ fontSize: '9px', color: '#64748B', textAlign: 'center' }}>
+                <span style={{ fontSize: '9px', color: '#94a3b8', textAlign: 'center' }}>
                   Rotasi 30s &amp; Timeout 60s
                 </span>
               </button>

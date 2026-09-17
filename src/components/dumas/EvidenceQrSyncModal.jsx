@@ -194,12 +194,12 @@ export default function EvidenceQrSyncModal({
       }}
     >
       <div 
-        className="w-full max-w-md rounded-2xl bg-[#121721] border border-[#292F42] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-md rounded-2xl bg-[#1b2229] border border-white/[0.08] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
         style={{
           width: '100%',
           maxWidth: '460px',
-          backgroundColor: '#121721',
-          border: '1px solid #292F42',
+          backgroundColor: '#1b2229',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
           borderRadius: '16px',
           boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
           overflow: 'hidden',
@@ -209,11 +209,11 @@ export default function EvidenceQrSyncModal({
       >
         {/* Header Modal */}
         <div 
-          className="p-4 px-5 bg-[#0B0D13] border-b border-[#292F42] flex items-center justify-between"
+          className="p-4 px-5 bg-[#141a1f] border-b border-white/[0.08] flex items-center justify-between"
           style={{
             padding: '16px 20px',
-            backgroundColor: '#0B0D13',
-            borderBottom: '1px solid #292F42',
+            backgroundColor: '#141a1f',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'

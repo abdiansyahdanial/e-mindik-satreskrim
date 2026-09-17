@@ -36,6 +36,47 @@ export default function DumasListView({
     return (item.status_berkas || '').toLowerCase().includes(statusFilter.toLowerCase());
   });
 
+  const renderDumasStatusBadge = (status) => {
+    const s = (status || '').toLowerCase();
+    if (s.includes('lidik') || s.includes('penyelidikan')) {
+      return (
+        <span className="badge-delta badge-lidik">
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+          Tahap Lidik
+        </span>
+      );
+    }
+    if (s.includes('sidik') || s.includes('penyidikan')) {
+      return (
+        <span className="badge-delta badge-sidik">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+          Tahap Sidik
+        </span>
+      );
+    }
+    if (s.includes('p21') || s.includes('p-21') || s.includes('selesai')) {
+      return (
+        <span className="badge-delta badge-p21">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          P-21 Selesai
+        </span>
+      );
+    }
+    if (s.includes('sp3') || s.includes('henti')) {
+      return (
+        <span className="badge-delta badge-sp3">
+          <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+          SP3
+        </span>
+      );
+    }
+    return (
+      <span className="badge-delta badge-lidik">
+        {status || 'Tahap Penyelidikan'}
+      </span>
+    );
+  };
+
   return (
     <div className="dumas-container" style={{ padding: '24px 32px' }}>
       <div style={{ maxWidth: '1280px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -178,6 +219,7 @@ export default function DumasListView({
                     return (
                       <tr 
                         key={item.id}
+                        className="table-row-hover"
                         onClick={() => onSelectDumas && onSelectDumas(item)}
                       >
                         {/* No. Dumas & Tanggal */}
@@ -224,10 +266,7 @@ export default function DumasListView({
 
                         {/* Status Berkas */}
                         <td>
-                          <span className="dumas-badge-status">
-                            <span className="dumas-badge-status-dot"></span>
-                            <span>{item.status_berkas || 'Tahap Penyelidikan'}</span>
-                          </span>
+                          {renderDumasStatusBadge(item.status_berkas)}
                         </td>
 
                         {/* Bukti Digital Count */}

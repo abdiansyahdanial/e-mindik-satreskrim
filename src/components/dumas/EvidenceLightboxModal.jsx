@@ -156,7 +156,7 @@ export default function EvidenceLightboxModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(3, 5, 8, 0.94)',
+        backgroundColor: 'rgba(5, 8, 14, 0.88)',
         backdropFilter: 'blur(16px)',
         zIndex: 9999,
         display: 'flex',
@@ -169,15 +169,15 @@ export default function EvidenceLightboxModal({
       }}
     >
       <div
-        className="w-full max-w-5xl h-[92vh] max-h-[850px] rounded-2xl bg-[#10141D] border border-[#292F42] shadow-2xl flex flex-col overflow-hidden"
+        className="w-full max-w-5xl h-[92vh] max-h-[850px] rounded-2xl bg-[#1b2229] border border-white/[0.08] shadow-2xl flex flex-col overflow-hidden"
         style={{
           width: '100%',
           maxWidth: '1080px',
           height: '92vh',
           maxHeight: '850px',
-          backgroundColor: '#10141D',
-          border: '1px solid #292F42',
-          borderRadius: '16px',
+          backgroundColor: '#1b2229',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '12px',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8)',
           display: 'flex',
           flexDirection: 'column',
@@ -186,11 +186,11 @@ export default function EvidenceLightboxModal({
       >
         {/* Top Control Bar */}
         <div
-          className="p-3.5 px-5 bg-[#0B0D13] border-b border-[#292F42] flex items-center justify-between flex-wrap gap-3"
+          className="p-3.5 px-5 bg-[#141a1f] border-b border-white/[0.08] flex items-center justify-between flex-wrap gap-3"
           style={{
             padding: '12px 20px',
-            backgroundColor: '#0B0D13',
-            borderBottom: '1px solid #292F42',
+            backgroundColor: '#141a1f',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',

@@ -65,6 +65,23 @@ export default function CasesView({
     }
   };
 
+  const renderCaseStatusBadge = (status) => {
+    const s = (status || '').toLowerCase();
+    if (s.includes('lidik')) {
+      return <span className="badge-delta badge-lidik">TAHAP LIDIK</span>;
+    }
+    if (s === 'active' || s.includes('sidik')) {
+      return <span className="badge-delta badge-sidik">SIDIK AKTIF</span>;
+    }
+    if (s === 'completed' || s.includes('p21') || s.includes('p-21') || s.includes('selesai')) {
+      return <span className="badge-delta badge-p21">P-21 SELESAI</span>;
+    }
+    if (s.includes('sp3') || s.includes('henti')) {
+      return <span className="badge-delta badge-sp3">SP3</span>;
+    }
+    return <span className="badge-delta badge-sidik">{status.toUpperCase()}</span>;
+  };
+
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header & Controls */}
@@ -99,6 +116,9 @@ export default function CasesView({
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '14px',
+        backgroundColor: '#1b2229',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '12px'
       }}>
         {/* Search */}
         <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: '450px' }}>
@@ -156,7 +176,7 @@ export default function CasesView({
                 const leadInv = leadInvRef ? findPerson(leadInvRef.user_id || leadInvRef.nrp) || leadInvRef : null;
 
                 return (
-                  <tr key={item.id}>
+                  <tr key={item.id} className="table-row-hover">
                     <td>
                       <div className="mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-cyan)' }}>
                         {item.no_lp}
@@ -210,9 +230,7 @@ export default function CasesView({
                     </td>
 
                     <td>
-                      <span className={`badge ${item.status === 'active' ? 'badge-green' : 'badge-cyan'}`}>
-                        {item.status === 'active' ? 'SIDIK AKTIF' : 'SELESAI'}
-                      </span>
+                      {renderCaseStatusBadge(item.status)}
                     </td>
 
                     <td style={{ textAlign: 'right' }}>

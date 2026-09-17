@@ -22,247 +22,167 @@ export default function DashboardView({
   const detainedCount = cases.filter(c => c.references?.no_sprin_han).length || 2;
   const docsCount = documents.length;
 
+  const renderStatusBadge = (status) => {
+    const s = (status || '').toLowerCase();
+    if (s.includes('lidik')) {
+      return <span className="badge-delta badge-lidik">LIDIK</span>;
+    }
+    if (s.includes('sidik')) {
+      return <span className="badge-delta badge-sidik">SIDIK</span>;
+    }
+    if (s.includes('p21') || s.includes('p-21') || s.includes('selesai')) {
+      return <span className="badge-delta badge-p21">P-21</span>;
+    }
+    if (s.includes('sp3') || s.includes('henti')) {
+      return <span className="badge-delta badge-sp3">SP3</span>;
+    }
+    return <span className="badge-delta badge-p21">{status.toUpperCase()}</span>;
+  };
+
   return (
-    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Header Greeting Banner */}
-      <div style={{
-        padding: '24px 28px',
-        background: 'linear-gradient(135deg, #222b34 0%, #1e262e 100%)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: 'var(--radius-xl)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-      }}>
+    <div className="page-enter flex flex-col gap-5">
+      {/* Header Greeting Banner - Enterprise Command Center (Login DNA Synchronized) */}
+      <div className="p-6 bg-[#1b2229] border border-white/[0.08] rounded-xl flex items-center justify-between flex-wrap gap-4 shadow-sm">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              background: '#1b2229',
-              color: '#ffffff',
-              border: '1px solid rgba(255, 53, 45, 0.45)',
-              padding: '3px 10px',
-              borderRadius: 'var(--radius-full)',
-              letterSpacing: '0.04em',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ff352d', display: 'inline-block' }} />
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="text-[10px] font-mono font-bold bg-[#222b34] text-[#ff5740] border border-[#ff352d]/30 px-2 py-0.5 rounded tracking-wider inline-flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ff352d] inline-block animate-pulse" />
               SISTEM INFORMASI E-MINDIK RESKRIM
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Wilayah Hukum Polres Kolaka Timur</span>
+            <span className="text-xs text-zinc-400 font-mono">Wilayah Hukum Polres Kolaka Timur</span>
           </div>
-          <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>
+          <h2 className="text-xl font-bold m-0 text-zinc-100 tracking-tight">
             Pusat Komando Administrasi Penyidikan Perkara
           </h2>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Otomatisasi penyusunan dokumen Sprin Sidik, SPDP, Sprin Kap, Sprin Han, dan BAP sesuai standar Presisi Polri.
+          <p className="mt-1 text-xs text-zinc-400 leading-relaxed max-w-2xl">
+            Otomatisasi penyusunan berkas Sprin Sidik, SPDP, Sprin Kap, Sprin Han, dan BAP sesuai standar Presisi Reskrim Polri.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="flex items-center gap-2.5">
           <button onClick={onNewCase} className="btn btn-secondary">
-            <PlusCircle size={16} />
+            <PlusCircle size={15} />
             <span>+ Registrasi LP Baru</span>
           </button>
           <button onClick={() => onOpenGenerator(null)} className="btn btn-primary">
-            <FileSignature size={16} />
-            <span>⚡ Mulai Buat Dokumen</span>
+            <FileSignature size={15} />
+            <span>Mulai Buat Dokumen</span>
           </button>
         </div>
       </div>
 
-      {/* Cyber Tactical Stat Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-        gap: '16px',
-      }}>
-        {/* Card 1: Active Cases */}
-        <div className="glass glass-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
-              Perkara Aktif
-            </span>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <FolderLock size={18} color="#ff352d" />
-            </div>
+      {/* 21st.dev felipemenezes098/card-05 Inspired KPI Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Perkara Aktif */}
+        <div className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]">
+          <div className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg">
+            <FolderLock size={17} className="text-[#ff5740]" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#ffffff' }}>
+          <span className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-medium">
+            Perkara Aktif
+          </span>
+          <div className="text-3xl font-bold tabular-nums font-mono text-zinc-100 leading-none my-2.5">
             {activeCasesCount}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ color: 'var(--accent-green)' }}>+1 perkara baru</span> minggu ini
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="badge-delta badge-p21">+1 Baru</span>
+            <span className="text-zinc-500">minggu ini</span>
           </div>
         </div>
 
-        {/* Card 2: Generated Documents */}
-        <div className="glass glass-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
-              Dokumen Diterbitkan
-            </span>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <FileText size={18} color="#ffffff" />
-            </div>
+        {/* Card 2: Dokumen Terbit */}
+        <div className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]">
+          <div className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg">
+            <FileText size={17} className="text-sky-400" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#ffffff' }}>
+          <span className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-medium">
+            Dokumen Terbit
+          </span>
+          <div className="text-3xl font-bold tabular-nums font-mono text-zinc-100 leading-none my-2.5">
             {docsCount}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-            Surat Perintah & Berita Acara
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="badge-delta badge-lidik">Mindik Otomatis</span>
+            <span className="text-zinc-500">Sprin &amp; BAP</span>
           </div>
         </div>
 
-        {/* Card 3: Detained Suspects */}
-        <div className="glass glass-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
-              Tahanan Rutan
-            </span>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'var(--accent-red-dim)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <ShieldAlert size={18} color="#F87171" />
-            </div>
+        {/* Card 3: Tahanan Rutan */}
+        <div className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]">
+          <div className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg">
+            <ShieldAlert size={17} className="text-amber-400" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#F87171' }}>
+          <span className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-medium">
+            Tahanan Rutan
+          </span>
+          <div className="text-3xl font-bold tabular-nums font-mono text-amber-400 leading-none my-2.5">
             {detainedCount}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-            Sprin Han Aktif di Rutan Polres
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="badge-delta badge-sidik">Sprin Han</span>
+            <span className="text-zinc-500">Rutan Polres</span>
           </div>
         </div>
 
-        {/* Card 4: Investigators Ready */}
-        <div className="glass glass-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
-              Personel Siaga
-            </span>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'var(--accent-green-dim)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Users size={18} color="var(--accent-green)" />
-            </div>
+        {/* Card 4: Personel Siaga */}
+        <div className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]">
+          <div className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg">
+            <Users size={17} className="text-emerald-400" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-green)' }}>
+          <span className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-medium">
+            Personel Siaga
+          </span>
+          <div className="text-3xl font-bold tabular-nums font-mono text-emerald-400 leading-none my-2.5">
             12
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-            Penyidik & Penyidik Pembantu
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="badge-delta badge-p21">Siaga Tugas</span>
+            <span className="text-zinc-500">Penyidik &amp; Pembantu</span>
           </div>
         </div>
       </div>
 
       {/* Grid: Berkas Perkara Terkini & Dokumen Terbaru */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
-        gap: '20px',
-      }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left: Recent Cases */}
-        <div className="glass" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FolderLock size={18} color="#ff352d" />
-              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>
+        <div className="rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm flex flex-col gap-3.5">
+          <div className="flex items-center justify-between pb-1 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2">
+              <FolderLock size={16} className="text-[#ff5740]" />
+              <h3 className="text-sm font-bold m-0 text-zinc-100">
                 Berkas Perkara Terbaru
               </h3>
             </div>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              background: 'rgba(255, 53, 45, 0.12)',
-              border: '1px solid rgba(255, 53, 45, 0.3)',
-              color: '#ff5740',
-              padding: '2px 8px',
-              borderRadius: '999px'
-            }}>
+            <span className="text-[10px] font-mono font-semibold bg-[#222b34] border border-white/[0.08] text-zinc-400 px-2 py-0.5 rounded">
               {cases.length} Perkara
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="flex flex-col gap-2">
             {cases.slice(0, 4).map((c) => {
               const leadInv = c.investigators?.[0] ? getPersonnelById(c.investigators[0].user_id) : null;
               return (
                 <div
                   key={c.id}
                   onClick={() => onSelectCase(c)}
-                  style={{
-                    padding: '12px 14px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-glass)',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-cyan)';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-glass)';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
+                  className="p-3 bg-[#222b34] rounded-lg border border-white/[0.08] cursor-pointer transition-all duration-150 flex items-center justify-between hover:border-white/[0.2] hover:bg-[#26313c] hover:translate-x-0.5"
                 >
-                  <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                      <span className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                  <div className="flex-1 min-w-0 pr-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-xs text-[#ff5740] font-semibold">
                         {c.no_lp.split('/')[2] ? `LP/B/${c.no_lp.split('/')[2]}` : c.no_lp}
                       </span>
-                      <span className="badge badge-green" style={{ fontSize: '9px', padding: '1px 6px' }}>
-                        {c.status.toUpperCase()}
-                      </span>
+                      {renderStatusBadge(c.status)}
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div className="text-xs font-semibold text-zinc-200 truncate">
                       {c.tindak_pidana} • {c.person?.nama || c.terlapor_name}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    <div className="text-[11px] text-zinc-400 mt-0.5 font-mono">
                       Penyidik: {leadInv ? `${leadInv.pangkat} ${leadInv.nama.split(' ')[0]}` : 'Belum Ditunjuk'}
                     </div>
                   </div>
 
-                  <ArrowUpRight size={16} color="var(--text-muted)" />
+                  <ArrowUpRight size={15} className="text-zinc-500 shrink-0" />
                 </div>
               );
             })}
@@ -270,81 +190,45 @@ export default function DashboardView({
         </div>
 
         {/* Right: Recent Generated Documents */}
-        <div className="glass" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={18} color="#ffffff" />
-              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>
+        <div className="rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm flex flex-col gap-3.5">
+          <div className="flex items-center justify-between pb-1 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2">
+              <FileText size={16} className="text-sky-400" />
+              <h3 className="text-sm font-bold m-0 text-zinc-100">
                 Dokumen Mindik Terakhir
               </h3>
             </div>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              background: '#2a343f',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#E2E8F0',
-              padding: '2px 8px',
-              borderRadius: '999px'
-            }}>
+            <span className="text-[10px] font-mono font-semibold bg-[#222b34] border border-white/[0.08] text-zinc-400 px-2 py-0.5 rounded">
               {documents.length} Berkas
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="flex flex-col gap-2">
             {documents.slice(0, 4).map((doc) => {
-              const relatedCase = cases.find(c => c.id === doc.case_id);
               return (
                 <div
                   key={doc.id}
                   onClick={() => onViewDoc(doc)}
-                  style={{
-                    padding: '12px 14px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-glass)',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-fast)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#ff352d';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-glass)';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
+                  className="p-3 bg-[#222b34] rounded-lg border border-white/[0.08] cursor-pointer transition-all duration-150 flex items-center justify-between hover:border-white/[0.2] hover:bg-[#26313c] hover:translate-x-0.5"
                 >
-                  <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <span className="mono" style={{
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        background: '#2a343f',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#E2E8F0',
-                        padding: '2px 7px',
-                        borderRadius: '4px',
-                        letterSpacing: '0.04em'
-                      }}>
+                  <div className="flex-1 min-w-0 pr-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-[10px] font-bold bg-[#1b2229] border border-white/[0.08] text-sky-400 px-1.5 py-0.5 rounded tracking-wide">
                         {doc.template_code}
                       </span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <span className="text-[10.5px] text-zinc-400 font-mono">
                         {doc.created_at}
                       </span>
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <div className="text-xs font-semibold text-zinc-200 truncate">
                       {doc.doc_title}
                     </div>
-                    <div className="mono" style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                    <div className="font-mono text-[11px] text-zinc-400 truncate">
                       {doc.doc_number || 'Tanpa Nomor'}
                     </div>
                   </div>
 
-                  <ArrowUpRight size={16} color="var(--text-muted)" />
+                  <ArrowUpRight size={15} className="text-zinc-500 shrink-0" />
                 </div>
               );
             })}
@@ -354,3 +238,4 @@ export default function DashboardView({
     </div>
   );
 }
+

@@ -1633,33 +1633,33 @@ export default function DumasFormView({
             )}
           </div>
 
-          {/* 2 Opsi Input Berdampingan (Dual Upload Option) */}
+          {/* 2 Opsi Input Berdampingan: Konsol Hardware Modern (Dual Upload Console) */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
             gap: '16px'
           }}>
             
-            {/* Opsi A: Pilih Berkas dari Komputer */}
+            {/* Opsi A: Konsol Upload Komputer / Laptop */}
             <label 
               htmlFor="upload_bukti_komputer" 
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               style={{
-                border: isDragOver ? '1.5px dashed #38BDF8' : '1px dashed #334155',
-                backgroundColor: isDragOver ? 'rgba(56, 189, 248, 0.08)' : '#0B0D13',
-                padding: '18px',
-                borderRadius: '12px',
+                border: isDragOver ? '1.5px dashed #38BDF8' : '1px solid #263347',
+                backgroundColor: isDragOver ? 'rgba(56, 189, 248, 0.08)' : '#141C2B',
+                padding: '18px 20px',
+                borderRadius: '10px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '12px',
+                gap: '14px',
                 cursor: 'pointer',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: isDragOver ? '0 0 20px rgba(56, 189, 248, 0.15)' : '0 2px 10px rgba(0,0,0,0.25)',
+                boxShadow: isDragOver ? '0 0 16px rgba(56, 189, 248, 0.2)' : '0 1px 4px rgba(0,0,0,0.3)',
                 position: 'relative'
               }}
-              className="hover:border-sky-500 hover:shadow-lg focus-within:ring-2 focus-within:ring-sky-500/50"
+              className="hover:border-sky-500 hover:bg-[#182234] focus-within:ring-2 focus-within:ring-sky-500/40"
             >
               <input 
                 id="upload_bukti_komputer"
@@ -1672,137 +1672,177 @@ export default function DumasFormView({
                 onChange={handleFileUpload}
               />
 
-              {/* Tag Badge Opsi A */}
+              {/* Console Header Opsi A */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#38BDF8', display: 'inline-block' }} />
+                  <span style={{
+                    fontSize: '9.5px',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 700,
+                    color: '#38BDF8',
+                    letterSpacing: '0.06em'
+                  }}>
+                    KONSOL INPUT A • STORAGE LOKAL
+                  </span>
+                </div>
                 <span style={{
                   fontSize: '9px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 800,
-                  color: '#38BDF8',
-                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  letterSpacing: '0.05em'
+                  fontFamily: 'var(--font-mono)',
+                  color: '#94A3B8',
+                  background: '#0B0F17',
+                  border: '1px solid #263347',
+                  padding: '1px 6px',
+                  borderRadius: '3px'
                 }}>
-                  OPSI A • DOKUMEN / FOTO LOKAL
-                </span>
-                <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>
-                  Perangkat PC/Laptop
+                  PC / LAPTOP
                 </span>
               </div>
 
+              {/* Console Body Opsi A */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0.05) 100%)',
-                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '8px',
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#38BDF8',
-                  flexShrink: 0,
-                  boxShadow: '0 0 16px rgba(56, 189, 248, 0.15)'
+                  flexShrink: 0
                 }}>
-                  <UploadCloud size={24} />
+                  <UploadCloud size={22} />
                 </div>
-                <div>
-                  <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#F8FAFC', letterSpacing: '0.01em' }}>
                     Pilih Berkas dari Komputer
                   </div>
-                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px', fontFamily: 'Inter, sans-serif' }}>
-                    Klik untuk memilih berkas atau drag &amp; drop ke area ini
+                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                    Klik telusuri atau geser berkas ke area ini
                   </div>
                 </div>
+                <span style={{
+                  fontSize: '10.5px',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  color: '#38BDF8',
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  whiteSpace: 'nowrap'
+                }}>
+                  Telusuri
+                </span>
               </div>
 
-              {/* Format Supporter Badges */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '4px', borderTop: '1px solid #1E293B' }}>
-                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>Format didukung:</span>
-                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#38BDF8', backgroundColor: 'rgba(56, 189, 248, 0.1)', padding: '1px 5px', borderRadius: '3px' }}>PDF</span>
-                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#F87171', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '1px 5px', borderRadius: '3px' }}>JPG</span>
-                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#34D399', backgroundColor: 'rgba(52, 211, 153, 0.1)', padding: '1px 5px', borderRadius: '3px' }}>PNG</span>
-                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', marginLeft: 'auto' }}>Maks 25 MB</span>
+              {/* Format Footer Badges */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid #1E293B' }}>
+                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748B' }}>Dukungan:</span>
+                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#38BDF8', backgroundColor: '#0B0F17', border: '1px solid #263347', padding: '1px 5px', borderRadius: '3px' }}>PDF</span>
+                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#F87171', backgroundColor: '#0B0F17', border: '1px solid #263347', padding: '1px 5px', borderRadius: '3px' }}>JPG</span>
+                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#34D399', backgroundColor: '#0B0F17', border: '1px solid #263347', padding: '1px 5px', borderRadius: '3px' }}>PNG</span>
+                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#64748B', marginLeft: 'auto' }}>Maks 25 MB</span>
               </div>
             </label>
 
-            {/* Opsi B: Pindai Bukti via HP (QR Code) */}
+            {/* Opsi B: Konsol Pindai Kamera HP (QR Code Bridge) */}
             <div 
               role="button"
               tabIndex={0}
               onClick={() => setIsQrModalOpen(true)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setIsQrModalOpen(true); }}
               style={{
-                border: '1px dashed rgba(229, 46, 46, 0.45)',
-                backgroundColor: '#0B0D13',
-                padding: '18px',
-                borderRadius: '12px',
+                border: '1px solid #263347',
+                backgroundColor: '#141C2B',
+                padding: '18px 20px',
+                borderRadius: '10px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '12px',
+                gap: '14px',
                 cursor: 'pointer',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
                 position: 'relative'
               }}
-              className="hover:border-red-500 hover:shadow-lg focus-within:ring-2 focus-within:ring-red-500/50"
+              className="hover:border-red-500 hover:bg-[#182234] focus-within:ring-2 focus-within:ring-red-500/40"
             >
-              {/* Tag Badge Opsi B */}
+              {/* Console Header Opsi B */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#DC2626', display: 'inline-block' }} />
+                  <span style={{
+                    fontSize: '9.5px',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 700,
+                    color: '#F87171',
+                    letterSpacing: '0.06em'
+                  }}>
+                    KONSOL INPUT B • LIVE QR BRIDGE
+                  </span>
+                </div>
                 <span style={{
                   fontSize: '9px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 800,
-                  color: '#FF352D',
-                  backgroundColor: 'rgba(229, 46, 46, 0.12)',
-                  border: '1px solid rgba(229, 46, 46, 0.3)',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  letterSpacing: '0.05em'
+                  fontFamily: 'var(--font-mono)',
+                  color: '#F59E0B',
+                  background: '#0B0F17',
+                  border: '1px solid #263347',
+                  padding: '1px 6px',
+                  borderRadius: '3px'
                 }}>
-                  OPSI B • SINKRONISASI HP
-                </span>
-                <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#F59E0B' }}>
-                  Kamera Ponsel
+                  KAMERA HP
                 </span>
               </div>
 
+              {/* Console Body Opsi B */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, rgba(229, 46, 46, 0.2) 0%, rgba(229, 46, 46, 0.05) 100%)',
-                  border: '1px solid rgba(229, 46, 46, 0.4)',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '8px',
+                  background: 'rgba(220, 38, 38, 0.12)',
+                  border: '1px solid rgba(220, 38, 38, 0.35)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#FF352D',
-                  flexShrink: 0,
-                  boxShadow: '0 0 16px rgba(229, 46, 46, 0.15)'
+                  color: '#F87171',
+                  flexShrink: 0
                 }}>
-                  <Smartphone size={24} />
+                  <Smartphone size={22} />
                 </div>
-                <div>
-                  <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                    Pindai Bukti via HP (QR Code)
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#F8FAFC', letterSpacing: '0.01em' }}>
+                    Pindai Bukti via Kamera HP
                   </div>
-                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px', fontFamily: 'Inter, sans-serif' }}>
-                    Buka kamera ponsel &amp; sinkronkan berkas bukti secara nirkabel
+                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                    Buka kamera ponsel &amp; sinkron nirkabel
                   </div>
                 </div>
+                <span style={{
+                  fontSize: '10.5px',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  color: '#F87171',
+                  background: 'rgba(220, 38, 38, 0.1)',
+                  border: '1px solid rgba(220, 38, 38, 0.3)',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  whiteSpace: 'nowrap'
+                }}>
+                  Buka QR
+                </span>
               </div>
 
               {/* Status Info Opsi B */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1px solid #1E293B', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #1E293B', fontSize: '9.5px', fontFamily: 'var(--font-mono)' }}>
                 <span style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10B981' }} />
                   Rotasi Token 30s
                 </span>
-                <span style={{ color: '#F59E0B' }}>
-                  Timeout Sesi 60s
+                <span style={{ color: '#94A3B8' }}>
+                  Enkripsi Sesi Aktif
                 </span>
               </div>
             </div>

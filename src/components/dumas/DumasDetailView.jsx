@@ -853,10 +853,10 @@ export default function DumasDetailView({
               return (
                 <div
                   key={bb?.id || idx}
-                  className="bg-[#121721] border border-[#292F42] rounded-xl p-4 flex flex-col justify-between shadow-sm hover:border-red-500/40 transition-colors dumas-evidence-card-box"
+                  className="bg-[#1b2229] border border-white/[0.08] rounded-xl p-4 flex flex-col justify-between shadow-sm hover:border-white/[0.18] transition-all duration-150 dumas-evidence-card-box"
                   style={{
-                    backgroundColor: '#121721',
-                    border: '1px solid #292F42',
+                    backgroundColor: '#1b2229',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
                     borderRadius: '12px',
                     padding: '16px',
                     display: 'flex',
