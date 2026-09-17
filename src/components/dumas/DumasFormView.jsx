@@ -20,7 +20,8 @@ import {
   generateDumasNumber, 
   loadDumasDraft, 
   saveDumasDraft, 
-  clearDumasDraft 
+  clearDumasDraft,
+  safeGetLocalStorage
 } from '../../services/dumasService';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
@@ -85,6 +86,16 @@ const DRAFT_KEY_BB = 'emindik_draft_daftar_bb_v1';
 const DRAFT_KEY_FORM = 'emindik_draft_form_perkara_v1';
 const STORAGE_KEY = 'emindik_temp_draft_bb';
 
+// Emergency Console Draft Reset Helper
+if (typeof window !== 'undefined') {
+  window.resetEminikDraft = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log('[EMERGENCY RESET] Seluruh draft lokal berhasil dibersihkan.');
+    window.location.reload();
+  };
+}
+
 export default function DumasFormView({
   mode = 'manual', // 'manual' | 'ocr'
   _initialOcrFile = null,
@@ -96,26 +107,16 @@ export default function DumasFormView({
   perkaraId: propPerkaraId = null
 }) {
   const perkaraId = propPerkaraId || initialOcrData?.id || initialOcrData?.perkara_id || null;
-  // 0. Safe Hydration Draf Formulir Tersimpan dari LocalStorage (Pola Lazy Initializer)
+  // 0. Safe Hydration Draf Formulir Tersimpan dari LocalStorage (Pola Lazy Initializer & Safe Parsing)
   const [savedDraft] = useState(() => {
-    // Jika ada data OCR baru yang dipassing dari modal, utamakan data OCR baru
     if (initialOcrData) return null;
-    try {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem(DRAFT_KEY_FORM);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && typeof parsed === 'object') {
-            console.log('[RECOVERY] Berhasil memuat ulang draft form perkara dari localStorage:', parsed);
-            return parsed;
-          }
-        }
-      }
-    } catch (e) {
-      console.error('[RECOVERY ERROR] Gagal parse draft form:', e);
+    const fromFormKey = safeGetLocalStorage(DRAFT_KEY_FORM, null);
+    if (fromFormKey && typeof fromFormKey === 'object') {
+      console.log('[RECOVERY] Berhasil memuat ulang draft form perkara dari localStorage:', fromFormKey);
+      return fromFormKey;
     }
     const serviceDraft = loadDumasDraft(currentUserProfile?.id) || loadDumasDraft(null);
-    if (serviceDraft) {
+    if (serviceDraft && typeof serviceDraft === 'object') {
       console.log('[RECOVERY] Berhasil memuat ulang draft dari dumasService:', serviceDraft);
       return serviceDraft;
     }
@@ -339,23 +340,23 @@ export default function DumasFormView({
     }
   }, [initialOcrData]);
 
-  // State 05: Lampiran Barang Bukti (Pola Lazy Initializer Anti-Hilang Saat Refresh)
+  // State 05: Lampiran Barang Bukti (Pola Lazy Initializer & Safe Parsing Anti-Hilang)
   const [daftarBukti, setDaftarBukti] = useState(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem(DRAFT_KEY_BB) || 
-                      localStorage.getItem(STORAGE_KEY) || 
-                      localStorage.getItem('temp_dumas_bb');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          console.log('[RECOVERY] Berhasil memuat ulang draft bukti dari localStorage:', parsed);
-          return Array.isArray(parsed) ? parsed : [];
-        }
-      }
-    } catch (e) {
-      console.error('[RECOVERY ERROR] Gagal parse draft bukti:', e);
+    const listFromBbKey = safeGetLocalStorage(DRAFT_KEY_BB, []);
+    if (Array.isArray(listFromBbKey) && listFromBbKey.length > 0) {
+      console.log('[RECOVERY] Berhasil memuat ulang draft bukti dari DRAFT_KEY_BB:', listFromBbKey);
+      return listFromBbKey;
     }
-
+    const listFromStorageKey = safeGetLocalStorage(STORAGE_KEY, []);
+    if (Array.isArray(listFromStorageKey) && listFromStorageKey.length > 0) {
+      console.log('[RECOVERY] Berhasil memuat ulang draft bukti dari STORAGE_KEY:', listFromStorageKey);
+      return listFromStorageKey;
+    }
+    const listFromTemp = safeGetLocalStorage('temp_dumas_bb', []);
+    if (Array.isArray(listFromTemp) && listFromTemp.length > 0) {
+      console.log('[RECOVERY] Berhasil memuat ulang draft bukti dari temp_dumas_bb:', listFromTemp);
+      return listFromTemp;
+    }
     if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles) && savedDraft.evidenceFiles.length > 0) {
       return savedDraft.evidenceFiles;
     }
@@ -2421,20 +2422,25 @@ export default function DumasFormView({
                 gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
                 gap: '12px'
               }}>
-                {evidenceFiles.map((file, idx) => {
-                  const isPdf = file.kategori_bukti === 'DOKUMEN_PDF' || file.name?.toLowerCase().endsWith('.pdf') || file.nama_berkas?.toLowerCase().endsWith('.pdf');
-                  const rawUrl = file.url || file.previewUrl || file.fileUrl || file.file_url;
+                {Array.isArray(evidenceFiles) && evidenceFiles.map((file, idx) => {
+                  if (!file || typeof file !== 'object') return null;
+
+                  const displayName = file?.nama_berkas || file?.name || file?.nama_file || 'Barang Bukti';
+                  const isPdf = file?.kategori_bukti === 'DOKUMEN_PDF' || 
+                                (typeof displayName === 'string' && displayName.toLowerCase().endsWith('.pdf'));
+                  const rawUrl = file?.url || file?.previewUrl || file?.fileUrl || file?.file_url || '';
                   const fileUrl = formatR2PublicUrl(rawUrl);
-                  const displayName = file.nama_berkas || file.name || file.nama_file || 'Barang Bukti';
-                  const displaySize = file.file_size_formatted || (file.ukuran ? `${(file.ukuran / 1024).toFixed(0)} KB` : (file.size ? `${(file.size / 1024).toFixed(0)} KB` : '180 KB'));
+                  const displaySize = file?.file_size_formatted || 
+                    (file?.ukuran ? `${(file.ukuran / 1024).toFixed(0)} KB` : (file?.size ? `${(file.size / 1024).toFixed(0)} KB` : '180 KB'));
+                  const uniqueKey = file?.id || `bb-${idx}`;
 
                   return (
                     <div 
-                      key={file.id || idx} 
+                      key={uniqueKey} 
                       style={{
                         backgroundColor: '#0B0D13',
-                        border: file.isNew ? '1.5px solid #10B981' : '1px solid #292F42',
-                        boxShadow: file.isNew ? '0 0 16px rgba(16, 185, 129, 0.25)' : '0 2px 8px rgba(0,0,0,0.2)',
+                        border: file?.isNew ? '1.5px solid #10B981' : '1px solid #292F42',
+                        boxShadow: file?.isNew ? '0 0 16px rgba(16, 185, 129, 0.25)' : '0 2px 8px rgba(0,0,0,0.2)',
                         borderRadius: '10px',
                         padding: '12px',
                         display: 'flex',
@@ -2444,7 +2450,7 @@ export default function DumasFormView({
                         transition: 'all 0.25s ease',
                         position: 'relative'
                       }}
-                      className={file.isNew ? 'ring-1 ring-emerald-500/40' : 'hover:border-sky-500/50'}
+                      className={file?.isNew ? 'ring-1 ring-emerald-500/40' : 'hover:border-sky-500/50'}
                     >
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                         {/* Thumbnail / Icon dari URL Cloudflare R2 */}
@@ -2458,7 +2464,7 @@ export default function DumasFormView({
                             height: '52px',
                             borderRadius: '8px',
                             backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.15)' : '#1E293B',
-                            border: file.isNew ? '1px solid #10B981' : '1px solid #334155',
+                            border: file?.isNew ? '1px solid #10B981' : '1px solid #334155',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -2476,7 +2482,7 @@ export default function DumasFormView({
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                 className="w-full max-h-64 object-contain bg-zinc-950 rounded border border-zinc-800"
                                 onLoad={() => {
-                                  console.log("Rendering Bukti URL:", file.url || fileUrl);
+                                  console.log("Rendering Bukti URL:", file?.url || fileUrl);
                                 }}
                                 onError={(e) => {
                                   console.error("Gagal memuat gambar bukti dari R2:", fileUrl);
@@ -2527,7 +2533,7 @@ export default function DumasFormView({
                             <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8' }}>
                               {displaySize}
                             </span>
-                            {file.isNew && (
+                            {file?.isNew && (
                               <span style={{
                                 fontSize: '8.5px',
                                 fontFamily: 'JetBrains Mono, monospace',
@@ -2542,7 +2548,7 @@ export default function DumasFormView({
                               </span>
                             )}
                           </div>
-                          {file.keterangan && (
+                          {file?.keterangan && (
                             <p style={{ fontSize: '10px', color: '#64748B', margin: '4px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {file.keterangan}
                             </p>
@@ -2576,7 +2582,7 @@ export default function DumasFormView({
 
                         <button 
                           type="button"
-                          onClick={() => handleHapusBukti(file.id)}
+                          onClick={() => handleHapusBukti(file?.id || uniqueKey)}
                           style={{
                             background: 'rgba(239, 68, 68, 0.1)',
                             border: '1px solid rgba(239, 68, 68, 0.3)',

@@ -32,25 +32,28 @@ export default function DaftarBuktiDigital({
         gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
         gap: '12px'
       }}>
-        {items.map((bukti, idx) => {
-          const rawUrl = bukti.url || bukti.fileUrl || bukti.previewUrl || bukti.file_url;
+        {Array.isArray(items) && items.map((bukti, idx) => {
+          if (!bukti || typeof bukti !== 'object') return null;
+
+          const rawUrl = bukti?.url || bukti?.fileUrl || bukti?.previewUrl || bukti?.file_url || '';
           const publicUrl = formatR2PublicUrl(rawUrl);
-          const fileName = bukti.nama_berkas || bukti.name || bukti.nama_file || 'Barang Bukti';
-          const isPdf = bukti.kategori_bukti === 'DOKUMEN_PDF' || fileName.toLowerCase().endsWith('.pdf');
-          const fileSizeFormatted = bukti.file_size_formatted || 
-            (bukti.ukuran ? `${(bukti.ukuran / 1024).toFixed(0)} KB` : (bukti.size ? `${(bukti.size / 1024).toFixed(0)} KB` : '180 KB'));
+          const fileName = bukti?.nama_berkas || bukti?.name || bukti?.nama_file || 'Barang Bukti';
+          const isPdf = bukti?.kategori_bukti === 'DOKUMEN_PDF' || (typeof fileName === 'string' && fileName.toLowerCase().endsWith('.pdf'));
+          const fileSizeFormatted = bukti?.file_size_formatted || 
+            (bukti?.ukuran ? `${(bukti.ukuran / 1024).toFixed(0)} KB` : (bukti?.size ? `${(bukti.size / 1024).toFixed(0)} KB` : '180 KB'));
+          const uniqueKey = bukti?.id || `bb-${idx}`;
 
           if (!isPdf && publicUrl) {
-            console.log("Rendering Bukti URL:", bukti.url || publicUrl);
+            console.log("Rendering Bukti URL:", bukti?.url || publicUrl);
           }
 
           return (
             <div
-              key={bukti.id || idx}
+              key={uniqueKey}
               style={{
                 backgroundColor: '#0B0D13',
-                border: bukti.isNew ? '1.5px solid #10B981' : '1px solid #292F42',
-                boxShadow: bukti.isNew ? '0 0 16px rgba(16, 185, 129, 0.25)' : '0 2px 8px rgba(0,0,0,0.2)',
+                border: bukti?.isNew ? '1.5px solid #10B981' : '1px solid #292F42',
+                boxShadow: bukti?.isNew ? '0 0 16px rgba(16, 185, 129, 0.25)' : '0 2px 8px rgba(0,0,0,0.2)',
                 borderRadius: '10px',
                 padding: '12px',
                 display: 'flex',
@@ -60,7 +63,7 @@ export default function DaftarBuktiDigital({
                 transition: 'all 0.25s ease',
                 position: 'relative'
               }}
-              className={bukti.isNew ? 'ring-1 ring-emerald-500/40' : 'hover:border-sky-500/50'}
+              className={bukti?.isNew ? 'ring-1 ring-emerald-500/40' : 'hover:border-sky-500/50'}
             >
               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 {/* Thumbnail Pratinjau Gambar / Dokumen */}

@@ -3,11 +3,13 @@ import DumasListView from '../components/dumas/DumasListView';
 import DumasFormView from '../components/dumas/DumasFormView';
 import DumasDetailView from '../components/dumas/DumasDetailView';
 import DumasModeSelectModal from '../components/dumas/DumasModeSelectModal';
+import DumasErrorBoundary from '../components/dumas/DumasErrorBoundary';
 import { 
   saveDumasRecord, 
   deleteDumasRecord, 
   convertDumasToCase,
-  hasDumasDraft
+  hasDumasDraft,
+  safeGetLocalStorage
 } from '../services/dumasService';
 import '../styles/dumas.css';
 
@@ -26,10 +28,10 @@ export default function DumasView({
         if (savedSubView && ['list', 'form', 'detail'].includes(savedSubView)) {
           return savedSubView;
         }
-        // Jika ada draft aktif di localStorage, otomatis buka form
-        const draftBb = localStorage.getItem('emindik_draft_daftar_bb_v1') || localStorage.getItem('emindik_temp_draft_bb');
-        const draftForm = localStorage.getItem('emindik_draft_form_perkara_v1') || localStorage.getItem('emindik_dumas_form_draft_v1');
-        if (draftBb || draftForm) {
+        // Jika ada draft aktif di localStorage dengan data riil, otomatis buka form
+        const draftBb = safeGetLocalStorage('emindik_draft_daftar_bb_v1', []);
+        const draftForm = safeGetLocalStorage('emindik_draft_form_perkara_v1', null);
+        if ((Array.isArray(draftBb) && draftBb.length > 0) || (draftForm && Object.keys(draftForm).length > 0)) {
           return 'form';
         }
       }
@@ -152,18 +154,20 @@ export default function DumasView({
         />
       )}
 
-      {/* Tampilan 2: Formulir Data Struktur (Tahap 2) */}
+      {/* Tampilan 2: Formulir Data Struktur (Tahap 2) dengan Error Boundary Proteksi Crash */}
       {subView === 'form' && (
-        <DumasFormView
-          key={initialOcrData ? 'form-ocr-active' : 'form-manual'}
-          mode={formMode}
-          initialOcrFile={initialOcrFile}
-          initialOcrFiles={initialOcrFiles}
-          initialOcrData={initialOcrData}
-          currentUserProfile={currentUserProfile}
-          onBack={() => setSubView('list')}
-          onSubmitDumas={handleSubmitDumas}
-        />
+        <DumasErrorBoundary onResetView={() => setSubView('list')}>
+          <DumasFormView
+            key={initialOcrData ? 'form-ocr-active' : 'form-manual'}
+            mode={formMode}
+            initialOcrFile={initialOcrFile}
+            initialOcrFiles={initialOcrFiles}
+            initialOcrData={initialOcrData}
+            currentUserProfile={currentUserProfile}
+            onBack={() => setSubView('list')}
+            onSubmitDumas={handleSubmitDumas}
+          />
+        </DumasErrorBoundary>
       )}
 
       {/* Tampilan 3: Map Berkas Kedinasan & Detail (Tahap 4) */}

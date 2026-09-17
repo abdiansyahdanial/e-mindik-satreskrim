@@ -5,6 +5,28 @@ export const DUMAS_LOCAL_STORAGE_KEY = 'emindik_dumas_records_v1';
 export const DUMAS_DRAFT_KEY = 'emindik_dumas_form_draft_v1';
 
 /**
+ * Helper pembacaan LocalStorage yang 100% aman (fool-proof)
+ * Melindungi dari parsing galat dan korupsi data
+ */
+export const safeGetLocalStorage = (key, fallback = []) => {
+  try {
+    if (typeof window === 'undefined') return fallback;
+    const raw = localStorage.getItem(key);
+    if (!raw || raw === 'undefined' || raw === 'null') return fallback;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(fallback)
+      ? (Array.isArray(parsed) ? parsed : fallback)
+      : (parsed && typeof parsed === 'object' ? parsed : fallback);
+  } catch (err) {
+    console.warn(`[STORAGE WARNING] Corrupted data for ${key}, clearing...`, err);
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+    return fallback;
+  }
+};
+
+/**
  * Mendapatkan key storage draf (dengan isolasi ID pengguna jika tersedia)
  */
 export function getDumasDraftKey(userId = null) {
@@ -15,16 +37,8 @@ export function getDumasDraftKey(userId = null) {
  * Membaca draf tersimpan secara aman
  */
 export function loadDumasDraft(userId = null) {
-  try {
-    const key = getDumasDraftKey(userId);
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : null;
-  } catch (err) {
-    console.warn('Gagal membaca draf dumas dari storage:', err);
-    return null;
-  }
+  const key = getDumasDraftKey(userId);
+  return safeGetLocalStorage(key, null);
 }
 
 /**
