@@ -1,2 +1,4 @@
-export { default } from '../components/dumas/DumasFormView';
-export * from '../components/dumas/DumasFormView';
+import DumasFormView from '../components/dumas/DumasFormView';
+
+export { DumasFormView };
+export default DumasFormView;

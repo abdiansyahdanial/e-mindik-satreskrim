@@ -2792,3 +2792,6 @@ export default function DumasFormView({
     </div>
   );
 }
+
+export { DumasFormView };
+

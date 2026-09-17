@@ -26,11 +26,15 @@ export default function DumasView({
     try {
       if (typeof window !== 'undefined') {
         const savedSubView = sessionStorage.getItem('emindik_dumas_subview');
-        if (savedSubView && ['list', 'form', 'detail'].includes(savedSubView)) {
+        if (savedSubView && ['list', 'form'].includes(savedSubView)) {
           return savedSubView;
         }
+        if (savedSubView === 'detail') {
+          sessionStorage.setItem('emindik_dumas_subview', 'list');
+          return 'list';
+        }
         // Jika ada draft aktif di localStorage dengan data riil yang valid, otomatis buka form
-        const rawBb = safeGetLocalStorage('emindik_draft_daftar_bb_v1', []);
+        const rawBb = safeGetLocalStorage('emindik_dumas_evidence_v2', []) || safeGetLocalStorage('emindik_draft_daftar_bb_v1', []);
         const draftBb = sanitizeEvidenceList(rawBb);
         const draftForm = safeGetLocalStorage('emindik_draft_form_perkara_v1', null);
         if ((Array.isArray(draftBb) && draftBb.length > 0) || (draftForm && Object.keys(draftForm).length > 0)) {
@@ -140,8 +144,8 @@ export default function DumasView({
         onSelectMode={handleSelectMode}
       />
 
-      {/* Tampilan 1: Tabel Daftar Dumas */}
-      {subView === 'list' && (
+      {/* Tampilan 1: Tabel Daftar Dumas (Juga bertindak sebagai fallback mutlak jika kondisi subView lain tidak terpenuhi) */}
+      {(subView === 'list' || (subView === 'detail' && !selectedDumas) || (subView !== 'form' && subView !== 'detail')) && (
         <DumasListView
           dumasList={dumasList}
           onOpenModeSelect={handleOpenModeSelect}
@@ -156,19 +160,27 @@ export default function DumasView({
         />
       )}
 
-      {/* Tampilan 2: Formulir Data Struktur (Tahap 2) dengan Error Boundary Proteksi Crash */}
+      {/* Tampilan 2: Formulir Data Struktur (Tahap 2) dengan Error Boundary Proteksi Crash & Check Keberadaan Komponen */}
       {subView === 'form' && (
         <DumasErrorBoundary onResetView={() => setSubView('list')}>
-          <DumasFormView
-            key={initialOcrData ? 'form-ocr-active' : 'form-manual'}
-            mode={formMode}
-            initialOcrFile={initialOcrFile}
-            initialOcrFiles={initialOcrFiles}
-            initialOcrData={initialOcrData}
-            currentUserProfile={currentUserProfile}
-            onBack={() => setSubView('list')}
-            onSubmitDumas={handleSubmitDumas}
-          />
+          {DumasFormView ? (
+            <DumasFormView
+              key={initialOcrData ? 'form-ocr-active' : 'form-manual'}
+              mode={formMode}
+              initialOcrFile={initialOcrFile}
+              initialOcrFiles={initialOcrFiles}
+              initialOcrData={initialOcrData}
+              currentUserProfile={currentUserProfile}
+              onBack={() => setSubView('list')}
+              onSubmitDumas={handleSubmitDumas}
+            />
+          ) : (
+            <div className="p-6 text-white">
+              <div className="p-4 bg-red-900/50 border border-red-500 rounded text-red-200 font-mono text-sm">
+                Komponen DumasFormView tidak terdefinisi (undefined component). Periksa file import di DumasView.jsx.
+              </div>
+            </div>
+          )}
         </DumasErrorBoundary>
       )}
 
@@ -187,3 +199,6 @@ export default function DumasView({
     </div>
   );
 }
+
+export { DumasView };
+

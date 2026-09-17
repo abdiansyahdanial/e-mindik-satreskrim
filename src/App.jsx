@@ -14,6 +14,7 @@ import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
 import UserManagementModal from './components/UserManagementModal';
 import DumasView from './views/DumasView';
+import DumasFormView from './views/DumasFormView';
 import MobileUploadView from './views/MobileUploadView';
 import { fetchDumasRecords } from './services/dumasService';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
@@ -849,13 +850,27 @@ export default function App() {
           )}
 
           {activeTab === 'dumas' && (
-            <DumasView
-              dumasList={dumasList}
-              setDumasList={setDumasList}
-              currentUserProfile={currentUserProfile}
-              onHandoverToGenerator={handleHandoverFromDumas}
-              onShowToast={showToast}
-            />
+            <div className="w-full h-full overflow-y-auto">
+              {DumasView ? (
+                <DumasView
+                  dumasList={dumasList}
+                  setDumasList={setDumasList}
+                  currentUserProfile={currentUserProfile}
+                  onHandoverToGenerator={handleHandoverFromDumas}
+                  onShowToast={showToast}
+                />
+              ) : DumasFormView ? (
+                <div className="w-full h-full p-6 text-white overflow-y-auto">
+                  <DumasFormView />
+                </div>
+              ) : (
+                <div className="w-full h-full p-6 text-white overflow-y-auto">
+                  <div className="p-4 bg-red-900/50 border border-red-500 rounded text-red-200">
+                    Komponen DumasFormView tidak terdefinisi (undefined component). Periksa file import di App.jsx.
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'cases' && (
