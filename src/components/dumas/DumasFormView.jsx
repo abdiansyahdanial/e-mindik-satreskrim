@@ -366,6 +366,89 @@ export default function DumasFormView({
   const evidenceFiles = daftarBukti;
   const setEvidenceFiles = setDaftarBukti;
 
+  // State Dokumen / Riwayat Berkas (Safe 404/PGRST204 Fallback Resilience)
+  const [documents, setDocuments] = useState([]);
+  const [arsipDokumen, setArsipDokumen] = useState([]);
+
+  // Safe Fetch Dokumen & Arsip Dokumen Supabase dengan Penanganan Error 404/PGRST204
+  useEffect(() => {
+    const fetchDokumenRiwayat = async () => {
+      // 1. Ambil dokumen dari tabel 'documents'
+      try {
+        let query = supabase
+          .from('documents')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (perkaraId) {
+          query = query.eq('case_id', perkaraId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.warn('[SUPABASE WARNING] Tabel documents belum ada atau tidak dapat diakses:', error.message);
+          setDocuments([]);
+          // Fallback periksa jika data tersimpan di tabel arsip_dokumen
+          try {
+            let arsipQuery = supabase
+              .from('arsip_dokumen')
+              .select('*')
+              .order('created_at', { ascending: false });
+
+            if (perkaraId) {
+              arsipQuery = arsipQuery.eq('case_id', perkaraId);
+            }
+
+            const { data: arsipData, error: arsipError } = await arsipQuery;
+
+            if (arsipError) {
+              console.warn('[SUPABASE WARNING] Tabel arsip_dokumen belum ada atau tidak dapat diakses:', arsipError.message);
+              setArsipDokumen([]);
+              return;
+            }
+            setArsipDokumen(arsipData || []);
+            setDocuments(arsipData || []);
+          } catch (errArsip) {
+            console.error('[FETCH ERROR ARSIP]:', errArsip);
+            setArsipDokumen([]);
+          }
+          return;
+        }
+        setDocuments(data || []);
+      } catch (err) {
+        console.error('[FETCH ERROR]:', err);
+        setDocuments([]);
+      }
+
+      // 2. Ambil dokumen dari tabel 'arsip_dokumen' jika query pertama sukses
+      try {
+        let query = supabase
+          .from('arsip_dokumen')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (perkaraId) {
+          query = query.eq('case_id', perkaraId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.warn('[SUPABASE WARNING] Tabel arsip_dokumen belum ada atau tidak dapat diakses:', error.message);
+          setArsipDokumen([]);
+          return;
+        }
+        setArsipDokumen(data || []);
+      } catch (err) {
+        console.error('[FETCH ERROR]:', err);
+        setArsipDokumen([]);
+      }
+    };
+
+    fetchDokumenRiwayat();
+  }, [perkaraId]);
+
   // Sinkronisasi Otomatis ke LocalStorage
   useEffect(() => {
     try {

@@ -241,25 +241,37 @@ export default function App() {
           }
         } catch {}
 
-        const { data: docsData, error: docsErr } = await supabase
-          .from('documents')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!docsErr && docsData) {
-          setDocuments(docsData);
-        } else {
-          // Fallback periksa jika tabel diberi nama arsip_dokumen
-          const { data: arsipData, error: arsipErr } = await supabase
-            .from('arsip_dokumen')
+        try {
+          const { data, error } = await supabase
+            .from('documents')
             .select('*')
             .order('created_at', { ascending: false });
 
-          if (!arsipErr && arsipData) {
-            setDocuments(arsipData);
-          } else {
-            setDocuments([]);
+          if (error) {
+            console.warn('[SUPABASE WARNING] Tabel documents belum ada atau tidak dapat diakses:', error.message);
+            // Fallback periksa jika tabel diberi nama arsip_dokumen
+            try {
+              const { data: arsipData, error: arsipError } = await supabase
+                .from('arsip_dokumen')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+              if (arsipError) {
+                console.warn('[SUPABASE WARNING] Tabel arsip_dokumen belum ada atau tidak dapat diakses:', arsipError.message);
+                setDocuments([]);
+                return;
+              }
+              setDocuments(arsipData || []);
+            } catch (errArsip) {
+              console.error('[FETCH ERROR ARSIP]:', errArsip);
+              setDocuments([]);
+            }
+            return;
           }
+          setDocuments(data || []);
+        } catch (err) {
+          console.error('[FETCH ERROR]:', err);
+          setDocuments([]);
         }
       } catch (e) {
         console.warn('Documents sync error:', e);
