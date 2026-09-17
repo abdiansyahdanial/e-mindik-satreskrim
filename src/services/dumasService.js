@@ -1,5 +1,5 @@
 import { supabase } from '../supabaseClient.js';
-import { uploadFileToR2 } from '../lib/r2Client.js';
+import { uploadFileToR2, deleteR2File } from '../lib/r2Client.js';
 
 export const DUMAS_LOCAL_STORAGE_KEY = 'emindik_dumas_records_v1';
 export const DUMAS_DRAFT_KEY = 'emindik_dumas_form_draft_v1';
@@ -469,6 +469,153 @@ export async function deleteDumasRecord(id) {
   }
 
   return true;
+}
+
+/**
+ * Menambahkan bukti baru ke laporan Dumas yang sudah tersimpan
+ */
+export async function addEvidenceToDumas(dumasId, evidenceInput) {
+  if (!dumasId || !evidenceInput) {
+    return { success: false, error: 'Parameter dumasId atau evidenceInput tidak valid.' };
+  }
+
+  let r2Url = evidenceInput.file_url || evidenceInput.previewUrl || null;
+  let r2Path = evidenceInput.file_path || null;
+
+  const rawFile = evidenceInput.file || evidenceInput.rawFile;
+  if (rawFile) {
+    try {
+      const uploadRes = await uploadFileToR2(
+        rawFile,
+        evidenceInput.name || evidenceInput.nama_file,
+        evidenceInput.type || evidenceInput.mime_type,
+        { folder: `dumas/evidence_${dumasId}` }
+      );
+      if (uploadRes.success) {
+        r2Url = uploadRes.url || uploadRes.publicUrl;
+        r2Path = uploadRes.filePath || uploadRes.key;
+      }
+    } catch (uploadErr) {
+      console.warn('[addEvidenceToDumas] Gagal mengunggah ke R2:', uploadErr);
+    }
+  }
+
+  const isPdf = (evidenceInput.type || evidenceInput.mime_type || '').includes('pdf') ||
+    (evidenceInput.name || evidenceInput.nama_file || '').toLowerCase().endsWith('.pdf');
+
+  const randomHash = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const newEvidence = {
+    id: evidenceInput.id || `bb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    laporan_id: dumasId,
+    kategori_bukti: evidenceInput.kategori_bukti || (isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'),
+    nama_file: evidenceInput.name || evidenceInput.nama_file || 'Berkas_Bukti',
+    file_path: r2Path,
+    file_url: r2Url,
+    file_size_bytes: evidenceInput.size || evidenceInput.file_size_bytes || 0,
+    file_size_formatted: evidenceInput.file_size_formatted || (evidenceInput.size ? `${(evidenceInput.size / 1024).toFixed(0)} KB` : '150 KB'),
+    mime_type: evidenceInput.type || evidenceInput.mime_type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+    hash_sha256: evidenceInput.hash_sha256 || randomHash,
+    diunggah_pada: new Date().toISOString(),
+    keterangan: evidenceInput.keterangan || 'Lampiran bukti digital perkara pengaduan',
+  };
+
+  // 1. Perbarui localStorage
+  try {
+    const raw = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
+    if (raw) {
+      const list = JSON.parse(raw);
+      const updatedList = list.map(item => {
+        if (item.id === dumasId) {
+          const currentBukti = Array.isArray(item.lampiran_barang_bukti) ? item.lampiran_barang_bukti : [];
+          return {
+            ...item,
+            lampiran_barang_bukti: [...currentBukti, newEvidence]
+          };
+        }
+        return item;
+      });
+      localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+    }
+  } catch (lsErr) {
+    console.warn('[addEvidenceToDumas] Gagal sinkronisasi localStorage:', lsErr);
+  }
+
+  // 2. Simpan ke Supabase jika tabel tersedia
+  try {
+    const payload = {
+      laporan_id: dumasId,
+      kategori_bukti: newEvidence.kategori_bukti,
+      nama_file: newEvidence.nama_file,
+      file_path: newEvidence.file_path || '',
+      file_url: newEvidence.file_url || '',
+      file_size_bytes: newEvidence.file_size_bytes,
+      mime_type: newEvidence.mime_type,
+      hash_sha256: newEvidence.hash_sha256,
+      keterangan: newEvidence.keterangan,
+    };
+
+    const { error } = await supabase.from('lampiran_barang_bukti').insert([payload]);
+    if (error) {
+      await supabase.from('barang_bukti').insert([payload]).catch(() => {});
+      await supabase.from('lampiran_pengaduan').insert([payload]).catch(() => {});
+    }
+  } catch (supErr) {
+    console.warn('[addEvidenceToDumas] Notice: Sinkronisasi Supabase ditunda:', supErr);
+  }
+
+  return { success: true, evidence: newEvidence };
+}
+
+/**
+ * Menghapus bukti dari laporan Dumas yang sudah tersimpan
+ */
+export async function deleteEvidenceFromDumas(dumasId, evidenceId, filePath = null) {
+  if (!dumasId || !evidenceId) {
+    return { success: false, error: 'Parameter dumasId atau evidenceId tidak valid.' };
+  }
+
+  // 1. Hapus dari Cloudflare R2 jika path file tersedia
+  if (filePath) {
+    try {
+      await deleteR2File(filePath);
+    } catch (r2Err) {
+      console.warn('[deleteEvidenceFromDumas] Gagal menghapus file dari R2:', r2Err);
+    }
+  }
+
+  // 2. Perbarui localStorage
+  try {
+    const raw = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
+    if (raw) {
+      const list = JSON.parse(raw);
+      const updatedList = list.map(item => {
+        if (item.id === dumasId) {
+          const currentBukti = Array.isArray(item.lampiran_barang_bukti) ? item.lampiran_barang_bukti : [];
+          return {
+            ...item,
+            lampiran_barang_bukti: currentBukti.filter(b => b.id !== evidenceId)
+          };
+        }
+        return item;
+      });
+      localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+    }
+  } catch (lsErr) {
+    console.warn('[deleteEvidenceFromDumas] Gagal update localStorage:', lsErr);
+  }
+
+  // 3. Hapus dari Supabase
+  try {
+    await supabase.from('lampiran_barang_bukti').delete().eq('id', evidenceId);
+    await supabase.from('barang_bukti').delete().eq('id', evidenceId).catch(() => {});
+    await supabase.from('lampiran_pengaduan').delete().eq('id', evidenceId).catch(() => {});
+  } catch (supErr) {
+    console.warn('[deleteEvidenceFromDumas] Notice: Gagal hapus record Supabase:', supErr);
+  }
+
+  return { success: true };
 }
 
 /**

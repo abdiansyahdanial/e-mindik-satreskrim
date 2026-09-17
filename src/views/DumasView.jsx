@@ -148,6 +148,10 @@ export default function DumasView({
           dumasItem={selectedDumas}
           onBack={() => setSubView('list')}
           onOpenGeneratorForDumas={handleHandoverSprin}
+          onUpdateDumas={(updatedRecord) => {
+            setSelectedDumas(updatedRecord);
+            setDumasList(prev => prev.map(d => d.id === updatedRecord.id ? updatedRecord : d));
+          }}
         />
       )}
     </div>

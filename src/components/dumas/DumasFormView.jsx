@@ -10,7 +10,10 @@ import {
   AlertCircle,
   RotateCcw,
   CheckCircle2,
-  Clock
+  Clock,
+  Smartphone,
+  UploadCloud,
+  Eye
 } from 'lucide-react';
 import { 
   generateDumasNumber, 
@@ -18,6 +21,8 @@ import {
   saveDumasDraft, 
   clearDumasDraft 
 } from '../../services/dumasService';
+import EvidenceQrSyncModal from './EvidenceQrSyncModal.jsx';
+import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
 
 const defaultPelapor = {
   nama: '',
@@ -305,42 +310,15 @@ export default function DumasFormView({
     }
   }, [initialOcrData]);
 
-  // State 05: Lampiran Bukti
+  // State 05: Lampiran Barang Bukti (Pemisahan: scan OCR awal murni hanya untuk ekstraksi form, BUKAN barang bukti)
   const [evidenceFiles, setEvidenceFiles] = useState(() => {
-    const rawFiles = initialOcrFiles && initialOcrFiles.length > 0
-      ? initialOcrFiles
-      : (initialOcrFile ? [initialOcrFile] : []);
-
-    if (rawFiles && rawFiles.length > 0) {
-      return rawFiles.map((file, idx) => {
-        const isPdf = file.type?.includes('pdf') || file.name?.endsWith('.pdf');
-        const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
-        const mime = isPdf ? 'application/pdf' : 'image/jpeg';
-        return {
-          id: `ocr-file-${Date.now()}-${idx}`,
-          name: file.name,
-          nama_file: file.name,
-          size: file.size,
-          type: mime,
-          mime_type: mime,
-          kategori_bukti: category,
-          file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
-          previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
-          file: file,
-          rawFile: file,
-          keterangan: `Lembar ke-${idx + 1} surat pengaduan hasil pindai Smart OCR Reskrim`,
-          hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
-            .map(b => b.toString(16).padStart(2, '0')).join('') + '...'
-        };
-      });
-    }
-
     if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles) && savedDraft.evidenceFiles.length > 0) {
       return savedDraft.evidenceFiles;
     }
-
     return [];
   });
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [previewEvidence, setPreviewEvidence] = useState(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -496,18 +474,18 @@ export default function DumasFormView({
     setTerlaporList(updated);
   };
 
-  // Handlers Upload Bukti
-  const handleFileUpload = (e, forcedType = null) => {
+  // Handlers Upload Bukti (Laptop & QR Code HP)
+  const handleFileUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
     const newEvidence = files.map(file => {
       const isPdf = file.type.includes('pdf') || file.name.endsWith('.pdf');
-      const category = forcedType || (isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG');
-      const mime = isPdf ? 'application/pdf' : 'image/jpeg';
+      const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
+      const mime = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
       
       return {
-        id: `bb-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        id: `bb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         name: file.name,
         nama_file: file.name,
         size: file.size,
@@ -515,16 +493,22 @@ export default function DumasFormView({
         mime_type: mime,
         kategori_bukti: category,
         file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
         file: file,
         rawFile: file,
-        keterangan: isPdf ? 'Dokumen surat pengaduan / bukti tertulis' : 'Dokumentasi barang bukti fisik perkara',
+        keterangan: isPdf ? 'Dokumen surat bukti perkara' : 'Dokumentasi objek fisik barang bukti',
         hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
-          .map(b => b.toString(16).padStart(2, '0')).join('') + '...'
+          .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
+        diunggah_pada: new Date().toISOString()
       };
     });
 
     setEvidenceFiles(prev => [...prev, ...newEvidence]);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleEvidenceFromQr = (evidenceItem) => {
+    setEvidenceFiles(prev => [...prev, evidenceItem]);
   };
 
   const handleRemoveEvidence = (idToRemove) => {
@@ -1568,154 +1552,287 @@ export default function DumasFormView({
               }}>
                 05
               </div>
-              <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
-                DOKUMEN &amp; BARANG BUKTI DIGITAL (PDF &amp; JPG)
-              </h3>
+              <div>
+                <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+                  DOKUMEN &amp; BARANG BUKTI DIGITAL (PDF, JPG, PNG)
+                </h3>
+                <span style={{ fontSize: '10px', color: '#64748B', fontFamily: 'Inter, sans-serif' }}>
+                  Lampirkan dokumen bukti pendukung atau dokumentasi fisik yang diserahkan pelapor
+                </span>
+              </div>
             </div>
-            <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8' }}>
+            <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: evidenceFiles.length > 0 ? '#10B981' : '#94A3B8', fontWeight: 600 }}>
               {evidenceFiles.length} Berkas Terpilih
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            {/* Upload PDF */}
-            <label htmlFor="upload_pdf_bukti" style={{
-              border: '1px dashed #292F42',
-              backgroundColor: '#0B0D13',
-              padding: '16px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}>
+          {/* 2 Opsi Input Berdampingan */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+            
+            {/* Opsi 1: Pilih Berkas dari Komputer */}
+            <label 
+              htmlFor="upload_bukti_komputer" 
+              style={{
+                border: '1px dashed #334155',
+                backgroundColor: '#0B0D13',
+                padding: '16px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              }}
+              className="hover:border-sky-500"
+            >
               <input 
-                id="upload_pdf_bukti"
-                name="upload_pdf_bukti"
+                id="upload_bukti_komputer"
+                name="upload_bukti_komputer"
                 type="file" 
-                accept="application/pdf"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
                 multiple
-                aria-label="Unggah Berkas Bukti Dokumen Surat PDF"
+                aria-label="Pilih Berkas dari Komputer (PDF, JPG, PNG)"
                 style={{ display: 'none' }}
-                onChange={(e) => handleFileUpload(e, 'DOKUMEN_PDF')}
+                onChange={handleFileUpload}
               />
               <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(127, 29, 29, 0.5)',
-                border: '1px solid #991B1B',
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#F87171'
+                color: '#38BDF8',
+                flexShrink: 0
               }}>
-                <FileText size={20} />
+                <UploadCloud size={22} />
               </div>
               <div>
                 <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' }}>
-                  + Unggah Dokumen Surat (PDF)
+                  Pilih Berkas dari Komputer
                 </div>
                 <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>
-                  Surat pengaduan, kuitansi bermeterai (.pdf)
+                  Mendukung berkas PDF, JPG, PNG dari laptop/PC
                 </div>
               </div>
             </label>
 
-            {/* Upload JPG */}
-            <label htmlFor="upload_jpg_bukti" style={{
-              border: '1px dashed #292F42',
-              backgroundColor: '#0B0D13',
-              padding: '16px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}>
-              <input 
-                id="upload_jpg_bukti"
-                name="upload_jpg_bukti"
-                type="file" 
-                accept="image/jpeg,image/png"
-                multiple
-                aria-label="Unggah Berkas Bukti Objek Fisik JPG/PNG"
-                style={{ display: 'none' }}
-                onChange={(e) => handleFileUpload(e, 'OBJEK_FISIK_JPG')}
-              />
+            {/* Opsi 2: Pindai Bukti via HP (QR Code) */}
+            <div 
+              onClick={() => setIsQrModalOpen(true)}
+              style={{
+                border: '1px dashed #7F1D1D',
+                backgroundColor: '#0B0D13',
+                padding: '16px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              }}
+              className="hover:border-red-500"
+            >
               <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(127, 29, 29, 0.5)',
-                border: '1px solid #991B1B',
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(229, 46, 46, 0.15)',
+                border: '1px solid rgba(229, 46, 46, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#F87171'
+                color: '#FF352D',
+                flexShrink: 0
               }}>
-                <ImageIcon size={20} />
+                <Smartphone size={22} />
               </div>
               <div>
                 <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' }}>
-                  + Unggah Foto Objek Fisik (JPG)
+                  Pindai Bukti via HP (QR Code)
                 </div>
                 <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>
-                  Foto dokumentasi fisik barang bukti (.jpg, .png)
+                  Sinkronisasi kamera ponsel (Rotasi 30s &amp; Timeout 60s)
                 </div>
               </div>
-            </label>
+            </div>
           </div>
 
-          {/* Evidence List Previews */}
-          {evidenceFiles.length > 0 && (
-            <div style={{
-              marginTop: '12px',
-              paddingTop: '12px',
-              borderTop: '1px solid #292F42',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '10px'
-            }}>
-              {evidenceFiles.map((file) => (
-                <div 
-                  key={file.id} 
-                  style={{
-                    backgroundColor: '#0B0D13',
-                    border: '1px solid #292F42',
-                    borderRadius: '8px',
-                    padding: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '8px'
-                  }}
+          {/* Kartu Daftar Barang Bukti Terpilih (Card-Grid Responsif) */}
+          {evidenceFiles.length > 0 ? (
+            <div style={{ marginTop: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8', fontWeight: 600 }}>
+                  Daftar Lampiran Bukti yang Akan Disimpan:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEvidenceFiles([])}
+                  style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <span style={{ padding: '6px', borderRadius: '4px', backgroundColor: 'rgba(127, 29, 29, 0.4)', color: '#F87171', flexShrink: 0 }}>
-                      {file.kategori_bukti === 'DOKUMEN_PDF' ? <FileText size={14} /> : <ImageIcon size={14} />}
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#FFFFFF', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={file.name}>
-                        {file.name}
-                      </p>
-                      <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>
-                        {file.kategori_bukti} • {file.file_size_formatted}
-                      </span>
+                  Kosongkan Semua
+                </button>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '12px'
+              }}>
+                {evidenceFiles.map((file, idx) => {
+                  const isPdf = file.kategori_bukti === 'DOKUMEN_PDF' || file.name?.toLowerCase().endsWith('.pdf');
+                  return (
+                    <div 
+                      key={file.id || idx} 
+                      style={{
+                        backgroundColor: '#0B0D13',
+                        border: '1px solid #292F42',
+                        borderRadius: '10px',
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        transition: 'border-color 0.2s'
+                      }}
+                      className="hover:border-slate-600"
+                    >
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                        {/* Thumbnail / Icon */}
+                        <div 
+                          onClick={() => setPreviewEvidence(file)}
+                          style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '8px',
+                            backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.15)' : '#1E293B',
+                            border: '1px solid #334155',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            flexShrink: 0
+                          }}
+                          title="Klik untuk melihat preview resolusi penuh"
+                        >
+                          {!isPdf && file.previewUrl ? (
+                            <img 
+                              src={file.previewUrl} 
+                              alt={file.name} 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            />
+                          ) : (
+                            isPdf ? <FileText size={22} color="#38BDF8" /> : <ImageIcon size={22} color="#F87171" />
+                          )}
+                        </div>
+
+                        {/* File Details */}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <p 
+                            style={{ 
+                              fontSize: '12px', 
+                              fontFamily: 'JetBrains Mono, monospace', 
+                              fontWeight: 700, 
+                              color: '#FFFFFF', 
+                              margin: 0, 
+                              whiteSpace: 'nowrap', 
+                              overflow: 'hidden', 
+                              textOverflow: 'ellipsis' 
+                            }} 
+                            title={file.name || file.nama_file}
+                          >
+                            {file.name || file.nama_file}
+                          </p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                            <span style={{ 
+                              fontSize: '9px', 
+                              fontFamily: 'JetBrains Mono, monospace', 
+                              fontWeight: 700,
+                              color: isPdf ? '#38BDF8' : '#F87171',
+                              backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.1)' : 'rgba(229, 46, 46, 0.15)',
+                              padding: '1px 5px',
+                              borderRadius: '4px'
+                            }}>
+                              {isPdf ? 'PDF' : 'JPG/PNG'}
+                            </span>
+                            <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>
+                              {file.file_size_formatted || `${((file.size || 0)/1024).toFixed(0)} KB`}
+                            </span>
+                          </div>
+                          {file.keterangan && (
+                            <p style={{ fontSize: '10px', color: '#94A3B8', margin: '4px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {file.keterangan}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action buttons on card */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #1E293B' }}>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewEvidence(file)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#38BDF8',
+                            fontSize: '11px',
+                            fontFamily: 'JetBrains Mono, monospace',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            cursor: 'pointer',
+                            padding: '2px 4px'
+                          }}
+                        >
+                          <Eye size={12} />
+                          <span>Preview</span>
+                        </button>
+
+                        <button 
+                          type="button"
+                          onClick={() => handleRemoveEvidence(file.id)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            color: '#F87171',
+                            borderRadius: '6px',
+                            padding: '4px 8px',
+                            fontSize: '10px',
+                            fontFamily: 'JetBrains Mono, monospace',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          title="Batalkan / Hapus Item Bukti"
+                        >
+                          <Trash2 size={12} />
+                          <span>Batalkan</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => handleRemoveEvidence(file.id)}
-                    style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
-                    title="Hapus Bukti"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              padding: '16px',
+              textAlign: 'center',
+              backgroundColor: '#0B0D13',
+              borderRadius: '8px',
+              border: '1px dashed #292F42',
+              color: '#64748B',
+              fontSize: '11px',
+              fontFamily: 'JetBrains Mono, monospace'
+            }}>
+              Belum ada berkas barang bukti yang dilampirkan. Pilih opsi di atas jika terdapat barang bukti fisik atau dokumen pendukung.
             </div>
           )}
         </div>
@@ -1804,6 +1921,21 @@ export default function DumasFormView({
         </div>
 
       </form>
+
+      {/* Modal Sinkronisasi QR Code HP */}
+      <EvidenceQrSyncModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        onEvidenceReceived={handleEvidenceFromQr}
+        dumasNo={caseInfo?.nomor_lp || 'DUMAS-BARU'}
+      />
+
+      {/* Modal Lightbox Preview Resolusi Penuh */}
+      <EvidenceLightboxModal
+        isOpen={Boolean(previewEvidence)}
+        evidence={previewEvidence}
+        onClose={() => setPreviewEvidence(null)}
+      />
     </div>
   );
 }

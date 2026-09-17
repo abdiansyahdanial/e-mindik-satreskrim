@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   ArrowLeft,
   Copy,
@@ -12,20 +12,31 @@ import {
   ShieldCheck,
   AlertCircle,
   Eye,
-  Download
+  Download,
+  Plus,
+  Trash2
 } from 'lucide-react';
+import AddEvidenceModal from './AddEvidenceModal.jsx';
+import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
+import { deleteEvidenceFromDumas } from '../../services/dumasService.js';
 
 export default function DumasDetailView({
   dumasItem,
   onBack,
-  onOpenGeneratorForDumas
+  onOpenGeneratorForDumas,
+  onUpdateDumas
 }) {
   const [copied, setCopied] = useState(false);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
-  const [activeViewer, setActiveViewer] = useState(null); // { title, type, content, fileName, details }
+  const [perkara, setPerkara] = useState(dumasItem);
+  const [isAddEvidenceOpen, setIsAddEvidenceOpen] = useState(false);
+  const [previewEvidence, setPreviewEvidence] = useState(null);
 
-  // Aliasing for optional chaining null-safety
-  const perkara = dumasItem;
+  const prevIdRef = useRef(dumasItem?.id);
+  if (dumasItem?.id !== prevIdRef.current) {
+    prevIdRef.current = dumasItem?.id;
+    setPerkara(dumasItem);
+  }
 
   if (!perkara) {
     return (
@@ -65,25 +76,57 @@ export default function DumasDetailView({
   };
 
   const openEvidencePreview = (bb) => {
-    if (bb?.kategori_bukti === 'DOKUMEN_PDF') {
-      setActiveViewer({
-        title: `PRATINJAU DOKUMEN: ${bb?.nama_file || 'Dokumen.pdf'}`,
-        type: 'pdf',
-        fileName: bb?.nama_file || 'Berkas.pdf',
-        details: bb
-      });
-    } else {
-      setActiveViewer({
-        title: `OBJEK FISIK: ${bb?.nama_file || 'Foto.jpg'}`,
-        type: 'image',
-        fileName: bb?.nama_file || 'Bukti_Fisik.jpg',
-        details: bb
-      });
+    setPreviewEvidence(bb);
+  };
+
+  const handleEvidenceAdded = (newEvidence) => {
+    const currentList = Array.isArray(perkara?.lampiran_barang_bukti) ? perkara.lampiran_barang_bukti : [];
+    const updated = {
+      ...perkara,
+      lampiran_barang_bukti: [...currentList, newEvidence]
+    };
+    setPerkara(updated);
+    if (onUpdateDumas) {
+      onUpdateDumas(updated);
+    }
+  };
+
+  const handleDeleteEvidence = async (bb) => {
+    const confirmDelete = window.confirm(
+      `Apakah Anda yakin ingin menghapus barang bukti "${bb.nama_file || 'Berkas'}" secara permanen?\n\nTindakan ini akan menghapus record dari database dan file dari Cloudflare R2.`
+    );
+    if (!confirmDelete) return;
+
+    const currentList = Array.isArray(perkara?.lampiran_barang_bukti) ? perkara.lampiran_barang_bukti : [];
+    const updatedList = currentList.filter(item => item.id !== bb.id);
+    const updated = {
+      ...perkara,
+      lampiran_barang_bukti: updatedList
+    };
+    setPerkara(updated);
+    if (onUpdateDumas) {
+      onUpdateDumas(updated);
+    }
+
+    try {
+      await deleteEvidenceFromDumas(perkara.id, bb.id, bb.file_path);
+    } catch (err) {
+      console.warn('Gagal menghapus barang bukti dari backend:', err);
     }
   };
 
   const handleDownloadEvidence = (bb) => {
     const fileName = bb?.nama_file || 'Barang_Bukti_Dumas.bin';
+    if (bb?.file_url && bb.file_url.startsWith('blob:')) {
+      const link = document.createElement('a');
+      link.href = bb.file_url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
     const content = `BERKAS RESMI SATRESKRIM POLRES KOLAKA TIMUR\nFile: ${fileName}\nNomor LP: ${perkara?.nomor_lp || '-'}\nHash: ${bb?.hash_sha256 || 'SHA-256 Valid'}\nDiunggah: ${bb?.diunggah_pada || new Date().toISOString()}`;
     const blob = new Blob([content], { type: bb?.mime_type || 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -751,21 +794,46 @@ export default function DumasDetailView({
       </section>
 
       {/* ========================================================= */}
-      {/* 4. BAGIAN B: BUKTI DIGITAL (GRID KARTU PDF & JPG) */}
+      {/* 4. BAGIAN D: DAFTAR BUKTI DIGITAL (GRID KARTU PDF & JPG) */}
       {/* ========================================================= */}
       <section className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div className="flex items-center justify-between border-b border-[#292F42] pb-2.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #292F42', paddingBottom: '10px' }}>
+        <div className="flex items-center justify-between border-b border-[#292F42] pb-2.5 flex-wrap gap-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #292F42', paddingBottom: '10px', flexWrap: 'wrap', gap: '12px' }}>
           <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className="text-[11px] font-mono font-bold bg-[#1B1F2C] text-[#FF352D] px-2 py-0.5 rounded border border-[#292F42]" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, backgroundColor: '#1B1F2C', color: '#FF352D', padding: '2px 8px', borderRadius: '4px', border: '1px solid #292F42' }}>
-              BAGIAN B
+              BAGIAN D
             </span>
             <h2 className="text-xs uppercase tracking-wider font-bold text-white font-mono m-0" style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, color: '#FFFFFF', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
-              Daftar Bukti Digital (Grid Kartu PDF &amp; JPG)
+              Daftar Bukti Digital
             </h2>
             <span className="ml-2 text-xs font-mono px-2 py-0.5 rounded-full bg-[#1B1F2C] text-slate-300 border border-[#292F42]" style={{ marginLeft: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#1B1F2C', color: '#CBD5E1', border: '1px solid #292F42' }}>
               {(perkara?.lampiran_barang_bukti || []).length} Bukti Terdaftar
             </span>
           </div>
+
+          {/* Tombol Aksi Tambah Barang Bukti */}
+          <button
+            type="button"
+            onClick={() => setIsAddEvidenceOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(229, 46, 46, 0.15)',
+              border: '1px solid #E52E2E',
+              color: '#FF6B6B',
+              fontSize: '11px',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 0 12px rgba(229, 46, 46, 0.25)'
+            }}
+          >
+            <Plus size={13} />
+            <span>+ Tambah Barang Bukti</span>
+          </button>
         </div>
 
         {/* Grid Kartu Responsif 3 Kolom */}
@@ -779,7 +847,9 @@ export default function DumasDetailView({
         >
           {(perkara?.lampiran_barang_bukti && perkara.lampiran_barang_bukti.length > 0) ? (
             perkara.lampiran_barang_bukti.map((bb, idx) => {
-              const isPdf = bb?.kategori_bukti === 'DOKUMEN_PDF';
+              const isPdf = bb?.kategori_bukti === 'DOKUMEN_PDF' || bb?.nama_file?.toLowerCase().endsWith('.pdf');
+              const previewSrc = bb?.file_url || bb?.previewUrl || null;
+
               return (
                 <div
                   key={bb?.id || idx}
@@ -800,24 +870,27 @@ export default function DumasDetailView({
                     <div className="flex items-start justify-between gap-2" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                       <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div
-                          className="w-10 h-10 rounded-lg bg-red-950/70 border border-red-800 flex items-center justify-center text-red-400 shrink-0"
+                          onClick={() => openEvidencePreview(bb)}
+                          className="w-10 h-10 rounded-lg bg-red-950/70 border border-red-800 flex items-center justify-center text-red-400 shrink-0 cursor-pointer"
                           style={{
                             width: '40px',
                             height: '40px',
                             borderRadius: '8px',
-                            backgroundColor: 'rgba(127, 29, 29, 0.7)',
-                            border: '1px solid #991B1B',
+                            backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.15)' : 'rgba(127, 29, 29, 0.7)',
+                            border: isPdf ? '1px solid #0284C7' : '1px solid #991B1B',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#F87171',
-                            flexShrink: 0
+                            color: isPdf ? '#38BDF8' : '#F87171',
+                            flexShrink: 0,
+                            cursor: 'pointer'
                           }}
+                          title="Klik untuk pratinjau penuh"
                         >
                           {isPdf ? <FileText size={20} /> : <ImageIcon size={20} />}
                         </div>
                         <div>
-                          <span className="text-[10px] font-mono uppercase text-[#FF352D] font-bold block" style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', color: '#FF352D', fontWeight: 700, display: 'block' }}>
+                          <span className="text-[10px] font-mono uppercase text-[#FF352D] font-bold block" style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', color: isPdf ? '#38BDF8' : '#FF352D', fontWeight: 700, display: 'block' }}>
                             {bb?.kategori_bukti || (isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG')}
                           </span>
                           <h3 className="text-xs font-bold text-slate-100 mt-0.5 truncate max-w-[170px]" style={{ fontSize: '12px', fontWeight: 700, color: '#F1F5F9', margin: '2px 0 0 0', maxWidth: '170px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={bb?.nama_file}>
@@ -830,10 +903,11 @@ export default function DumasDetailView({
                       </span>
                     </div>
 
-                    {/* Preview Thumbnail Kotak untuk JPG */}
+                    {/* Preview Thumbnail Kotak untuk Objek Fisik (JPG) */}
                     {!isPdf && (
                       <div
-                        className="mt-3 w-full h-24 rounded-lg bg-[#0B0D13] border border-[#292F42] flex items-center justify-center text-slate-500 text-xs font-mono overflow-hidden"
+                        onClick={() => openEvidencePreview(bb)}
+                        className="mt-3 w-full h-24 rounded-lg bg-[#0B0D13] border border-[#292F42] flex items-center justify-center text-slate-500 text-xs font-mono overflow-hidden cursor-pointer hover:border-slate-500 transition-colors"
                         style={{
                           marginTop: '12px',
                           width: '100%',
@@ -846,10 +920,26 @@ export default function DumasDetailView({
                           justifyContent: 'center',
                           color: '#64748B',
                           fontSize: '11px',
-                          fontFamily: 'JetBrains Mono, monospace'
+                          fontFamily: 'JetBrains Mono, monospace',
+                          cursor: 'pointer',
+                          overflow: 'hidden'
                         }}
+                        title="Klik untuk perbesar foto"
                       >
-                        [ Preview Foto BB: {bb?.nama_file || 'Foto'} ]
+                        {previewSrc ? (
+                          <img 
+                            src={previewSrc} 
+                            alt={bb?.nama_file || 'Barang Bukti'} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          />
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px' }}>
+                            <ImageIcon size={20} color="#F87171" />
+                            <span style={{ fontSize: '10px', color: '#94A3B8', textAlign: 'center' }}>
+                              [ Pratinjau Foto: {bb?.nama_file || 'Foto'} ]
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -890,26 +980,26 @@ export default function DumasDetailView({
                     </div>
                   </div>
 
-                  {/* Tombol Aksi: Lihat/Perbesar & Unduh */}
-                  <div className="mt-3.5 pt-3 border-t border-[#292F42] flex gap-2" style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #292F42', display: 'flex', gap: '8px' }}>
+                  {/* Tombol Aksi: Lihat/Perbesar, Unduh, & Hapus Bukti */}
+                  <div className="mt-3.5 pt-3 border-t border-[#292F42] flex items-center gap-2" style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #292F42', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
                       onClick={() => openEvidencePreview(bb)}
                       className="flex-1 py-2 px-3 rounded-lg bg-[#1B1F2C] hover:bg-[#252B3B] border border-[#292F42] text-slate-100 text-xs font-mono font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                       style={{
                         flex: 1,
-                        padding: '8px 12px',
+                        padding: '8px 10px',
                         borderRadius: '8px',
                         backgroundColor: '#1B1F2C',
                         border: '1px solid #292F42',
                         color: '#F1F5F9',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         fontFamily: 'JetBrains Mono, monospace',
                         fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '6px',
+                        gap: '5px',
                         cursor: 'pointer'
                       }}
                     >
@@ -934,7 +1024,31 @@ export default function DumasDetailView({
                       }}
                       title="Unduh Berkas Bukti"
                     >
-                      <Download size={14} />
+                      <Download size={13} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvidence(bb)}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        color: '#F87171',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontWeight: 600
+                      }}
+                      title="Hapus Barang Bukti ini secara permanen"
+                    >
+                      <Trash2 size={13} />
+                      <span>Hapus</span>
                     </button>
                   </div>
                 </div>
@@ -1113,179 +1227,22 @@ export default function DumasDetailView({
       </section>
 
       {/* ========================================================= */}
-      {/* MODAL PRATINJAU BERKAS / FOTO DOKUMEN (CENTERED OVERLAY) */}
+      {/* MODAL TAMBAH & LIGHTBOX PRATINJAU BUKTI DIGITAL */}
       {/* ========================================================= */}
-      {activeViewer && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 dumas-modal-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            backdropFilter: 'blur(8px)',
-            padding: '16px'
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setActiveViewer(null);
-          }}
-        >
-          <div
-            className="relative w-full max-w-2xl bg-[#0E1118] border border-[#292F42] rounded-2xl shadow-2xl overflow-hidden dumas-modal-container"
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: '680px',
-              backgroundColor: '#0E1118',
-              border: '1px solid #292F42',
-              borderRadius: '16px',
-              boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95)',
-              overflow: 'hidden'
-            }}
-          >
-            <div
-              className="p-3.5 px-5 bg-[#0B0D13] border-b border-[#292F42] flex items-center justify-between"
-              style={{
-                padding: '14px 20px',
-                backgroundColor: '#0B0D13',
-                borderBottom: '1px solid #292F42',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-            >
-              <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="w-2 h-2 rounded-full bg-[#FF352D]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#FF352D' }}></span>
-                <span className="text-xs font-mono font-bold text-slate-100" style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#F1F5F9' }}>
-                  {activeViewer.title}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveViewer(null)}
-                className="text-slate-400 hover:text-white cursor-pointer bg-transparent border-0"
-                style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '14px', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
+      <AddEvidenceModal
+        isOpen={isAddEvidenceOpen}
+        dumasId={perkara?.id}
+        dumasNo={perkara?.nomor_lp}
+        onClose={() => setIsAddEvidenceOpen(false)}
+        onSuccess={handleEvidenceAdded}
+      />
 
-            <div className="p-6" style={{ padding: '24px' }}>
-              {activeViewer.type === 'pdf' ? (
-                <div
-                  className="p-5 bg-[#0B0D13] rounded-lg border border-[#292F42] font-mono text-xs flex flex-col gap-3"
-                  style={{
-                    padding: '20px',
-                    backgroundColor: '#0B0D13',
-                    borderRadius: '8px',
-                    border: '1px solid #292F42',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: '12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
-                  }}
-                >
-                  <div className="border-b border-[#292F42] pb-2 flex justify-between items-center" style={{ borderBottom: '1px solid #292F42', paddingBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="text-[#FF352D] font-bold" style={{ color: '#FF352D', fontWeight: 700 }}>KUITANSI / LAMPIRAN RESMI DUMAS</span>
-                    <span className="text-slate-500 text-[10px]" style={{ color: '#64748B', fontSize: '10px' }}>No: 12/KW/BUMD/2026</span>
-                  </div>
-                  <p className="text-slate-300 m-0" style={{ color: '#CBD5E1', margin: 0 }}>
-                    Telah diterima dari: <strong className="text-white" style={{ color: '#FFFFFF' }}>{perkara?.pelapor_nama || 'PELAPOR'}</strong>
-                  </p>
-                  <p className="text-slate-300 m-0" style={{ color: '#CBD5E1', margin: 0 }}>
-                    Uraian Berkas: <strong className="text-emerald-400" style={{ color: '#10B981' }}>{activeViewer.fileName}</strong>
-                  </p>
-                  <p className="text-slate-300 m-0" style={{ color: '#CBD5E1', margin: 0 }}>
-                    Keterangan: <em>{activeViewer.details?.keterangan || 'Lampiran surat bukti otentik dalam berkas perkara Dumas.'}</em>
-                  </p>
-                  <div className="pt-3 border-t border-[#292F42] flex justify-between text-[11px] text-slate-500" style={{ paddingTop: '12px', borderTop: '1px solid #292F42', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748B' }}>
-                    <span>Kolaka Timur, September 2026</span>
-                    <span>Tervalidasi Digital Signature Satreskrim</span>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className="bg-[#0B0D13] p-5 rounded-lg border border-[#292F42] flex flex-col items-center"
-                  style={{
-                    backgroundColor: '#0B0D13',
-                    padding: '20px',
-                    borderRadius: '8px',
-                    border: '1px solid #292F42',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center'
-                  }}
-                >
-                  <div
-                    className="w-full max-w-md h-44 rounded-lg bg-[#121721] border border-[#292F42] flex items-center justify-center text-slate-400 font-mono text-xs p-4 text-center"
-                    style={{
-                      width: '100%',
-                      maxWidth: '380px',
-                      height: '180px',
-                      borderRadius: '8px',
-                      backgroundColor: '#121721',
-                      border: '1px solid #292F42',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#94A3B8',
-                      fontFamily: 'JetBrains Mono, monospace',
-                      fontSize: '12px',
-                      padding: '16px',
-                      textAlign: 'center'
-                    }}
-                  >
-                    [ Foto Barang Bukti Fisik: {activeViewer.fileName} diamankan dalam penguasaan penyidik Satreskrim Polres Kolaka Timur ]
-                  </div>
-                  <div className="mt-4 text-xs font-mono text-slate-300 w-full flex flex-col gap-1.5" style={{ marginTop: '16px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', color: '#CBD5E1', width: '100%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <p style={{ margin: 0 }}>• Kategori Bukti: <span className="text-white" style={{ color: '#FFFFFF' }}>OBJEK FISIK (BARANG BUKTI)</span></p>
-                    <p style={{ margin: 0 }}>• Keterangan: <span className="text-white" style={{ color: '#FFFFFF' }}>{activeViewer.details?.keterangan || '-'}</span></p>
-                    <p style={{ margin: 0 }}>• Status Penyitaan: <span className="text-emerald-400" style={{ color: '#10B981' }}>Penyitaan Sementara / Surat Tanda Penerimaan Sah</span></p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div
-              className="p-3.5 px-5 bg-[#0B0D13] border-t border-[#292F42] flex items-center justify-between text-xs font-mono"
-              style={{
-                padding: '14px 20px',
-                backgroundColor: '#0B0D13',
-                borderTop: '1px solid #292F42',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '12px',
-                fontFamily: 'JetBrains Mono, monospace'
-              }}
-            >
-              <span className="text-emerald-400 flex items-center gap-1.5" style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <ShieldCheck size={14} />
-                Status File: Terverifikasi Digital Signature
-              </span>
-              <button
-                type="button"
-                onClick={() => setActiveViewer(null)}
-                className="px-3.5 py-1.5 rounded-md bg-[#1B1F2C] hover:bg-[#252B3B] text-slate-300 border border-[#292F42] cursor-pointer transition-colors"
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  backgroundColor: '#1B1F2C',
-                  color: '#CBD5E1',
-                  border: '1px solid #292F42',
-                  cursor: 'pointer'
-                }}
-              >
-                Tutup Pratinjau
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EvidenceLightboxModal
+        isOpen={Boolean(previewEvidence)}
+        evidence={previewEvidence}
+        onClose={() => setPreviewEvidence(null)}
+        onDownload={handleDownloadEvidence}
+      />
 
       {/* ========================================================= */}
       {/* MODAL SKEMA DATABASE SUPABASE (CENTERED OVERLAY) */}
