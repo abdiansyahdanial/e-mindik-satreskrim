@@ -61,15 +61,98 @@ export default function MobileUploadView() {
     setErrorMsg(null);
 
     try {
-      // Unggah berkas ke Cloudflare R2 jika tersedia
+      console.log(`[MOBILE UPLOAD] Memulai upload untuk file: ${selectedFile.name} (${selectedFile.size} bytes)`);
       const fileName = `bukti_hp_${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      const uploadRes = await uploadFileToR2(selectedFile, fileName).catch(() => ({
-        success: true,
-        fileUrl: previewUrl || '',
-        fileName
-      }));
+      let finalUrl = '';
+      let storageProvider = '';
 
-      const finalUrl = uploadRes?.fileUrl || previewUrl || '';
+      // Langkah 1: Coba unggah ke Cloudflare R2 via presigned URL
+      try {
+        console.log('[MOBILE UPLOAD] Mencoba unggah ke Cloudflare R2...');
+        const r2Res = await uploadFileToR2(selectedFile, fileName);
+        if (r2Res && r2Res.success && (r2Res.url || r2Res.publicUrl)) {
+          finalUrl = r2Res.url || r2Res.publicUrl;
+          storageProvider = 'Cloudflare R2';
+          console.log('[MOBILE UPLOAD] Sukses terunggah ke Cloudflare R2:', finalUrl);
+        } else {
+          console.warn('[MOBILE UPLOAD] R2 upload response unsuccess:', r2Res?.error);
+        }
+      } catch (r2Err) {
+        console.warn('[MOBILE UPLOAD] R2 upload gagal:', r2Err.message);
+      }
+
+      // Langkah 2: Fallback ke Supabase Storage (bucket dumas/evidence jika ada)
+      if (!finalUrl) {
+        try {
+          console.log('[MOBILE UPLOAD] R2 tidak tersedia. Mencoba fallback ke Supabase Storage...');
+          const supabasePath = `bukti_mobile/${fileName}`;
+          const { data: spData, error: spErr } = await supabase.storage
+            .from('dumas')
+            .upload(supabasePath, selectedFile, {
+              cacheControl: '3600',
+              upsert: true
+            });
+
+          if (!spErr && spData) {
+            const { data: publicUrlData } = supabase.storage
+              .from('dumas')
+              .getPublicUrl(supabasePath);
+            if (publicUrlData?.publicUrl) {
+              finalUrl = publicUrlData.publicUrl;
+              storageProvider = 'Supabase Storage';
+              console.log('[MOBILE UPLOAD] Sukses fallback ke Supabase Storage:', finalUrl);
+            }
+          } else {
+            console.warn('[MOBILE UPLOAD] Fallback Supabase Storage skipped:', spErr?.message);
+          }
+        } catch (spCatchErr) {
+          console.warn('[MOBILE UPLOAD] Supabase Storage upload error:', spCatchErr.message);
+        }
+      }
+
+      // Langkah 3: Zero-Broken Fallback - Kompresi gambar menjadi Data URL Base64
+      // Memastikan laptop PASTI menerima dan bisa menampilkan foto bukti meskipun serverless/storage offline
+      if (!finalUrl) {
+        console.log('[MOBILE UPLOAD] Mempersiapkan Zero-Broken Base64 fallback...');
+        finalUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
+              // Resize maksimal 1280px agar payload ringan saat dikirim lewat websocket
+              const maxDim = 1280;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.round((height * maxDim) / width);
+                  width = maxDim;
+                } else {
+                  width = Math.round((width * maxDim) / height);
+                  height = maxDim;
+                }
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+              // Kualitas JPEG 0.75 sangat jernih dan ringan (~100-200KB)
+              resolve(canvas.toDataURL('image/jpeg', 0.75));
+            };
+            img.onerror = () => resolve(e.target.result);
+            img.src = e.target.result;
+          };
+          reader.onerror = () => resolve(previewUrl || '');
+          reader.readAsDataURL(selectedFile);
+        });
+        storageProvider = 'Direct Stream (Zero-Broken Base64)';
+      }
+
+      if (!finalUrl) {
+        throw new Error('Gagal memproses berkas foto untuk pengiriman.');
+      }
+
       const evidencePayload = {
         token,
         fileName: selectedFile.name,
@@ -84,27 +167,39 @@ export default function MobileUploadView() {
         type: selectedFile.type || 'image/jpeg',
         mime_type: selectedFile.type || 'image/jpeg',
         kategori_bukti: selectedFile.name?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
-        keterangan: 'Foto barang bukti fisik diambil via pemindaian kamera HP penyidik',
+        keterangan: `Foto barang bukti fisik diambil via pemindaian HP (${storageProvider})`,
         timestamp: new Date().toISOString()
       };
 
+      console.log(`[MOBILE UPLOAD] Mengirim broadcast ke channel mobile_sync_${token}...`);
+
       // 1. Cross-Device Real-time Sync via Supabase Broadcast Channel
       try {
-        const syncChannel = supabase.channel(`mobile_sync_${token}`);
-        await syncChannel.subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            syncChannel.send({
-              type: 'broadcast',
-              event: 'evidence_uploaded',
-              payload: evidencePayload
-            });
-          }
+        const syncChannel = supabase.channel(`mobile_sync_${token}`, {
+          config: { broadcast: { ack: true } }
+        });
+        
+        await new Promise((resolve) => {
+          syncChannel.subscribe(async (status) => {
+            console.log(`[MOBILE UPLOAD] Status koneksi channel HP: ${status}`);
+            if (status === 'SUBSCRIBED') {
+              const res = await syncChannel.send({
+                type: 'broadcast',
+                event: 'evidence_uploaded',
+                payload: evidencePayload
+              });
+              console.log('[MOBILE UPLOAD] Broadcast hasil pengiriman:', res);
+              resolve();
+            }
+          });
+          // Timeout pengiriman broadcast 5 detik
+          setTimeout(resolve, 5000);
         });
       } catch (err) {
-        console.warn('Supabase realtime sync notice:', err);
+        console.warn('[MOBILE UPLOAD] Supabase realtime sync notice:', err);
       }
 
-      // 2. BroadcastChannel Sync (for same-browser tab testing)
+      // 2. BroadcastChannel Sync (untuk simulasi / uji coba satu perangkat)
       try {
         if (typeof BroadcastChannel !== 'undefined') {
           const bc = new BroadcastChannel('polres_mobile_bridge');
@@ -126,7 +221,7 @@ export default function MobileUploadView() {
 
       setIsSuccess(true);
     } catch (err) {
-      console.error('Gagal mengunggah foto bukti:', err);
+      console.error('[MOBILE UPLOAD] Gagal mengunggah foto bukti:', err);
       setErrorMsg(err.message || 'Gagal mengirim foto ke server.');
     } finally {
       setIsUploading(false);

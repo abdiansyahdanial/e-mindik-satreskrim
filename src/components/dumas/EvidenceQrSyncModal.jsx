@@ -126,12 +126,19 @@ export default function EvidenceQrSyncModal({
     };
 
     // A. Supabase Realtime channel (Koneksi lintas-perangkat HP ke Laptop)
-    const channel = supabase.channel(`mobile_sync_${syncToken}`);
+    console.log(`[REALTIME BRIDGE] Membuka listener channel laptop: mobile_sync_${syncToken}`);
+    const channel = supabase.channel(`mobile_sync_${syncToken}`, {
+      config: { broadcast: { ack: true } }
+    });
+
     channel
       .on('broadcast', { event: 'evidence_uploaded' }, ({ payload }) => {
+        console.log('[REALTIME BRIDGE] Bukti diterima dari HP:', payload);
         handleReceivedEvidence(payload);
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[REALTIME BRIDGE] Status channel ${syncToken}:`, status);
+      });
 
     // B. BroadcastChannel fallback (Untuk pengujian tab/jendela di perangkat yang sama)
     let bc = null;
