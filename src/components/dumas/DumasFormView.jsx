@@ -90,6 +90,8 @@ const LEGACY_STORAGE_KEY = 'emindik_temp_draft_bb';
 const LEGACY_DRAFT_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 // Kunci stabil khusus persistensi daftar bukti (tidak bergantung STORAGE_KEY dinamis)
 const EVIDENCE_STORAGE_KEY = 'emindik_active_dumas_bb';
+// Kunci backup agresif — hanya tulis jika ada isi, dibaca paling prioritas
+const PERSISTENT_KEY = 'emindik_dumas_bb_persistent_v1';
 
 // LANGKAH 1: Standar Struktur Objek Bukti (Sanitasi Mutlak)
 const sanitizeEvidenceItem = (item, index = 0) => {
@@ -481,8 +483,22 @@ export default function DumasFormView({
   const processedEvidenceUrlsRef = useRef(new Set());
 
   // LANGKAH 2: Inisialisasi State Bebas Crash & Anti-Hilang Saat Refresh
-  // Prioritas baca: (1) EVIDENCE_STORAGE_KEY stabil → (2) ACTIVE_DRAFT_KEY → (3) savedDraft
+  // Prioritas baca: (0) PERSISTENT_KEY → (1) EVIDENCE_STORAGE_KEY stabil → (2) ACTIVE_DRAFT_KEY → (3) savedDraft
   const [daftarBukti, setDaftarBukti] = useState(() => {
+    try {
+      // Prioritas 0: Key backup agresif — hanya ada isinya jika pernah upload
+      const persistentRaw = localStorage.getItem(PERSISTENT_KEY);
+      if (persistentRaw) {
+        const parsed = JSON.parse(persistentRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.map(sanitizeEvidenceItem).filter(Boolean);
+          if (cleaned.length > 0) {
+            console.log('[HYDRATION] Bukti dipulihkan dari PERSISTENT_KEY:', cleaned.length, 'berkas');
+            return cleaned;
+          }
+        }
+      }
+    } catch {}
     try {
       // Prioritas 1: Baca dari key stabil dedikasi bukti (paling reliabel saat refresh)
       const evidenceRaw = localStorage.getItem(EVIDENCE_STORAGE_KEY);
@@ -580,6 +596,17 @@ export default function DumasFormView({
       localStorage.setItem(EVIDENCE_STORAGE_KEY, JSON.stringify(daftarBukti));
     } catch (e) {
       console.error('[AUTO-SAVE BUKTI] Gagal auto-save bukti ke EVIDENCE_STORAGE_KEY:', e);
+    }
+  }, [daftarBukti]);
+
+  // Auto-save ke PERSISTENT_KEY (backup agresif — hanya tulis saat ada isi)
+  useEffect(() => {
+    try {
+      if (daftarBukti.length > 0) {
+        localStorage.setItem(PERSISTENT_KEY, JSON.stringify(daftarBukti));
+      }
+    } catch (e) {
+      console.error('[AUTO-SAVE BUKTI] Gagal auto-save bukti ke PERSISTENT_KEY:', e);
     }
   }, [daftarBukti]);
 
@@ -986,8 +1013,17 @@ export default function DumasFormView({
 
 
   // 1. Stand-by Realtime Listener di Channel mobile_sync_${activeToken}
+  // PENTING: Listener ini DINONAKTIFKAN saat QR Modal terbuka karena EvidenceQrSyncModal
+  // memiliki listener sendiri pada channel YANG SAMA — jika keduanya aktif, setiap event
+  // broadcast akan diproses DUA KALI (double dispatch = duplikasi bukti).
   useEffect(() => {
     if (!activeToken) return;
+    // Guard utama: jika QR modal terbuka, modal sudah subscribe ke channel ini
+    // DumasFormView tidak perlu mendaftarkan listener kedua pada channel yang sama
+    if (isQrModalOpen) {
+      console.log(`[LAPTOP] QR Modal aktif — listener DumasFormView di channel mobile_sync_${activeToken} ditangguhkan untuk mencegah duplikasi.`);
+      return;
+    }
 
     console.log(`[LAPTOP] Mendaftarkan listener channel mobile_sync_${activeToken}...`);
     const channel = supabase.channel(`mobile_sync_${activeToken}`)
@@ -1126,7 +1162,7 @@ export default function DumasFormView({
       if (bc) bc.close();
       window.removeEventListener('storage', handleStorage);
     };
-  }, [activeToken, handleBuktiBaruDiterima]);
+  }, [activeToken, isQrModalOpen, handleBuktiBaruDiterima]);
 
   // 2. Terapkan Auto-Save Form Lengkap (Form Inputs + Daftar Bukti) debounced 500ms
   useEffect(() => {
@@ -1601,6 +1637,8 @@ export default function DumasFormView({
           localStorage.removeItem(DRAFT_KEY_FORM);
           // Hapus EVIDENCE_STORAGE_KEY stabil setelah submit resmi berhasil
           localStorage.removeItem(EVIDENCE_STORAGE_KEY);
+          // Hapus PERSISTENT_KEY setelah submit resmi berhasil
+          localStorage.removeItem(PERSISTENT_KEY);
           sessionStorage.removeItem('emindik_dumas_subview');
         } catch {}
         setIsDraftRestored(false);
@@ -3087,11 +3125,13 @@ export default function DumasFormView({
       </form>
 
       {/* Modal Sinkronisasi QR Code HP */}
+      {/* PENTING: setDaftarBukti TIDAK diteruskan ke modal — agar tidak terjadi double dispatch.
+          Semua penerimaan bukti dari HP harus melalui onEvidenceReceived → handleEvidenceFromQr
+          yang sudah memiliki guard deduplication via processedEvidenceUrlsRef */}
       <EvidenceQrSyncModal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         onEvidenceReceived={handleEvidenceFromQr}
-        setDaftarBukti={setDaftarBukti}
         activeToken={activeToken}
         syncToken={activeToken}
         onTokenChange={handleTokenChange}
