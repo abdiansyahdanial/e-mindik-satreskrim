@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ArrowLeft,
   Copy,
@@ -20,6 +20,7 @@ import AddEvidenceModal from './AddEvidenceModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
 import { deleteEvidenceFromDumas } from '../../services/dumasService.js';
 import { formatR2PublicUrl } from '../../lib/r2Client.js';
+import { supabase } from '../../supabaseClient';
 
 export default function DumasDetailView({
   dumasItem,
@@ -38,6 +39,131 @@ export default function DumasDetailView({
     prevIdRef.current = dumasItem?.id;
     setPerkara(dumasItem);
   }
+
+  // Hydration Query: Muat ulang bukti digital dari tabel barang_bukti berdasarkan nomor register resmi Dumas
+  useEffect(() => {
+    const fetchBuktiForDetail = async () => {
+      const nomorRegister = perkara?.nomor_lp || dumasItem?.nomor_lp;
+      const idPerkara = perkara?.id || dumasItem?.id;
+      if (!nomorRegister && !idPerkara) return;
+
+      try {
+        let query = supabase.from('barang_bukti').select('*');
+        if (nomorRegister && idPerkara) {
+          query = query.or(`nomor_register.eq.${nomorRegister},id_perkara.eq.${idPerkara}`);
+        } else if (nomorRegister) {
+          query = query.eq('nomor_register', nomorRegister);
+        } else {
+          query = query.eq('id_perkara', idPerkara);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          const formatted = data.map((b) => ({
+            id: b.id,
+            nama_file: b.nama_berkas,
+            nama_berkas: b.nama_berkas,
+            file_url: b.file_url,
+            url: b.file_url,
+            fileUrl: b.file_url,
+            previewUrl: b.file_url,
+            mime_type: b.tipe_berkas,
+            tipe: b.tipe_berkas,
+            file_size_bytes: b.ukuran_berkas,
+            ukuran: b.ukuran_berkas,
+            file_size_formatted: `${(Number(b.ukuran_berkas || 0) / 1024).toFixed(0)} KB`,
+            kategori_bukti: b.nama_berkas?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+            keterangan: b.keterangan || 'Barang bukti digital',
+            storage_provider: b.storage_provider || 'cloudflare_r2',
+            diunggah_pada: b.created_at,
+            created_at: b.created_at
+          }));
+
+          setPerkara((prev) => {
+            if (!prev) return prev;
+            const currentList = Array.isArray(prev.lampiran_barang_bukti) ? prev.lampiran_barang_bukti : [];
+            const existingUrls = new Set(currentList.map(item => item.file_url || item.url));
+            const newItems = formatted.filter(item => !existingUrls.has(item.file_url));
+            if (newItems.length === 0 && currentList.length > 0) return prev;
+            const merged = [...currentList, ...newItems];
+            const updated = {
+              ...prev,
+              lampiran_barang_bukti: merged,
+              barang_bukti: merged
+            };
+            if (onUpdateDumas) {
+              onUpdateDumas(updated);
+            }
+            return updated;
+          });
+          console.log(`[DETAIL HYDRATION] Berhasil memuat ${formatted.length} bukti dari database untuk ${nomorRegister}`);
+          return;
+        }
+
+        // Fallback 1: tabel lampiran_barang_bukti jika ada idPerkara
+        if (idPerkara) {
+          const { data: lbData } = await supabase
+            .from('lampiran_barang_bukti')
+            .select('*')
+            .eq('laporan_id', idPerkara);
+
+          if (lbData && lbData.length > 0) {
+            const formattedLb = lbData.map(b => ({
+              id: b.id,
+              nama_file: b.nama_file,
+              nama_berkas: b.nama_file,
+              file_url: b.file_url,
+              url: b.file_url,
+              file_size_bytes: b.file_size_bytes,
+              file_size_formatted: `${(Number(b.file_size_bytes || 0) / 1024).toFixed(0)} KB`,
+              mime_type: b.mime_type,
+              keterangan: b.keterangan,
+              kategori_bukti: b.kategori_bukti,
+              diunggah_pada: b.diunggah_pada
+            }));
+            setPerkara(prev => {
+              if (!prev) return prev;
+              const updated = {
+                ...prev,
+                lampiran_barang_bukti: formattedLb,
+                barang_bukti: formattedLb
+              };
+              if (onUpdateDumas) onUpdateDumas(updated);
+              return updated;
+            });
+            return;
+          }
+        }
+
+        // Fallback 2: localStorage draft_bb_${nomorRegister}
+        if (nomorRegister) {
+          const draftLocal = localStorage.getItem(`draft_bb_${nomorRegister}`);
+          if (draftLocal) {
+            try {
+              const parsed = JSON.parse(draftLocal);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setPerkara(prev => {
+                  if (!prev) return prev;
+                  const updated = {
+                    ...prev,
+                    lampiran_barang_bukti: parsed,
+                    barang_bukti: parsed
+                  };
+                  if (onUpdateDumas) onUpdateDumas(updated);
+                  return updated;
+                });
+              }
+            } catch {}
+          }
+        }
+      } catch (err) {
+        console.error('[FETCH BUKTI DETAIL ERROR]:', err);
+      }
+    };
+
+    fetchBuktiForDetail();
+  }, [perkara?.nomor_lp, perkara?.id, dumasItem?.nomor_lp, dumasItem?.id]);
 
   if (!perkara) {
     return (

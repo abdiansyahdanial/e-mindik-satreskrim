@@ -175,9 +175,35 @@ export default function DumasFormView({
   onBack,
   onSubmitDumas,
   currentUserProfile,
-  perkaraId: propPerkaraId = null
+  perkaraId: propPerkaraId = null,
+  nomorRegisterResmi: propNomorRegisterResmi = null
 }) {
   const perkaraId = propPerkaraId || initialOcrData?.id || initialOcrData?.perkara_id || null;
+  const [nomorRegisterResmi, setNomorRegisterResmi] = useState(() => {
+    return (
+      propNomorRegisterResmi ||
+      initialOcrData?.nomor_register ||
+      initialOcrData?.nomor_lp ||
+      initialOcrData?.no_lp ||
+      (typeof window !== 'undefined' ? (sessionStorage.getItem('emindik_active_nomor_register') || localStorage.getItem('emindik_active_nomor_register')) : null) ||
+      ''
+    );
+  });
+
+  useEffect(() => {
+    if (propNomorRegisterResmi && propNomorRegisterResmi !== nomorRegisterResmi) {
+      setNomorRegisterResmi(propNomorRegisterResmi);
+    }
+  }, [propNomorRegisterResmi]);
+
+  useEffect(() => {
+    if (nomorRegisterResmi && typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('emindik_active_nomor_register', nomorRegisterResmi);
+        localStorage.setItem('emindik_active_nomor_register', nomorRegisterResmi);
+      } catch {}
+    }
+  }, [nomorRegisterResmi]);
   // 0. Safe Hydration Draf Formulir Tersimpan dari LocalStorage (Pola Lazy Initializer & Safe Parsing)
   const [savedDraft] = useState(() => {
     if (initialOcrData) return null;
@@ -614,6 +640,7 @@ export default function DumasFormView({
     console.log('[DB PERSIST] Menyimpan bukti ke Supabase...', payload);
 
     const bbPayload = {
+      nomor_register: nomorRegisterResmi || null,
       id_perkara: perkaraId || null, // hubungkan jika ID perkara sudah ada
       token_sesi: tokenSesi,
       nama_berkas: payload.nama_berkas || payload.nama_file || payload.fileName || payload.name || 'Foto_Bukti_HP.jpg',
@@ -661,9 +688,131 @@ export default function DumasFormView({
     } catch (dbErr) {
       console.error("Kesalahan jaringan saat menyimpan bukti ke Supabase:", dbErr);
     }
-  }, [perkaraId, tokenSesi]);
+  }, [perkaraId, tokenSesi, nomorRegisterResmi]);
 
-  // 2. Muat Ulang Data (Fetch on Mount) Saat Komponen Dimuat / Di-refresh
+  // 1. Simpan Langsung ke Database Saat Bukti Baru Masuk (Instruksi Utama)
+  const handleBuktiBaruDiterima = useCallback(async (itemBukti) => {
+    if (!itemBukti) return;
+    const rawUrl = itemBukti.url || itemBukti.fileUrl || itemBukti.file_url;
+    if (!rawUrl) return;
+    const resolvedUrl = formatR2PublicUrl(rawUrl);
+
+    const sanitized = sanitizeEvidenceItem({
+      ...itemBukti,
+      url: resolvedUrl,
+      fileUrl: resolvedUrl
+    });
+    if (!sanitized) return;
+
+    // A. Update state lokal segera
+    setDaftarBukti((prev) => {
+      const exists = prev.some((b) => (b.url && b.url === sanitized.url) || (b.fileUrl && b.fileUrl === sanitized.url));
+      if (exists) return prev;
+      return [...prev, sanitized];
+    });
+
+    // Simpan ke localStorage cadangan draft_bb_${nomorRegisterResmi} jika nomor register tersedia
+    if (nomorRegisterResmi) {
+      try {
+        const draftLocalKey = `draft_bb_${nomorRegisterResmi}`;
+        const existing = safeGetLocalStorage(draftLocalKey, []) || [];
+        if (!existing.some(b => (b.url && b.url === sanitized.url) || (b.fileUrl && b.fileUrl === sanitized.url))) {
+          localStorage.setItem(draftLocalKey, JSON.stringify([...existing, sanitized]));
+        }
+      } catch {}
+    }
+
+    // B. Jika sudah ada nomor register resmi, simpan langsung ke Supabase
+    if (nomorRegisterResmi) {
+      try {
+        // Simpan ke tabel relasi barang_bukti
+        const { error: insErr } = await supabase.from('barang_bukti').insert([{
+          nomor_register: nomorRegisterResmi,
+          id_perkara: perkaraId || null,
+          nama_berkas: sanitized.nama_berkas || sanitized.name || sanitized.nama_file || 'Berkas Bukti',
+          file_url: sanitized.url || sanitized.fileUrl,
+          tipe_berkas: sanitized.tipe || sanitized.type || 'image/jpeg',
+          ukuran_berkas: sanitized.ukuran || sanitized.size || 0,
+          keterangan: sanitized.keterangan || 'Barang bukti digital',
+          storage_provider: 'cloudflare_r2',
+          created_at: new Date().toISOString()
+        }]);
+        if (!insErr) {
+          console.log('[PERSISTENCE] Bukti berhasil disimpan ke database untuk register:', nomorRegisterResmi);
+        } else {
+          console.warn('[PERSISTENCE WARNING]:', insErr.message);
+        }
+      } catch (err) {
+        console.error('[PERSISTENCE ERROR]:', err);
+      }
+    }
+
+    // Tetap sinkronkan ke fallback database berbasis token sesi
+    await simpanBuktiKeDatabase(sanitized);
+  }, [nomorRegisterResmi, perkaraId, simpanBuktiKeDatabase]);
+
+  // 2. Muat Ulang Bukti Saat Halaman Dimuat / Direfresh (Hydration Query berdasarkan nomor register resmi)
+  useEffect(() => {
+    const loadBuktiByRegister = async () => {
+      if (!nomorRegisterResmi) return;
+
+      console.log('[HYDRATION] Memuat ulang bukti untuk register:', nomorRegisterResmi);
+
+      try {
+        // 1. Coba ambil dari tabel barang_bukti
+        const { data, error } = await supabase
+          .from('barang_bukti')
+          .select('*')
+          .eq('nomor_register', nomorRegisterResmi)
+          .order('created_at', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          const formatted = data.map((b) => ({
+            id: b.id,
+            nama_berkas: b.nama_berkas,
+            nama_file: b.nama_berkas,
+            name: b.nama_berkas,
+            url: b.file_url,
+            fileUrl: b.file_url,
+            tipe: b.tipe_berkas,
+            tipe_berkas: b.tipe_berkas,
+            mime_type: b.tipe_berkas,
+            ukuran: b.ukuran_berkas,
+            ukuran_berkas: b.ukuran_berkas,
+            file_size_bytes: b.ukuran_berkas,
+            file_size_formatted: `${(Number(b.ukuran_berkas || 0) / 1024).toFixed(0)} KB`,
+            kategori_bukti: b.nama_berkas?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+            keterangan: b.keterangan || 'Barang bukti digital',
+            storage_provider: b.storage_provider || 'cloudflare_r2',
+            uploaded_at: b.created_at,
+            diunggah_pada: b.created_at,
+            created_at: b.created_at
+          }));
+          setDaftarBukti(formatted);
+          console.log('[RELOAD] Bukti berhasil dimuat dari database:', formatted.length, 'berkas untuk register:', nomorRegisterResmi);
+          return;
+        }
+
+        // 2. Fallback: jika form masih draft belum teregister, ambil dari localStorage
+        const draftLocal = localStorage.getItem(`draft_bb_${nomorRegisterResmi}`);
+        if (draftLocal) {
+          try {
+            const parsedLocal = JSON.parse(draftLocal);
+            if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
+              setDaftarBukti(parsedLocal);
+              console.log('[RELOAD] Bukti berhasil dimuat dari draft lokal:', parsedLocal.length, 'berkas');
+            }
+          } catch {}
+        }
+      } catch (err) {
+        console.error('[FETCH BUKTI ERROR]:', err);
+      }
+    };
+
+    loadBuktiByRegister();
+  }, [nomorRegisterResmi]);
+
+  // 3. Muat Ulang Data Tambahan (Fetch on Mount via PerkaraId / TokenSesi)
   useEffect(() => {
     const fetchBuktiTersimpan = async () => {
       if (!perkaraId && !tokenSesi) return;
@@ -789,18 +938,10 @@ export default function DumasFormView({
           });
 
           if (sanitized) {
-            // 1. Tambahkan data foto R2 langsung ke state lampiran form Bagian 05:
-            setDaftarBukti((prev) => {
-              if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
-                return prev;
-              }
-              return [...prev, sanitized];
-            });
+            // Simpan langsung dan tautkan ke nomor register resmi jika aktif
+            await handleBuktiBaruDiterima(sanitized);
 
-            // 2. Simpan permanen ke Supabase
-            await simpanBuktiKeDatabase(sanitized);
-
-            // 3. Notifikasi toast sukses:
+            // Notifikasi toast sukses:
             setToastEvidence(sanitized);
             setTimeout(() => setToastEvidence(null), 6000);
           }
@@ -824,13 +965,7 @@ export default function DumasFormView({
               fileUrl: resolvedUrl
             });
             if (sanitized) {
-              setDaftarBukti((prev) => {
-                if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
-                  return prev;
-                }
-                return [...prev, sanitized];
-              });
-              await simpanBuktiKeDatabase(sanitized);
+              await handleBuktiBaruDiterima(sanitized);
               setToastEvidence(sanitized);
               setTimeout(() => setToastEvidence(null), 6000);
             }
@@ -851,13 +986,7 @@ export default function DumasFormView({
               fileUrl: resolvedUrl
             });
             if (sanitized) {
-              setDaftarBukti((prev) => {
-                if (prev.some((item) => (item.url && item.url === resolvedUrl) || (item.fileUrl && item.fileUrl === resolvedUrl))) {
-                  return prev;
-                }
-                return [...prev, sanitized];
-              });
-              await simpanBuktiKeDatabase(sanitized);
+              await handleBuktiBaruDiterima(sanitized);
               setToastEvidence(sanitized);
               setTimeout(() => setToastEvidence(null), 6000);
             }
@@ -1075,11 +1204,7 @@ export default function DumasFormView({
 
       const sanitized = sanitizeEvidenceItem(rawItem, i);
       if (sanitized) {
-        setDaftarBukti(prev => {
-          if (prev.some(item => item.url === sanitized.url)) return prev;
-          return [...prev, sanitized];
-        });
-        await simpanBuktiKeDatabase(sanitized);
+        await handleBuktiBaruDiterima(sanitized);
       }
     }
   };
@@ -1120,13 +1245,7 @@ export default function DumasFormView({
       fileUrl: resolvedUrl
     });
     if (sanitized) {
-      setDaftarBukti(prev => {
-        if (prev.some(item => (item.url && item.url === sanitized.url) || (item.fileUrl && item.fileUrl === sanitized.url))) {
-          return prev;
-        }
-        return [...prev, sanitized];
-      });
-      await simpanBuktiKeDatabase(sanitized);
+      await handleBuktiBaruDiterima(sanitized);
       setToastEvidence(sanitized);
       setTimeout(() => setToastEvidence(null), 6000);
     }
@@ -1245,27 +1364,36 @@ export default function DumasFormView({
         locus_delicti: caseInfo.tkp || caseInfo.locus_delicti || caseInfo.tempat_kejadian || '',
         tempat_kejadian: caseInfo.tkp || caseInfo.locus_delicti || caseInfo.tempat_kejadian || '',
         uraian_kejadian: caseInfo.uraian || caseInfo.uraian_kejadian || caseInfo.ringkasan_posisi_kasus || caseInfo.ringkasan_kasus || caseInfo.kronologis || '',
+        barang_bukti: daftarBukti,
+        lampiran_barang_bukti: daftarBukti,
       };
 
       const result = await onSubmitDumas(newDumasData, evidenceFiles);
       // HANYA bersihkan draf jika penyimpanan ke Supabase berhasil
       if (result && result.success !== false) {
-        // Persistensi langsung ke tabel barang_bukti dan lampiran_barang_bukti jika ada id perkara
+        const finalNo = result?.record?.nomor_lp || generatedNo || nomorRegisterResmi;
         const laporanId = result?.record?.id || result?.id || null;
-        if (laporanId && evidenceFiles.length > 0) {
+
+        // Persistensi langsung ke tabel barang_bukti dengan nomor_register resmi
+        if (evidenceFiles.length > 0) {
           try {
             const bbRows = evidenceFiles.map((item) => ({
+              nomor_register: finalNo,
               id_perkara: laporanId,
               nama_berkas: item.nama_berkas || item.name || item.nama_file || 'Barang Bukti',
               file_url: item.url || item.fileUrl || item.file_url,
               tipe_berkas: item.tipe || item.type || item.mime_type || 'image/jpeg',
               ukuran_berkas: item.ukuran || item.size || item.file_size_bytes || 0,
+              keterangan: item.keterangan || 'Barang bukti digital',
               storage_provider: 'cloudflare_r2',
               hash_sha256: item.hash_sha256 || item.hash || null,
               created_at: new Date().toISOString()
             }));
             await supabase.from('barang_bukti').insert(bbRows);
-          } catch {}
+            console.log('[PERSISTENCE] Bukti berhasil disimpan ke database untuk register:', finalNo);
+          } catch (errBb) {
+            console.warn('[PERSISTENCE ERROR]:', errBb);
+          }
           try {
             const lampiranRows = evidenceFiles.map((item) => ({
               laporan_id: laporanId,

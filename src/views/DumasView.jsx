@@ -171,6 +171,8 @@ export default function DumasView({
               initialOcrFiles={initialOcrFiles}
               initialOcrData={initialOcrData}
               currentUserProfile={currentUserProfile}
+              nomorRegisterResmi={selectedDumas?.nomor_lp || initialOcrData?.nomor_lp || initialOcrData?.nomor_register || null}
+              perkaraId={selectedDumas?.id || initialOcrData?.id || null}
               onBack={() => setSubView('list')}
               onSubmitDumas={handleSubmitDumas}
             />

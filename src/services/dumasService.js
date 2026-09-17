@@ -315,12 +315,91 @@ export async function fetchDumasRecords() {
         return { data: [], source: 'supabase', error: null };
       }
 
-      // Normalisasi nama relasi bukti jika ada
-      const normalized = res.data.map(d => ({
-        ...d,
-        saksi_list: Array.isArray(d.saksi_list) ? d.saksi_list : [],
-        terlapor_list: Array.isArray(d.terlapor_list) ? d.terlapor_list : [],
-        lampiran_barang_bukti: Array.isArray(d.lampiran_barang_bukti) ? d.lampiran_barang_bukti : [],
+      // Normalisasi dan hidrasi data bukti dari database (relasi nomor_register atau id_perkara)
+      const normalized = await Promise.all(res.data.map(async (d) => {
+        let buktiList = Array.isArray(d.lampiran_barang_bukti) && d.lampiran_barang_bukti.length > 0
+          ? d.lampiran_barang_bukti
+          : (Array.isArray(d.barang_bukti) && d.barang_bukti.length > 0 ? d.barang_bukti : []);
+
+        // Jika buktiList masih kosong pada laporan yang sudah teregister, muat dari tabel barang_bukti
+        if (buktiList.length === 0 && (d.nomor_lp || d.id)) {
+          try {
+            let bbQuery = supabase.from('barang_bukti').select('*');
+            if (d.nomor_lp && d.id) {
+              bbQuery = bbQuery.or(`nomor_register.eq.${d.nomor_lp},id_perkara.eq.${d.id}`);
+            } else if (d.nomor_lp) {
+              bbQuery = bbQuery.eq('nomor_register', d.nomor_lp);
+            } else {
+              bbQuery = bbQuery.eq('id_perkara', d.id);
+            }
+
+            const { data: bbRows } = await bbQuery.order('created_at', { ascending: true });
+            if (bbRows && bbRows.length > 0) {
+              buktiList = bbRows.map((b) => ({
+                id: b.id,
+                nama_berkas: b.nama_berkas,
+                nama_file: b.nama_berkas,
+                name: b.nama_berkas,
+                url: b.file_url,
+                file_url: b.file_url,
+                fileUrl: b.file_url,
+                previewUrl: b.file_url,
+                tipe: b.tipe_berkas,
+                tipe_berkas: b.tipe_berkas,
+                mime_type: b.tipe_berkas,
+                ukuran: b.ukuran_berkas,
+                ukuran_berkas: b.ukuran_berkas,
+                file_size_bytes: b.ukuran_berkas,
+                file_size_formatted: `${(Number(b.ukuran_berkas || 0) / 1024).toFixed(0)} KB`,
+                kategori_bukti: b.nama_berkas?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+                keterangan: b.keterangan || 'Barang bukti digital',
+                storage_provider: b.storage_provider || 'cloudflare_r2',
+                diunggah_pada: b.created_at,
+                uploaded_at: b.created_at,
+                created_at: b.created_at
+              }));
+              console.log(`[DUMAS SERVICE] Hidrasi ${buktiList.length} bukti dari tabel barang_bukti untuk ${d.nomor_lp}`);
+            } else if (d.id) {
+              // Fallback kedua: coba tabel lampiran_barang_bukti
+              const { data: lbRows } = await supabase
+                .from('lampiran_barang_bukti')
+                .select('*')
+                .eq('laporan_id', d.id);
+              if (lbRows && lbRows.length > 0) {
+                buktiList = lbRows.map((b) => ({
+                  id: b.id,
+                  nama_file: b.nama_file,
+                  nama_berkas: b.nama_file,
+                  name: b.nama_file,
+                  url: b.file_url,
+                  file_url: b.file_url,
+                  fileUrl: b.file_url,
+                  previewUrl: b.file_url,
+                  mime_type: b.mime_type,
+                  tipe: b.mime_type,
+                  file_size_bytes: b.file_size_bytes,
+                  ukuran: b.file_size_bytes,
+                  file_size_formatted: `${(Number(b.file_size_bytes || 0) / 1024).toFixed(0)} KB`,
+                  kategori_bukti: b.kategori_bukti,
+                  keterangan: b.keterangan,
+                  diunggah_pada: b.diunggah_pada,
+                  uploaded_at: b.diunggah_pada,
+                  created_at: b.diunggah_pada
+                }));
+              }
+            }
+          } catch (bbFetchErr) {
+            console.warn('[DUMAS SERVICE] Gagal hidrasi bukti:', bbFetchErr);
+          }
+        }
+
+        return {
+          ...d,
+          saksi_list: Array.isArray(d.saksi_list) ? d.saksi_list : [],
+          terlapor_list: Array.isArray(d.terlapor_list) ? d.terlapor_list : [],
+          barang_bukti: buktiList,
+          lampiran_barang_bukti: buktiList,
+        };
       }));
 
       // Simpan ke local storage sebagai cache offline
@@ -440,6 +519,8 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
       locus_delicti: completeRecord.locus_delicti || '',
       uraian_kejadian: completeRecord.uraian_kejadian || '',
       status_berkas: completeRecord.status_berkas || 'Tahap Penyelidikan (Sp.Lidik)',
+      barang_bukti: completeRecord.lampiran_barang_bukti || [],
+      lampiran_barang_bukti: completeRecord.lampiran_barang_bukti || [],
     };
 
     console.log("[Dumas Submit] Payload data yang disimpan:", payload);
@@ -476,11 +557,11 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
         const bbPayloads = completeRecord.lampiran_barang_bukti.map(bb => ({
           laporan_id: data.id,
           kategori_bukti: bb.kategori_bukti,
-          nama_file: bb.nama_file,
+          nama_file: bb.nama_file || bb.nama_berkas,
           file_path: bb.file_path || '',
-          file_url: bb.file_url || '',
-          file_size_bytes: bb.file_size_bytes || 0,
-          mime_type: bb.mime_type,
+          file_url: bb.file_url || bb.url,
+          file_size_bytes: bb.file_size_bytes || bb.ukuran || 0,
+          mime_type: bb.mime_type || bb.tipe,
           hash_sha256: bb.hash_sha256,
           keterangan: bb.keterangan || '',
         }));
@@ -491,19 +572,22 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
           console.warn('Notice: Gagal menyimpan ke tabel lampiran_barang_bukti (tabel mungkin belum ada):', bbErr);
         }
 
-        // Upayakan juga simpan ke tabel barang_bukti untuk skema relasi perkara aktif
+        // Simpan langsung ke tabel relasi barang_bukti dengan nomor_register resmi
         try {
           const barangBuktiPayloads = completeRecord.lampiran_barang_bukti.map(bb => ({
+            nomor_register: completeRecord.nomor_lp,
             id_perkara: data.id,
-            nama_berkas: bb.nama_file,
-            file_url: bb.file_url,
-            tipe_berkas: bb.mime_type,
-            ukuran_berkas: bb.file_size_bytes,
+            nama_berkas: bb.nama_file || bb.nama_berkas,
+            file_url: bb.file_url || bb.url,
+            tipe_berkas: bb.mime_type || bb.tipe || 'image/jpeg',
+            ukuran_berkas: bb.file_size_bytes || bb.ukuran || 0,
+            keterangan: bb.keterangan || 'Barang bukti digital',
             storage_provider: 'cloudflare_r2',
             hash_sha256: bb.hash_sha256,
             created_at: new Date().toISOString()
           }));
           await supabase.from('barang_bukti').insert(barangBuktiPayloads);
+          console.log('[PERSISTENCE] Bukti berhasil disimpan ke database untuk register:', completeRecord.nomor_lp);
         } catch (bbErr2) {
           console.warn('Notice: Gagal menyimpan ke tabel barang_bukti:', bbErr2);
         }
