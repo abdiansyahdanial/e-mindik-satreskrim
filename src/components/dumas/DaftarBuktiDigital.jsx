@@ -12,7 +12,83 @@ import { formatR2PublicUrl } from '../../lib/r2Client';
  * Merender daftar berkas bukti secara reaktif dengan URL publik Cloudflare R2
  * Menangani fallback onError dan logging console URL untuk memudahkan inspeksi
  */
-export default function DaftarBuktiDigital({
+class DaftarBuktiErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[DAFTAR BUKTI ERROR]:', error, errorInfo);
+  }
+
+  handleClearCorruptedCache = () => {
+    try {
+      localStorage.removeItem('emindik_draft_daftar_bb_v1');
+      localStorage.removeItem('emindik_temp_draft_bb');
+      localStorage.removeItem('temp_dumas_bb');
+    } catch (e) {
+      console.warn('Gagal bersihkan cache bukti:', e);
+    }
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '16px 20px',
+          border: '1px solid rgba(239, 68, 68, 0.35)',
+          borderRadius: '10px',
+          backgroundColor: 'rgba(239, 68, 68, 0.08)',
+          color: '#FCA5A5',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '10px',
+          textAlign: 'center'
+        }}>
+          <span style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>
+            [PERINGATAN] Terdeteksi Data Bukti Korup / Non-Serializable di Cache Lokal
+          </span>
+          <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0, maxWidth: '520px' }}>
+            Beberapa berkas dalam draf tersimpan tidak valid atau tidak memiliki URL aktif. Anda dapat membersihkan cache barang bukti ini untuk melanjutkan input dumas secara lancar.
+          </p>
+          <button
+            type="button"
+            onClick={this.handleClearCorruptedCache}
+            style={{
+              padding: '6px 14px',
+              backgroundColor: '#DC2626',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontWeight: 700
+            }}
+          >
+            Bersihkan Cache Bukti & Muat Ulang
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/**
+ * Komponen Pratinjau Daftar Bukti Digital
+ * Merender daftar berkas bukti secara reaktif dengan URL publik Cloudflare R2
+ * Menangani fallback onError dan logging console URL untuk memudahkan inspeksi
+ */
+function DaftarBuktiDigitalContent({
   daftarBukti = [],
   evidenceFiles,
   onRemove,
@@ -33,14 +109,16 @@ export default function DaftarBuktiDigital({
         gap: '12px'
       }}>
         {Array.isArray(items) && items.map((bukti, idx) => {
-          if (!bukti || typeof bukti !== 'object') return null;
+          if (!bukti || typeof bukti !== 'object' || (!bukti.url && !bukti.fileUrl && !bukti.previewUrl && !bukti.file_url)) {
+            return null;
+          }
 
           const rawUrl = bukti?.url || bukti?.fileUrl || bukti?.previewUrl || bukti?.file_url || '';
           const publicUrl = formatR2PublicUrl(rawUrl);
-          const fileName = bukti?.nama_berkas || bukti?.name || bukti?.nama_file || 'Barang Bukti';
+          const fileName = bukti?.nama_berkas || bukti?.nama || bukti?.name || bukti?.nama_file || 'Barang Bukti';
           const isPdf = bukti?.kategori_bukti === 'DOKUMEN_PDF' || (typeof fileName === 'string' && fileName.toLowerCase().endsWith('.pdf'));
           const fileSizeFormatted = bukti?.file_size_formatted || 
-            (bukti?.ukuran ? `${(bukti.ukuran / 1024).toFixed(0)} KB` : (bukti?.size ? `${(bukti.size / 1024).toFixed(0)} KB` : '180 KB'));
+            (typeof bukti?.ukuran === 'number' ? `${(bukti.ukuran / 1024).toFixed(0)} KB` : (typeof bukti?.size === 'number' ? `${(bukti.size / 1024).toFixed(0)} KB` : '180 KB'));
           const uniqueKey = bukti?.id || `bb-${idx}`;
 
           if (!isPdf && publicUrl) {
@@ -81,7 +159,7 @@ export default function DaftarBuktiDigital({
                     height: '56px',
                     borderRadius: '8px',
                     backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.15)' : '#1E293B',
-                    border: bukti.isNew ? '1px solid #10B981' : '1px solid #334155',
+                    border: bukti?.isNew ? '1px solid #10B981' : '1px solid #334155',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -98,13 +176,12 @@ export default function DaftarBuktiDigital({
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       className="w-full max-h-64 object-contain bg-zinc-950 rounded border border-zinc-800"
                       onLoad={() => {
-                        console.log("Rendering Bukti URL:", bukti.url || publicUrl);
+                        console.log("Rendering Bukti URL:", bukti?.url || publicUrl);
                       }}
                       onError={(e) => {
                         console.error('Gagal memuat gambar bukti dari R2:', publicUrl);
-                        // Fallback visual icon bila gambar gagal dimuat
-                        e.currentTarget.style.display = 'none';
-                        if (e.currentTarget.parentElement) {
+                        e.target.style.display = 'none';
+                        if (e.target.parentElement) {
                           const fallback = document.createElement('div');
                           fallback.style.display = 'flex';
                           fallback.style.alignItems = 'center';
@@ -112,7 +189,7 @@ export default function DaftarBuktiDigital({
                           fallback.style.width = '100%';
                           fallback.style.height = '100%';
                           fallback.innerHTML = '<span style="font-size:10px;color:#EF4444;font-family:monospace;">R2 Err</span>';
-                          e.currentTarget.parentElement.appendChild(fallback);
+                          e.target.parentElement.appendChild(fallback);
                         }
                       }}
                     />
@@ -153,7 +230,7 @@ export default function DaftarBuktiDigital({
                     <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8' }}>
                       {fileSizeFormatted}
                     </span>
-                    {bukti.isNew && (
+                    {bukti?.isNew && (
                       <span style={{
                         fontSize: '8.5px',
                         fontFamily: 'JetBrains Mono, monospace',
@@ -168,7 +245,7 @@ export default function DaftarBuktiDigital({
                       </span>
                     )}
                   </div>
-                  {bukti.keterangan && (
+                  {bukti?.keterangan && (
                     <p style={{ fontSize: '10px', color: '#64748B', margin: '4px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {bukti.keterangan}
                     </p>
@@ -203,7 +280,7 @@ export default function DaftarBuktiDigital({
                 {onRemove && (
                   <button
                     type="button"
-                    onClick={() => onRemove(bukti.id)}
+                    onClick={() => onRemove(bukti?.id)}
                     style={{
                       background: 'rgba(239, 68, 68, 0.1)',
                       border: '1px solid rgba(239, 68, 68, 0.3)',
@@ -230,5 +307,13 @@ export default function DaftarBuktiDigital({
         })}
       </div>
     </div>
+  );
+}
+
+export default function DaftarBuktiDigital(props) {
+  return (
+    <DaftarBuktiErrorBoundary>
+      <DaftarBuktiDigitalContent {...props} />
+    </DaftarBuktiErrorBoundary>
   );
 }

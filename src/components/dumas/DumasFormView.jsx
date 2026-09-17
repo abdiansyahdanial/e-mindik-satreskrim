@@ -21,7 +21,8 @@ import {
   loadDumasDraft, 
   saveDumasDraft, 
   clearDumasDraft,
-  safeGetLocalStorage
+  safeGetLocalStorage,
+  sanitizeEvidenceList
 } from '../../services/dumasService';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
@@ -342,25 +343,30 @@ export default function DumasFormView({
 
   // State 05: Lampiran Barang Bukti (Pola Lazy Initializer & Safe Parsing Anti-Hilang)
   const [daftarBukti, setDaftarBukti] = useState(() => {
-    const listFromBbKey = safeGetLocalStorage(DRAFT_KEY_BB, []);
-    if (Array.isArray(listFromBbKey) && listFromBbKey.length > 0) {
-      console.log('[RECOVERY] Berhasil memuat ulang draft bukti dari DRAFT_KEY_BB:', listFromBbKey);
-      return listFromBbKey;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY_BB);
+      if (!raw || raw === 'undefined' || raw === 'null') {
+        const fallbackRaw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('temp_dumas_bb');
+        if (fallbackRaw && fallbackRaw !== 'undefined' && fallbackRaw !== 'null') {
+          const parsedFallback = JSON.parse(fallbackRaw);
+          return sanitizeEvidenceList(parsedFallback);
+        }
+        if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles)) {
+          return sanitizeEvidenceList(savedDraft.evidenceFiles);
+        }
+        return [];
+      }
+      const parsed = JSON.parse(raw);
+      return sanitizeEvidenceList(parsed);
+    } catch (err) {
+      console.warn('[STORAGE] Data bukti korup terdeteksi, membersihkan storage...', err);
+      try {
+        localStorage.removeItem(DRAFT_KEY_BB);
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('temp_dumas_bb');
+      } catch {}
+      return [];
     }
-    const listFromStorageKey = safeGetLocalStorage(STORAGE_KEY, []);
-    if (Array.isArray(listFromStorageKey) && listFromStorageKey.length > 0) {
-      console.log('[RECOVERY] Berhasil memuat ulang draft bukti dari STORAGE_KEY:', listFromStorageKey);
-      return listFromStorageKey;
-    }
-    const listFromTemp = safeGetLocalStorage('temp_dumas_bb', []);
-    if (Array.isArray(listFromTemp) && listFromTemp.length > 0) {
-      console.log('[RECOVERY] Berhasil memuat ulang draft bukti dari temp_dumas_bb:', listFromTemp);
-      return listFromTemp;
-    }
-    if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles) && savedDraft.evidenceFiles.length > 0) {
-      return savedDraft.evidenceFiles;
-    }
-    return [];
   });
   // Backward-compatible alias
   const evidenceFiles = daftarBukti;
@@ -449,17 +455,18 @@ export default function DumasFormView({
     fetchDokumenRiwayat();
   }, [perkaraId]);
 
-  // Sinkronisasi Otomatis ke LocalStorage
+  // Sinkronisasi Otomatis ke LocalStorage dengan Data Ter-sanitasi (Hanya Tipe Data Primitif)
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
-        localStorage.setItem(DRAFT_KEY_BB, JSON.stringify(daftarBukti));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(daftarBukti));
-        localStorage.setItem('temp_dumas_bb', JSON.stringify(daftarBukti));
-        console.log('[AUTO-SAVE] Draft bukti tersimpan:', daftarBukti.length, 'item');
+        const cleanData = sanitizeEvidenceList(daftarBukti);
+        localStorage.setItem(DRAFT_KEY_BB, JSON.stringify(cleanData));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanData));
+        localStorage.setItem('temp_dumas_bb', JSON.stringify(cleanData));
+        console.log('[AUTO-SAVE] Draft bukti tersimpan:', cleanData.length, 'item');
       }
-    } catch (e) {
-      console.error('[AUTO-SAVE ERROR] Gagal menyimpan ke localStorage:', e);
+    } catch (err) {
+      console.error('[STORAGE SAVE ERROR]:', err);
     }
   }, [daftarBukti]);
 
@@ -802,20 +809,7 @@ export default function DumasFormView({
     setSaveStatus('saving');
     const timer = setTimeout(() => {
       try {
-        const sanitizedEvidence = (evidenceFiles || []).map(f => ({
-          id: f.id,
-          name: f.name || f.nama_file || 'Berkas',
-          nama_file: f.nama_file || f.name || 'Berkas',
-          size: f.size || 0,
-          type: f.type || 'application/pdf',
-          mime_type: f.mime_type || f.type || 'application/pdf',
-          kategori_bukti: f.kategori_bukti || 'DOKUMEN_PDF',
-          file_size_formatted: f.file_size_formatted || '0 KB',
-          keterangan: f.keterangan || '',
-          hash_sha256: f.hash_sha256 || '',
-          file_url: f.file_url || f.url || f.fileUrl || '',
-          url: f.url || f.fileUrl || f.file_url || ''
-        }));
+        const sanitizedEvidence = sanitizeEvidenceList(evidenceFiles);
 
         const draftPayload = {
           mode,
@@ -956,21 +950,29 @@ export default function DumasFormView({
       const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
       const mime = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
       
+      const preview = typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '';
+      
       return {
         id: `bb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         name: file.name,
         nama_file: file.name,
+        nama_berkas: file.name,
         size: file.size,
+        ukuran: file.size,
         type: mime,
+        tipe: mime,
         mime_type: mime,
         kategori_bukti: category,
         file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
-        previewUrl: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '',
+        url: preview,
+        fileUrl: preview,
+        previewUrl: preview,
         file: file,
         rawFile: file,
         keterangan: isPdf ? 'Dokumen surat bukti perkara' : 'Dokumentasi objek fisik barang bukti',
         hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
           .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
+        uploaded_at: new Date().toISOString(),
         diunggah_pada: new Date().toISOString()
       };
     });
@@ -2471,16 +2473,18 @@ export default function DumasFormView({
             <div style={{ marginTop: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Daftar Lampiran Bukti yang Akan Disimpan ({evidenceFiles.length}):
+                  Daftar Lampiran Bukti yang Akan Disimpan ({evidenceFiles.filter(f => f && (f.url || f.fileUrl || f.previewUrl || f.file_url)).length}):
                 </span>
                 <button
                   type="button"
                   onClick={() => {
-                    setEvidenceFiles([]);
                     try {
+                      localStorage.removeItem(DRAFT_KEY_BB);
                       localStorage.removeItem(STORAGE_KEY);
                       localStorage.removeItem('temp_dumas_bb');
                     } catch {}
+                    setEvidenceFiles([]);
+                    console.log('[CACHE] Cache barang bukti berhasil dibersihkan.');
                   }}
                   style={{
                     background: 'rgba(239, 68, 68, 0.1)',
@@ -2495,6 +2499,7 @@ export default function DumasFormView({
                     transition: 'all 0.15s'
                   }}
                   className="hover:bg-red-500/20"
+                  title="Kosongkan daftar berkas bukti dan bersihkan cache penyimpanan lokal"
                 >
                   Kosongkan Semua
                 </button>
@@ -2506,7 +2511,7 @@ export default function DumasFormView({
                 gap: '12px'
               }}>
                 {Array.isArray(evidenceFiles) && evidenceFiles.map((file, idx) => {
-                  if (!file || typeof file !== 'object') return null;
+                  if (!file || typeof file !== 'object' || (!file.url && !file.fileUrl && !file.previewUrl && !file.file_url)) return null;
 
                   const displayName = file?.nama_berkas || file?.name || file?.nama_file || 'Barang Bukti';
                   const isPdf = file?.kategori_bukti === 'DOKUMEN_PDF' || 

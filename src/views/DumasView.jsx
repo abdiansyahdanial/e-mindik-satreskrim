@@ -9,7 +9,8 @@ import {
   deleteDumasRecord, 
   convertDumasToCase,
   hasDumasDraft,
-  safeGetLocalStorage
+  safeGetLocalStorage,
+  sanitizeEvidenceList
 } from '../services/dumasService';
 import '../styles/dumas.css';
 
@@ -28,8 +29,9 @@ export default function DumasView({
         if (savedSubView && ['list', 'form', 'detail'].includes(savedSubView)) {
           return savedSubView;
         }
-        // Jika ada draft aktif di localStorage dengan data riil, otomatis buka form
-        const draftBb = safeGetLocalStorage('emindik_draft_daftar_bb_v1', []);
+        // Jika ada draft aktif di localStorage dengan data riil yang valid, otomatis buka form
+        const rawBb = safeGetLocalStorage('emindik_draft_daftar_bb_v1', []);
+        const draftBb = sanitizeEvidenceList(rawBb);
         const draftForm = safeGetLocalStorage('emindik_draft_form_perkara_v1', null);
         if ((Array.isArray(draftBb) && draftBb.length > 0) || (draftForm && Object.keys(draftForm).length > 0)) {
           return 'form';

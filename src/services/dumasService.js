@@ -27,6 +27,46 @@ export const safeGetLocalStorage = (key, fallback = []) => {
 };
 
 /**
+ * Normalisasi data bukti agar HANYA tipe data primitif yang disimpan ke localStorage.
+ * Menghilangkan instance File/Blob/Event biner yang tersimpan kosong {} dan menyebabkan crash UI.
+ */
+export const sanitizeEvidenceList = (list) => {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((item) => item && typeof item === 'object' && (item.url || item.fileUrl || item.previewUrl))
+    .map((item, index) => {
+      const url = typeof item.url === 'string' ? item.url : (typeof item.fileUrl === 'string' ? item.fileUrl : (typeof item.previewUrl === 'string' ? item.previewUrl : ''));
+      const fileUrl = typeof item.fileUrl === 'string' ? item.fileUrl : url;
+      const previewUrl = typeof item.previewUrl === 'string' ? item.previewUrl : (url || fileUrl);
+      const nama = typeof item.nama_berkas === 'string' ? item.nama_berkas : (typeof item.nama === 'string' ? item.nama : (typeof item.name === 'string' ? item.name : (typeof item.nama_file === 'string' ? item.nama_file : 'Berkas Bukti')));
+      const tipe = typeof item.tipe === 'string' ? item.tipe : (typeof item.type === 'string' ? item.type : (typeof item.mime_type === 'string' ? item.mime_type : 'image/jpeg'));
+      const ukuran = typeof item.ukuran === 'number' ? item.ukuran : (typeof item.size === 'number' ? item.size : 0);
+      const uploaded_at = typeof item.uploaded_at === 'string' ? item.uploaded_at : (typeof item.diunggah_pada === 'string' ? item.diunggah_pada : new Date().toISOString());
+
+      return {
+        id: typeof item.id === 'string' || typeof item.id === 'number' ? String(item.id) : `bb_${Date.now()}_${index}`,
+        nama_berkas: nama,
+        nama: nama,
+        name: nama,
+        nama_file: nama,
+        url: url,
+        fileUrl: fileUrl,
+        previewUrl: previewUrl,
+        tipe: tipe,
+        type: tipe,
+        mime_type: tipe,
+        ukuran: ukuran,
+        size: ukuran,
+        file_size_formatted: item.file_size_formatted || `${(ukuran / 1024).toFixed(0)} KB`,
+        kategori_bukti: item.kategori_bukti || (nama.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'),
+        keterangan: typeof item.keterangan === 'string' ? item.keterangan : '',
+        uploaded_at: uploaded_at,
+        diunggah_pada: uploaded_at
+      };
+    });
+};
+
+/**
  * Mendapatkan key storage draf (dengan isolasi ID pengguna jika tersedia)
  */
 export function getDumasDraftKey(userId = null) {
