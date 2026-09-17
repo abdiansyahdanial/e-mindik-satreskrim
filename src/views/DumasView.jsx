@@ -34,6 +34,10 @@ export default function DumasView({
           return 'list';
         }
         // Jika ada draft form aktif di localStorage dengan data riil yang valid, buka form
+        const activeDraft = safeGetLocalStorage('emindik_active_dumas_form_draft', null);
+        if (activeDraft && typeof activeDraft === 'object' && Object.keys(activeDraft).length > 0) {
+          return 'form';
+        }
         const draftForm = safeGetLocalStorage('emindik_draft_form_perkara_v1', null);
         if (draftForm && typeof draftForm === 'object' && Object.keys(draftForm).length > 0) {
           return 'form';
@@ -105,6 +109,10 @@ export default function DumasView({
     try {
       const result = await saveDumasRecord(newRecord, evidenceFiles);
       if (result.success && result.record) {
+        try {
+          localStorage.removeItem('emindik_active_dumas_form_draft');
+          localStorage.removeItem('emindik_draft_form_perkara_v1');
+        } catch {}
         setDumasList(prev => [result.record, ...prev.filter(d => d.id !== result.record.id)]);
         setSelectedDumas(result.record);
         setSubView('detail');
@@ -159,7 +167,7 @@ export default function DumasView({
         <DumasListView
           dumasList={dumasList}
           onOpenModeSelect={handleOpenModeSelect}
-          hasDraft={hasDumasDraft(currentUserProfile?.id)}
+          hasDraft={hasDumasDraft(currentUserProfile?.id) || Boolean(safeGetLocalStorage('emindik_active_dumas_form_draft', null))}
           onOpenDraft={handleOpenDraft}
           onSelectDumas={(item) => {
             setSelectedDumas(item);

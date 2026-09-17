@@ -142,19 +142,20 @@ export default function EvidenceQrSyncModal({
       setJustReceived(true);
       setTimeout(() => setJustReceived(false), 4000);
 
-      // 1. Tambahkan data foto R2 langsung ke state lampiran form Bagian 05 jika ada setDaftarBukti:
-      if (setDaftarBukti) {
-        setDaftarBukti((prev) => {
-          // Hindari duplikasi jika URL sudah terdaftar
-          const targetCheckUrl = fileUrl || evidenceItem.url || evidenceItem.fileUrl;
-          const exists = prev.some((item) => (item.url || item.fileUrl) === targetCheckUrl);
-          if (exists) return prev;
-          return [...prev, evidenceItem];
-        });
-      }
-
+      // Delegasikan ke onEvidenceReceived jika ada (agar DumasFormView menjadi single handler):
       if (onEvidenceReceived) {
         onEvidenceReceived(evidenceItem);
+      } else if (setDaftarBukti) {
+        setDaftarBukti((prev) => {
+          // Hindari duplikasi jika URL sudah terdaftar
+          const targetCheckUrl = (fileUrl || evidenceItem.url || evidenceItem.fileUrl || '').trim();
+          const exists = prev.some((item) => (item.url || item.fileUrl || '').trim() === targetCheckUrl);
+          if (exists) {
+            console.warn('[DEDUP MODAL] Mengabaikan duplikat untuk URL:', targetCheckUrl);
+            return prev;
+          }
+          return [...prev, evidenceItem];
+        });
       }
     };
 
