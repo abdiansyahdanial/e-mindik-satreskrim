@@ -1502,11 +1502,11 @@ export default function DumasFormView({
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <label htmlFor="nama_pelapor" className="dumas-form-label">
+                  <label htmlFor="dumas_nama_pelapor" className="dumas-form-label">
                     NAMA LENGKAP <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input 
-                    id="nama_pelapor"
+                    id="dumas_nama_pelapor"
                     name="nama_pelapor"
                     type="text"
                     required
@@ -1519,11 +1519,11 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label htmlFor="nik_pelapor" className="dumas-form-label">
+                  <label htmlFor="dumas_nik_pelapor" className="dumas-form-label">
                     NIK (NOMOR INDUK KEPENDUDUKAN) <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input 
-                    id="nik_pelapor"
+                    id="dumas_nik_pelapor"
                     name="nik_pelapor"
                     type="text"
                     required
@@ -1537,11 +1537,11 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label htmlFor="ttl_pelapor" className="dumas-form-label">
+                  <label htmlFor="dumas_ttl_pelapor" className="dumas-form-label">
                     TEMPAT, TANGGAL LAHIR
                   </label>
                   <input 
-                    id="ttl_pelapor"
+                    id="dumas_ttl_pelapor"
                     name="ttl_pelapor"
                     type="text"
                     autoComplete="off"
@@ -1554,11 +1554,11 @@ export default function DumasFormView({
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
-                    <label htmlFor="pekerjaan_pelapor" className="dumas-form-label">
+                    <label htmlFor="dumas_pekerjaan_pelapor" className="dumas-form-label">
                       PEKERJAAN
                     </label>
                     <input 
-                      id="pekerjaan_pelapor"
+                      id="dumas_pekerjaan_pelapor"
                       name="pekerjaan_pelapor"
                       type="text"
                       autoComplete="off"
@@ -1569,11 +1569,11 @@ export default function DumasFormView({
                     />
                   </div>
                   <div>
-                    <label htmlFor="agama_pelapor" className="dumas-form-label">
+                    <label htmlFor="dumas_agama_pelapor" className="dumas-form-label">
                       AGAMA
                     </label>
                     <select
-                      id="agama_pelapor"
+                      id="dumas_agama_pelapor"
                       name="agama_pelapor"
                       value={pelapor.agama}
                       onChange={(e) => setPelapor({ ...pelapor, agama: e.target.value })}
@@ -1591,11 +1591,11 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label htmlFor="alamat_pelapor" className="dumas-form-label">
+                  <label htmlFor="dumas_alamat_pelapor" className="dumas-form-label">
                     ALAMAT DOMISILI KTP
                   </label>
                   <input 
-                    id="alamat_pelapor"
+                    id="dumas_alamat_pelapor"
                     name="alamat_pelapor"
                     type="text"
                     autoComplete="street-address"
@@ -1607,11 +1607,11 @@ export default function DumasFormView({
                 </div>
 
                 <div>
-                  <label htmlFor="kontak_pelapor" className="dumas-form-label">
+                  <label htmlFor="dumas_kontak_pelapor" className="dumas-form-label">
                     NOMOR HP / WHATSAPP
                   </label>
                   <input 
-                    id="kontak_pelapor"
+                    id="dumas_kontak_pelapor"
                     name="kontak_pelapor"
                     type="text"
                     autoComplete="tel"
@@ -1702,9 +1702,9 @@ export default function DumasFormView({
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div>
-                        <label htmlFor={`saksi_nama_${idx}`} className="dumas-form-label">NAMA LENGKAP</label>
+                        <label htmlFor={`dumas_saksi_nama_${idx}`} className="dumas-form-label">NAMA LENGKAP</label>
                         <input 
-                          id={`saksi_nama_${idx}`}
+                          id={`dumas_saksi_nama_${idx}`}
                           name={`saksi_nama_${idx}`}
                           type="text"
                           autoComplete="name"
@@ -1717,9 +1717,9 @@ export default function DumasFormView({
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div>
-                          <label htmlFor={`saksi_nik_${idx}`} className="dumas-form-label">NIK</label>
+                          <label htmlFor={`dumas_saksi_nik_${idx}`} className="dumas-form-label">NIK</label>
                           <input 
-                            id={`saksi_nik_${idx}`}
+                            id={`dumas_saksi_nik_${idx}`}
                             name={`saksi_nik_${idx}`}
                             type="text"
                             maxLength={16}
@@ -1731,9 +1731,9 @@ export default function DumasFormView({
                           />
                         </div>
                         <div>
-                          <label htmlFor={`saksi_ttl_${idx}`} className="dumas-form-label">TTL</label>
+                          <label htmlFor={`dumas_saksi_ttl_${idx}`} className="dumas-form-label">TTL</label>
                           <input 
-                            id={`saksi_ttl_${idx}`}
+                            id={`dumas_saksi_ttl_${idx}`}
                             name={`saksi_ttl_${idx}`}
                             type="text"
                             autoComplete="off"
@@ -1747,9 +1747,9 @@ export default function DumasFormView({
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div>
-                          <label htmlFor={`saksi_pekerjaan_${idx}`} className="dumas-form-label">PEKERJAAN</label>
+                          <label htmlFor={`dumas_saksi_pekerjaan_${idx}`} className="dumas-form-label">PEKERJAAN</label>
                           <input 
-                            id={`saksi_pekerjaan_${idx}`}
+                            id={`dumas_saksi_pekerjaan_${idx}`}
                             name={`saksi_pekerjaan_${idx}`}
                             type="text"
                             autoComplete="off"
@@ -1760,9 +1760,9 @@ export default function DumasFormView({
                           />
                         </div>
                         <div>
-                          <label htmlFor={`saksi_agama_${idx}`} className="dumas-form-label">AGAMA</label>
+                          <label htmlFor={`dumas_saksi_agama_${idx}`} className="dumas-form-label">AGAMA</label>
                           <input 
-                            id={`saksi_agama_${idx}`}
+                            id={`dumas_saksi_agama_${idx}`}
                             name={`saksi_agama_${idx}`}
                             type="text"
                             autoComplete="off"
@@ -1775,9 +1775,9 @@ export default function DumasFormView({
                       </div>
 
                       <div>
-                        <label htmlFor={`saksi_alamat_${idx}`} className="dumas-form-label">ALAMAT DOMISILI</label>
+                        <label htmlFor={`dumas_saksi_alamat_${idx}`} className="dumas-form-label">ALAMAT DOMISILI</label>
                         <input 
-                          id={`saksi_alamat_${idx}`}
+                          id={`dumas_saksi_alamat_${idx}`}
                           name={`saksi_alamat_${idx}`}
                           type="text"
                           autoComplete="street-address"
@@ -1789,9 +1789,9 @@ export default function DumasFormView({
                       </div>
 
                       <div>
-                        <label htmlFor={`saksi_kontak_${idx}`} className="dumas-form-label">NOMOR HP / WA</label>
+                        <label htmlFor={`dumas_saksi_kontak_${idx}`} className="dumas-form-label">NOMOR HP / WA</label>
                         <input 
-                          id={`saksi_kontak_${idx}`}
+                          id={`dumas_saksi_kontak_${idx}`}
                           name={`saksi_kontak_${idx}`}
                           type="text"
                           autoComplete="tel"
@@ -1885,11 +1885,11 @@ export default function DumasFormView({
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div>
-                        <label htmlFor={`terlapor_nama_${idx}`} className="dumas-form-label">
+                        <label htmlFor={`dumas_terlapor_nama_${idx}`} className="dumas-form-label">
                           NAMA LENGKAP <span style={{ color: '#EF4444' }}>*</span>
                         </label>
                         <input 
-                          id={`terlapor_nama_${idx}`}
+                          id={`dumas_terlapor_nama_${idx}`}
                           name={`terlapor_nama_${idx}`}
                           type="text"
                           required
@@ -1904,9 +1904,9 @@ export default function DumasFormView({
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div>
-                          <label htmlFor={`terlapor_nik_${idx}`} className="dumas-form-label">NIK</label>
+                          <label htmlFor={`dumas_terlapor_nik_${idx}`} className="dumas-form-label">NIK</label>
                           <input 
-                            id={`terlapor_nik_${idx}`}
+                            id={`dumas_terlapor_nik_${idx}`}
                             name={`terlapor_nik_${idx}`}
                             type="text"
                             maxLength={16}
@@ -1918,9 +1918,9 @@ export default function DumasFormView({
                           />
                         </div>
                         <div>
-                          <label htmlFor={`terlapor_ttl_${idx}`} className="dumas-form-label">TTL</label>
+                          <label htmlFor={`dumas_terlapor_ttl_${idx}`} className="dumas-form-label">TTL</label>
                           <input 
-                            id={`terlapor_ttl_${idx}`}
+                            id={`dumas_terlapor_ttl_${idx}`}
                             name={`terlapor_ttl_${idx}`}
                             type="text"
                             autoComplete="off"
@@ -1934,9 +1934,9 @@ export default function DumasFormView({
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div>
-                          <label htmlFor={`terlapor_pekerjaan_${idx}`} className="dumas-form-label">PEKERJAAN</label>
+                          <label htmlFor={`dumas_terlapor_pekerjaan_${idx}`} className="dumas-form-label">PEKERJAAN</label>
                           <input 
-                            id={`terlapor_pekerjaan_${idx}`}
+                            id={`dumas_terlapor_pekerjaan_${idx}`}
                             name={`terlapor_pekerjaan_${idx}`}
                             type="text"
                             autoComplete="off"
@@ -1947,9 +1947,9 @@ export default function DumasFormView({
                           />
                         </div>
                         <div>
-                          <label htmlFor={`terlapor_agama_${idx}`} className="dumas-form-label">AGAMA</label>
+                          <label htmlFor={`dumas_terlapor_agama_${idx}`} className="dumas-form-label">AGAMA</label>
                           <input 
-                            id={`terlapor_agama_${idx}`}
+                            id={`dumas_terlapor_agama_${idx}`}
                             name={`terlapor_agama_${idx}`}
                             type="text"
                             autoComplete="off"
@@ -1962,9 +1962,9 @@ export default function DumasFormView({
                       </div>
 
                       <div>
-                        <label htmlFor={`terlapor_alamat_${idx}`} className="dumas-form-label">ALAMAT DOMISILI</label>
+                        <label htmlFor={`dumas_terlapor_alamat_${idx}`} className="dumas-form-label">ALAMAT DOMISILI</label>
                         <input 
-                          id={`terlapor_alamat_${idx}`}
+                          id={`dumas_terlapor_alamat_${idx}`}
                           name={`terlapor_alamat_${idx}`}
                           type="text"
                           autoComplete="street-address"
@@ -1976,9 +1976,9 @@ export default function DumasFormView({
                       </div>
 
                       <div>
-                        <label htmlFor={`terlapor_kontak_${idx}`} className="dumas-form-label">NOMOR HP / WA</label>
+                        <label htmlFor={`dumas_terlapor_kontak_${idx}`} className="dumas-form-label">NOMOR HP / WA</label>
                         <input 
-                          id={`terlapor_kontak_${idx}`}
+                          id={`dumas_terlapor_kontak_${idx}`}
                           name={`terlapor_kontak_${idx}`}
                           type="text"
                           autoComplete="tel"
@@ -2039,11 +2039,11 @@ export default function DumasFormView({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             <div>
-              <label htmlFor="tindak_pidana" className="dumas-form-label">
+              <label htmlFor="dumas_tindak_pidana" className="dumas-form-label">
                 DUGAAN TINDAK PIDANA <span style={{ color: '#EF4444' }}>*</span>
               </label>
               <input 
-                id="tindak_pidana"
+                id="dumas_tindak_pidana"
                 name="tindak_pidana"
                 type="text"
                 required
@@ -2057,11 +2057,11 @@ export default function DumasFormView({
             </div>
 
             <div>
-              <label htmlFor="pasal_disangkakan" className="dumas-form-label">
+              <label htmlFor="dumas_pasal_disangkakan" className="dumas-form-label">
                 DUGAAN PASAL YANG DISANGKAKAN
               </label>
               <input 
-                id="pasal_disangkakan"
+                id="dumas_pasal_disangkakan"
                 name="pasal_disangkakan"
                 type="text"
                 autoComplete="off"
@@ -2074,11 +2074,11 @@ export default function DumasFormView({
             </div>
 
             <div>
-              <label htmlFor="tempus_delicti" className="dumas-form-label">
+              <label htmlFor="dumas_tempus_delicti" className="dumas-form-label">
                 WAKTU KEJADIAN (TEMPUS DELICTI)
               </label>
               <input 
-                id="tempus_delicti"
+                id="dumas_tempus_delicti"
                 name="tempus_delicti"
                 type="text"
                 autoComplete="off"
@@ -2090,11 +2090,11 @@ export default function DumasFormView({
             </div>
 
             <div>
-              <label htmlFor="locus_delicti" className="dumas-form-label">
+              <label htmlFor="dumas_locus_delicti" className="dumas-form-label">
                 TEMPAT KEJADIAN (LOCUS DELICTI)
               </label>
               <input 
-                id="locus_delicti"
+                id="dumas_locus_delicti"
                 name="locus_delicti"
                 type="text"
                 autoComplete="off"
@@ -2106,11 +2106,11 @@ export default function DumasFormView({
             </div>
 
             <div style={{ gridColumn: '1 / -1' }}>
-              <label htmlFor="uraian_kejadian" className="dumas-form-label">
+              <label htmlFor="dumas_uraian_kejadian" className="dumas-form-label">
                 RINGKASAN POSISI KASUS / URAIAN SINGKAT KEJADIAN
               </label>
               <textarea 
-                id="uraian_kejadian"
+                id="dumas_uraian_kejadian"
                 name="uraian_kejadian"
                 rows={4}
                 autoComplete="off"
