@@ -341,36 +341,55 @@ export default function DumasFormView({
     }
   }, [initialOcrData]);
 
-  // State 05: Lampiran Barang Bukti (Pola Lazy Initializer & Safe Parsing Anti-Hilang)
-  const [daftarBukti, setDaftarBukti] = useState(() => {
+  // State 05: Lampiran Barang Bukti
+  // PERBAIKAN CRASH: Gunakan array kosong sebagai default murni agar render pertama tidak pernah diblokir.
+  // Pembacaan localStorage dipindahkan ke useEffect di bawah untuk keamanan siklus render.
+  const [daftarBukti, setDaftarBukti] = useState([]);
+  // Backward-compatible alias
+  const evidenceFiles = daftarBukti;
+  const setEvidenceFiles = setDaftarBukti;
+
+  // Hydration aman daftar bukti dari localStorage — dijalankan setelah mount awal selesai
+  // sehingga error JSON.parse tidak pernah menggagalkan render pertama
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY_BB);
-      if (!raw || raw === 'undefined' || raw === 'null') {
-        const fallbackRaw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('temp_dumas_bb');
-        if (fallbackRaw && fallbackRaw !== 'undefined' && fallbackRaw !== 'null') {
-          const parsedFallback = JSON.parse(fallbackRaw);
-          return sanitizeEvidenceList(parsedFallback);
+      if (raw && raw !== 'undefined' && raw !== 'null') {
+        const parsed = JSON.parse(raw);
+        const valid = sanitizeEvidenceList(parsed);
+        if (Array.isArray(valid) && valid.length > 0) {
+          setDaftarBukti(valid);
+          return;
         }
-        if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles)) {
-          return sanitizeEvidenceList(savedDraft.evidenceFiles);
-        }
-        return [];
       }
-      const parsed = JSON.parse(raw);
-      return sanitizeEvidenceList(parsed);
+      // Fallback ke kunci penyimpanan lama
+      const fallbackRaw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('temp_dumas_bb');
+      if (fallbackRaw && fallbackRaw !== 'undefined' && fallbackRaw !== 'null') {
+        const parsedFallback = JSON.parse(fallbackRaw);
+        const validFallback = sanitizeEvidenceList(parsedFallback);
+        if (Array.isArray(validFallback) && validFallback.length > 0) {
+          setDaftarBukti(validFallback);
+          return;
+        }
+      }
+      // Fallback ke draft tersimpan via dumasService
+      if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles)) {
+        const validDraft = sanitizeEvidenceList(savedDraft.evidenceFiles);
+        if (validDraft.length > 0) {
+          setDaftarBukti(validDraft);
+        }
+      }
     } catch (err) {
-      console.warn('[STORAGE] Data bukti korup terdeteksi, membersihkan storage...', err);
+      console.warn('[STORAGE] Format draft bukti tidak sesuai, reset ke default:', err);
       try {
         localStorage.removeItem(DRAFT_KEY_BB);
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem('temp_dumas_bb');
       } catch {}
-      return [];
+      // State sudah [] secara default, tidak perlu set ulang
     }
-  });
-  // Backward-compatible alias
-  const evidenceFiles = daftarBukti;
-  const setEvidenceFiles = setDaftarBukti;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Hanya sekali saat mount
 
   // State Dokumen / Riwayat Berkas (Safe 404/PGRST204 Fallback Resilience)
   const [documents, setDocuments] = useState([]);
