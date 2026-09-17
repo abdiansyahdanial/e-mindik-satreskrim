@@ -28,7 +28,11 @@ export default function EvidenceQrSyncModal({
 }) {
   const [internalToken, setInternalToken] = useState(() => generateNewToken());
   const syncToken = propActiveToken || propToken || propSyncToken || internalToken;
-  const [sessionTimeoutSeconds, setSessionTimeoutSeconds] = useState(300); // 5 menit sesi stabil
+  
+  // Timer Sesi: QR 30 Detik (Laptop), Batas Akses HP 2 Menit (120 Detik)
+  const [countdown, setCountdown] = useState(30);
+  const [createdAt, setCreatedAt] = useState(() => Date.now());
+  const [expiresAt, setExpiresAt] = useState(() => Date.now() + 2 * 60 * 1000);
   const [isExpired, setIsExpired] = useState(false);
   const [receivedCount, setReceivedCount] = useState(0);
   const [justReceived, setJustReceived] = useState(false);
@@ -43,7 +47,8 @@ export default function EvidenceQrSyncModal({
     ? 'https://e-mindik-satreskrim.vercel.app'
     : (typeof window !== 'undefined' ? window.location.origin : 'https://e-mindik-satreskrim.vercel.app');
 
-  const uploadUrl = `${baseUrl}/mobile-upload?token=${syncToken}`;
+  // URL yang di-encode ke QR code menyertakan token, waktu pembuatan, dan batas kedaluwarsa 2 menit HP
+  const uploadUrl = `${baseUrl}/mobile-upload?token=${syncToken}&createdAt=${createdAt}&expiresAt=${expiresAt}`;
 
   const handleCopyLink = async () => {
     try {
@@ -56,22 +61,25 @@ export default function EvidenceQrSyncModal({
   };
 
   const handleResetSession = useCallback(() => {
+    const now = Date.now();
     const newToken = generateNewToken();
     setInternalToken(newToken);
     if (onTokenChange) {
       onTokenChange(newToken);
     }
-    setSessionTimeoutSeconds(300);
+    setCreatedAt(now);
+    setExpiresAt(now + 2 * 60 * 1000); // 2 menit batas upload HP
+    setCountdown(30); // 30 detik QR display laptop
     setIsExpired(false);
     setCopied(false);
   }, [onTokenChange]);
 
-  // 1. Timer Batas Waktu Sesi (Timeout 5 Menit / 300 Detik tanpa rotasi paksa)
+  // 1. Timer Hitung Mundur Sesi QR 30 Detik (Monitor Laptop)
   useEffect(() => {
     if (!isOpen || isExpired) return;
 
     const timeoutInterval = setInterval(() => {
-      setSessionTimeoutSeconds((prev) => {
+      setCountdown((prev) => {
         if (prev <= 1) {
           setIsExpired(true);
           return 0;
@@ -170,7 +178,7 @@ export default function EvidenceQrSyncModal({
         bc.onmessage = (event) => {
           handleReceivedEvidence(event.data);
         };
-      } catch (_e) {}
+      } catch {}
     }
 
     // C. Storage Event fallback
@@ -179,7 +187,7 @@ export default function EvidenceQrSyncModal({
         try {
           const parsed = JSON.parse(e.newValue);
           handleReceivedEvidence(parsed);
-        } catch (_err) {}
+        } catch {}
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -275,7 +283,7 @@ export default function EvidenceQrSyncModal({
     }, 'image/jpeg');
   };
 
-  const sessionPercent = Math.max(0, Math.min(100, ((300 - sessionTimeoutSeconds) / 300) * 100));
+  const sessionPercent = Math.max(0, Math.min(100, (countdown / 30) * 100));
 
   return (
     <div 
@@ -406,23 +414,57 @@ export default function EvidenceQrSyncModal({
                 height: '252px',
                 borderRadius: '16px',
                 backgroundColor: '#0B0D13',
-                border: '1px dashed #EF4444',
+                border: '1.5px dashed #EF4444',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
-                padding: '16px',
+                gap: '10px',
+                padding: '18px',
                 textAlign: 'center'
               }}
             >
-              <AlertTriangle size={36} color="#EF4444" />
-              <span style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#F87171' }}>
-                SESI KEDALUWARSA
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#EF4444'
+              }}>
+                <AlertTriangle size={24} />
+              </div>
+              <span style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#F87171' }}>
+                QR KEDALUWARSA
               </span>
-              <span style={{ fontSize: '10px', color: '#94A3B8', lineHeight: 1.4 }}>
-                Batas waktu 60 detik telah berakhir untuk menjaga keamanan berkas perkara.
+              <span style={{ fontSize: '11px', color: '#94A3B8', lineHeight: 1.4 }}>
+                Batas waktu 30 detik QR telah habis demi keamanan enkripsi.
               </span>
+              <button
+                type="button"
+                onClick={handleResetSession}
+                style={{
+                  marginTop: '4px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: '#EF4444',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  fontSize: '11px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                className="hover:bg-red-600 transition-colors"
+              >
+                <RefreshCw size={12} />
+                <span>QR Kedaluwarsa. Klik untuk Buat QR Baru</span>
+              </button>
             </div>
           )}
 
@@ -479,45 +521,46 @@ export default function EvidenceQrSyncModal({
               <div 
                 style={{
                   backgroundColor: '#0B0D13',
-                  border: '1px solid #292F42',
+                  border: countdown <= 10 ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid #292F42',
                   borderRadius: '10px',
                   padding: '10px 14px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '6px'
+                  gap: '6px',
+                  transition: 'border-color 0.3s ease'
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#CBD5E1' }}>
-                    <RefreshCw size={12} color="#38BDF8" />
-                    <span>Sesi QR HP Aktif:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: countdown <= 10 ? '#F87171' : '#CBD5E1' }}>
+                    <Clock size={12} color={countdown <= 10 ? '#EF4444' : '#F59E0B'} />
+                    <span>Sesi QR Kedaluwarsa dalam:</span>
                   </div>
-                  <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#38BDF8' }}>
-                    {Math.floor(sessionTimeoutSeconds / 60)}m {sessionTimeoutSeconds % 60}s tersisa
+                  <span style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: countdown <= 10 ? '#EF4444' : '#F59E0B' }}>
+                    {countdown} detik
                   </span>
                 </div>
 
-                {/* Progress Bar 300s */}
-                <div style={{ width: '100%', height: '4px', backgroundColor: '#1E293B', borderRadius: '9999px', overflow: 'hidden' }}>
+                {/* Progress Bar 30s */}
+                <div style={{ width: '100%', height: '5px', backgroundColor: '#1E293B', borderRadius: '9999px', overflow: 'hidden' }}>
                   <div 
                     style={{
                       height: '100%',
                       width: `${sessionPercent}%`,
-                      backgroundColor: '#0284C7',
-                      transition: 'width 1s linear'
+                      backgroundColor: countdown <= 10 ? '#EF4444' : (countdown <= 20 ? '#F59E0B' : '#10B981'),
+                      transition: 'width 1s linear, background-color 0.3s ease'
                     }} 
                   />
                 </div>
               </div>
 
-              {/* Sesi Total Countdown */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
+              {/* Sesi Info */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', fontSize: '10.5px', fontFamily: 'JetBrains Mono, monospace' }}>
                 <span style={{ color: '#64748B', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Clock size={12} />
-                  Koneksi Terhubung:
+                  <ShieldCheck size={12} color="#10B981" />
+                  Batas Akses Kamera HP:
                 </span>
-                <span style={{ color: sessionTimeoutSeconds < 30 ? '#EF4444' : '#10B981', fontWeight: 600 }}>
-                  Cloudflare R2 + Supabase Live
+                <span style={{ color: '#10B981', fontWeight: 600 }}>
+                  2 Menit (120 Detik)
                 </span>
               </div>
             </div>
@@ -527,11 +570,11 @@ export default function EvidenceQrSyncModal({
               onClick={handleResetSession}
               style={{
                 width: '100%',
-                padding: '10px 16px',
+                padding: '12px 16px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(229, 46, 46, 0.15)',
-                border: '1px solid #E52E2E',
-                color: '#FF6B6B',
+                backgroundColor: '#EF4444',
+                border: 'none',
+                color: '#FFFFFF',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 700,
@@ -539,11 +582,13 @@ export default function EvidenceQrSyncModal({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)'
               }}
+              className="hover:bg-red-600 transition-all"
             >
               <RefreshCw size={14} />
-              <span>Perbarui QR Code &amp; Buat Sesi Baru</span>
+              <span>QR Kedaluwarsa. Klik untuk Buat QR Baru</span>
             </button>
           )}
 

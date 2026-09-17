@@ -40,6 +40,10 @@ export default function DaftarBuktiDigital({
           const fileSizeFormatted = bukti.file_size_formatted || 
             (bukti.ukuran ? `${(bukti.ukuran / 1024).toFixed(0)} KB` : (bukti.size ? `${(bukti.size / 1024).toFixed(0)} KB` : '180 KB'));
 
+          if (!isPdf && publicUrl) {
+            console.log("Rendering Bukti URL:", bukti.url || publicUrl);
+          }
+
           return (
             <div
               key={bukti.id || idx}
@@ -89,9 +93,9 @@ export default function DaftarBuktiDigital({
                       src={publicUrl}
                       alt={fileName || 'Barang Bukti'}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      className="object-cover rounded border border-zinc-800"
+                      className="w-full max-h-64 object-contain bg-zinc-950 rounded border border-zinc-800"
                       onLoad={() => {
-                        console.log('Memuat URL bukti:', publicUrl);
+                        console.log("Rendering Bukti URL:", bukti.url || publicUrl);
                       }}
                       onError={(e) => {
                         console.error('Gagal memuat gambar bukti dari R2:', publicUrl);

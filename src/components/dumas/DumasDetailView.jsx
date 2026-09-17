@@ -933,9 +933,9 @@ export default function DumasDetailView({
                             src={previewSrc} 
                             alt={bb?.nama_file || 'Barang Bukti'} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            className="object-cover rounded border border-zinc-800"
+                            className="w-full max-h-64 object-contain bg-zinc-950 rounded border border-zinc-800"
                             onLoad={() => {
-                              console.log("Memuat URL bukti di Detail:", previewSrc);
+                              console.log("Rendering Bukti URL:", bb?.url || previewSrc);
                             }}
                             onError={(e) => {
                               console.error("Gagal memuat gambar bukti dari R2 di Detail:", previewSrc);

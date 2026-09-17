@@ -540,6 +540,7 @@ export default function EvidenceLightboxModal({
                 <img
                   src={fileUrl}
                   alt={fileName}
+                  className="w-full max-h-64 object-contain bg-zinc-950 rounded border border-zinc-800"
                   style={{
                     maxWidth: '85vw',
                     maxHeight: '70vh',
@@ -550,7 +551,7 @@ export default function EvidenceLightboxModal({
                   }}
                   draggable={false}
                   onLoad={() => {
-                    console.log("Memuat URL bukti di Lightbox:", fileUrl);
+                    console.log("Rendering Bukti URL:", evidence.url || fileUrl);
                   }}
                   onError={() => {
                     console.error("Gagal memuat gambar bukti dari R2 di Lightbox:", fileUrl);

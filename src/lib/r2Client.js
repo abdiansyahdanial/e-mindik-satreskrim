@@ -45,6 +45,8 @@ export const detectMimeType = (fileName = '') => {
 export const formatR2PublicUrl = (url = '') => {
   if (!url || typeof url !== 'string') return '';
   if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+  // Jika URL adalah Presigned GET URL dengan query signature SigV4, gunakan langsung
+  if (url.includes('X-Amz-Signature') || url.includes('X-Amz-Algorithm')) return url;
 
   // Ubah endpoint private S3 Cloudflare R2:
   // https://<accountId>.r2.cloudflarestorage.com/<bucket>/<key> -> https://pub-<accountId>.r2.dev/<key>

@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
@@ -40,35 +40,62 @@ export default async function handler(req, res) {
 
   try {
     const s3 = getR2Client();
+    const bucketName = process.env.R2_BUCKET_NAME || 'emindik-storage';
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+
+    // Action opsional: Dapatkan Presigned GET URL on-demand untuk key berkas yang sudah ada
+    if (body.action === 'get-read-url' && (body.key || body.fileName)) {
+      const targetKey = (body.key || body.fileName).replace(/^\/+/, '');
+      const getCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: targetKey,
+      });
+      const readUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
+      return res.status(200).json({
+        success: true,
+        readUrl,
+        url: readUrl,
+        fileUrl: readUrl,
+        key: targetKey,
+      });
+    }
+
     const fileName = body.fileName || body.filename;
     const contentType = body.contentType || body.fileType || body.mimeType || 'image/jpeg';
     const folder = (body.folder || 'barang-bukti').replace(/^\/+|\/+$/g, '');
 
     const cleanFileName = (fileName || `evidence_${Date.now()}.jpg`).replace(/[^a-zA-Z0-9._-]/g, '_');
     const key = `${folder}/${Date.now()}_${cleanFileName}`;
-    const bucketName = process.env.R2_BUCKET_NAME || 'emindik-storage';
 
-    const command = new PutObjectCommand({
+    // 1. Presigned PUT URL untuk Upload Biner dari Klien (Masa berlaku 300 detik)
+    const putCommand = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
       ContentType: contentType,
     });
+    const uploadUrl = await getSignedUrl(s3, putCommand, { expiresIn: 300 });
 
-    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
+    // 2. Presigned GET URL untuk Membaca/Render Gambar di Browser Bebas 403 Forbidden (Masa berlaku 1 jam / 3600 detik)
+    const getCommand = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    });
+    const presignedGetUrl = await getSignedUrl(s3, getCommand, { expiresIn: 3600 });
 
-    // URL publik Cloudflare R2 untuk render gambar langsung di browser (r2.dev / public domain)
+    // 3. URL Publik Cloudflare R2 jika custom/public domain r2.dev diaktifkan
     const accountId = process.env.R2_ACCOUNT_ID || '18927f2f5d2b4e49a1c521c5c7e73073';
     const publicBaseUrl = (process.env.R2_PUBLIC_URL || `https://pub-${accountId}.r2.dev`).replace(/\/+$/, '');
-    const fileUrl = `${publicBaseUrl}/${key}`;
+    const publicUrl = `${publicBaseUrl}/${key}`;
 
     return res.status(200).json({
       success: true,
       uploadUrl,
-      fileUrl,
-      url: fileUrl,
-      publicUrl: fileUrl,
+      presignedGetUrl,
+      publicUrl,
+      readUrl: presignedGetUrl,
+      fileUrl: presignedGetUrl,
+      url: presignedGetUrl,
       key,
     });
   } catch (err) {

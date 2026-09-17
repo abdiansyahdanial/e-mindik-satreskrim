@@ -6,7 +6,10 @@ import {
   ShieldCheck, 
   AlertCircle,
   Smartphone,
-  RefreshCw
+  RefreshCw,
+  Lock,
+  Clock,
+  ShieldAlert
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
@@ -17,26 +20,72 @@ export default function MobileUploadView() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Extract token from URL search params or hash robustly
-  const getUrlToken = () => {
-    if (typeof window === 'undefined') return 'SESI-DEMO-KOLTIM';
-    const searchParams = new URLSearchParams(window.location.search);
-    const fromSearch = searchParams.get('token');
-    if (fromSearch) return fromSearch;
-
-    if (window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-      const fromHash = hashParams.get('token');
-      if (fromHash) return fromHash;
+  // Extract token & expiry from URL search params or hash robustly
+  const getSessionParams = () => {
+    if (typeof window === 'undefined') {
+      const now = Date.now();
+      return { token: 'SESI-DEMO-KOLTIM', targetExp: now + 120000 };
     }
-    return 'SESI-DEMO-KOLTIM';
+
+    const searchParams = new URLSearchParams(window.location.search);
+    let token = searchParams.get('token');
+    let expParam = searchParams.get('expiresAt') || searchParams.get('exp');
+    let createdParam = searchParams.get('createdAt') || searchParams.get('created_at');
+
+    if (!token && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      token = hashParams.get('token');
+      if (!expParam) expParam = hashParams.get('expiresAt') || hashParams.get('exp');
+      if (!createdParam) createdParam = hashParams.get('createdAt') || hashParams.get('created_at');
+    }
+
+    token = token || 'SESI-DEMO-KOLTIM';
+    const now = Date.now();
+    let targetExp;
+    if (expParam && !isNaN(Number(expParam))) {
+      targetExp = Number(expParam);
+    } else if (createdParam && !isNaN(Number(createdParam))) {
+      targetExp = Number(createdParam) + 120 * 1000;
+    } else {
+      targetExp = now + 120 * 1000;
+    }
+
+    return { token, targetExp };
   };
 
-  const [token] = useState(getUrlToken);
+  const [sessionParams] = useState(getSessionParams);
+  const token = sessionParams.token;
+  const targetExp = sessionParams.targetExp;
 
-  // Pre-subscribe channel WebSocket Supabase agar siap kirim instan begitu upload R2 selesai
+  const getInitialRemaining = () => {
+    const diff = Math.floor((targetExp - Date.now()) / 1000);
+    return Math.max(0, Math.min(120, diff));
+  };
+
+  const [remainingSeconds, setRemainingSeconds] = useState(getInitialRemaining);
+  const [isExpired, setIsExpired] = useState(() => getInitialRemaining() <= 0);
+
+  // Countdown timer 2 menit (120 detik) di HP
   useEffect(() => {
-    if (!token) return;
+    if (isExpired) return;
+
+    const interval = setInterval(() => {
+      const diff = Math.floor((targetExp - Date.now()) / 1000);
+      if (diff <= 0) {
+        setRemainingSeconds(0);
+        setIsExpired(true);
+        clearInterval(interval);
+      } else {
+        setRemainingSeconds(Math.min(120, diff));
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isExpired, targetExp]);
+
+  // Pre-subscribe channel WebSocket Supabase. Otomatis terputus jika sesi kedaluwarsa.
+  useEffect(() => {
+    if (!token || isExpired) return;
     console.log(`[MOBILE SYNC] Pre-subscribing channel mobile_sync_${token}...`);
     const ch = supabase.channel(`mobile_sync_${token}`);
     ch.subscribe((status) => {
@@ -44,9 +93,10 @@ export default function MobileUploadView() {
     });
 
     return () => {
+      console.log(`[MOBILE SYNC] Memutus listener channel mobile_sync_${token} (Sesi berakhir/Unmount)...`);
       supabase.removeChannel(ch);
     };
-  }, [token]);
+  }, [token, isExpired]);
 
   const handleFileCapture = (e) => {
     const file = e.target.files?.[0];
@@ -65,6 +115,11 @@ export default function MobileUploadView() {
   };
 
   const handleUpload = async () => {
+    if (isExpired) {
+      setErrorMsg('Sesi telah kedaluwarsa. Silakan scan QR code baru di monitor penyidik.');
+      return;
+    }
+
     if (!selectedFile) {
       setErrorMsg('Pilih atau ambil foto barang bukti terlebih dahulu.');
       return;
@@ -78,7 +133,7 @@ export default function MobileUploadView() {
       const targetName = selectedFile.name || `evidence_${Date.now()}.jpg`;
       const mimeType = selectedFile.type || 'image/jpeg';
 
-      // 1. Minta Presigned PUT URL dari Serverless Function /api/r2-presign
+      // 1. Minta Presigned PUT URL & Presigned GET Read URL dari Serverless Function /api/r2-presign
       console.log('[MOBILE UPLOAD] Meminta presigned URL ke /api/r2-presign...');
       const presignRes = await fetch('/api/r2-presign', {
         method: 'POST',
@@ -97,13 +152,14 @@ export default function MobileUploadView() {
         throw new Error(errJson.error || `Gagal memperoleh presigned upload URL (HTTP ${presignRes.status}).`);
       }
 
-      const { uploadUrl, fileUrl, key } = await presignRes.json();
+      const presignData = await presignRes.json();
+      const { uploadUrl, fileUrl, presignedGetUrl, readUrl, key } = presignData;
 
       if (!uploadUrl) {
         throw new Error('Server tidak mengembalikan uploadUrl yang valid.');
       }
 
-      // 2. Eksekusi PUT Request biner langsung ke Cloudflare R2 (Tanpa blob lokal fallback palsu)
+      // 2. Eksekusi PUT Request biner langsung ke Cloudflare R2
       console.log('[MOBILE UPLOAD] Mengunggah biner langsung ke Cloudflare R2...');
       const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
@@ -117,8 +173,9 @@ export default function MobileUploadView() {
         throw new Error(`Gagal mengunggah biner berkas ke Cloudflare R2 (HTTP ${uploadRes.status} ${uploadRes.statusText}).`);
       }
 
-      const finalUrl = fileUrl;
-      console.log('[MOBILE UPLOAD] Sukses terunggah ke Cloudflare R2:', finalUrl);
+      // Prioritaskan readUrl / presignedGetUrl agar gambar dapat langsung dibuka browser laptop tanpa 403 Forbidden
+      const finalUrl = readUrl || presignedGetUrl || fileUrl;
+      console.log('[MOBILE UPLOAD] Sukses terunggah ke Cloudflare R2 dengan read URL:', finalUrl);
 
       // 3. Siapkan payload data foto resmi & reaktif
       const evidenceData = {
@@ -127,7 +184,7 @@ export default function MobileUploadView() {
         nama_file: targetName,
         name: targetName,
         fileName: targetName,
-        url: finalUrl, // URL publik Cloudflare R2 yang valid
+        url: finalUrl, // URL presigned GET atau publik Cloudflare R2 yang valid
         fileUrl: finalUrl,
         file_url: finalUrl,
         previewUrl: finalUrl,
@@ -202,7 +259,7 @@ export default function MobileUploadView() {
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem(`polres_mobile_evidence_${token}`, JSON.stringify(evidenceData));
         }
-      } catch (_lsErr) {}
+      } catch {}
 
       setIsSuccess(true);
     } catch (err) {
@@ -212,6 +269,12 @@ export default function MobileUploadView() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const formatMinutesSeconds = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -250,14 +313,14 @@ export default function MobileUploadView() {
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            backgroundColor: 'rgba(229, 46, 46, 0.15)',
-            border: '1px solid rgba(229, 46, 46, 0.4)',
+            backgroundColor: isExpired ? 'rgba(239, 68, 68, 0.15)' : 'rgba(229, 46, 46, 0.15)',
+            border: isExpired ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(229, 46, 46, 0.4)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#FF352D'
+            color: isExpired ? '#EF4444' : '#FF352D'
           }}>
-            <Smartphone size={22} />
+            {isExpired ? <Lock size={20} /> : <Smartphone size={22} />}
           </div>
           <div>
             <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#FF352D', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -275,7 +338,7 @@ export default function MobileUploadView() {
           {/* Token Info Pill */}
           <div style={{
             backgroundColor: '#0B0D13',
-            border: '1px solid #1E293B',
+            border: isExpired ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid #1E293B',
             borderRadius: '10px',
             padding: '10px 14px',
             display: 'flex',
@@ -285,198 +348,322 @@ export default function MobileUploadView() {
             <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>
               TOKEN SINKRONISASI AKTIF:
             </span>
-            <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#38BDF8', wordBreak: 'break-all' }}>
+            <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: isExpired ? '#EF4444' : '#38BDF8', wordBreak: 'break-all' }}>
               {token}
             </span>
           </div>
 
-          {/* Success Notification */}
-          {isSuccess ? (
+          {/* BAGIAN 3: TAMPILAN SESI BERAKHIR (POLICE DARK MODE EXPIRED SCREEN) */}
+          {isExpired ? (
             <div style={{
-              backgroundColor: 'rgba(16, 185, 129, 0.12)',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
-              borderRadius: '12px',
-              padding: '20px',
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              border: '1.5px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: '16px',
+              padding: '30px 18px',
               textAlign: 'center',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '10px'
+              gap: '16px',
+              boxShadow: '0 8px 30px rgba(239, 68, 68, 0.12)'
             }}>
-              <CheckCircle2 size={36} color="#10B981" />
-              <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
-                Foto Bukti Berhasil Terkirim!
-              </h3>
-              <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
-                Berkas telah terkirim ke monitor penyidik. Anda dapat mengambil foto bukti lainnya jika diperlukan.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedFile(null);
-                  setPreviewUrl(null);
-                  setIsSuccess(false);
-                }}
-                style={{
-                  marginTop: '8px',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  backgroundColor: '#1E293B',
-                  border: '1px solid #334155',
-                  color: '#FFFFFF',
-                  fontSize: '11px',
+              {/* Ikon Gembok Terkunci Merah/Amber */}
+              <div style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                border: '2px solid rgba(239, 68, 68, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#EF4444',
+                boxShadow: '0 0 24px rgba(239, 68, 68, 0.3)'
+              }}>
+                <Lock size={32} />
+              </div>
+
+              <div>
+                <span style={{
+                  fontSize: '10px',
                   fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                + Ambil Foto Lainnya
-              </button>
+                  color: '#EF4444',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  display: 'block',
+                  marginBottom: '6px'
+                }}>
+                  AKSES PENGUNGGAHAN DITUTUP
+                </span>
+                <h2 style={{
+                  fontSize: '18px',
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  margin: '0 0 10px 0',
+                  fontFamily: 'JetBrains Mono, monospace'
+                }}>
+                  Sesi Ini Telah Berakhir
+                </h2>
+                <p style={{
+                  fontSize: '12px',
+                  color: '#CBD5E1',
+                  margin: 0,
+                  lineHeight: 1.6
+                }}>
+                  Batas waktu pengunggahan mandiri (2 menit) telah habis demi keamanan data penyidikan. Silakan scan kembali barcode terbaru pada website monitor penyidik.
+                </p>
+              </div>
+
+              <div style={{
+                width: '100%',
+                backgroundColor: '#0B0D13',
+                border: '1px solid #1E293B',
+                borderRadius: '10px',
+                padding: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                fontSize: '11px',
+                fontFamily: 'JetBrains Mono, monospace',
+                color: '#64748B'
+              }}>
+                <ShieldAlert size={15} color="#EF4444" />
+                <span>Protokol Keamanan Siber Satreskrim Polri</span>
+              </div>
             </div>
           ) : (
             <>
-              {/* Capture Card */}
-              <label 
-                htmlFor="mobile-camera-input"
-                style={{
-                  border: '2px dashed #334155',
-                  backgroundColor: '#0B0D13',
-                  borderRadius: '14px',
-                  padding: previewUrl ? '12px' : '32px 20px',
+              {/* Active Countdown Timer Bar (120 Detik / 2 Menit Akses HP) */}
+              <div style={{
+                backgroundColor: '#0B0D13',
+                border: remainingSeconds <= 30 ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid #1E293B',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                transition: 'border-color 0.3s ease'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: remainingSeconds <= 30 ? '#F87171' : '#CBD5E1' }}>
+                    <Clock size={13} color={remainingSeconds <= 30 ? '#EF4444' : '#F59E0B'} />
+                    <span>Sisa Waktu Unggah HP:</span>
+                  </div>
+                  <span style={{
+                    fontSize: '13px',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontWeight: 800,
+                    color: remainingSeconds <= 30 ? '#EF4444' : '#F59E0B'
+                  }}>
+                    {formatMinutesSeconds(remainingSeconds)}
+                  </span>
+                </div>
+
+                {/* Progress Bar 120s */}
+                <div style={{ width: '100%', height: '4px', backgroundColor: '#1E293B', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div 
+                    style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.max(0, (remainingSeconds / 120) * 100))}%`,
+                      backgroundColor: remainingSeconds <= 30 ? '#EF4444' : (remainingSeconds <= 60 ? '#F59E0B' : '#10B981'),
+                      transition: 'width 1s linear, background-color 0.3s ease'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Success Notification */}
+              {isSuccess ? (
+                <div style={{
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '12px',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  minHeight: '180px'
-                }}
-              >
-                <input 
-                  id="mobile-camera-input"
-                  name="mobile-camera-input"
-                  type="file"
-                  accept="image/*,application/pdf"
-                  capture="environment"
-                  style={{ display: 'none' }}
-                  onChange={handleFileCapture}
-                />
-
-                {previewUrl ? (
-                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                    <img 
-                      src={previewUrl} 
-                      alt="Preview" 
-                      style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', borderRadius: '8px' }}
-                    />
-                    <span style={{ fontSize: '10px', color: '#38BDF8', fontFamily: 'JetBrains Mono, monospace' }}>
-                      Ketuk untuk mengganti foto
-                    </span>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{
-                      width: '56px',
-                      height: '56px',
+                  gap: '10px'
+                }}>
+                  <CheckCircle2 size={36} color="#10B981" />
+                  <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                    Foto Bukti Berhasil Terkirim!
+                  </h3>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
+                    Berkas telah terkirim ke monitor penyidik. Anda dapat mengambil foto bukti lainnya jika diperlukan.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setPreviewUrl(null);
+                      setIsSuccess(false);
+                    }}
+                    style={{
+                      marginTop: '8px',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: '#1E293B',
+                      border: '1px solid #334155',
+                      color: '#FFFFFF',
+                      fontSize: '11px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    + Ambil Foto Lainnya
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Capture Card */}
+                  <label 
+                    htmlFor="mobile-camera-input"
+                    style={{
+                      border: '2px dashed #334155',
+                      backgroundColor: '#0B0D13',
                       borderRadius: '14px',
-                      backgroundColor: 'rgba(229, 46, 46, 0.15)',
-                      border: '1px solid rgba(229, 46, 46, 0.4)',
+                      padding: previewUrl ? '12px' : '32px 20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      minHeight: '180px'
+                    }}
+                  >
+                    <input 
+                      id="mobile-camera-input"
+                      name="mobile-camera-input"
+                      type="file"
+                      accept="image/*,application/pdf"
+                      capture="environment"
+                      disabled={isExpired}
+                      style={{ display: 'none' }}
+                      onChange={handleFileCapture}
+                    />
+
+                    {previewUrl ? (
+                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <img 
+                          src={previewUrl} 
+                          alt="Preview" 
+                          style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', borderRadius: '8px' }}
+                        />
+                        <span style={{ fontSize: '10px', color: '#38BDF8', fontFamily: 'JetBrains Mono, monospace' }}>
+                          Ketuk untuk mengganti foto
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '14px',
+                          backgroundColor: 'rgba(229, 46, 46, 0.15)',
+                          border: '1px solid rgba(229, 46, 46, 0.4)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#FF352D'
+                        }}>
+                          <Camera size={28} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF' }}>
+                            Buka Kamera HP
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+                            Ketuk di sini untuk mengambil foto bukti fisik langsung
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </label>
+
+                  {/* Selected file summary */}
+                  {selectedFile && (
+                    <div style={{
+                      backgroundColor: '#0B0D13',
+                      border: '1px solid #292F42',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '11px',
+                      fontFamily: 'JetBrains Mono, monospace'
+                    }}>
+                      <span style={{ color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                        {selectedFile.name}
+                      </span>
+                      <span style={{ color: '#10B981', fontWeight: 700 }}>
+                        {(selectedFile.size / 1024).toFixed(0)} KB
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {errorMsg && (
+                    <div style={{
+                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid #EF4444',
+                      color: '#F87171',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
+                      fontSize: '11px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <AlertCircle size={16} />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    type="button"
+                    disabled={!selectedFile || isUploading || isExpired}
+                    onClick={handleUpload}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      borderRadius: '10px',
+                      backgroundColor: !selectedFile || isUploading || isExpired ? '#1E293B' : '#E52E2E',
+                      color: !selectedFile || isUploading || isExpired ? '#64748B' : '#FFFFFF',
+                      fontSize: '13px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontWeight: 800,
+                      cursor: !selectedFile || isUploading || isExpired ? 'not-allowed' : 'pointer',
+                      border: 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#FF352D'
-                    }}>
-                      <Camera size={28} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF' }}>
-                        Buka Kamera HP
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
-                        Ketuk di sini untuk mengambil foto bukti fisik langsung
-                      </div>
-                    </div>
-                  </>
-                )}
-              </label>
-
-              {/* Selected file summary */}
-              {selectedFile && (
-                <div style={{
-                  backgroundColor: '#0B0D13',
-                  border: '1px solid #292F42',
-                  borderRadius: '10px',
-                  padding: '10px 14px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: '11px',
-                  fontFamily: 'JetBrains Mono, monospace'
-                }}>
-                  <span style={{ color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
-                    {selectedFile.name}
-                  </span>
-                  <span style={{ color: '#10B981', fontWeight: 700 }}>
-                    {(selectedFile.size / 1024).toFixed(0)} KB
-                  </span>
-                </div>
+                      gap: '8px',
+                      boxShadow: selectedFile && !isUploading && !isExpired ? '0 4px 16px rgba(229, 46, 46, 0.4)' : 'none',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {isUploading ? (
+                      <>
+                        <RefreshCw size={16} className="animate-spin" />
+                        <span>Mengunggah Foto Bukti...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud size={16} />
+                        <span>Kirim Foto ke Monitor Penyidik</span>
+                      </>
+                    )}
+                  </button>
+                </>
               )}
-
-              {/* Error Message */}
-              {errorMsg && (
-                <div style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid #EF4444',
-                  color: '#F87171',
-                  borderRadius: '8px',
-                  padding: '10px 14px',
-                  fontSize: '11px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <AlertCircle size={16} />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="button"
-                disabled={!selectedFile || isUploading}
-                onClick={handleUpload}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  borderRadius: '10px',
-                  backgroundColor: !selectedFile || isUploading ? '#1E293B' : '#E52E2E',
-                  color: !selectedFile || isUploading ? '#64748B' : '#FFFFFF',
-                  fontSize: '13px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 800,
-                  cursor: !selectedFile || isUploading ? 'not-allowed' : 'pointer',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: selectedFile && !isUploading ? '0 4px 16px rgba(229, 46, 46, 0.4)' : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {isUploading ? (
-                  <>
-                    <RefreshCw size={16} className="animate-spin" />
-                    <span>Mengunggah Foto Bukti...</span>
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud size={16} />
-                    <span>Kirim Foto ke Monitor Penyidik</span>
-                  </>
-                )}
-              </button>
             </>
           )}
 

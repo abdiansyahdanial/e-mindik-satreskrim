@@ -2132,9 +2132,9 @@ export default function DumasFormView({
                                 src={fileUrl} 
                                 alt={displayName || "Barang Bukti"} 
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                className="object-cover rounded border border-zinc-800"
+                                className="w-full max-h-64 object-contain bg-zinc-950 rounded border border-zinc-800"
                                 onLoad={() => {
-                                  console.log("Memuat URL bukti:", fileUrl);
+                                  console.log("Rendering Bukti URL:", file.url || fileUrl);
                                 }}
                                 onError={(e) => {
                                   console.error("Gagal memuat gambar bukti dari R2:", fileUrl);
