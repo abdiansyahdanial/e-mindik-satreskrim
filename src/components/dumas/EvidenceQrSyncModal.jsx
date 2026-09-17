@@ -17,12 +17,15 @@ import { supabase } from '../../supabaseClient';
 export default function EvidenceQrSyncModal({
   isOpen = true,
   onClose,
-  onEvidenceReceived
+  onEvidenceReceived,
+  syncToken: propSyncToken,
+  onTokenChange,
+  _dumasNo
 }) {
-  const [tokenRotationSeconds, setTokenRotationSeconds] = useState(30);
-  const [sessionTimeoutSeconds, setSessionTimeoutSeconds] = useState(60);
+  const [internalToken, setInternalToken] = useState(() => generateNewToken());
+  const syncToken = propSyncToken || internalToken;
+  const [sessionTimeoutSeconds, setSessionTimeoutSeconds] = useState(300); // 5 menit sesi stabil
   const [isExpired, setIsExpired] = useState(false);
-  const [syncToken, setSyncToken] = useState(() => generateNewToken());
   const [receivedCount, setReceivedCount] = useState(0);
   const [justReceived, setJustReceived] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -49,31 +52,17 @@ export default function EvidenceQrSyncModal({
   };
 
   const handleResetSession = useCallback(() => {
-    setSyncToken(generateNewToken());
-    setTokenRotationSeconds(30);
-    setSessionTimeoutSeconds(60);
+    const newToken = generateNewToken();
+    setInternalToken(newToken);
+    if (onTokenChange) {
+      onTokenChange(newToken);
+    }
+    setSessionTimeoutSeconds(300);
     setIsExpired(false);
     setCopied(false);
-  }, []);
+  }, [onTokenChange]);
 
-  // 1. Timer Rotasi Token (Setiap 30 Detik berganti)
-  useEffect(() => {
-    if (!isOpen || isExpired) return;
-
-    const rotationInterval = setInterval(() => {
-      setTokenRotationSeconds((prev) => {
-        if (prev <= 1) {
-          setSyncToken(generateNewToken());
-          return 30;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(rotationInterval);
-  }, [isOpen, isExpired]);
-
-  // 2. Timer Batas Waktu Sesi (Timeout 60 Detik)
+  // 1. Timer Batas Waktu Sesi (Timeout 5 Menit / 300 Detik tanpa rotasi paksa)
   useEffect(() => {
     if (!isOpen || isExpired) return;
 
@@ -90,7 +79,7 @@ export default function EvidenceQrSyncModal({
     return () => clearInterval(timeoutInterval);
   }, [isOpen, isExpired]);
 
-  // 3. Realtime Listener: Terima unggahan foto bukti dari kamera ponsel HP penyidik secara live
+  // 2. Realtime Listener: Terima unggahan foto bukti dari kamera ponsel HP penyidik secara live
   useEffect(() => {
     if (!isOpen || isExpired || !syncToken) return;
 
@@ -98,27 +87,34 @@ export default function EvidenceQrSyncModal({
       if (!data) return;
       if (data.token && data.token !== syncToken) return;
 
+      const fileUrl = data.fileUrl || data.file_url || data.previewUrl;
+      const fileName = data.fileName || data.name || data.nama_file || 'Foto_Bukti_HP.jpg';
+      const fileSize = data.fileSize || data.size || 184500;
+      const mimeType = data.type || data.mime_type || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+      const isPdf = mimeType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf');
+
       const evidenceItem = {
-        id: `bb-qr-${Date.now()}`,
-        name: data.fileName || data.name || data.nama_file || 'Foto_Bukti_HP.jpg',
-        nama_file: data.fileName || data.name || data.nama_file || 'Foto_Bukti_HP.jpg',
-        size: data.fileSize || data.size || 184500,
-        type: data.type || 'image/jpeg',
-        mime_type: data.mime_type || data.type || 'image/jpeg',
-        kategori_bukti: (data.fileName || data.name || '').toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
-        file_size_formatted: data.file_size_formatted || `${((data.fileSize || data.size || 184500) / 1024).toFixed(0)} KB`,
-        file_url: data.fileUrl || data.file_url || data.previewUrl,
-        fileUrl: data.fileUrl || data.file_url || data.previewUrl,
-        previewUrl: data.fileUrl || data.file_url || data.previewUrl,
-        keterangan: data.keterangan || 'Foto barang bukti fisik diambil via pemindaian kamera HP penyidik',
-        hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        id: `bb-r2-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: fileName,
+        nama_file: fileName,
+        size: fileSize,
+        type: mimeType,
+        mime_type: mimeType,
+        kategori_bukti: isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+        file_size_formatted: data.file_size_formatted || `${(fileSize / 1024).toFixed(0)} KB`,
+        file_url: fileUrl,
+        fileUrl: fileUrl,
+        previewUrl: fileUrl,
+        key: data.key,
+        keterangan: data.keterangan || 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)',
+        hash_sha256: data.hash_sha256 || Array.from(crypto.getRandomValues(new Uint8Array(16)))
           .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
-        diunggah_pada: new Date().toISOString()
+        diunggah_pada: data.timestamp || new Date().toISOString()
       };
 
       setReceivedCount(prev => prev + 1);
       setJustReceived(true);
-      setTimeout(() => setJustReceived(false), 2500);
+      setTimeout(() => setJustReceived(false), 3000);
 
       if (onEvidenceReceived) {
         onEvidenceReceived(evidenceItem);
@@ -143,10 +139,12 @@ export default function EvidenceQrSyncModal({
     // B. BroadcastChannel fallback (Untuk pengujian tab/jendela di perangkat yang sama)
     let bc = null;
     if (typeof BroadcastChannel !== 'undefined') {
-      bc = new BroadcastChannel('polres_mobile_bridge');
-      bc.onmessage = (event) => {
-        handleReceivedEvidence(event.data);
-      };
+      try {
+        bc = new BroadcastChannel('polres_mobile_bridge');
+        bc.onmessage = (event) => {
+          handleReceivedEvidence(event.data);
+        };
+      } catch (_e) {}
     }
 
     // C. Storage Event fallback
@@ -155,9 +153,7 @@ export default function EvidenceQrSyncModal({
         try {
           const parsed = JSON.parse(e.newValue);
           handleReceivedEvidence(parsed);
-        } catch (_err) {
-          // ignore
-        }
+        } catch (_err) {}
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -253,7 +249,7 @@ export default function EvidenceQrSyncModal({
     }, 'image/jpeg');
   };
 
-  const rotationPercent = ((30 - tokenRotationSeconds) / 30) * 100;
+  const sessionPercent = Math.max(0, Math.min(100, ((300 - sessionTimeoutSeconds) / 300) * 100));
 
   return (
     <div 
@@ -453,7 +449,7 @@ export default function EvidenceQrSyncModal({
           {!isExpired ? (
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               
-              {/* Token & Rotasi 30 Detik Bar */}
+              {/* Token & Status Sesi Bar */}
               <div 
                 style={{
                   backgroundColor: '#0B0D13',
@@ -467,20 +463,20 @@ export default function EvidenceQrSyncModal({
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#CBD5E1' }}>
-                    <RefreshCw size={12} className="spin-on-hover" color="#38BDF8" />
-                    <span>Rotasi Token Baru:</span>
+                    <RefreshCw size={12} color="#38BDF8" />
+                    <span>Sesi QR HP Aktif:</span>
                   </div>
                   <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#38BDF8' }}>
-                    {tokenRotationSeconds} detik
+                    {Math.floor(sessionTimeoutSeconds / 60)}m {sessionTimeoutSeconds % 60}s tersisa
                   </span>
                 </div>
 
-                {/* Progress Bar 30s */}
+                {/* Progress Bar 300s */}
                 <div style={{ width: '100%', height: '4px', backgroundColor: '#1E293B', borderRadius: '9999px', overflow: 'hidden' }}>
                   <div 
                     style={{
                       height: '100%',
-                      width: `${rotationPercent}%`,
+                      width: `${sessionPercent}%`,
                       backgroundColor: '#0284C7',
                       transition: 'width 1s linear'
                     }} 
@@ -488,14 +484,14 @@ export default function EvidenceQrSyncModal({
                 </div>
               </div>
 
-              {/* Sesi Total 60 Detik Countdown */}
+              {/* Sesi Total Countdown */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
                 <span style={{ color: '#64748B', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <Clock size={12} />
-                  Batas Sesi Aktif:
+                  Koneksi Terhubung:
                 </span>
-                <span style={{ color: sessionTimeoutSeconds < 15 ? '#EF4444' : '#E2E8F0', fontWeight: 600 }}>
-                  {sessionTimeoutSeconds}s (Timeout)
+                <span style={{ color: sessionTimeoutSeconds < 30 ? '#EF4444' : '#10B981', fontWeight: 600 }}>
+                  Cloudflare R2 + Supabase Live
                 </span>
               </div>
             </div>

@@ -65,7 +65,7 @@ export async function uploadFileToR2(fileInput, fileName, mimeType = '', options
 
   const targetName = (fileName || fileInput.name || 'berkas_lampiran').trim();
   const resolvedMime = mimeType || fileInput.type || detectMimeType(targetName);
-  const folder = (options.folder || 'dumas/lampiran').replace(/^\/+|\/+$/g, '');
+  const folder = (options.folder || 'barang-bukti').replace(/^\/+|\/+$/g, '');
 
   try {
     // 2. Minta Presigned PUT URL dari Serverless Endpoint
@@ -75,7 +75,9 @@ export async function uploadFileToR2(fileInput, fileName, mimeType = '', options
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        fileName: targetName,
         filename: targetName,
+        contentType: resolvedMime,
         fileType: resolvedMime,
         folder,
       }),
@@ -87,7 +89,7 @@ export async function uploadFileToR2(fileInput, fileName, mimeType = '', options
     }
 
     const presignData = await presignRes.json();
-    const { uploadUrl, publicUrl, filePath, key, bucket } = presignData;
+    const { uploadUrl, fileUrl, publicUrl, filePath, key, bucket } = presignData;
 
     if (!uploadUrl) {
       throw new Error('Respons server tidak memuat uploadUrl yang valid.');
@@ -107,13 +109,15 @@ export async function uploadFileToR2(fileInput, fileName, mimeType = '', options
     }
 
     const fileSize = typeof fileInput.size === 'number' ? fileInput.size : undefined;
+    const resolvedUrl = fileUrl || publicUrl || uploadUrl.split('?')[0];
 
     return {
       success: true,
       key: key || filePath,
       filePath: filePath || key,
-      url: publicUrl || uploadUrl.split('?')[0],
-      publicUrl: publicUrl || uploadUrl.split('?')[0],
+      url: resolvedUrl,
+      fileUrl: resolvedUrl,
+      publicUrl: resolvedUrl,
       bucket: bucket || DEFAULT_BUCKET,
       size: fileSize,
       contentType: resolvedMime,

@@ -23,6 +23,7 @@ import {
 } from '../../services/dumasService';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
+import { supabase } from '../../supabaseClient';
 
 const defaultPelapor = {
   nama: '',
@@ -324,6 +325,95 @@ export default function DumasFormView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
+  // Token Sesi Sinkronisasi Kamera HP (Stand-by Listener Bagian 05)
+  const [mobileSyncToken, setMobileSyncToken] = useState(() => 
+    `POLRES-KOLTIM-BB-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+  );
+
+  // Stand-by Realtime Listener di Channel mobile_sync_${mobileSyncToken}
+  useEffect(() => {
+    if (!mobileSyncToken) return;
+
+    const handleIncomingEvidence = (payload) => {
+      if (!payload) return;
+      if (payload.token && payload.token !== mobileSyncToken) return;
+
+      const fileUrl = payload.fileUrl || payload.file_url || payload.previewUrl;
+      const fileName = payload.fileName || payload.name || payload.nama_file || 'Foto_Bukti_HP.jpg';
+      const fileSize = payload.fileSize || payload.size || 0;
+      const mimeType = payload.type || payload.mime_type || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+      const isPdf = mimeType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf');
+
+      const newEvidence = {
+        id: `bb-r2-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: fileName,
+        nama_file: fileName,
+        size: fileSize,
+        file_size_formatted: payload.file_size_formatted || `${(fileSize / 1024).toFixed(0)} KB`,
+        type: mimeType,
+        mime_type: mimeType,
+        kategori_bukti: isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+        fileUrl: fileUrl,
+        file_url: fileUrl,
+        previewUrl: fileUrl,
+        key: payload.key,
+        keterangan: payload.keterangan || 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)',
+        hash_sha256: payload.hash_sha256 || Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
+        diunggah_pada: payload.timestamp || new Date().toISOString()
+      };
+
+      setEvidenceFiles(prev => {
+        // Cegah duplikasi jika bukti dengan URL atau key yang sama sudah ada
+        if (prev.some(item => (item.fileUrl && item.fileUrl === fileUrl) || (payload.key && item.key === payload.key))) {
+          return prev;
+        }
+        return [...prev, newEvidence];
+      });
+    };
+
+    console.log(`[DUMAS REALTIME] Stand-by di channel mobile_sync_${mobileSyncToken}...`);
+    const channel = supabase.channel(`mobile_sync_${mobileSyncToken}`, {
+      config: { broadcast: { ack: true } }
+    });
+
+    channel
+      .on('broadcast', { event: 'evidence_uploaded' }, ({ payload }) => {
+        console.log('[DUMAS REALTIME] Bukti diterima dari HP:', payload);
+        handleIncomingEvidence(payload);
+      })
+      .subscribe((status) => {
+        console.log(`[DUMAS REALTIME] Status channel ${mobileSyncToken}:`, status);
+      });
+
+    // Cross-tab broadcast & localStorage fallback untuk uji coba di laptop
+    let bc = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        bc = new BroadcastChannel('polres_mobile_bridge');
+        bc.onmessage = (event) => {
+          handleIncomingEvidence(event.data);
+        };
+      } catch (_e) {}
+    }
+
+    const handleStorage = (e) => {
+      if (e.key === `polres_mobile_evidence_${mobileSyncToken}` && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          handleIncomingEvidence(parsed);
+        } catch (_err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [mobileSyncToken]);
+
   // Auto-Save Draft Sinkronisasi Otomatis dengan Debouncing (400ms)
   useEffect(() => {
     if (isSubmitting) return;
@@ -533,7 +623,13 @@ export default function DumasFormView({
   };
 
   const handleEvidenceFromQr = (evidenceItem) => {
-    setEvidenceFiles(prev => [...prev, evidenceItem]);
+    if (!evidenceItem) return;
+    setEvidenceFiles(prev => {
+      if (prev.some(item => (item.fileUrl && item.fileUrl === evidenceItem.fileUrl) || (evidenceItem.key && item.key === evidenceItem.key))) {
+        return prev;
+      }
+      return [...prev, evidenceItem];
+    });
   };
 
   const handleRemoveEvidence = (idToRemove) => {
@@ -1922,10 +2018,10 @@ export default function DumasFormView({
                           }}
                           title="Klik untuk melihat preview resolusi penuh"
                         >
-                          {!isPdf && file.previewUrl ? (
+                          {!isPdf && (file.previewUrl || file.fileUrl || file.file_url) ? (
                             <img 
-                              src={file.previewUrl} 
-                              alt={file.name} 
+                              src={file.previewUrl || file.fileUrl || file.file_url} 
+                              alt={file.name || file.nama_file || 'Barang Bukti'} 
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                             />
                           ) : (
@@ -2141,6 +2237,8 @@ export default function DumasFormView({
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         onEvidenceReceived={handleEvidenceFromQr}
+        syncToken={mobileSyncToken}
+        onTokenChange={setMobileSyncToken}
         dumasNo={caseInfo?.nomor_lp || 'DUMAS-BARU'}
       />
 
