@@ -315,22 +315,24 @@ export default function DumasFormView({
     }
   }, [initialOcrData]);
 
-  // State 05: Lampiran Barang Bukti (Pemisahan: scan OCR awal murni hanya untuk ekstraksi form, BUKAN barang bukti)
-  // Fallback LocalStorage: inisialisasi state dari localStorage 'temp_dumas_bb' agar tidak kosong saat refresh
+  // State 05: Lampiran Barang Bukti (Persistensi Otomatis Browser Storage Anti-Hilang Saat Refresh)
+  const STORAGE_KEY = 'emindik_temp_draft_bb';
+
+  // A. Inisialisasi state langsung dari localStorage saat komponen pertama kali dimuat
   const [daftarBukti, setDaftarBukti] = useState(() => {
     try {
       if (typeof window !== 'undefined') {
-        const tempBb = localStorage.getItem('temp_dumas_bb');
-        if (tempBb) {
-          const parsed = JSON.parse(tempBb);
+        const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('temp_dumas_bb');
+        if (saved) {
+          const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            console.log('[LOCALSTORAGE RESTORE] Berhasil memulihkan bukti dari temp_dumas_bb:', parsed);
+            console.log('[LOCALSTORAGE RESTORE] Berhasil memulihkan draft BB dari localStorage:', parsed);
             return parsed;
           }
         }
       }
-    } catch (e) {
-      console.warn('Gagal membaca temp_dumas_bb dari localStorage:', e);
+    } catch (err) {
+      console.error("Gagal membaca draft BB dari localStorage:", err);
     }
 
     if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles) && savedDraft.evidenceFiles.length > 0) {
@@ -342,16 +344,16 @@ export default function DumasFormView({
   const evidenceFiles = daftarBukti;
   const setEvidenceFiles = setDaftarBukti;
 
-  // Sinkronisasi otomatis daftarBukti ke LocalStorage ('temp_dumas_bb') saat tahap pengisian form
+  // B. Sinkronkan ke localStorage setiap kali ada berkas baru yang ditambahkan atau dihapus
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
-        if (daftarBukti && daftarBukti.length > 0) {
-          localStorage.setItem('temp_dumas_bb', JSON.stringify(daftarBukti));
-        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(daftarBukti));
+        // Sinkronkan juga key sekunder untuk kompatibilitas
+        localStorage.setItem('temp_dumas_bb', JSON.stringify(daftarBukti));
       }
-    } catch (e) {
-      console.warn('Gagal menyimpan temp_dumas_bb ke localStorage:', e);
+    } catch (err) {
+      console.error("Gagal menyimpan draft BB ke localStorage:", err);
     }
   }, [daftarBukti]);
 
@@ -738,6 +740,7 @@ export default function DumasFormView({
 
     clearDumasDraft(currentUserProfile?.id);
     try {
+      localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem('temp_dumas_bb');
       sessionStorage.removeItem('temp_dumas_token');
     } catch {}
@@ -900,12 +903,16 @@ export default function DumasFormView({
     setTimeout(() => setToastEvidence(null), 6000);
   };
 
-  const handleRemoveEvidence = (idToRemove) => {
-    setEvidenceFiles(prev => {
-      const updated = prev.filter(f => f.id !== idToRemove);
+  // Penanganan Tombol Hapus Bukti
+  const handleHapusBukti = (idHapus) => {
+    setDaftarBukti((prev) => {
+      const updated = prev.filter((item) => item.id !== idHapus && item.url !== idHapus && item.key !== idHapus);
       try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         localStorage.setItem('temp_dumas_bb', JSON.stringify(updated));
-      } catch {}
+      } catch (err) {
+        console.error("Gagal menyimpan draft BB ke localStorage setelah hapus:", err);
+      }
       return updated;
     });
   };
@@ -1015,8 +1022,41 @@ export default function DumasFormView({
       const result = await onSubmitDumas(newDumasData, evidenceFiles);
       // HANYA bersihkan draf jika penyimpanan ke Supabase berhasil
       if (result && result.success !== false) {
+        // Persistensi langsung ke tabel barang_bukti dan lampiran_barang_bukti jika ada id perkara
+        const laporanId = result?.record?.id || result?.id || null;
+        if (laporanId && evidenceFiles.length > 0) {
+          try {
+            const bbRows = evidenceFiles.map((item) => ({
+              id_perkara: laporanId,
+              nama_berkas: item.nama_berkas || item.name || item.nama_file || 'Barang Bukti',
+              file_url: item.url || item.fileUrl || item.file_url,
+              tipe_berkas: item.tipe || item.type || item.mime_type || 'image/jpeg',
+              ukuran_berkas: item.ukuran || item.size || item.file_size_bytes || 0,
+              storage_provider: 'cloudflare_r2',
+              hash_sha256: item.hash_sha256 || item.hash || null,
+              created_at: new Date().toISOString()
+            }));
+            await supabase.from('barang_bukti').insert(bbRows);
+          } catch {}
+          try {
+            const lampiranRows = evidenceFiles.map((item) => ({
+              laporan_id: laporanId,
+              nama_file: item.nama_berkas || item.name || item.nama_file || 'Barang Bukti',
+              file_url: item.url || item.fileUrl || item.file_url,
+              file_path: item.key || item.file_path || activeToken || '',
+              kategori_bukti: (item.tipe || item.type)?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+              file_size_bytes: item.ukuran || item.size || item.file_size_bytes || 0,
+              mime_type: item.tipe || item.type || item.mime_type || 'image/jpeg',
+              hash_sha256: item.hash_sha256 || item.hash || null,
+              keterangan: item.keterangan || 'Lampiran bukti digital R2'
+            }));
+            await supabase.from('lampiran_barang_bukti').insert(lampiranRows);
+          } catch {}
+        }
+
         clearDumasDraft(currentUserProfile?.id);
         try {
+          localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem('temp_dumas_bb');
           sessionStorage.removeItem('temp_dumas_token');
         } catch {}
@@ -2291,6 +2331,7 @@ export default function DumasFormView({
                   onClick={() => {
                     setEvidenceFiles([]);
                     try {
+                      localStorage.removeItem(STORAGE_KEY);
                       localStorage.removeItem('temp_dumas_bb');
                     } catch {}
                   }}
@@ -2472,7 +2513,7 @@ export default function DumasFormView({
 
                         <button 
                           type="button"
-                          onClick={() => handleRemoveEvidence(file.id)}
+                          onClick={() => handleHapusBukti(file.id)}
                           style={{
                             background: 'rgba(239, 68, 68, 0.1)',
                             border: '1px solid rgba(239, 68, 68, 0.3)',

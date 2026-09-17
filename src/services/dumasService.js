@@ -436,6 +436,23 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
         } catch (bbErr) {
           console.warn('Notice: Gagal menyimpan ke tabel lampiran_barang_bukti (tabel mungkin belum ada):', bbErr);
         }
+
+        // Upayakan juga simpan ke tabel barang_bukti untuk skema relasi perkara aktif
+        try {
+          const barangBuktiPayloads = completeRecord.lampiran_barang_bukti.map(bb => ({
+            id_perkara: data.id,
+            nama_berkas: bb.nama_file,
+            file_url: bb.file_url,
+            tipe_berkas: bb.mime_type,
+            ukuran_berkas: bb.file_size_bytes,
+            storage_provider: 'cloudflare_r2',
+            hash_sha256: bb.hash_sha256,
+            created_at: new Date().toISOString()
+          }));
+          await supabase.from('barang_bukti').insert(barangBuktiPayloads);
+        } catch (bbErr2) {
+          console.warn('Notice: Gagal menyimpan ke tabel barang_bukti:', bbErr2);
+        }
       }
     }
   } catch (err) {
