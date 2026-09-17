@@ -1,0 +1,8 @@
+# UI/UX Pro Max Guidelines
+Patuhi standar desain antarmuka modern, tipografi, micro-interactions, dan kontras visual yang ada di:
+@.agent/skills/ui-ux-pro-max/SKILL.md
+
+Aturan Khusus E-Mindik:
+- Pertahankan identitas tema gelap (Dark Theme kedinasan) yang sudah ada.
+- Utamakan visual hierarchy yang bersih, tegas, dan mudah dibaca penyidik.
+- Pastikan interaksi tombol (hover, active, loading, disabled) selalu responsif.

@@ -79,8 +79,8 @@ const defaultCaseInfo = {
 
 export default function DumasFormView({
   mode = 'manual', // 'manual' | 'ocr'
-  initialOcrFile = null,
-  initialOcrFiles = null,
+  _initialOcrFile = null,
+  _initialOcrFiles = null,
   initialOcrData = null,
   onBack,
   onSubmitDumas,
@@ -319,6 +319,7 @@ export default function DumasFormView({
   });
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [previewEvidence, setPreviewEvidence] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -475,12 +476,11 @@ export default function DumasFormView({
   };
 
   // Handlers Upload Bukti (Laptop & QR Code HP)
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+  const processRawFiles = (files) => {
+    if (!files || !files.length) return;
 
     const newEvidence = files.map(file => {
-      const isPdf = file.type.includes('pdf') || file.name.endsWith('.pdf');
+      const isPdf = file.type?.includes('pdf') || file.name?.toLowerCase().endsWith('.pdf');
       const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
       const mime = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
       
@@ -504,7 +504,32 @@ export default function DumasFormView({
     });
 
     setEvidenceFiles(prev => [...prev, ...newEvidence]);
+  };
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    processRawFiles(files);
     if (e.target) e.target.value = '';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer?.files || []);
+    processRawFiles(files);
   };
 
   const handleEvidenceFromQr = (evidenceItem) => {
@@ -1523,68 +1548,118 @@ export default function DumasFormView({
           backgroundColor: '#151822',
           border: '1px solid #292F42',
           borderRadius: '12px',
-          padding: '20px',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+          padding: '22px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px'
+          gap: '18px'
         }}>
+          {/* Header Card 05 dengan Counter Badge Dinamis */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingBottom: '12px',
-            borderBottom: '1px solid #292F42'
+            paddingBottom: '14px',
+            borderBottom: '1px solid #292F42',
+            flexWrap: 'wrap',
+            gap: '10px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div className="dumas-badge-col" style={{
-                width: '24px',
-                height: '24px',
+                width: '26px',
+                height: '26px',
                 borderRadius: '6px',
                 backgroundColor: 'rgba(229, 46, 46, 0.15)',
+                border: '1px solid rgba(229, 46, 46, 0.35)',
                 color: '#FF352D',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontFamily: 'JetBrains Mono, monospace',
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: '11px'
               }}>
                 05
               </div>
               <div>
-                <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+                <h3 style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
                   DOKUMEN &amp; BARANG BUKTI DIGITAL (PDF, JPG, PNG)
                 </h3>
-                <span style={{ fontSize: '10px', color: '#64748B', fontFamily: 'Inter, sans-serif' }}>
-                  Lampirkan dokumen bukti pendukung atau dokumentasi fisik yang diserahkan pelapor
+                <span style={{ fontSize: '11px', color: '#64748B', fontFamily: 'Inter, sans-serif' }}>
+                  Lampirkan dokumen bukti pendukung atau dokumentasi fisik yang diserahkan oleh pelapor
                 </span>
               </div>
             </div>
-            <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: evidenceFiles.length > 0 ? '#10B981' : '#94A3B8', fontWeight: 600 }}>
-              {evidenceFiles.length} Berkas Terpilih
-            </span>
+
+            {/* Upload Status Indicator */}
+            {evidenceFiles.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '11px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  color: '#10B981',
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontWeight: 700
+                }}>
+                  <span style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10B981',
+                    boxShadow: '0 0 8px #10B981',
+                    display: 'inline-block'
+                  }} />
+                  {evidenceFiles.length} Berkas Siap Disimpan
+                </span>
+              </div>
+            ) : (
+              <span style={{
+                fontSize: '11px',
+                fontFamily: 'JetBrains Mono, monospace',
+                color: '#64748B',
+                backgroundColor: '#0B0D13',
+                border: '1px solid #292F42',
+                padding: '4px 10px',
+                borderRadius: '6px'
+              }}>
+                0 Berkas Terlampir
+              </span>
+            )}
           </div>
 
-          {/* 2 Opsi Input Berdampingan */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+          {/* 2 Opsi Input Berdampingan (Dual Upload Option) */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '16px'
+          }}>
             
-            {/* Opsi 1: Pilih Berkas dari Komputer */}
+            {/* Opsi A: Pilih Berkas dari Komputer */}
             <label 
               htmlFor="upload_bukti_komputer" 
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
               style={{
-                border: '1px dashed #334155',
-                backgroundColor: '#0B0D13',
-                padding: '16px',
-                borderRadius: '10px',
+                border: isDragOver ? '1.5px dashed #38BDF8' : '1px dashed #334155',
+                backgroundColor: isDragOver ? 'rgba(56, 189, 248, 0.08)' : '#0B0D13',
+                padding: '18px',
+                borderRadius: '12px',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 gap: '12px',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: isDragOver ? '0 0 20px rgba(56, 189, 248, 0.15)' : '0 2px 10px rgba(0,0,0,0.25)',
+                position: 'relative'
               }}
-              className="hover:border-sky-500"
+              className="hover:border-sky-500 hover:shadow-lg focus-within:ring-2 focus-within:ring-sky-500/50"
             >
               <input 
                 id="upload_bukti_komputer"
@@ -1596,83 +1671,166 @@ export default function DumasFormView({
                 style={{ display: 'none' }}
                 onChange={handleFileUpload}
               />
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                border: '1px solid rgba(56, 189, 248, 0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#38BDF8',
-                flexShrink: 0
-              }}>
-                <UploadCloud size={22} />
+
+              {/* Tag Badge Opsi A */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{
+                  fontSize: '9px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 800,
+                  color: '#38BDF8',
+                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  letterSpacing: '0.05em'
+                }}>
+                  OPSI A • DOKUMEN / FOTO LOKAL
+                </span>
+                <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>
+                  Perangkat PC/Laptop
+                </span>
               </div>
-              <div>
-                <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' }}>
-                  Pilih Berkas dari Komputer
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0.05) 100%)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#38BDF8',
+                  flexShrink: 0,
+                  boxShadow: '0 0 16px rgba(56, 189, 248, 0.15)'
+                }}>
+                  <UploadCloud size={24} />
                 </div>
-                <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>
-                  Mendukung berkas PDF, JPG, PNG dari laptop/PC
+                <div>
+                  <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                    Pilih Berkas dari Komputer
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px', fontFamily: 'Inter, sans-serif' }}>
+                    Klik untuk memilih berkas atau drag &amp; drop ke area ini
+                  </div>
                 </div>
+              </div>
+
+              {/* Format Supporter Badges */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '4px', borderTop: '1px solid #1E293B' }}>
+                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>Format didukung:</span>
+                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#38BDF8', backgroundColor: 'rgba(56, 189, 248, 0.1)', padding: '1px 5px', borderRadius: '3px' }}>PDF</span>
+                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#F87171', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '1px 5px', borderRadius: '3px' }}>JPG</span>
+                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#34D399', backgroundColor: 'rgba(52, 211, 153, 0.1)', padding: '1px 5px', borderRadius: '3px' }}>PNG</span>
+                <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', marginLeft: 'auto' }}>Maks 25 MB</span>
               </div>
             </label>
 
-            {/* Opsi 2: Pindai Bukti via HP (QR Code) */}
+            {/* Opsi B: Pindai Bukti via HP (QR Code) */}
             <div 
+              role="button"
+              tabIndex={0}
               onClick={() => setIsQrModalOpen(true)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setIsQrModalOpen(true); }}
               style={{
-                border: '1px dashed #7F1D1D',
+                border: '1px dashed rgba(229, 46, 46, 0.45)',
                 backgroundColor: '#0B0D13',
-                padding: '16px',
-                borderRadius: '10px',
+                padding: '18px',
+                borderRadius: '12px',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 gap: '12px',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+                position: 'relative'
               }}
-              className="hover:border-red-500"
+              className="hover:border-red-500 hover:shadow-lg focus-within:ring-2 focus-within:ring-red-500/50"
             >
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                backgroundColor: 'rgba(229, 46, 46, 0.15)',
-                border: '1px solid rgba(229, 46, 46, 0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#FF352D',
-                flexShrink: 0
-              }}>
-                <Smartphone size={22} />
+              {/* Tag Badge Opsi B */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{
+                  fontSize: '9px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 800,
+                  color: '#FF352D',
+                  backgroundColor: 'rgba(229, 46, 46, 0.12)',
+                  border: '1px solid rgba(229, 46, 46, 0.3)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  letterSpacing: '0.05em'
+                }}>
+                  OPSI B • SINKRONISASI HP
+                </span>
+                <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#F59E0B' }}>
+                  Kamera Ponsel
+                </span>
               </div>
-              <div>
-                <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' }}>
-                  Pindai Bukti via HP (QR Code)
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(229, 46, 46, 0.2) 0%, rgba(229, 46, 46, 0.05) 100%)',
+                  border: '1px solid rgba(229, 46, 46, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FF352D',
+                  flexShrink: 0,
+                  boxShadow: '0 0 16px rgba(229, 46, 46, 0.15)'
+                }}>
+                  <Smartphone size={24} />
                 </div>
-                <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>
-                  Sinkronisasi kamera ponsel (Rotasi 30s &amp; Timeout 60s)
+                <div>
+                  <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                    Pindai Bukti via HP (QR Code)
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px', fontFamily: 'Inter, sans-serif' }}>
+                    Buka kamera ponsel &amp; sinkronkan berkas bukti secara nirkabel
+                  </div>
                 </div>
+              </div>
+
+              {/* Status Info Opsi B */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1px solid #1E293B', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace' }}>
+                <span style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                  Rotasi Token 30s
+                </span>
+                <span style={{ color: '#F59E0B' }}>
+                  Timeout Sesi 60s
+                </span>
               </div>
             </div>
           </div>
 
           {/* Kartu Daftar Barang Bukti Terpilih (Card-Grid Responsif) */}
           {evidenceFiles.length > 0 ? (
-            <div style={{ marginTop: '6px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8', fontWeight: 600 }}>
-                  Daftar Lampiran Bukti yang Akan Disimpan:
+            <div style={{ marginTop: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Daftar Lampiran Bukti yang Akan Disimpan ({evidenceFiles.length}):
                 </span>
                 <button
                   type="button"
                   onClick={() => setEvidenceFiles([])}
-                  style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', cursor: 'pointer' }}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#EF4444',
+                    fontSize: '10px',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    cursor: 'pointer',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontWeight: 600,
+                    transition: 'all 0.15s'
+                  }}
+                  className="hover:bg-red-500/20"
                 >
                   Kosongkan Semua
                 </button>
@@ -1697,14 +1855,18 @@ export default function DumasFormView({
                         flexDirection: 'column',
                         justifyContent: 'space-between',
                         gap: '10px',
-                        transition: 'border-color 0.2s'
+                        transition: 'border-color 0.2s',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                       }}
-                      className="hover:border-slate-600"
+                      className="hover:border-sky-500/50"
                     >
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                         {/* Thumbnail / Icon */}
                         <div 
+                          role="button"
+                          tabIndex={0}
                           onClick={() => setPreviewEvidence(file)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setPreviewEvidence(file); }}
                           style={{
                             width: '48px',
                             height: '48px',
@@ -1748,7 +1910,7 @@ export default function DumasFormView({
                           >
                             {file.name || file.nama_file}
                           </p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
                             <span style={{ 
                               fontSize: '9px', 
                               fontFamily: 'JetBrains Mono, monospace', 
@@ -1787,11 +1949,13 @@ export default function DumasFormView({
                             alignItems: 'center',
                             gap: '4px',
                             cursor: 'pointer',
-                            padding: '2px 4px'
+                            padding: '2px 6px',
+                            borderRadius: '4px'
                           }}
+                          className="hover:bg-sky-500/10"
                         >
                           <Eye size={12} />
-                          <span>Preview</span>
+                          <span>Perbesar</span>
                         </button>
 
                         <button 
@@ -1810,6 +1974,7 @@ export default function DumasFormView({
                             alignItems: 'center',
                             gap: '4px'
                           }}
+                          className="hover:bg-red-500/20"
                           title="Batalkan / Hapus Item Bukti"
                         >
                           <Trash2 size={12} />
@@ -1823,16 +1988,25 @@ export default function DumasFormView({
             </div>
           ) : (
             <div style={{
-              padding: '16px',
+              padding: '20px',
               textAlign: 'center',
               backgroundColor: '#0B0D13',
-              borderRadius: '8px',
+              borderRadius: '10px',
               border: '1px dashed #292F42',
               color: '#64748B',
               fontSize: '11px',
-              fontFamily: 'JetBrains Mono, monospace'
+              fontFamily: 'JetBrains Mono, monospace',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
             }}>
-              Belum ada berkas barang bukti yang dilampirkan. Pilih opsi di atas jika terdapat barang bukti fisik atau dokumen pendukung.
+              <FileText size={20} color="#475569" />
+              <span>Belum ada berkas barang bukti yang dilampirkan.</span>
+              <span style={{ fontSize: '10px', color: '#475569', fontFamily: 'Inter, sans-serif' }}>
+                Pilih opsi di atas jika pelapor menyerahkan barang bukti fisik atau dokumen pendukung.
+              </span>
             </div>
           )}
         </div>

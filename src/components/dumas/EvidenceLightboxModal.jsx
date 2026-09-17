@@ -125,6 +125,28 @@ export default function EvidenceLightboxModal({
     URL.revokeObjectURL(url);
   };
 
+  // Wheel Zoom & Double-Click Zoom (UI/UX Pro Max)
+  const handleWheel = (e) => {
+    if (isPdf) return;
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      setZoom(prev => Math.min(prev + 0.15, 3));
+    } else {
+      setZoom(prev => Math.max(prev - 0.15, 0.5));
+    }
+  };
+
+  const handleToggleZoom = () => {
+    if (isPdf) return;
+    if (zoom > 1 || rotation !== 0) {
+      setZoom(1);
+      setRotation(0);
+      setPosition({ x: 0, y: 0 });
+    } else {
+      setZoom(1.75);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200"
@@ -134,8 +156,8 @@ export default function EvidenceLightboxModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(3, 5, 8, 0.92)',
-        backdropFilter: 'blur(12px)',
+        backgroundColor: 'rgba(3, 5, 8, 0.94)',
+        backdropFilter: 'blur(16px)',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
@@ -361,20 +383,22 @@ export default function EvidenceLightboxModal({
                 fontSize: '11px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.15s'
               }}
+              className="hover:bg-slate-700 hover:border-slate-500 focus-visible:ring-2 focus-visible:ring-sky-500"
               title="Unduh Dokumen ke Perangkat"
             >
               <Download size={14} />
               <span>Unduh Berkas</span>
             </button>
 
-            {/* Tombol Tutup */}
+            {/* Tombol Tutup dengan Label Esc */}
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '7px 10px',
+                padding: '7px 12px',
                 borderRadius: '8px',
                 backgroundColor: 'rgba(239, 68, 68, 0.15)',
                 border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -382,11 +406,18 @@ export default function EvidenceLightboxModal({
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                gap: '6px',
+                fontSize: '11px',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontWeight: 700,
+                transition: 'all 0.15s'
               }}
-              title="Tutup Preview (Esc)"
+              className="hover:bg-red-500/25 hover:border-red-500 focus-visible:ring-2 focus-visible:ring-red-500"
+              title="Tutup Preview (Tekan Esc)"
+              aria-label="Tutup Preview"
             >
-              <X size={16} />
+              <span>Esc</span>
+              <X size={15} />
             </button>
           </div>
         </div>
@@ -404,8 +435,10 @@ export default function EvidenceLightboxModal({
             alignItems: 'center',
             justifyContent: 'center',
             userSelect: 'none',
-            cursor: zoom > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'
+            cursor: isPdf ? 'default' : zoom > 1 ? (isPanning ? 'grabbing' : 'grab') : 'zoom-in'
           }}
+          onWheel={handleWheel}
+          onDoubleClick={handleToggleZoom}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -613,15 +646,16 @@ export default function EvidenceLightboxModal({
                 left: '16px',
                 fontSize: '10px',
                 fontFamily: 'JetBrains Mono, monospace',
-                color: '#64748B',
-                backgroundColor: 'rgba(11, 13, 19, 0.8)',
-                padding: '4px 8px',
+                color: '#94A3B8',
+                backgroundColor: 'rgba(11, 13, 19, 0.85)',
+                backdropFilter: 'blur(6px)',
+                padding: '5px 10px',
                 borderRadius: '6px',
                 border: '1px solid #1E293B',
                 pointerEvents: 'none'
               }}
             >
-              Shortcut: [+] Zoom In • [-] Zoom Out • [R] Putar • [0] Reset • [Esc] Tutup
+              Shortcut: [+] In • [-] Out • [Wheel] Zoom • [Double-Click] 175% • [R] Putar • [0] Reset • [Esc] Tutup
             </div>
           )}
         </div>
