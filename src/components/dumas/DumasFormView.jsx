@@ -83,10 +83,10 @@ const defaultCaseInfo = {
 };
 
 // Kunci Penyimpanan Draf Standar Satreskrim
-const DRAFT_KEY_BB = 'emindik_draft_daftar_bb_v1';
 const DRAFT_KEY_FORM = 'emindik_draft_form_perkara_v1';
-const STORAGE_KEY = 'emindik_temp_draft_bb';
-const DRAFT_STORAGE_KEY = 'emindik_dumas_evidence_v2';
+const LEGACY_DRAFT_KEY_BB = 'emindik_draft_daftar_bb_v1';
+const LEGACY_STORAGE_KEY = 'emindik_temp_draft_bb';
+const LEGACY_DRAFT_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
 // LANGKAH 1: Standar Struktur Objek Bukti (Sanitasi Mutlak)
 const sanitizeEvidenceItem = (item, index = 0) => {
@@ -204,6 +204,23 @@ export default function DumasFormView({
       } catch {}
     }
   }, [nomorRegisterResmi]);
+
+  // 0. Sesi Draft Unik & Kunci Penyimpanan Terisolasi (Mencegah Kebocoran State Antar Laporan)
+  const [draftSessionId, setDraftSessionId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const existing = sessionStorage.getItem('emindik_current_draft_session_id');
+      if (existing) return existing;
+      const genId = `sesi_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      sessionStorage.setItem('emindik_current_draft_session_id', genId);
+      return genId;
+    }
+    return `sesi_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  });
+
+  // Kunci penyimpanan dinamis: Terikat pada nomor register resmi jika ada, atau ID sesi draf unik
+  const STORAGE_KEY = nomorRegisterResmi ? `bb_${nomorRegisterResmi}` : `bb_draft_${draftSessionId}`;
+  const DRAFT_STORAGE_KEY = STORAGE_KEY;
+
   // 0. Safe Hydration Draf Formulir Tersimpan dari LocalStorage (Pola Lazy Initializer & Safe Parsing)
   const [savedDraft] = useState(() => {
     if (initialOcrData) return null;
@@ -447,49 +464,51 @@ export default function DumasFormView({
   // Muat data dari localStorage HANYA di dalam useEffect mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const cleaned = parsed.map(sanitizeEvidenceItem).filter(Boolean);
-          setDaftarBukti(cleaned);
+      // Jika form dibuka dalam mode buat baru (bukan edit perkara lama & belum ada register resmi)
+      if (!perkaraId && !nomorRegisterResmi) {
+        // Cek hanya draft sesi ini. Jika tidak ada, biarkan kosong []
+        const savedSession = localStorage.getItem(STORAGE_KEY);
+        if (savedSession) {
+          const parsed = JSON.parse(savedSession);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.map(sanitizeEvidenceItem).filter(Boolean);
+            setDaftarBukti(cleaned);
+          }
+        } else {
+          // Laporan baru: inisialisasi kosong murni
+          setDaftarBukti([]);
         }
       } else {
-        // Fallback ke kunci penyimpanan versi lama jika belum ada v2
-        const rawOld = localStorage.getItem(DRAFT_KEY_BB) || localStorage.getItem(STORAGE_KEY) || localStorage.getItem('temp_dumas_bb');
-        if (rawOld && rawOld !== 'undefined' && rawOld !== 'null') {
-          const parsedOld = JSON.parse(rawOld);
-          if (Array.isArray(parsedOld)) {
-            const cleanedOld = parsedOld.map(sanitizeEvidenceItem).filter(Boolean);
-            if (cleanedOld.length > 0) {
-              setDaftarBukti(cleanedOld);
-            }
-          }
-        } else if (savedDraft?.evidenceFiles && Array.isArray(savedDraft.evidenceFiles)) {
-          const validDraft = savedDraft.evidenceFiles.map(sanitizeEvidenceItem).filter(Boolean);
-          if (validDraft.length > 0) {
-            setDaftarBukti(validDraft);
+        // Mode perkara yang sudah ada atau memiliki nomor register resmi
+        const saved = localStorage.getItem(STORAGE_KEY) || (nomorRegisterResmi ? localStorage.getItem(`draft_bb_${nomorRegisterResmi}`) : null);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.map(sanitizeEvidenceItem).filter(Boolean);
+            setDaftarBukti(cleaned);
           }
         }
       }
     } catch (err) {
-      console.error('[STORAGE RECOVERY] Gagal membaca draft lama, reset:', err);
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      console.error('[STORAGE RECOVERY] Gagal membaca draft, reset:', err);
       setDaftarBukti([]);
     } finally {
       setIsStorageReady(true);
     }
-  }, []);
+  }, [STORAGE_KEY, perkaraId, nomorRegisterResmi]);
 
-  // Sinkronkan ke localStorage setiap state berubah (Hanya jika storage sudah ready)
+  // Sinkronkan ke localStorage terisolasi per sesi / nomor register
   useEffect(() => {
     if (!isStorageReady) return;
     try {
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(daftarBukti));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(daftarBukti));
+      if (nomorRegisterResmi) {
+        localStorage.setItem(`draft_bb_${nomorRegisterResmi}`, JSON.stringify(daftarBukti));
+      }
     } catch (err) {
       console.error('[STORAGE SAVE] Gagal menyimpan ke localStorage:', err);
     }
-  }, [daftarBukti, isStorageReady]);
+  }, [daftarBukti, isStorageReady, STORAGE_KEY, nomorRegisterResmi]);
 
   // State Dokumen / Riwayat Berkas (Safe 404/PGRST204 Fallback Resilience)
   const [documents, setDocuments] = useState([]);
@@ -573,21 +592,6 @@ export default function DumasFormView({
 
     fetchDokumenRiwayat();
   }, [perkaraId]);
-
-  // Sinkronisasi Otomatis ke LocalStorage dengan Data Ter-sanitasi (Hanya Tipe Data Primitif)
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const cleanData = sanitizeEvidenceList(daftarBukti);
-        localStorage.setItem(DRAFT_KEY_BB, JSON.stringify(cleanData));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanData));
-        localStorage.setItem('temp_dumas_bb', JSON.stringify(cleanData));
-        console.log('[AUTO-SAVE] Draft bukti tersimpan:', cleanData.length, 'item');
-      }
-    } catch (err) {
-      console.error('[STORAGE SAVE ERROR]:', err);
-    }
-  }, [daftarBukti]);
 
   // Log status bukti saat render/refresh untuk pemantauan realtime
   console.log('[STATUS BUKTI SAAT RENDER]:', daftarBukti);
@@ -916,7 +920,7 @@ export default function DumasFormView({
 
     channel
       .on('broadcast', { event: 'evidence_uploaded' }, async ({ payload }) => {
-        console.log('[LAPTOP] Sinyal barang bukti baru diterima:', payload);
+        console.log('[LAPTOP] Menerima berkas bukti baru:', payload);
 
         if (payload && (payload.url || payload.fileUrl)) {
           const rawUrl = payload.url || payload.fileUrl || payload.file_url;
@@ -924,10 +928,9 @@ export default function DumasFormView({
           const resolvedName = payload.nama_berkas || payload.fileName || payload.name || payload.nama_file || 'Foto_Bukti_HP.jpg';
           const resolvedSize = payload.ukuran || payload.fileSize || payload.size || 0;
           const resolvedType = payload.tipe || payload.type || payload.mime_type || (resolvedName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-          const isPdf = resolvedType.includes('pdf') || resolvedName.toLowerCase().endsWith('.pdf');
 
           const sanitized = sanitizeEvidenceItem({
-            id: payload.id || `bb_${Date.now()}`,
+            id: payload.id || `bb_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
             nama_berkas: resolvedName,
             url: resolvedUrl,
             fileUrl: resolvedUrl,
@@ -938,6 +941,13 @@ export default function DumasFormView({
           });
 
           if (sanitized) {
+            setDaftarBukti((prev) => {
+              // Hindari duplikasi jika URL sudah terdaftar
+              const exists = prev.some(item => (item.url || item.fileUrl) === (sanitized.url || sanitized.fileUrl));
+              if (exists) return prev;
+              return [...prev, sanitized];
+            });
+
             // Simpan langsung dan tautkan ke nomor register resmi jika aktif
             await handleBuktiBaruDiterima(sanitized);
 
@@ -965,6 +975,11 @@ export default function DumasFormView({
               fileUrl: resolvedUrl
             });
             if (sanitized) {
+              setDaftarBukti((prev) => {
+                const exists = prev.some(item => (item.url || item.fileUrl) === (sanitized.url || sanitized.fileUrl));
+                if (exists) return prev;
+                return [...prev, sanitized];
+              });
               await handleBuktiBaruDiterima(sanitized);
               setToastEvidence(sanitized);
               setTimeout(() => setToastEvidence(null), 6000);
@@ -986,6 +1001,11 @@ export default function DumasFormView({
               fileUrl: resolvedUrl
             });
             if (sanitized) {
+              setDaftarBukti((prev) => {
+                const exists = prev.some(item => (item.url || item.fileUrl) === (sanitized.url || sanitized.fileUrl));
+                if (exists) return prev;
+                return [...prev, sanitized];
+              });
               await handleBuktiBaruDiterima(sanitized);
               setToastEvidence(sanitized);
               setTimeout(() => setToastEvidence(null), 6000);
@@ -1052,6 +1072,29 @@ export default function DumasFormView({
     return () => clearTimeout(timer);
   }, [pelapor, saksiList, terlaporList, caseInfo, evidenceFiles, mode, currentUserProfile?.id, isSubmitting]);
 
+  // Handler Khusus Pembersihan Otomatis & Isolasi State Laporan Baru
+  const handleInputLaporanBaru = useCallback(() => {
+    // 1. Kosongkan state bukti di memori
+    setDaftarBukti([]);
+    // 2. Buat ID sesi baru untuk form yang bersih
+    const newSessionId = `sesi_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setDraftSessionId(newSessionId);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('emindik_current_draft_session_id', newSessionId);
+      sessionStorage.removeItem('temp_dumas_token');
+    }
+    // 3. Bersihkan draft lama di localStorage
+    try {
+      localStorage.removeItem('emindik_dumas_evidence_v2');
+      localStorage.removeItem('emindik_draft_daftar_bb_v1');
+      localStorage.removeItem('emindik_temp_draft_bb');
+      localStorage.removeItem('temp_dumas_bb');
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(`bb_draft_${draftSessionId}`);
+    } catch {}
+    console.log('[DUMAS] Isolasi state: Bukti dikosongkan dan sesi draf baru dibuat:', newSessionId);
+  }, [STORAGE_KEY, draftSessionId]);
+
   // Handler Reset Draf Manual & Darurat
   const handleResetDraft = () => {
     const confirmReset = window.confirm(
@@ -1059,22 +1102,17 @@ export default function DumasFormView({
     );
     if (!confirmReset) return;
 
+    handleInputLaporanBaru();
     clearDumasDraft(currentUserProfile?.id);
     clearDumasDraft(null);
     try {
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-      localStorage.removeItem(DRAFT_KEY_BB);
       localStorage.removeItem(DRAFT_KEY_FORM);
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem('temp_dumas_bb');
-      sessionStorage.removeItem('temp_dumas_token');
       sessionStorage.removeItem('emindik_dumas_subview');
     } catch {}
     setPelapor(defaultPelapor);
     setSaksiList(defaultSaksi);
     setTerlaporList(defaultTerlapor);
     setCaseInfo(defaultCaseInfo);
-    setDaftarBukti([]);
     setLastSavedTime(null);
     setSaveStatus('idle');
     setIsDraftRestored(false);
@@ -1410,18 +1448,13 @@ export default function DumasFormView({
           } catch {}
         }
 
+        handleInputLaporanBaru();
         clearDumasDraft(currentUserProfile?.id);
         clearDumasDraft(null);
         try {
-          localStorage.removeItem(DRAFT_STORAGE_KEY);
-          localStorage.removeItem(DRAFT_KEY_BB);
           localStorage.removeItem(DRAFT_KEY_FORM);
-          localStorage.removeItem(STORAGE_KEY);
-          localStorage.removeItem('temp_dumas_bb');
-          sessionStorage.removeItem('temp_dumas_token');
           sessionStorage.removeItem('emindik_dumas_subview');
         } catch {}
-        setDaftarBukti([]);
         setIsDraftRestored(false);
         setLastSavedTime(null);
         setSaveStatus('idle');
@@ -2717,16 +2750,7 @@ export default function DumasFormView({
                   </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      try {
-                        localStorage.removeItem(DRAFT_STORAGE_KEY);
-                        localStorage.removeItem(DRAFT_KEY_BB);
-                        localStorage.removeItem(STORAGE_KEY);
-                        localStorage.removeItem('temp_dumas_bb');
-                      } catch {}
-                      setDaftarBukti([]);
-                      console.log('[CACHE] Cache barang bukti berhasil dibersihkan.');
-                    }}
+                    onClick={handleInputLaporanBaru}
                     style={{
                       background: 'rgba(239, 68, 68, 0.1)',
                       border: '1px solid rgba(239, 68, 68, 0.3)',

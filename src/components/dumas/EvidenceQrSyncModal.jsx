@@ -145,9 +145,10 @@ export default function EvidenceQrSyncModal({
       // 1. Tambahkan data foto R2 langsung ke state lampiran form Bagian 05 jika ada setDaftarBukti:
       if (setDaftarBukti) {
         setDaftarBukti((prev) => {
-          if (prev.some((item) => (item.url && item.url === fileUrl) || (item.fileUrl && item.fileUrl === fileUrl))) {
-            return prev;
-          }
+          // Hindari duplikasi jika URL sudah terdaftar
+          const targetCheckUrl = fileUrl || evidenceItem.url || evidenceItem.fileUrl;
+          const exists = prev.some((item) => (item.url || item.fileUrl) === targetCheckUrl);
+          if (exists) return prev;
           return [...prev, evidenceItem];
         });
       }
@@ -163,7 +164,7 @@ export default function EvidenceQrSyncModal({
 
     channel
       .on('broadcast', { event: 'evidence_uploaded' }, ({ payload }) => {
-        console.log('[REALTIME BRIDGE] Bukti diterima dari HP:', payload);
+        console.log('[LAPTOP] Menerima berkas bukti baru (Modal):', payload);
         handleReceivedEvidence(payload);
       })
       .subscribe((status) => {

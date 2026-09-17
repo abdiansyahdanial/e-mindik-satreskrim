@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Camera, 
   UploadCloud, 
@@ -14,6 +14,7 @@ import {
 import { supabase } from '../supabaseClient';
 
 export default function MobileUploadView() {
+  const syncChannelRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -83,20 +84,80 @@ export default function MobileUploadView() {
     return () => clearInterval(interval);
   }, [isExpired, targetExp]);
 
-  // Pre-subscribe channel WebSocket Supabase. Otomatis terputus jika sesi kedaluwarsa.
+  // Pre-subscribe channel WebSocket Supabase dengan referensi tunggal yang tetap aktif
   useEffect(() => {
     if (!token || isExpired) return;
-    console.log(`[MOBILE SYNC] Pre-subscribing channel mobile_sync_${token}...`);
-    const ch = supabase.channel(`mobile_sync_${token}`);
-    ch.subscribe((status) => {
-      console.log(`[MOBILE SYNC] Status koneksi awal HP (${token}):`, status);
-    });
+    console.log(`[MOBILE SYNC] Pre-subscribing channel tunggal mobile_sync_${token}...`);
+    
+    if (!syncChannelRef.current) {
+      const ch = supabase.channel(`mobile_sync_${token}`, {
+        config: {
+          broadcast: { ack: true }
+        }
+      });
+      ch.subscribe((status) => {
+        console.log(`[MOBILE SYNC] Status koneksi channel HP (${token}):`, status);
+      });
+      syncChannelRef.current = ch;
+    }
 
     return () => {
       console.log(`[MOBILE SYNC] Memutus listener channel mobile_sync_${token} (Sesi berakhir/Unmount)...`);
-      supabase.removeChannel(ch);
+      if (syncChannelRef.current) {
+        supabase.removeChannel(syncChannelRef.current);
+        syncChannelRef.current = null;
+      }
     };
   }, [token, isExpired]);
+
+  // Fungsi pengiriman broadcast yang menjamin channel aktif dan mendukung multi-upload berulang
+  const sendEvidenceBroadcast = async (evidencePayload) => {
+    if (!syncChannelRef.current) {
+      syncChannelRef.current = supabase.channel(`mobile_sync_${token}`);
+      await syncChannelRef.current.subscribe();
+    }
+
+    const ch = syncChannelRef.current;
+
+    try {
+      const res = await ch.send({
+        type: 'broadcast',
+        event: 'evidence_uploaded',
+        payload: evidencePayload
+      });
+      console.log('[HP] Broadcast terkirim untuk berkas:', evidencePayload.nama_berkas, res);
+    } catch (sendErr) {
+      console.warn('[HP] Broadcast send warning:', sendErr);
+      try {
+        await ch.subscribe();
+        await ch.send({
+          type: 'broadcast',
+          event: 'evidence_uploaded',
+          payload: evidencePayload
+        });
+      } catch (retryErr) {
+        console.warn('[HP] Retry broadcast failed:', retryErr);
+      }
+    }
+
+    // BroadcastChannel & LocalStorage fallback (untuk simulasi / uji coba tab perangkat yang sama)
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('polres_mobile_bridge');
+        bc.postMessage(evidencePayload);
+        bc.close();
+      }
+    } catch (bcErr) {
+      console.warn('BroadcastChannel notice:', bcErr);
+    }
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`polres_mobile_evidence_${token}`, JSON.stringify(evidencePayload));
+        localStorage.setItem(`polres_mobile_evidence_ping`, String(Date.now()));
+      }
+    } catch {}
+  };
 
   const handleFileCapture = (e) => {
     const file = e.target.files?.[0];
@@ -204,62 +265,8 @@ export default function MobileUploadView() {
       };
 
       console.log(`[MOBILE] Mengirim broadcast ke channel mobile_sync_${token}...`, evidenceData);
-
-      // 4. Kirim broadcast lewat Supabase Realtime channel mobile_sync_${token}
-      const syncChannel = supabase.channel(`mobile_sync_${token}`);
-
-      if (syncChannel.state === 'joined') {
-        const res = await syncChannel.send({
-          type: 'broadcast',
-          event: 'evidence_uploaded',
-          payload: evidenceData
-        });
-        console.log('[MOBILE] Event broadcast terkirim ke laptop (instant):', res, evidenceData);
-      } else {
-        await new Promise((resolve) => {
-          let resolved = false;
-          syncChannel.subscribe(async (status) => {
-            console.log(`[MOBILE] Status koneksi channel HP: ${status}`);
-            if (status === 'SUBSCRIBED' && !resolved) {
-              resolved = true;
-              try {
-                const res = await syncChannel.send({
-                  type: 'broadcast',
-                  event: 'evidence_uploaded',
-                  payload: evidenceData
-                });
-                console.log('[MOBILE] Event broadcast terkirim ke laptop:', res, evidenceData);
-              } catch (broadcastErr) {
-                console.warn('[MOBILE] Broadcast send error:', broadcastErr);
-              }
-              resolve();
-            }
-          });
-          setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              resolve();
-            }
-          }, 4000);
-        });
-      }
-
-      // BroadcastChannel & LocalStorage fallback (untuk simulasi / uji coba tab perangkat yang sama)
-      try {
-        if (typeof BroadcastChannel !== 'undefined') {
-          const bc = new BroadcastChannel('polres_mobile_bridge');
-          bc.postMessage(evidenceData);
-          bc.close();
-        }
-      } catch (bcErr) {
-        console.warn('BroadcastChannel notice:', bcErr);
-      }
-
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(`polres_mobile_evidence_${token}`, JSON.stringify(evidenceData));
-        }
-      } catch {}
+      // Kirim via referensi channel persisten Supabase Realtime
+      await sendEvidenceBroadcast(evidenceData);
 
       setIsSuccess(true);
     } catch (err) {

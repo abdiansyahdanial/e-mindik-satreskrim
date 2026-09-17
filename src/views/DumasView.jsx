@@ -33,11 +33,9 @@ export default function DumasView({
           sessionStorage.setItem('emindik_dumas_subview', 'list');
           return 'list';
         }
-        // Jika ada draft aktif di localStorage dengan data riil yang valid, otomatis buka form
-        const rawBb = safeGetLocalStorage('emindik_dumas_evidence_v2', []) || safeGetLocalStorage('emindik_draft_daftar_bb_v1', []);
-        const draftBb = sanitizeEvidenceList(rawBb);
+        // Jika ada draft form aktif di localStorage dengan data riil yang valid, buka form
         const draftForm = safeGetLocalStorage('emindik_draft_form_perkara_v1', null);
-        if ((Array.isArray(draftBb) && draftBb.length > 0) || (draftForm && Object.keys(draftForm).length > 0)) {
+        if (draftForm && typeof draftForm === 'object' && Object.keys(draftForm).length > 0) {
           return 'form';
         }
       }
@@ -58,6 +56,7 @@ export default function DumasView({
   const [initialOcrFiles, setInitialOcrFiles] = useState([]);
   const [initialOcrData, setInitialOcrData] = useState(null);
   const [selectedDumas, setSelectedDumas] = useState(null);
+  const [formMountKey, setFormMountKey] = useState(() => `form-${Date.now()}`);
 
   // 1. Handlers Modal Pemilihan Mode
   const handleOpenModeSelect = () => {
@@ -65,6 +64,17 @@ export default function DumasView({
   };
 
   const handleSelectMode = (mode, files = null, ocrData = null) => {
+    // Isolasi State: bersihkan draft bukti global lama agar tidak bocor ke laporan baru
+    try {
+      localStorage.removeItem('emindik_dumas_evidence_v2');
+      localStorage.removeItem('emindik_draft_daftar_bb_v1');
+      localStorage.removeItem('emindik_temp_draft_bb');
+      sessionStorage.removeItem('emindik_current_draft_session_id');
+      sessionStorage.removeItem('temp_dumas_token');
+    } catch {}
+
+    setSelectedDumas(null);
+    setFormMountKey(`form-new-${Date.now()}`);
     setFormMode(mode);
     const normalizedFiles = files 
       ? (Array.isArray(files) ? files : [files]) 
@@ -165,7 +175,7 @@ export default function DumasView({
         <DumasErrorBoundary onResetView={() => setSubView('list')}>
           {DumasFormView ? (
             <DumasFormView
-              key={initialOcrData ? 'form-ocr-active' : 'form-manual'}
+              key={initialOcrData ? 'form-ocr-active' : (selectedDumas?.id || formMountKey)}
               mode={formMode}
               initialOcrFile={initialOcrFile}
               initialOcrFiles={initialOcrFiles}
