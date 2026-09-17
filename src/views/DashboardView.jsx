@@ -72,11 +72,45 @@ export default function DashboardView({
       </div>
 
       {/* 21st.dev felipemenezes098/card-05 Inspired KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div 
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+          gap: '16px'
+        }}
+      >
         {/* Card 1: Perkara Aktif */}
-        <div className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]">
-          <div className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg">
-            <FolderLock size={17} className="text-[#ff5740]" />
+        <div 
+          className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]"
+          style={{
+            position: 'relative',
+            width: '100%',
+            borderRadius: '12px',
+            backgroundColor: '#1b2229',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div 
+            className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg"
+            style={{
+              position: 'absolute',
+              top: '18px',
+              right: '18px',
+              backgroundColor: '#222b34',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              width: '36px',
+              height: '36px',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px'
+            }}
+          >
+            <FolderLock size={17} className="text-[#ff5740]" color="#ff5740" />
           </div>
           <span className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-medium">
             Perkara Aktif
@@ -91,9 +125,36 @@ export default function DashboardView({
         </div>
 
         {/* Card 2: Dokumen Terbit */}
-        <div className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]">
-          <div className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg">
-            <FileText size={17} className="text-sky-400" />
+        <div 
+          className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]"
+          style={{
+            position: 'relative',
+            width: '100%',
+            borderRadius: '12px',
+            backgroundColor: '#1b2229',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div 
+            className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg"
+            style={{
+              position: 'absolute',
+              top: '18px',
+              right: '18px',
+              backgroundColor: '#222b34',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              width: '36px',
+              height: '36px',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px'
+            }}
+          >
+            <FileText size={17} className="text-sky-400" color="#38bdf8" />
           </div>
           <span className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-medium">
             Dokumen Terbit
@@ -108,9 +169,36 @@ export default function DashboardView({
         </div>
 
         {/* Card 3: Tahanan Rutan */}
-        <div className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]">
-          <div className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg">
-            <ShieldAlert size={17} className="text-amber-400" />
+        <div 
+          className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]"
+          style={{
+            position: 'relative',
+            width: '100%',
+            borderRadius: '12px',
+            backgroundColor: '#1b2229',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div 
+            className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg"
+            style={{
+              position: 'absolute',
+              top: '18px',
+              right: '18px',
+              backgroundColor: '#222b34',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              width: '36px',
+              height: '36px',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px'
+            }}
+          >
+            <ShieldAlert size={17} className="text-amber-400" color="#fbbf24" />
           </div>
           <span className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-medium">
             Tahanan Rutan
@@ -125,9 +213,36 @@ export default function DashboardView({
         </div>
 
         {/* Card 4: Personel Siaga */}
-        <div className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]">
-          <div className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg">
-            <Users size={17} className="text-emerald-400" />
+        <div 
+          className="relative w-full rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm transition-all duration-150 hover:border-white/[0.18]"
+          style={{
+            position: 'relative',
+            width: '100%',
+            borderRadius: '12px',
+            backgroundColor: '#1b2229',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div 
+            className="absolute top-5 right-5 bg-[#222b34] border border-white/10 flex size-9 items-center justify-center rounded-lg"
+            style={{
+              position: 'absolute',
+              top: '18px',
+              right: '18px',
+              backgroundColor: '#222b34',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              width: '36px',
+              height: '36px',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px'
+            }}
+          >
+            <Users size={17} className="text-emerald-400" color="#34d399" />
           </div>
           <span className="text-xs uppercase font-mono tracking-wider text-zinc-400 font-medium">
             Personel Siaga
@@ -143,12 +258,31 @@ export default function DashboardView({
       </div>
 
       {/* Grid: Berkas Perkara Terkini & Dokumen Terbaru */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div 
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
+          gap: '16px'
+        }}
+      >
         {/* Left: Recent Cases */}
-        <div className="rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm flex flex-col gap-3.5">
+        <div 
+          className="rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm flex flex-col gap-3.5"
+          style={{
+            borderRadius: '12px',
+            backgroundColor: '#1b2229',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}
+        >
           <div className="flex items-center justify-between pb-1 border-b border-white/[0.06]">
             <div className="flex items-center gap-2">
-              <FolderLock size={16} className="text-[#ff5740]" />
+              <FolderLock size={16} className="text-[#ff5740]" color="#ff5740" />
               <h3 className="text-sm font-bold m-0 text-zinc-100">
                 Berkas Perkara Terbaru
               </h3>
@@ -166,6 +300,17 @@ export default function DashboardView({
                   key={c.id}
                   onClick={() => onSelectCase(c)}
                   className="p-3 bg-[#222b34] rounded-lg border border-white/[0.08] cursor-pointer transition-all duration-150 flex items-center justify-between hover:border-white/[0.2] hover:bg-[#26313c] hover:translate-x-0.5"
+                  style={{
+                    padding: '12px 14px',
+                    backgroundColor: '#222b34',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
                 >
                   <div className="flex-1 min-w-0 pr-3">
                     <div className="flex items-center gap-2 mb-1">
@@ -190,10 +335,22 @@ export default function DashboardView({
         </div>
 
         {/* Right: Recent Generated Documents */}
-        <div className="rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm flex flex-col gap-3.5">
+        <div 
+          className="rounded-xl bg-[#1b2229] border border-white/[0.08] p-5 shadow-sm flex flex-col gap-3.5"
+          style={{
+            borderRadius: '12px',
+            backgroundColor: '#1b2229',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}
+        >
           <div className="flex items-center justify-between pb-1 border-b border-white/[0.06]">
             <div className="flex items-center gap-2">
-              <FileText size={16} className="text-sky-400" />
+              <FileText size={16} className="text-sky-400" color="#38bdf8" />
               <h3 className="text-sm font-bold m-0 text-zinc-100">
                 Dokumen Mindik Terakhir
               </h3>
@@ -210,6 +367,17 @@ export default function DashboardView({
                   key={doc.id}
                   onClick={() => onViewDoc(doc)}
                   className="p-3 bg-[#222b34] rounded-lg border border-white/[0.08] cursor-pointer transition-all duration-150 flex items-center justify-between hover:border-white/[0.2] hover:bg-[#26313c] hover:translate-x-0.5"
+                  style={{
+                    padding: '12px 14px',
+                    backgroundColor: '#222b34',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
                 >
                   <div className="flex-1 min-w-0 pr-3">
                     <div className="flex items-center gap-2 mb-1">
@@ -238,4 +406,5 @@ export default function DashboardView({
     </div>
   );
 }
+
 

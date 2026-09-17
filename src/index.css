@@ -1186,5 +1186,58 @@ p {
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .table-row-hover:hover {
-  background-color: rgba(255, 255, 255, 0.025) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
 }
+
+/* ============================================================
+   ESSENTIAL LAYOUT & GRID UTILITIES (VITE VANILLA CSS)
+   ============================================================ */
+.pointer-events-none { pointer-events: none !important; }
+.fixed { position: fixed !important; }
+.absolute { position: absolute !important; }
+.relative { position: relative !important; }
+.inset-0 { top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; }
+.z-0 { z-index: 0 !important; }
+.z-10 { z-index: 10 !important; }
+.z-20 { z-index: 20 !important; }
+.z-50 { z-index: 50 !important; }
+
+.flex { display: flex !important; }
+.flex-col { flex-direction: column !important; }
+.flex-1 { flex: 1 1 0% !important; }
+.min-w-0 { min-width: 0 !important; }
+.items-center { align-items: center !important; }
+.justify-center { justify-content: center !important; }
+.justify-between { justify-content: space-between !important; }
+.overflow-hidden { overflow: hidden !important; }
+.overflow-y-auto { overflow-y: auto !important; }
+.select-none { user-select: none !important; }
+
+.w-full { width: 100% !important; }
+.min-h-screen { min-height: 100vh !important; }
+
+/* Grid Layout */
+.grid { display: grid !important; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+.gap-2 { gap: 0.5rem !important; }
+.gap-3 { gap: 0.75rem !important; }
+.gap-4 { gap: 1rem !important; }
+.gap-5 { gap: 1.25rem !important; }
+
+@media (min-width: 640px) {
+  .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
+
+/* 21st.dev Card Positioning */
+.top-5 { top: 1.25rem !important; }
+.right-5 { right: 1.25rem !important; }
+.size-9 { width: 2.25rem !important; height: 2.25rem !important; }
+.rounded-lg { border-radius: 0.5rem !important; }
+.rounded-xl { border-radius: 0.75rem !important; }
+.rounded-2xl { border-radius: 1rem !important; }
+

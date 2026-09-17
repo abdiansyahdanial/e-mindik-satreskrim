@@ -17,7 +17,6 @@ import DumasView from './views/DumasView';
 import MobileUploadView from './views/MobileUploadView';
 import { fetchDumasRecords } from './services/dumasService';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
-import logoSatreskrim from './assets/logo-satreskrim-koltim.png';
 
 export default function App() {
   // Authentication & Role State (3-tier: 'super_admin' | 'admin' | 'anggota')
@@ -721,16 +720,45 @@ export default function App() {
 
 
   return (
-    <div className="app-container relative overflow-hidden">
-      {/* Ambient Satreskrim Insignia Watermark Layer */}
+    <div 
+      className="app-container relative min-h-screen flex"
+      style={{
+        position: 'relative',
+        minHeight: '100vh',
+        display: 'flex',
+        backgroundColor: '#0B0F17'
+      }}
+    >
+      {/* Watermark Insignia Satreskrim */}
       <div 
-        aria-hidden="true" 
+        aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden'
+        }}
       >
         <img
-          src={logoSatreskrim}
-          alt=""
-          className="w-[580px] max-w-[70vw] select-none opacity-[0.035] grayscale contrast-125 brightness-150 filter -rotate-6 scale-105 transition-opacity duration-700"
+          src="/logo-satreskrim-koltim.png"
+          alt="Watermark Satreskrim"
+          className="w-[480px] md:w-[560px] opacity-[0.04] grayscale filter select-none pointer-events-none"
+          style={{
+            width: '520px',
+            maxWidth: '65vw',
+            opacity: 0.04,
+            filter: 'grayscale(100%)',
+            userSelect: 'none',
+            pointerEvents: 'none'
+          }}
         />
       </div>
 
@@ -772,7 +800,16 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <div className="app-main">
+      <div 
+        className="app-main relative z-10 flex-1 min-w-0 overflow-y-auto"
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          flex: 1,
+          minWidth: 0,
+          overflowY: 'auto'
+        }}
+      >
         <Navbar
           onNewCase={() => setIsNewCaseModalOpen(true)}
           onNewDoc={() => {
