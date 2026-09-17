@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useDumasEvidence } from '../../hooks/useDumasEvidence';
 import { 
   Plus, 
   Trash2, 
@@ -479,55 +480,33 @@ export default function DumasFormView({
     }
   }, [initialOcrData]);
 
-  // Pelacak URL bukti yang sudah masuk untuk mencegah duplikasi (Strict Deduplication Ref)
+  // ─────────────────────────────────────────────────────────────────────────
+  // HOOK TERPUSAT: useDumasEvidence — menggantikan seluruh useState(daftarBukti)
+  // dan 4 useEffect localStorage yang sebelumnya bertumpuk di sini.
+  // sessionId terikat ke nomorRegisterResmi (jika ada) atau draftSessionId.
+  // ─────────────────────────────────────────────────────────────────────────
+  const evidenceSessionId = nomorRegisterResmi || draftSessionId || 'active_draft';
+  const {
+    evidenceList: daftarBukti,
+    addEvidence,
+    removeEvidence,
+    clearEvidence,
+    totalEvidence,
+    evidenceListRef,
+  } = useDumasEvidence(evidenceSessionId);
+
+  // Backward-compatible alias untuk JSX di bawah (tidak perlu ubah semua prop)
+  const evidenceFiles = daftarBukti;
+  const setEvidenceFiles = addEvidence; // Untuk backward-compat jika ada sisa referensi
+
+  // Ref URL untuk dedup Supabase realtime listener (terpisah dari hook internal)
+  // Hook punya dedup via URL+ID di addEvidence, tapi ref ini dibutuhkan agar
+  // handler async tidak memanggil handleBuktiBaruDiterima (DB) dua kali.
   const processedEvidenceUrlsRef = useRef(new Set());
 
-  // LANGKAH 2: Inisialisasi State Bebas Crash & Anti-Hilang Saat Refresh
-  // Prioritas baca: (0) PERSISTENT_KEY → (1) EVIDENCE_STORAGE_KEY stabil → (2) ACTIVE_DRAFT_KEY → (3) savedDraft
-  const [daftarBukti, setDaftarBukti] = useState(() => {
-    try {
-      // Prioritas 0: Key backup agresif — hanya ada isinya jika pernah upload
-      const persistentRaw = localStorage.getItem(PERSISTENT_KEY);
-      if (persistentRaw) {
-        const parsed = JSON.parse(persistentRaw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const cleaned = parsed.map(sanitizeEvidenceItem).filter(Boolean);
-          if (cleaned.length > 0) {
-            console.log('[HYDRATION] Bukti dipulihkan dari PERSISTENT_KEY:', cleaned.length, 'berkas');
-            return cleaned;
-          }
-        }
-      }
-    } catch {}
-    try {
-      // Prioritas 1: Baca dari key stabil dedikasi bukti (paling reliabel saat refresh)
-      const evidenceRaw = localStorage.getItem(EVIDENCE_STORAGE_KEY);
-      if (evidenceRaw) {
-        const parsed = JSON.parse(evidenceRaw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const cleaned = parsed.map(sanitizeEvidenceItem).filter(Boolean);
-          if (cleaned.length > 0) return cleaned;
-        }
-      }
-    } catch {}
-    try {
-      // Prioritas 2: Baca dari ACTIVE_DRAFT_KEY (gabungan form + bukti)
-      const activeRaw = safeGetLocalStorage(ACTIVE_DRAFT_KEY, null);
-      if (activeRaw && Array.isArray(activeRaw.daftarBukti) && activeRaw.daftarBukti.length > 0) {
-        return activeRaw.daftarBukti.map(sanitizeEvidenceItem).filter(Boolean);
-      }
-      if (savedDraft?.daftarBukti && Array.isArray(savedDraft.daftarBukti) && savedDraft.daftarBukti.length > 0) {
-        return savedDraft.daftarBukti.map(sanitizeEvidenceItem).filter(Boolean);
-      }
-    } catch {}
-    return [];
-  });
+  // Rehidrasi data FORM (bukan bukti — bukti sudah diurus hook) dari ACTIVE_DRAFT_KEY
+  // Flag isStorageReady tetap ada agar logika DB fetch tidak berubah.
   const [isStorageReady, setIsStorageReady] = useState(false);
-  // Backward-compatible alias
-  const evidenceFiles = daftarBukti;
-  const setEvidenceFiles = setDaftarBukti;
-
-  // 3. Rehidrasi Draft Otomatis Saat Komponen Dimuat (Anti-Hilang Saat Refresh)
   useEffect(() => {
     try {
       const savedDraftRaw = localStorage.getItem(ACTIVE_DRAFT_KEY);
@@ -547,68 +526,22 @@ export default function DumasFormView({
             setCaseInfo(prev => ({ ...prev, ...parsed.formData.caseInfo }));
           }
         }
+        // Bukti dari ACTIVE_DRAFT_KEY dimasukkan via addEvidence (hook yang mendedup)
         if (Array.isArray(parsed.daftarBukti) && parsed.daftarBukti.length > 0) {
-          const cleaned = parsed.daftarBukti.map(sanitizeEvidenceItem).filter(Boolean);
-          setDaftarBukti(cleaned);
-          cleaned.forEach(item => {
-            const u = (item.url || item.fileUrl || '').trim();
-            if (u) processedEvidenceUrlsRef.current.add(u);
-          });
+          parsed.daftarBukti.forEach(item => addEvidence(item));
         }
         setIsDraftRestored(true);
         if (parsed.savedAt) {
           setLastSavedTime(new Date(parsed.savedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
         }
-        console.log('[DRAFT RESTORED] Data form & bukti berhasil dipulihkan setelah reload.');
-      } else if (nomorRegisterResmi) {
-        const regDraft = localStorage.getItem(`draft_bb_${nomorRegisterResmi}`);
-        if (regDraft) {
-          const parsedReg = JSON.parse(regDraft);
-          if (Array.isArray(parsedReg)) {
-            setDaftarBukti(parsedReg.map(sanitizeEvidenceItem).filter(Boolean));
-          }
-        }
+        console.log('[DRAFT RESTORED] Data form berhasil dipulihkan setelah reload.');
       }
     } catch (err) {
       console.error('[RESTORE ERROR]:', err);
     } finally {
       setIsStorageReady(true);
     }
-  }, [nomorRegisterResmi]);
-
-  // Sinkronkan ke localStorage terisolasi per sesi / nomor register
-  useEffect(() => {
-    if (!isStorageReady) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(daftarBukti));
-      if (nomorRegisterResmi) {
-        localStorage.setItem(`draft_bb_${nomorRegisterResmi}`, JSON.stringify(daftarBukti));
-      }
-    } catch (err) {
-      console.error('[STORAGE SAVE] Gagal menyimpan ke localStorage:', err);
-    }
-  }, [daftarBukti, isStorageReady, STORAGE_KEY, nomorRegisterResmi]);
-
-  // Auto-save daftarBukti ke kunci STABIL (EVIDENCE_STORAGE_KEY) — anti-hilang saat refresh
-  // Terpisah dari STORAGE_KEY yang dinamis, dipicu setiap kali daftarBukti berubah
-  useEffect(() => {
-    try {
-      localStorage.setItem(EVIDENCE_STORAGE_KEY, JSON.stringify(daftarBukti));
-    } catch (e) {
-      console.error('[AUTO-SAVE BUKTI] Gagal auto-save bukti ke EVIDENCE_STORAGE_KEY:', e);
-    }
-  }, [daftarBukti]);
-
-  // Auto-save ke PERSISTENT_KEY (backup agresif — hanya tulis saat ada isi)
-  useEffect(() => {
-    try {
-      if (daftarBukti.length > 0) {
-        localStorage.setItem(PERSISTENT_KEY, JSON.stringify(daftarBukti));
-      }
-    } catch (e) {
-      console.error('[AUTO-SAVE BUKTI] Gagal auto-save bukti ke PERSISTENT_KEY:', e);
-    }
-  }, [daftarBukti]);
+  }, []);
 
   // State Dokumen / Riwayat Berkas (Safe 404/PGRST204 Fallback Resilience)
   const [documents, setDocuments] = useState([]);
@@ -694,7 +627,7 @@ export default function DumasFormView({
   }, [perkaraId]);
 
   // Log status bukti saat render/refresh untuk pemantauan realtime
-  console.log('[STATUS BUKTI SAAT RENDER]:', daftarBukti);
+  console.log('[STATUS BUKTI SAAT RENDER]:', totalEvidence, 'berkas');
 
   const [toastEvidence, setToastEvidence] = useState(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -794,7 +727,9 @@ export default function DumasFormView({
     }
   }, [perkaraId, tokenSesi, nomorRegisterResmi]);
 
-  // 1. Simpan Langsung ke Database Saat Bukti Baru Masuk (Instruksi Utama)
+  // 1. Simpan ke State (via addEvidence) + Database Supabase Saat Bukti Baru Masuk
+  // skipStateUpdate=true digunakan saat pemanggil sudah memanggil addEvidence sebelumnya
+  // sehingga tidak terjadi double-add ke state.
   const handleBuktiBaruDiterima = useCallback(async (itemBukti, skipStateUpdate = false) => {
     if (!itemBukti) return;
     const rawUrl = itemBukti.url || itemBukti.fileUrl || itemBukti.file_url;
@@ -808,41 +743,30 @@ export default function DumasFormView({
     });
     if (!sanitized) return;
 
-    // A. Update state lokal segera (hanya jika caller belum melakukan update state)
+    // A. Update state via addEvidence (hook yang menangani dedup & persistensi localStorage)
     if (!skipStateUpdate) {
-      setDaftarBukti((prev) => {
-        const isDuplicate = prev.some((b) => {
-          const itemUrl = (b.url || b.fileUrl || b.file_url || '').trim();
-          return itemUrl === resolvedUrl || (b.id && sanitized.id && b.id === sanitized.id);
-        });
-        if (isDuplicate) {
-          console.warn('[DEDUP] Mengabaikan duplikat state untuk URL:', resolvedUrl);
-          return prev;
-        }
-        return [...prev, sanitized];
-      });
+      addEvidence(sanitized);
     }
 
-    // Catat ke ref memori agar tidak diproses berulang
+    // Catat ke ref URL memori agar handler DB tidak dipanggil berulang
     processedEvidenceUrlsRef.current.add(resolvedUrl);
 
     // B. Jika sudah ada nomor register resmi, simpan langsung ke Supabase
     if (nomorRegisterResmi) {
       try {
-        // Simpan ke tabel relasi barang_bukti
         const { error: insErr } = await supabase.from('barang_bukti').insert([{
           nomor_register: nomorRegisterResmi,
           id_perkara: perkaraId || null,
-          nama_berkas: sanitized.nama_berkas || sanitized.name || sanitized.nama_file || 'Berkas Bukti',
+          nama_berkas: sanitized.nama_berkas || 'Berkas Bukti',
           file_url: sanitized.url || sanitized.fileUrl,
-          tipe_berkas: sanitized.tipe || sanitized.type || 'image/jpeg',
-          ukuran_berkas: sanitized.ukuran || sanitized.size || 0,
+          tipe_berkas: sanitized.tipe || 'image/jpeg',
+          ukuran_berkas: sanitized.ukuran || 0,
           keterangan: sanitized.keterangan || 'Barang bukti digital',
           storage_provider: 'cloudflare_r2',
           created_at: new Date().toISOString()
         }]);
         if (!insErr) {
-          console.log('[PERSISTENCE] Bukti berhasil disimpan ke database untuk register:', nomorRegisterResmi);
+          console.log('[PERSISTENCE] Bukti disimpan ke DB untuk register:', nomorRegisterResmi);
         } else {
           console.warn('[PERSISTENCE WARNING]:', insErr.message);
         }
@@ -853,7 +777,7 @@ export default function DumasFormView({
 
     // Tetap sinkronkan ke fallback database berbasis token sesi
     await simpanBuktiKeDatabase(sanitized);
-  }, [nomorRegisterResmi, perkaraId, simpanBuktiKeDatabase]);
+  }, [nomorRegisterResmi, perkaraId, simpanBuktiKeDatabase, addEvidence]);
 
   // 2. Muat Ulang Bukti Saat Halaman Dimuat / Direfresh (Hydration Query berdasarkan nomor register resmi)
   useEffect(() => {
@@ -871,29 +795,19 @@ export default function DumasFormView({
           .order('created_at', { ascending: true });
 
         if (!error && data && data.length > 0) {
-          const formatted = data.map((b) => ({
+          // Gunakan addEvidence dari hook — dedup otomatis, tidak ada double entry
+          data.forEach((b) => addEvidence({
             id: b.id,
             nama_berkas: b.nama_berkas,
-            nama_file: b.nama_berkas,
-            name: b.nama_berkas,
             url: b.file_url,
             fileUrl: b.file_url,
             tipe: b.tipe_berkas,
-            tipe_berkas: b.tipe_berkas,
-            mime_type: b.tipe_berkas,
             ukuran: b.ukuran_berkas,
-            ukuran_berkas: b.ukuran_berkas,
-            file_size_bytes: b.ukuran_berkas,
-            file_size_formatted: `${(Number(b.ukuran_berkas || 0) / 1024).toFixed(0)} KB`,
-            kategori_bukti: b.nama_berkas?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
             keterangan: b.keterangan || 'Barang bukti digital',
             storage_provider: b.storage_provider || 'cloudflare_r2',
-            uploaded_at: b.created_at,
-            diunggah_pada: b.created_at,
             created_at: b.created_at
           }));
-          setDaftarBukti(formatted);
-          console.log('[RELOAD] Bukti berhasil dimuat dari database:', formatted.length, 'berkas untuk register:', nomorRegisterResmi);
+          console.log('[RELOAD] Bukti dimuat dari DB via addEvidence:', data.length, 'berkas untuk register:', nomorRegisterResmi);
           return;
         }
 
@@ -933,34 +847,18 @@ export default function DumasFormView({
 
         const { data, error } = await query;
         if (!error && data && data.length > 0) {
-          console.log('[DB FETCH] Data bukti ditemukan di tabel barang_bukti:', data);
-          setDaftarBukti((prev) => {
-            const existingUrls = new Set(prev.map(p => p.url || p.fileUrl || p.file_url));
-            const newItems = data
-              .filter(item => !existingUrls.has(item.file_url))
-              .map(item => ({
-                id: item.id,
-                nama: item.nama_berkas,
-                nama_berkas: item.nama_berkas,
-                nama_file: item.nama_berkas,
-                name: item.nama_berkas,
-                url: item.file_url,
-                fileUrl: item.file_url,
-                file_url: item.file_url,
-                previewUrl: item.file_url,
-                tipe: item.tipe_berkas,
-                type: item.tipe_berkas,
-                mime_type: item.tipe_berkas,
-                ukuran: item.ukuran_berkas,
-                size: item.ukuran_berkas,
-                fileSize: item.ukuran_berkas,
-                file_size_formatted: `${(item.ukuran_berkas / 1024).toFixed(0)} KB`,
-                kategori_bukti: item.nama_berkas?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
-                storage_provider: item.storage_provider || 'cloudflare_r2',
-                created_at: item.created_at
-              }));
-            return [...prev, ...newItems];
-          });
+          console.log('[DB FETCH] Data bukti ditemukan di tabel barang_bukti:', data.length);
+          // addEvidence menangani dedup — tidak perlu filter manual existingUrls
+          data.forEach(item => addEvidence({
+            id: item.id,
+            nama_berkas: item.nama_berkas,
+            url: item.file_url,
+            fileUrl: item.file_url,
+            tipe: item.tipe_berkas,
+            ukuran: item.ukuran_berkas,
+            storage_provider: item.storage_provider || 'cloudflare_r2',
+            created_at: item.created_at
+          }));
           return;
         }
 
@@ -974,34 +872,18 @@ export default function DumasFormView({
 
         const { data: fbData, error: fbError } = await fbQuery;
         if (!fbError && fbData && fbData.length > 0) {
-          console.log('[DB FETCH] Data bukti ditemukan di tabel lampiran_barang_bukti:', fbData);
-          setDaftarBukti((prev) => {
-            const existingUrls = new Set(prev.map(p => p.url || p.fileUrl || p.file_url));
-            const newItems = fbData
-              .filter(item => !existingUrls.has(item.file_url))
-              .map(item => ({
-                id: item.id,
-                nama: item.nama_file,
-                nama_berkas: item.nama_file,
-                nama_file: item.nama_file,
-                name: item.nama_file,
-                url: item.file_url,
-                fileUrl: item.file_url,
-                file_url: item.file_url,
-                previewUrl: item.file_url,
-                tipe: item.mime_type,
-                type: item.mime_type,
-                mime_type: item.mime_type,
-                ukuran: item.file_size_bytes,
-                size: item.file_size_bytes,
-                fileSize: item.file_size_bytes,
-                file_size_formatted: `${(item.file_size_bytes / 1024).toFixed(0)} KB`,
-                kategori_bukti: item.kategori_bukti || (item.nama_file?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'),
-                keterangan: item.keterangan,
-                created_at: item.created_at
-              }));
-            return [...prev, ...newItems];
-          });
+          console.log('[DB FETCH] Data bukti ditemukan di tabel lampiran_barang_bukti:', fbData.length);
+          fbData.forEach(item => addEvidence({
+            id: item.id,
+            nama_berkas: item.nama_file,
+            url: item.file_url,
+            fileUrl: item.file_url,
+            tipe: item.mime_type,
+            ukuran: item.file_size_bytes,
+            kategori_bukti: item.kategori_bukti,
+            keterangan: item.keterangan,
+            created_at: item.created_at
+          }));
         }
       } catch (err) {
         console.warn('[DB FETCH] Pengecekan Supabase awal selesai (offline/pending):', err);
@@ -1057,27 +939,13 @@ export default function DumasFormView({
 
         if (!sanitized) return;
 
-        let wasAdded = false;
-        setDaftarBukti((prev) => {
-          // Cek apakah URL bukti sudah pernah masuk
-          const isDuplicate = prev.some(item => {
-            const itemUrl = (item.url || item.fileUrl || item.file_url || '').trim();
-            return itemUrl === targetUrl || (item.id && sanitized.id && item.id === sanitized.id);
-          });
-          if (isDuplicate) {
-            console.warn('[DEDUP] Mengabaikan event duplikat untuk URL:', targetUrl);
-            return prev;
-          }
-          wasAdded = true;
-          return [...prev, sanitized];
-        });
-
-        if (wasAdded) {
+        // addEvidence dari hook menangani dedup via URL+ID — tidak perlu manual check
+        // processedEvidenceUrlsRef masih digunakan untuk mencegah DB insert ganda
+        if (!processedEvidenceUrlsRef.current.has(targetUrl)) {
+          addEvidence(sanitized);
           processedEvidenceUrlsRef.current.add(targetUrl);
-          // Simpan langsung ke database jika nomor register resmi sudah aktif (skipStateUpdate = true)
+          // skipStateUpdate=true karena addEvidence sudah update state di atas
           await handleBuktiBaruDiterima(sanitized, true);
-
-          // Notifikasi toast visual:
           setToastEvidence(sanitized);
           setTimeout(() => setToastEvidence(null), 6000);
         }
@@ -1095,26 +963,13 @@ export default function DumasFormView({
           if (event.data && (event.data.url || event.data.fileUrl)) {
             const targetUrl = formatR2PublicUrl(event.data.url || event.data.fileUrl).trim();
             if (processedEvidenceUrlsRef.current.has(targetUrl)) return;
-
-            const sanitized = sanitizeEvidenceItem({
-              ...event.data,
-              url: targetUrl,
-              fileUrl: targetUrl
-            });
+            const sanitized = sanitizeEvidenceItem({ ...event.data, url: targetUrl, fileUrl: targetUrl });
             if (sanitized) {
-              let wasAdded = false;
-              setDaftarBukti((prev) => {
-                const isDuplicate = prev.some(item => (item.url || item.fileUrl || '').trim() === targetUrl);
-                if (isDuplicate) return prev;
-                wasAdded = true;
-                return [...prev, sanitized];
-              });
-              if (wasAdded) {
-                processedEvidenceUrlsRef.current.add(targetUrl);
-                await handleBuktiBaruDiterima(sanitized, true);
-                setToastEvidence(sanitized);
-                setTimeout(() => setToastEvidence(null), 6000);
-              }
+              addEvidence(sanitized);
+              processedEvidenceUrlsRef.current.add(targetUrl);
+              await handleBuktiBaruDiterima(sanitized, true);
+              setToastEvidence(sanitized);
+              setTimeout(() => setToastEvidence(null), 6000);
             }
           }
         };
@@ -1128,26 +983,13 @@ export default function DumasFormView({
           if (parsed && (parsed.url || parsed.fileUrl)) {
             const targetUrl = formatR2PublicUrl(parsed.url || parsed.fileUrl).trim();
             if (processedEvidenceUrlsRef.current.has(targetUrl)) return;
-
-            const sanitized = sanitizeEvidenceItem({
-              ...parsed,
-              url: targetUrl,
-              fileUrl: targetUrl
-            });
+            const sanitized = sanitizeEvidenceItem({ ...parsed, url: targetUrl, fileUrl: targetUrl });
             if (sanitized) {
-              let wasAdded = false;
-              setDaftarBukti((prev) => {
-                const isDuplicate = prev.some(item => (item.url || item.fileUrl || '').trim() === targetUrl);
-                if (isDuplicate) return prev;
-                wasAdded = true;
-                return [...prev, sanitized];
-              });
-              if (wasAdded) {
-                processedEvidenceUrlsRef.current.add(targetUrl);
-                await handleBuktiBaruDiterima(sanitized, true);
-                setToastEvidence(sanitized);
-                setTimeout(() => setToastEvidence(null), 6000);
-              }
+              addEvidence(sanitized);
+              processedEvidenceUrlsRef.current.add(targetUrl);
+              await handleBuktiBaruDiterima(sanitized, true);
+              setToastEvidence(sanitized);
+              setTimeout(() => setToastEvidence(null), 6000);
             }
           }
         } catch {}
@@ -1179,14 +1021,14 @@ export default function DumasFormView({
       Boolean(caseInfo.tindak_pidana?.trim()) ||
       Boolean(caseInfo.uraian?.trim()) ||
       Boolean(caseInfo.uraian_kejadian?.trim()) ||
-      daftarBukti.length > 0;
+      totalEvidence > 0;
 
     if (!hasAnyContent) return;
 
     setSaveStatus('saving');
     const timer = setTimeout(() => {
       try {
-        const sanitizedEvidence = sanitizeEvidenceList(daftarBukti);
+        // Auto-save hanya menyimpan DATA FORM — bukti sudah disimpan otomatis oleh hook
         const draftPayload = {
           formData: {
             pelapor,
@@ -1195,15 +1037,12 @@ export default function DumasFormView({
             caseInfo,
             mode
           },
-          daftarBukti: sanitizedEvidence,
+          // Snapshot bukti untuk kompatibilitas dengan restorasi ACTIVE_DRAFT_KEY
+          daftarBukti: evidenceListRef.current,
           savedAt: new Date().toISOString()
         };
 
         localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(draftPayload));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizedEvidence));
-        if (nomorRegisterResmi) {
-          localStorage.setItem(`draft_bb_${nomorRegisterResmi}`, JSON.stringify(sanitizedEvidence));
-        }
         saveDumasDraft(draftPayload, currentUserProfile?.id);
         saveDumasDraft(draftPayload, null);
 
@@ -1211,7 +1050,7 @@ export default function DumasFormView({
         setLastSavedTime(timeStr);
         setSaveStatus('saved');
         setIsDraftRestored(true);
-        console.log('[AUTO-SAVE] Data form & bukti tersimpan di', ACTIVE_DRAFT_KEY);
+        console.log('[AUTO-SAVE] Data form tersimpan di', ACTIVE_DRAFT_KEY);
       } catch (err) {
         console.error('[AUTO-SAVE ERROR] Gagal menyimpan draft form:', err);
         setSaveStatus('idle');
@@ -1219,12 +1058,11 @@ export default function DumasFormView({
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [pelapor, saksiList, terlaporList, caseInfo, daftarBukti, mode, currentUserProfile?.id, isSubmitting, STORAGE_KEY, nomorRegisterResmi]);
+  }, [pelapor, saksiList, terlaporList, caseInfo, totalEvidence, mode, currentUserProfile?.id, isSubmitting, evidenceListRef]);
 
   // Handler Mulai Formulir Kosong Baru & Pembersihan Draft Secara Sadar
   const handleMulaiFormulirBaru = useCallback(() => {
-    // 1. Kosongkan state di memori
-    setDaftarBukti([]);
+    // 1. Kosongkan state form di memori
     setPelapor(defaultPelapor);
     setSaksiList(defaultSaksi);
     setTerlaporList(defaultTerlapor);
@@ -1234,8 +1072,12 @@ export default function DumasFormView({
     setIsDraftRestored(false);
     setFormError(null);
     processedEvidenceUrlsRef.current.clear();
+    insertedUrlsRef.current.clear();
 
-    // 2. Buat ID sesi baru untuk form yang bersih
+    // 2. Kosongkan bukti via hook (membersihkan state + localStorage sekaligus)
+    clearEvidence();
+
+    // 3. Buat ID sesi baru untuk form yang bersih
     const newSessionId = `sesi_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setDraftSessionId(newSessionId);
     if (typeof window !== 'undefined') {
@@ -1243,7 +1085,7 @@ export default function DumasFormView({
       sessionStorage.removeItem('temp_dumas_token');
     }
 
-    // 3. Bersihkan draft di localStorage secara sadar
+    // 4. Bersihkan draft form di localStorage
     try {
       localStorage.removeItem(ACTIVE_DRAFT_KEY);
       localStorage.removeItem(DRAFT_KEY_FORM);
@@ -1252,13 +1094,15 @@ export default function DumasFormView({
       localStorage.removeItem('emindik_temp_draft_bb');
       localStorage.removeItem('temp_dumas_bb');
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(EVIDENCE_STORAGE_KEY);
+      localStorage.removeItem(PERSISTENT_KEY);
       localStorage.removeItem(`bb_draft_${draftSessionId}`);
     } catch {}
 
     clearDumasDraft(currentUserProfile?.id);
     clearDumasDraft(null);
-    console.log('[DUMAS] Formulir kosong baru dimulai, draft dibersihkan.');
-  }, [STORAGE_KEY, draftSessionId, currentUserProfile?.id]);
+    console.log('[DUMAS] Formulir kosong baru dimulai, draft & bukti dibersihkan.');
+  }, [STORAGE_KEY, draftSessionId, currentUserProfile?.id, clearEvidence]);
 
   const handleInputLaporanBaru = handleMulaiFormulirBaru;
   const handleResetDraft = handleMulaiFormulirBaru;
@@ -1399,9 +1243,12 @@ export default function DumasFormView({
 
       const sanitized = sanitizeEvidenceItem(rawItem, i);
       if (sanitized) {
-        // Tandai URL sudah diproses sebelum memanggil handler (hindari race condition)
+        // Tandai URL di ref sebelum addEvidence (hindari stale closure di handler async)
         processedEvidenceUrlsRef.current.add(normalizedUrl);
-        await handleBuktiBaruDiterima(sanitized);
+        // addEvidence dari hook — menangani state + dedup + localStorage
+        addEvidence(sanitized);
+        // skipStateUpdate=true: addEvidence sudah update state
+        await handleBuktiBaruDiterima(sanitized, true);
       }
     }
   };
@@ -1436,52 +1283,34 @@ export default function DumasFormView({
     if (!evidenceItem) return;
     const rawUrl = evidenceItem.url || evidenceItem.fileUrl;
     const resolvedUrl = formatR2PublicUrl(rawUrl).trim();
-    if (resolvedUrl && processedEvidenceUrlsRef.current.has(resolvedUrl)) {
+    if (!resolvedUrl) return;
+    if (processedEvidenceUrlsRef.current.has(resolvedUrl)) {
       console.warn('[DEDUP QR] Mengabaikan URL bukti QR yang sudah diproses:', resolvedUrl);
       return;
     }
+    // addEvidence menangani dedup URL+ID otomatis
+    addEvidence({ ...evidenceItem, url: resolvedUrl, fileUrl: resolvedUrl });
+    processedEvidenceUrlsRef.current.add(resolvedUrl);
+    // DB persistence (skipStateUpdate=true: addEvidence sudah update state)
+    await handleBuktiBaruDiterima({ ...evidenceItem, url: resolvedUrl, fileUrl: resolvedUrl }, true);
+    setToastEvidence(evidenceItem);
+    setTimeout(() => setToastEvidence(null), 6000);
+  };
 
-    const sanitized = sanitizeEvidenceItem({
-      ...evidenceItem,
-      url: resolvedUrl,
-      fileUrl: resolvedUrl
-    });
-    if (sanitized) {
-      let wasAdded = false;
-      setDaftarBukti((prev) => {
-        const isDuplicate = prev.some(item => (item.url || item.fileUrl || '').trim() === resolvedUrl);
-        if (isDuplicate) return prev;
-        wasAdded = true;
-        return [...prev, sanitized];
-      });
-
-      if (wasAdded) {
-        if (resolvedUrl) processedEvidenceUrlsRef.current.add(resolvedUrl);
-        await handleBuktiBaruDiterima(sanitized, true);
-        setToastEvidence(sanitized);
-        setTimeout(() => setToastEvidence(null), 6000);
-      }
+  // Penanganan Tombol Hapus Bukti — delegasi ke removeEvidence hook
+  const handleHapusBukti = useCallback((idHapus) => {
+    // Cari item yang akan dihapus untuk membersihkan processedEvidenceUrlsRef
+    const removed = daftarBukti.find((item, idx) =>
+      item.id === idHapus || item.url === idHapus || `evidence-${idx}` === idHapus
+    );
+    if (removed) {
+      const u = (removed.url || removed.fileUrl || '').trim();
+      if (u) processedEvidenceUrlsRef.current.delete(u);
+      if (removed.id) processedEvidenceUrlsRef.current.delete(removed.id);
     }
-  };
-
-  // Penanganan Tombol Hapus Bukti
-  const handleHapusBukti = (idHapus) => {
-    setDaftarBukti((prev) => {
-      const removed = prev.find((item, idx) => item.id === idHapus || item.url === idHapus || `evidence-${idx}` === idHapus);
-      if (removed) {
-        const u = (removed.url || removed.fileUrl || removed.file_url || '').trim();
-        if (u) processedEvidenceUrlsRef.current.delete(u);
-        if (removed.id) processedEvidenceUrlsRef.current.delete(removed.id);
-      }
-      const updated = prev.filter((item, idx) => item.id !== idHapus && item.url !== idHapus && `evidence-${idx}` !== idHapus);
-      try {
-        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(updated));
-      } catch (err) {
-        console.error("Gagal menyimpan draft BB ke localStorage setelah hapus:", err);
-      }
-      return updated;
-    });
-  };
+    // removeEvidence dari hook — menangani state + localStorage otomatis
+    removeEvidence(idHapus);
+  }, [daftarBukti, removeEvidence]);
 
   // Submit Handler
   const handleSubmit = async (e) => {
@@ -1629,15 +1458,15 @@ export default function DumasFormView({
           } catch {}
         }
 
+        // clearEvidence dari hook: reset state + hapus localStorage sekaligus
+        clearEvidence();
         handleMulaiFormulirBaru();
         clearDumasDraft(currentUserProfile?.id);
         clearDumasDraft(null);
         try {
           localStorage.removeItem(ACTIVE_DRAFT_KEY);
           localStorage.removeItem(DRAFT_KEY_FORM);
-          // Hapus EVIDENCE_STORAGE_KEY stabil setelah submit resmi berhasil
           localStorage.removeItem(EVIDENCE_STORAGE_KEY);
-          // Hapus PERSISTENT_KEY setelah submit resmi berhasil
           localStorage.removeItem(PERSISTENT_KEY);
           sessionStorage.removeItem('emindik_dumas_subview');
         } catch {}
