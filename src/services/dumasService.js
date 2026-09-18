@@ -272,148 +272,61 @@ export const initialDumasRecords = [
 ];
 
 /**
- * Mengambil daftar Dumas (terhubung ke Supabase dengan fallback localStorage)
+ * Mengambil daftar Dumas (Single Source of Truth: Supabase dengan fallback localStorage)
  */
 export async function fetchDumasRecords() {
-  let localData = [];
   try {
-    const raw = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
-    if (raw) {
-      localData = JSON.parse(raw);
-    }
-  } catch (err) {
-    console.warn('Gagal membaca cache lokal dumas:', err);
-  }
-
-  // Jika cache lokal kosong, inisialisasi dengan data seed
-  if (!Array.isArray(localData) || localData.length === 0) {
-    localData = [...initialDumasRecords];
-    try {
-      localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(localData));
-    } catch {}
-  }
-
-  // Coba ambil dari Supabase (Tabel laporan_pengaduan terverifikasi sesuai skema database baris 428)
-  try {
-    const res = await supabase
+    // 1. Ambil data pengaduan terbaru langsung dari Supabase
+    const { data: dbRecords, error } = await supabase
       .from('laporan_pengaduan')
       .select('*')
       .order('created_at', { ascending: false });
 
-    // Pengecekan respons error / status 404 jika tabel belum siap di database Supabase
-    if (res?.error) {
-      console.info(`Notice: Tabel 'laporan_pengaduan' belum siap di Supabase (${res.error.message || res.error.status || res.error.code}). Menampilkan data fallback.`);
-      return { 
-        data: Array.isArray(localData) ? localData : [], 
-        source: 'local_fallback', 
-        error: null 
-      };
-    }
-
-    if (Array.isArray(res?.data)) {
-      if (res.data.length === 0) {
-        return { data: [], source: 'supabase', error: null };
-      }
-
-      // Normalisasi dan hidrasi data bukti dari database (relasi nomor_register atau id_perkara)
-      const normalized = await Promise.all(res.data.map(async (d) => {
-        let buktiList = Array.isArray(d.lampiran_barang_bukti) && d.lampiran_barang_bukti.length > 0
-          ? d.lampiran_barang_bukti
-          : (Array.isArray(d.barang_bukti) && d.barang_bukti.length > 0 ? d.barang_bukti : []);
-
-        // Jika buktiList masih kosong pada laporan yang sudah teregister, muat dari tabel barang_bukti
-        if (buktiList.length === 0 && (d.nomor_lp || d.id)) {
+    if (!error && Array.isArray(dbRecords) && dbRecords.length > 0) {
+      // Ambil lampiran barang bukti untuk tiap record secara asinkron
+      const enriched = await Promise.all(
+        dbRecords.map(async (d) => {
           try {
-            let bbQuery = supabase.from('barang_bukti').select('*');
-            if (d.nomor_lp && d.id) {
-              bbQuery = bbQuery.or(`nomor_register.eq.${d.nomor_lp},id_perkara.eq.${d.id}`);
-            } else if (d.nomor_lp) {
-              bbQuery = bbQuery.eq('nomor_register', d.nomor_lp);
-            } else {
-              bbQuery = bbQuery.eq('id_perkara', d.id);
-            }
+            const { data: bbRows } = await supabase
+              .from('barang_bukti')
+              .select('*')
+              .or(`nomor_register.eq.${d.nomor_lp},id_perkara.eq.${d.id}`)
+              .order('created_at', { ascending: true });
 
-            const { data: bbRows } = await bbQuery.order('created_at', { ascending: true });
-            if (bbRows && bbRows.length > 0) {
-              buktiList = bbRows.map((b) => ({
-                id: b.id,
-                nama_berkas: b.nama_berkas,
-                nama_file: b.nama_berkas,
-                name: b.nama_berkas,
-                url: b.file_url,
-                file_url: b.file_url,
-                fileUrl: b.file_url,
-                previewUrl: b.file_url,
-                tipe: b.tipe_berkas,
-                tipe_berkas: b.tipe_berkas,
-                mime_type: b.tipe_berkas,
-                ukuran: b.ukuran_berkas,
-                ukuran_berkas: b.ukuran_berkas,
-                file_size_bytes: b.ukuran_berkas,
-                file_size_formatted: `${(Number(b.ukuran_berkas || 0) / 1024).toFixed(0)} KB`,
-                kategori_bukti: b.nama_berkas?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
-                keterangan: b.keterangan || 'Barang bukti digital',
-                storage_provider: b.storage_provider || 'cloudflare_r2',
-                diunggah_pada: b.created_at,
-                uploaded_at: b.created_at,
-                created_at: b.created_at
-              }));
-              console.log(`[DUMAS SERVICE] Hidrasi ${buktiList.length} bukti dari tabel barang_bukti untuk ${d.nomor_lp}`);
-            } else if (d.id) {
-              // Fallback kedua: coba tabel lampiran_barang_bukti
-              const { data: lbRows } = await supabase
-                .from('lampiran_barang_bukti')
-                .select('*')
-                .eq('laporan_id', d.id);
-              if (lbRows && lbRows.length > 0) {
-                buktiList = lbRows.map((b) => ({
-                  id: b.id,
-                  nama_file: b.nama_file,
-                  nama_berkas: b.nama_file,
-                  name: b.nama_file,
-                  url: b.file_url,
-                  file_url: b.file_url,
-                  fileUrl: b.file_url,
-                  previewUrl: b.file_url,
-                  mime_type: b.mime_type,
-                  tipe: b.mime_type,
-                  file_size_bytes: b.file_size_bytes,
-                  ukuran: b.file_size_bytes,
-                  file_size_formatted: `${(Number(b.file_size_bytes || 0) / 1024).toFixed(0)} KB`,
-                  kategori_bukti: b.kategori_bukti,
-                  keterangan: b.keterangan,
-                  diunggah_pada: b.diunggah_pada,
-                  uploaded_at: b.diunggah_pada,
-                  created_at: b.diunggah_pada
-                }));
-              }
-            }
-          } catch (bbFetchErr) {
-            console.warn('[DUMAS SERVICE] Gagal hidrasi bukti:', bbFetchErr);
+            return {
+              ...d,
+              lampiran_barang_bukti: bbRows || [],
+              barang_bukti: bbRows || []
+            };
+          } catch {
+            return d;
           }
-        }
+        })
+      );
 
-        return {
-          ...d,
-          saksi_list: Array.isArray(d.saksi_list) ? d.saksi_list : [],
-          terlapor_list: Array.isArray(d.terlapor_list) ? d.terlapor_list : [],
-          barang_bukti: buktiList,
-          lampiran_barang_bukti: buktiList,
-        };
-      }));
-
-      // Simpan ke local storage sebagai cache offline
+      // Sinkronkan ke cache lokal sebagai fallback offline
       try {
-        localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(normalized));
+        localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(enriched));
       } catch {}
 
-      return { data: normalized, source: 'supabase', error: null };
+      return { success: true, data: enriched };
     }
-  } catch (supErr) {
-    console.warn('Notice: Query Supabase laporan_pengaduan dialihkan ke local resilience:', supErr);
+  } catch (err) {
+    console.warn('Gagal fetch dari Supabase, beralih ke cache lokal:', err);
   }
 
-  return { data: Array.isArray(localData) ? localData : [], source: 'local', error: null };
+  // 2. Fallback: baca dari local storage jika offline/network error
+  try {
+    const raw = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return { success: true, data: parsed };
+      }
+    }
+  } catch {}
+
+  return { success: true, data: [] };
 }
 
 /**
@@ -553,6 +466,15 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
 
     if (!error && data) {
       supabaseResult = data;
+      completeRecord.id = data.id || completeRecord.id;
+
+      // Update ulang ke DUMAS_LOCAL_STORAGE_KEY dengan ID dan metadata resmi dari Supabase
+      try {
+        const rawNow = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
+        const listNow = rawNow ? JSON.parse(rawNow) : [];
+        const syncedList = [completeRecord, ...listNow.filter(item => item.id !== completeRecord.id && item.nomor_lp !== completeRecord.nomor_lp)];
+        localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(syncedList));
+      } catch {}
 
       // Batch insert ke tabel relasi saksi_dumas jika tabel relasi tersedia
       if (validSaksi.length > 0) {
@@ -572,43 +494,10 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
         } catch {}
       }
 
-      // Jika ada barang bukti dan Supabase sukses, simpan lampiran dengan deduplikasi ketat
+      // Simpan bukti digital HANYA ke tabel barang_bukti (Single Source of Truth, bebas duplikasi)
       if (completeRecord.lampiran_barang_bukti?.length > 0) {
-        const seenBb = new Set();
-        const bbPayloads = [];
-
-        for (const bb of completeRecord.lampiran_barang_bukti) {
-          const targetUrl = (bb.file_url || bb.url || bb.fileUrl || '').trim();
-          const targetHash = bb.hash_sha256 ? `hash_${bb.hash_sha256}` : '';
-          const key = targetUrl || targetHash || (bb.nama_file || bb.nama_berkas);
-
-          if (!key || seenBb.has(key)) continue;
-          seenBb.add(key);
-
-          bbPayloads.push({
-            laporan_id: data.id,
-            kategori_bukti: bb.kategori_bukti,
-            nama_file: bb.nama_file || bb.nama_berkas,
-            file_path: bb.file_path || '',
-            file_url: targetUrl,
-            file_size_bytes: bb.file_size_bytes || bb.ukuran || 0,
-            mime_type: bb.mime_type || bb.tipe,
-            hash_sha256: bb.hash_sha256,
-            keterangan: bb.keterangan || '',
-          });
-        }
-
         try {
-          if (bbPayloads.length > 0) {
-            await supabase.from('lampiran_barang_bukti').insert(bbPayloads);
-          }
-        } catch (bbErr) {
-          console.warn('Notice: Gagal menyimpan ke tabel lampiran_barang_bukti (tabel mungkin belum ada):', bbErr);
-        }
-
-        // Simpan langsung ke tabel relasi barang_bukti dengan nomor_register resmi (Sanitasi Deduplikasi Ketat)
-        try {
-          const seenBb2 = new Set();
+          const seenBb = new Set();
           const barangBuktiPayloads = [];
 
           for (const bb of completeRecord.lampiran_barang_bukti) {
@@ -616,13 +505,13 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
             const targetHash = bb.hash_sha256 ? `hash_${bb.hash_sha256}` : '';
             const key = targetUrl || targetHash || (bb.nama_file || bb.nama_berkas);
 
-            if (!key || seenBb2.has(key)) continue;
-            seenBb2.add(key);
+            if (!key || seenBb.has(key)) continue;
+            seenBb.add(key);
 
             barangBuktiPayloads.push({
               nomor_register: completeRecord.nomor_lp,
               id_perkara: data.id,
-              nama_berkas: bb.nama_file || bb.nama_berkas,
+              nama_berkas: bb.nama_file || bb.nama_berkas || 'Berkas Bukti',
               file_url: targetUrl,
               tipe_berkas: bb.mime_type || bb.tipe || 'image/jpeg',
               ukuran_berkas: bb.file_size_bytes || bb.ukuran || 0,
@@ -635,10 +524,10 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
 
           if (barangBuktiPayloads.length > 0) {
             await supabase.from('barang_bukti').insert(barangBuktiPayloads);
-            console.log('[PERSISTENCE] Bukti berhasil disimpan ke database untuk register:', completeRecord.nomor_lp);
+            console.log('[PERSISTENCE] Bukti berhasil disimpan ke tabel barang_bukti untuk register:', completeRecord.nomor_lp);
           }
-        } catch (bbErr2) {
-          console.warn('Notice: Gagal menyimpan ke tabel barang_bukti:', bbErr2);
+        } catch (bbErr) {
+          console.warn('Notice: Gagal menyimpan ke tabel barang_bukti:', bbErr);
         }
       }
     }
