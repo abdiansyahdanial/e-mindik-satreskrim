@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { ArrowLeft, Shield, RotateCcw } from 'lucide-react';
+import PelaporSection from './sections/PelaporSection';
+import TerlaporSection from './sections/TerlaporSection';
 import BuktiDigitalSection from './sections/BuktiDigitalSection';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal';
 import {
@@ -13,13 +15,82 @@ export default function DumasFormView({
   mode = 'create',
   initialOcrFile: _initialOcrFile,
   initialOcrFiles: _initialOcrFiles,
-  initialOcrData: _initialOcrData,
+  initialOcrData,
   currentUserProfile: _currentUserProfile,
   nomorRegisterResmi = null,
   perkaraId: _perkaraId,
   onBack,
   onSubmitDumas: _onSubmitDumas
 }) {
+  // State 01: Identitas Pelapor (Mendukung hidrasi OCR data / default)
+  const [pelapor, setPelapor] = useState(() => ({
+    nik: initialOcrData?.pelapor?.nik || initialOcrData?.pelapor_nik || '',
+    nama: initialOcrData?.pelapor?.nama || initialOcrData?.pelapor_nama || initialOcrData?.pelapor?.nama_lengkap || '',
+    tempat_lahir: initialOcrData?.pelapor?.tempat_lahir || initialOcrData?.pelapor_tempat_lahir || '',
+    tanggal_lahir: initialOcrData?.pelapor?.tanggal_lahir || initialOcrData?.pelapor_tanggal_lahir || '',
+    jenis_kelamin: initialOcrData?.pelapor?.jenis_kelamin || 'Laki-laki',
+    agama: initialOcrData?.pelapor?.agama || 'Islam',
+    pekerjaan: initialOcrData?.pelapor?.pekerjaan || initialOcrData?.pelapor_pekerjaan || '',
+    kewarganegaraan: initialOcrData?.pelapor?.kewarganegaraan || 'WNI',
+    telepon: initialOcrData?.pelapor?.telepon || initialOcrData?.pelapor?.kontak || initialOcrData?.pelapor_kontak || '',
+    alamat: initialOcrData?.pelapor?.alamat || initialOcrData?.pelapor_alamat || ''
+  }));
+
+  const handlePelaporChange = useCallback((field, value) => {
+    setPelapor((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  // State 02 & 03: Saksi-Saksi & Pihak Terlapor
+  const [saksiList, setSaksiList] = useState(() =>
+    Array.isArray(initialOcrData?.saksiList) && initialOcrData.saksiList.length > 0
+      ? initialOcrData.saksiList
+      : [{ id: 'saksi-1', nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: 'Saksi Fakta' }]
+  );
+
+  const [terlaporList, setTerlaporList] = useState(() =>
+    Array.isArray(initialOcrData?.terlaporList) && initialOcrData.terlaporList.length > 0
+      ? initialOcrData.terlaporList
+      : [{ id: 'terlapor-1', nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: 'Terlapor Utama' }]
+  );
+
+  const handleAddSaksi = useCallback(() => {
+    setSaksiList((prev) => [
+      ...prev,
+      { id: `saksi_${Date.now()}`, nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: `Saksi ${prev.length + 1}` }
+    ]);
+  }, []);
+
+  const handleUpdateSaksi = useCallback((idx, field, value) => {
+    setSaksiList((prev) => {
+      const copy = [...prev];
+      if (copy[idx]) copy[idx] = { ...copy[idx], [field]: value };
+      return copy;
+    });
+  }, []);
+
+  const handleRemoveSaksi = useCallback((idx) => {
+    setSaksiList((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  const handleAddTerlapor = useCallback(() => {
+    setTerlaporList((prev) => [
+      ...prev,
+      { id: `terlapor_${Date.now()}`, nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: `Terlapor ${prev.length + 1}` }
+    ]);
+  }, []);
+
+  const handleUpdateTerlapor = useCallback((idx, field, value) => {
+    setTerlaporList((prev) => {
+      const copy = [...prev];
+      if (copy[idx]) copy[idx] = { ...copy[idx], [field]: value };
+      return copy;
+    });
+  }, []);
+
+  const handleRemoveTerlapor = useCallback((idx) => {
+    setTerlaporList((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
   // Single Source of Truth untuk Bukti Digital Dumas
   const [daftarBukti, setDaftarBukti] = useState(() => getStoredEvidence());
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -27,19 +98,16 @@ export default function DumasFormView({
     () => `dumas_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`
   );
 
-  // Handler penambahan bukti baru dengan filter anti-duplikasi URL dari store
   const handleAddEvidence = useCallback((newItem) => {
     if (!newItem) return;
     setDaftarBukti((prev) => appendEvidenceSafely(prev, newItem));
   }, []);
 
-  // Handler penghapusan bukti dengan key aman
   const handleRemoveEvidence = useCallback((targetKey) => {
     if (!targetKey) return;
     setDaftarBukti((prev) => removeEvidenceSafely(prev, targetKey));
   }, []);
 
-  // Handler reset bukti
   const handleResetBukti = useCallback(() => {
     const confirmReset = window.confirm('Kosongkan semua daftar berkas bukti yang tersimpan?');
     if (!confirmReset) return;
@@ -81,12 +149,23 @@ export default function DumasFormView({
           </div>
         </div>
 
-        {/* Quick Action Reset */}
+        {/* Quick Action Reset Bukti (Pure Inline Style Anti-Balok Putih) */}
         {daftarBukti.length > 0 && (
           <button
             type="button"
             onClick={handleResetBukti}
-            className="self-start sm:self-center inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-colors"
+            style={{
+              backgroundColor: 'rgba(244, 63, 94, 0.1)',
+              border: '1px solid rgba(244, 63, 94, 0.3)',
+              color: '#fb7185',
+              padding: '0.375rem 0.75rem',
+              borderRadius: '0.5rem',
+              fontSize: '0.75rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              cursor: 'pointer'
+            }}
             title="Kosongkan Berkas Bukti"
           >
             <RotateCcw size={13} />
@@ -94,6 +173,24 @@ export default function DumasFormView({
           </button>
         )}
       </div>
+
+      {/* Bagian 01: Identitas Pelapor (Modular Section) */}
+      <PelaporSection 
+        data={pelapor} 
+        onChange={handlePelaporChange} 
+      />
+
+      {/* Bagian 02 & 03: Saksi & Terlapor (Modular Section) */}
+      <TerlaporSection
+        terlaporList={terlaporList}
+        onAddTerlapor={handleAddTerlapor}
+        onUpdateTerlapor={handleUpdateTerlapor}
+        onRemoveTerlapor={handleRemoveTerlapor}
+        saksiList={saksiList}
+        onAddSaksi={handleAddSaksi}
+        onUpdateSaksi={handleUpdateSaksi}
+        onRemoveSaksi={handleRemoveSaksi}
+      />
 
       {/* Bagian 05: Bukti Digital (Modular Section) */}
       <BuktiDigitalSection
