@@ -30,12 +30,8 @@ export default function DumasView({
         localStorage.removeItem('emindik_draft_form_perkara_v1');
 
         const savedSubView = sessionStorage.getItem('emindik_dumas_subview');
-        if (savedSubView && ['list', 'form'].includes(savedSubView)) {
+        if (savedSubView && ['list', 'form', 'detail'].includes(savedSubView)) {
           return savedSubView;
-        }
-        if (savedSubView === 'detail') {
-          sessionStorage.setItem('emindik_dumas_subview', 'list');
-          return 'list';
         }
       }
     } catch {}
@@ -49,12 +45,36 @@ export default function DumasView({
       }
     } catch {}
   }, [subView]);
+
   const [formMode, setFormMode] = useState('manual');
   const [isModeModalOpen, setIsModeModalOpen] = useState(false);
   const [initialOcrFile, setInitialOcrFile] = useState(null);
   const [initialOcrFiles, setInitialOcrFiles] = useState([]);
   const [initialOcrData, setInitialOcrData] = useState(null);
-  const [selectedDumas, setSelectedDumas] = useState(null);
+
+  // State selectedDumas dengan pemulihan otomatis dari sessionStorage saat refresh browser (F5)
+  const [selectedDumas, setSelectedDumas] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = sessionStorage.getItem('emindik_active_dumas_item');
+        if (saved) return JSON.parse(saved);
+      }
+    } catch {}
+    return null;
+  });
+
+  // Sinkronkan selectedDumas ke sessionStorage
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        if (selectedDumas) {
+          sessionStorage.setItem('emindik_active_dumas_item', JSON.stringify(selectedDumas));
+        } else {
+          sessionStorage.removeItem('emindik_active_dumas_item');
+        }
+      }
+    } catch {}
+  }, [selectedDumas]);
   const [formMountKey, setFormMountKey] = useState(() => `form-${Date.now()}`);
 
   // 1. Handlers Modal Pemilihan Mode
@@ -131,6 +151,10 @@ export default function DumasView({
       if (selectedDumas?.id === id) {
         setSelectedDumas(null);
         setSubView('list');
+        try {
+          sessionStorage.removeItem('emindik_active_dumas_item');
+          sessionStorage.setItem('emindik_dumas_subview', 'list');
+        } catch {}
       }
       if (onShowToast) {
         onShowToast('Berkas aduan masyarakat berhasil dihapus.');
@@ -203,7 +227,14 @@ export default function DumasView({
       {subView === 'detail' && selectedDumas && (
         <DumasDetailView
           dumasItem={selectedDumas}
-          onBack={() => setSubView('list')}
+          onBack={() => {
+            setSelectedDumas(null);
+            setSubView('list');
+            try {
+              sessionStorage.removeItem('emindik_active_dumas_item');
+              sessionStorage.setItem('emindik_dumas_subview', 'list');
+            } catch {}
+          }}
           onOpenGeneratorForDumas={handleHandoverSprin}
           onUpdateDumas={(updatedRecord) => {
             setSelectedDumas(updatedRecord);
