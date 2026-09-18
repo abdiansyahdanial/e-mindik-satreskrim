@@ -17,7 +17,7 @@ export default function DumasFormView({
   initialOcrFile: _initialOcrFile,
   initialOcrFiles: _initialOcrFiles,
   initialOcrData,
-  currentUserProfile: _currentUserProfile,
+  currentUserProfile,
   nomorRegisterResmi = null,
   perkaraId: _perkaraId,
   onBack,
@@ -86,10 +86,78 @@ export default function DumasFormView({
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+
+    if (!pelapor.nama?.trim()) {
+      alert('Nama lengkap pelapor wajib diisi.');
+      return;
+    }
+    if (!pelapor.nik?.trim()) {
+      alert('NIK pelapor wajib diisi.');
+      return;
+    }
+
+    const primaryTerlapor = terlaporList[0] || {};
+    const generatedNo = nomorRegisterResmi || `DUMAS/${Date.now().toString().slice(-4)}/SPKT/RES-KOLTIM`;
+
+    // Gabungkan TTL pelapor jika terpisah
+    const pelaporTtl = pelapor.ttl || [pelapor.tempat_lahir, pelapor.tanggal_lahir].filter(Boolean).join(', ');
+    const terlaporTtl = primaryTerlapor.ttl || [primaryTerlapor.tempat_lahir, primaryTerlapor.tanggal_lahir].filter(Boolean).join(', ');
+
+    const newDumasData = {
+      nomor_lp: generatedNo,
+      nomor_register: generatedNo,
+      tanggal_lapor: new Date().toISOString(),
+      penyidik_id: currentUserProfile?.id || 'penyidik-spkt',
+      penyidik_nama: currentUserProfile?.nama || 'Penyidik Penerima SPKT',
+      penyidik_nrp: currentUserProfile?.nrp || '-',
+      status_berkas: 'Tahap Penyelidikan (Sp.Lidik)',
+
+      // Identitas Pelapor (Flat Fields)
+      pelapor_nama: pelapor.nama,
+      pelapor_nik: pelapor.nik,
+      pelapor_ttl: pelaporTtl,
+      pelapor_pekerjaan: pelapor.pekerjaan,
+      pelapor_agama: pelapor.agama,
+      pelapor_kontak: pelapor.telepon || pelapor.kontak,
+      pelapor_alamat: pelapor.alamat,
+
+      // Relasi List
+      saksi_list: saksiList,
+      saksi: saksiList,
+      terlapor_list: terlaporList,
+      terlapor: terlaporList,
+
+      // Terlapor Utama (Flat Fields)
+      terlapor_nama: primaryTerlapor.nama || '',
+      terlapor_nik: primaryTerlapor.nik || '',
+      terlapor_ttl: terlaporTtl,
+      terlapor_pekerjaan: primaryTerlapor.pekerjaan || '',
+      terlapor_agama: primaryTerlapor.agama || 'Islam',
+      terlapor_domisili: primaryTerlapor.alamat || '',
+      terlapor_kontak: primaryTerlapor.telepon || primaryTerlapor.kontak || '',
+      terlapor_status: primaryTerlapor.role_label || 'Terlapor Utama',
+
+      // Kronologi & Delik Perkara
+      tindak_pidana: caseInfo.tindak_pidana || caseInfo.dugaan_tindak_pidana || '',
+      dugaan_tindak_pidana: caseInfo.tindak_pidana || caseInfo.dugaan_tindak_pidana || '',
+      pasal_disangkakan: caseInfo.pasal || caseInfo.pasal_disangkakan || caseInfo.dugaan_pasal || '',
+      pasal: caseInfo.pasal || caseInfo.pasal_disangkakan || caseInfo.dugaan_pasal || '',
+      tempus_delicti: caseInfo.waktu_kejadian || caseInfo.tempus_delicti || '',
+      locus_delicti: caseInfo.tkp || caseInfo.locus_delicti || '',
+      uraian_singkat: caseInfo.uraian || caseInfo.uraian_kejadian || '',
+      uraian_kejadian: caseInfo.uraian || caseInfo.uraian_kejadian || '',
+
+      // Raw/Structured Object untuk kelengkapan
+      pelapor,
+      barang_bukti: daftarBukti,
+      daftar_bukti: daftarBukti
+    };
+
     if (typeof onSubmitDumas === 'function') {
       setIsSubmitting(true);
       try {
-        await onSubmitDumas({ pelapor, saksiList, terlaporList, caseInfo, daftarBukti });
+        // Panggil dengan 2 argumen: newDumasData dan daftarBukti
+        await onSubmitDumas(newDumasData, daftarBukti);
       } finally {
         setIsSubmitting(false);
       }
