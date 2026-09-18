@@ -115,9 +115,15 @@ export default function BuktiDigitalSection({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-6">
+    <div 
+      className="border rounded-xl p-5 space-y-6 text-zinc-100 shadow-sm"
+      style={{ backgroundColor: '#111622', borderColor: '#1E293B' }}
+    >
       {/* Header Bagian */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      <div 
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4"
+        style={{ borderColor: '#1E293B' }}
+      >
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
@@ -125,7 +131,7 @@ export default function BuktiDigitalSection({
               05. LAMPIRAN BARANG BUKTI DIGITAL
             </h3>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Unggah dokumen PDF atau foto barang bukti fisik melalui Laptop atau Kamera HP secara nirkabel.
           </p>
         </div>
@@ -133,12 +139,25 @@ export default function BuktiDigitalSection({
         {/* Badge Jumlah Berkas */}
         <div>
           {daftarBukti.length > 0 ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+            <span 
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold border"
+              style={{
+                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                borderColor: 'rgba(16, 185, 129, 0.35)',
+                color: '#34D399'
+              }}
+            >
               <CheckCircle2 size={13} />
               {daftarBukti.length} Berkas Terlampir
             </span>
           ) : (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono text-slate-400 bg-slate-800/80 border border-slate-700">
+            <span 
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono text-zinc-400 border"
+              style={{
+                backgroundColor: '#1B2230',
+                borderColor: '#263347'
+              }}
+            >
               0 Berkas Terlampir
             </span>
           )}
@@ -146,18 +165,26 @@ export default function BuktiDigitalSection({
       </div>
 
       {/* Dual Upload Console (Konsol A & B) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+      <div 
+        className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4"
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+          gap: '1rem' 
+        }}
+      >
         {/* Konsol Input A: PC / Laptop */}
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`relative bg-slate-950/60 border rounded-xl p-5 flex flex-col gap-3 cursor-pointer transition-all duration-200 ${
-            isDragOver 
-              ? 'border-sky-400 bg-sky-500/10 shadow-[0_0_20px_rgba(56,189,248,0.2)]' 
-              : 'border-slate-800 hover:border-sky-500 hover:bg-slate-900/80'
-          }`}
+          className="relative border rounded-xl p-5 flex flex-col gap-3 cursor-pointer transition-all duration-200"
+          style={{ 
+            backgroundColor: isDragOver ? 'rgba(56, 189, 248, 0.08)' : '#141C2B', 
+            borderColor: isDragOver ? '#38BDF8' : '#263347',
+            boxShadow: isDragOver ? '0 0 20px rgba(56, 189, 248, 0.2)' : 'none'
+          }}
         >
           <input
             ref={fileInputRef}
@@ -176,44 +203,59 @@ export default function BuktiDigitalSection({
                 Konsol Input A • Storage Lokal
               </span>
             </div>
-            <span className="text-[10px] font-mono text-slate-400 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">
+            <span 
+              className="text-[10px] font-mono text-zinc-400 border px-1.5 py-0.5 rounded"
+              style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}
+            >
               PC / LAPTOP
             </span>
           </div>
 
           <div className="flex items-center gap-3 py-1">
-            <div className="w-11 h-11 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+            <div 
+              className="w-11 h-11 rounded-lg border flex items-center justify-center text-sky-400 shrink-0"
+              style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', borderColor: 'rgba(56, 189, 248, 0.3)' }}
+            >
               {isUploading ? <Loader2 size={22} className="animate-spin" /> : <UploadCloud size={22} />}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-slate-100">
+              <div className="text-sm font-semibold text-zinc-100">
                 {isUploading ? 'Sedang Mengunggah Berkas...' : 'Pilih Berkas dari Komputer'}
               </div>
-              <div className="text-xs text-slate-400 truncate">
+              <div className="text-xs text-zinc-400 truncate">
                 Klik telusuri atau seret berkas langsung ke area ini
               </div>
             </div>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30 text-xs font-semibold hover:bg-sky-500/30 transition-colors"
+              className="px-3 py-1.5 rounded-md border text-xs font-semibold hover:bg-sky-500/30 transition-colors"
+              style={{ 
+                backgroundColor: 'rgba(56, 189, 248, 0.15)', 
+                borderColor: 'rgba(56, 189, 248, 0.35)', 
+                color: '#38BDF8' 
+              }}
             >
               Telusuri
             </button>
           </div>
 
-          <div className="flex items-center gap-1.5 pt-2 border-t border-slate-800 text-[10px] font-mono text-slate-500">
+          <div 
+            className="flex items-center gap-1.5 pt-2 border-t text-[10px] font-mono text-zinc-500"
+            style={{ borderColor: '#1E293B' }}
+          >
             <span>Dukungan:</span>
-            <span className="text-sky-400 bg-slate-900 border border-slate-800 px-1 rounded">PDF</span>
-            <span className="text-rose-400 bg-slate-900 border border-slate-800 px-1 rounded">JPG</span>
-            <span className="text-emerald-400 bg-slate-900 border border-slate-800 px-1 rounded">PNG</span>
-            <span className="ml-auto text-slate-400">Maks 25 MB</span>
+            <span className="text-sky-400 border px-1 rounded" style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}>PDF</span>
+            <span className="text-rose-400 border px-1 rounded" style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}>JPG</span>
+            <span className="text-emerald-400 border px-1 rounded" style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}>PNG</span>
+            <span className="ml-auto text-zinc-400">Maks 25 MB</span>
           </div>
         </div>
 
         {/* Konsol Input B: Live QR Bridge Kamera HP */}
         <div
           onClick={onOpenQrModal}
-          className="bg-slate-950/60 border border-slate-800 hover:border-red-500 hover:bg-slate-900/80 rounded-xl p-5 flex flex-col gap-3 cursor-pointer transition-all duration-200"
+          className="border rounded-xl p-5 flex flex-col gap-3 cursor-pointer transition-all duration-200"
+          style={{ backgroundColor: '#141C2B', borderColor: '#263347' }}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -222,37 +264,51 @@ export default function BuktiDigitalSection({
                 Konsol Input B • Live QR Bridge
               </span>
             </div>
-            <span className="text-[10px] font-mono text-amber-400 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">
+            <span 
+              className="text-[10px] font-mono text-amber-400 border px-1.5 py-0.5 rounded"
+              style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}
+            >
               KAMERA HP
             </span>
           </div>
 
           <div className="flex items-center gap-3 py-1">
-            <div className="w-11 h-11 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
+            <div 
+              className="w-11 h-11 rounded-lg border flex items-center justify-center text-red-400 shrink-0"
+              style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+            >
               <Smartphone size={22} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-slate-100">
+              <div className="text-sm font-semibold text-zinc-100">
                 Pindai Bukti via Kamera HP
               </div>
-              <div className="text-xs text-slate-400 truncate">
+              <div className="text-xs text-zinc-400 truncate">
                 Foto barang bukti via ponsel & sinkron otomatis
               </div>
             </div>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold hover:bg-rose-500/30 transition-colors"
+              className="px-3 py-1.5 rounded-md border text-xs font-semibold hover:bg-rose-500/30 transition-colors"
+              style={{ 
+                backgroundColor: 'rgba(244, 63, 94, 0.15)', 
+                borderColor: 'rgba(244, 63, 94, 0.35)', 
+                color: '#F43F5E' 
+              }}
             >
               Buka QR
             </button>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px] font-mono">
+          <div 
+            className="flex items-center justify-between pt-2 border-t text-[10px] font-mono"
+            style={{ borderColor: '#1E293B' }}
+          >
             <span className="text-emerald-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
               Live Sync R2 Aktif
             </span>
-            <span className="text-slate-500">Nirkabel / Tanpa Kabel Data</span>
+            <span className="text-zinc-500">Nirkabel / Tanpa Kabel Data</span>
           </div>
         </div>
       </div>
@@ -260,13 +316,20 @@ export default function BuktiDigitalSection({
       {/* Grid Kartu Bukti Digital */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono uppercase font-bold text-slate-400 tracking-wider">
+          <span className="text-xs font-mono uppercase font-bold text-zinc-400 tracking-wider">
             Daftar Lampiran Bukti ({daftarBukti.length})
           </span>
         </div>
 
         {daftarBukti.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+          <div 
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"
+            style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', 
+              gap: '1rem' 
+            }}
+          >
             {daftarBukti.map((item, idx) => {
               const url = item.url || item.fileUrl || '';
               const isPdf = item.tipe?.includes('pdf') || url.toLowerCase().endsWith('.pdf');
@@ -275,18 +338,20 @@ export default function BuktiDigitalSection({
               return (
                 <div
                   key={item.id || `evidence-${idx}`}
-                  className="bg-slate-950/60 border border-slate-800 rounded-xl overflow-hidden flex flex-col justify-between hover:border-slate-600 transition-all"
+                  className="border rounded-xl overflow-hidden flex flex-col justify-between transition-all"
+                  style={{ backgroundColor: '#141C2B', borderColor: '#263347' }}
                 >
                   {/* Media Preview Box */}
                   <div
                     onClick={() => setPreviewItem(item)}
-                    className="relative w-full h-44 bg-black/70 flex items-center justify-center cursor-pointer group overflow-hidden border-b border-slate-800"
+                    className="relative w-full h-44 bg-black/70 flex items-center justify-center cursor-pointer group overflow-hidden border-b"
+                    style={{ borderColor: '#1E293B' }}
                     title="Klik untuk memperbesar pratinjau"
                   >
                     {isPdf ? (
                       <div className="flex flex-col items-center gap-2 text-rose-400">
                         <FileText size={40} />
-                        <span className="text-xs font-mono text-slate-400">DOKUMEN PDF</span>
+                        <span className="text-xs font-mono text-zinc-400">DOKUMEN PDF</span>
                       </div>
                     ) : url ? (
                       <>
@@ -302,13 +367,13 @@ export default function BuktiDigitalSection({
                             }
                           }}
                         />
-                        <div className="hidden flex-col items-center justify-center text-slate-500 text-xs gap-1">
+                        <div className="hidden flex-col items-center justify-center text-zinc-500 text-xs gap-1">
                           <ImageIcon size={32} />
                           <span>Gagal memuat pratinjau</span>
                         </div>
                       </>
                     ) : (
-                      <div className="flex flex-col items-center gap-1 text-slate-500">
+                      <div className="flex flex-col items-center gap-1 text-zinc-500">
                         <ImageIcon size={32} />
                         <span className="text-xs">Tidak ada URL</span>
                       </div>
@@ -323,33 +388,39 @@ export default function BuktiDigitalSection({
                   {/* Card Content & Metadata */}
                   <div className="p-3 space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-mono">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        isPdf 
-                          ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' 
-                          : 'bg-sky-500/10 border border-sky-500/30 text-sky-400'
-                      }`}>
+                      <span 
+                        className="px-1.5 py-0.5 rounded text-[10px] font-bold border"
+                        style={{
+                          backgroundColor: isPdf ? 'rgba(244, 63, 94, 0.1)' : 'rgba(56, 189, 248, 0.1)',
+                          borderColor: isPdf ? 'rgba(244, 63, 94, 0.3)' : 'rgba(56, 189, 248, 0.3)',
+                          color: isPdf ? '#FB7185' : '#38BDF8'
+                        }}
+                      >
                         {isPdf ? 'PDF' : 'FOTO_R2'}
                       </span>
-                      <span className="text-slate-500">
+                      <span className="text-zinc-500">
                         {sizeKb > 0 ? `${sizeKb} KB` : 'N/A'}
                       </span>
                     </div>
 
                     <div 
-                      className="text-xs font-semibold text-slate-200 truncate"
+                      className="text-xs font-semibold text-zinc-200 truncate"
                       title={item.nama_berkas || item.nama || 'Berkas Bukti'}
                     >
                       {item.nama_berkas || item.nama || 'Berkas Bukti'}
                     </div>
 
                     {item.keterangan && (
-                      <div className="text-[11px] text-slate-400 line-clamp-1">
+                      <div className="text-[11px] text-zinc-400 line-clamp-1">
                         {item.keterangan}
                       </div>
                     )}
 
                     {/* Actions */}
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                    <div 
+                      className="flex items-center justify-between pt-2 border-t"
+                      style={{ borderColor: '#1E293B' }}
+                    >
                       <a
                         href={url}
                         target="_blank"
@@ -374,10 +445,13 @@ export default function BuktiDigitalSection({
             })}
           </div>
         ) : (
-          <div className="border border-dashed border-slate-800 bg-slate-950/40 rounded-xl p-8 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
-            <UploadCloud size={28} className="text-slate-600" />
+          <div 
+            className="border border-dashed rounded-xl p-8 text-center text-zinc-500 text-xs flex flex-col items-center gap-2"
+            style={{ backgroundColor: 'rgba(20, 28, 43, 0.4)', borderColor: '#263347' }}
+          >
+            <UploadCloud size={28} className="text-zinc-600" />
             <span>Belum ada barang bukti yang diunggah.</span>
-            <span className="text-[11px] text-slate-600">
+            <span className="text-[11px] text-zinc-600">
               Gunakan Konsol A untuk upload dari komputer atau Konsol B untuk memindai via kamera HP.
             </span>
           </div>
@@ -391,17 +465,21 @@ export default function BuktiDigitalSection({
           onClick={() => setPreviewItem(null)}
         >
           <div 
-            className="bg-slate-900 border border-slate-800 rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+            className="border rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+            style={{ backgroundColor: '#141C2B', borderColor: '#263347' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-              <span className="text-xs font-mono text-slate-300 font-bold truncate">
+            <div 
+              className="p-3 border-b flex items-center justify-between"
+              style={{ borderColor: '#1E293B' }}
+            >
+              <span className="text-xs font-mono text-zinc-300 font-bold truncate">
                 {previewItem.nama_berkas || 'Pratinjau Berkas'}
               </span>
               <button
                 type="button"
                 onClick={() => setPreviewItem(null)}
-                className="text-slate-400 hover:text-white p-1 rounded"
+                className="text-zinc-400 hover:text-white p-1 rounded"
               >
                 <X size={18} />
               </button>
@@ -411,7 +489,7 @@ export default function BuktiDigitalSection({
               {previewItem.tipe?.includes('pdf') || (previewItem.url || '').toLowerCase().endsWith('.pdf') ? (
                 <div className="flex flex-col items-center gap-3 text-center">
                   <FileText size={48} className="text-rose-400" />
-                  <span className="text-sm text-slate-300">Pratinjau dokumen PDF</span>
+                  <span className="text-sm text-zinc-300">Pratinjau dokumen PDF</span>
                   <a
                     href={previewItem.url || previewItem.fileUrl}
                     target="_blank"

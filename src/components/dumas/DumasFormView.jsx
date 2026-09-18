@@ -50,7 +50,10 @@ export default function DumasFormView({
   return (
     <div className="w-full max-w-6xl mx-auto py-6 px-4 space-y-6 text-zinc-100">
       {/* Header Navigasi & Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div 
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl p-4"
+        style={{ backgroundColor: '#111622', borderColor: '#1E293B' }}
+      >
         <div className="flex items-center gap-3">
           {onBack && (
             <button
