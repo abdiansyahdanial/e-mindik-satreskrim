@@ -15,16 +15,21 @@ import { uploadFileToR2, formatR2PublicUrl } from '../../../lib/r2Client';
 
 export default function BuktiDigitalSection({
   daftarBukti = [],
+  evidenceList,
   onAddEvidence,
   onRemoveEvidence,
   onOpenQrModal
 }) {
+  const currentList = Array.isArray(daftarBukti) && daftarBukti.length > 0
+    ? daftarBukti
+    : (Array.isArray(evidenceList) ? evidenceList : []);
+
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [previewItem, setPreviewItem] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Proses upload berkas lokal dari laptop ke R2
+  // Proses upload berkas lokal dari laptop ke R2 dengan deduplikasi ketat
   const processFiles = async (files) => {
     if (!files || !files.length) return;
     setIsUploading(true);
@@ -32,6 +37,19 @@ export default function BuktiDigitalSection({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const fileName = (file.name || '').trim();
+
+        // 1. Pre-Check Deduplikasi: Cegah nama berkas identik diunggah ulang
+        const alreadyExistsByName = currentList.some((b) => {
+          const existingName = (b.nama_berkas || b.name || b.nama_file || '').trim();
+          return fileName && existingName.toLowerCase() === fileName.toLowerCase();
+        });
+
+        if (alreadyExistsByName) {
+          console.warn('[DEDUP BUKTI] Berkas dengan nama sama sudah ada di daftar bukti, dilewati:', fileName);
+          continue;
+        }
+
         const isPdf = file.type?.includes('pdf') || file.name?.toLowerCase().endsWith('.pdf');
         const mime = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
 
@@ -63,6 +81,19 @@ export default function BuktiDigitalSection({
 
         if (!finalUrl) {
           console.warn('[UPLOAD] File tidak memiliki URL valid, dilewati:', file.name);
+          continue;
+        }
+
+        // 2. Post-Check Deduplikasi Ketat: Cek URL atau Nama Berkas sebelum memicu state update
+        const isAlreadyInList = currentList.some((b) => {
+          const existingUrl = (b.url || b.fileUrl || b.file_url || '').trim();
+          const existingName = (b.nama_berkas || b.name || b.nama_file || '').trim();
+          return (finalUrl && existingUrl === finalUrl.trim()) ||
+                 (fileName && existingName.toLowerCase() === fileName.toLowerCase());
+        });
+
+        if (isAlreadyInList) {
+          console.warn('[DEDUP BUKTI] Berkas duplikat (URL atau nama sama) terdeteksi, dilewati:', fileName, finalUrl);
           continue;
         }
 
@@ -150,7 +181,7 @@ export default function BuktiDigitalSection({
 
         {/* Badge Jumlah Berkas */}
         <div>
-          {daftarBukti.length > 0 ? (
+          {currentList.length > 0 ? (
             <span 
               style={{
                 display: 'inline-flex',
@@ -167,7 +198,7 @@ export default function BuktiDigitalSection({
               }}
             >
               <CheckCircle2 size={13} />
-              {daftarBukti.length} Berkas Terlampir
+              {currentList.length} Berkas Terlampir
             </span>
           ) : (
             <span 
@@ -413,21 +444,20 @@ export default function BuktiDigitalSection({
       {/* Header Daftar Bukti */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
         <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', letterSpacing: '0.05em' }}>
-          Daftar Lampiran Bukti ({daftarBukti.length})
+          Daftar Lampiran Bukti ({currentList.length})
         </span>
       </div>
 
-      {/* Grid Daftar Bukti di Bawah */}
-      {daftarBukti.length > 0 ? (
+      {/* Grid Kartu Berkas Terunggah */}
+      {currentList.length > 0 ? (
         <div 
           style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', 
-            gap: '1rem', 
-            marginTop: '0.75rem' 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+            gap: '0.875rem' 
           }}
         >
-          {daftarBukti.map((item, idx) => {
+          {currentList.map((item, idx) => {
             const url = item.url || item.fileUrl || '';
             const isPdf = item.tipe?.includes('pdf') || url.toLowerCase().endsWith('.pdf');
             const sizeKb = Math.round((item.ukuran || item.size || 0) / 1024);

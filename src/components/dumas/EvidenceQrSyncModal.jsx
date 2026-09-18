@@ -16,7 +16,7 @@ import { supabase } from '../../supabaseClient';
 import { formatR2PublicUrl } from '../../lib/r2Client';
 
 export default function EvidenceQrSyncModal({
-  isOpen = true,
+  isOpen = false,
   onClose,
   onEvidenceReceived,
   setDaftarBukti,

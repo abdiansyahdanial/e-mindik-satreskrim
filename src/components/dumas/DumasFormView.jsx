@@ -352,16 +352,18 @@ export default function DumasFormView({
         </button>
       </div>
 
-      {/* Modal Sinkronisasi QR Code HP */}
-      <EvidenceQrSyncModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        onEvidenceReceived={handleAddEvidence}
-        activeToken={syncToken}
-        syncToken={syncToken}
-        onTokenChange={setSyncToken}
-        _dumasNo={nomorRegisterResmi || 'DUMAS-BARU'}
-      />
+      {/* Modal Sinkronisasi QR Code HP (Hanya di-mount saat modal dibuka) */}
+      {isQrModalOpen && (
+        <EvidenceQrSyncModal
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+          onEvidenceReceived={handleAddEvidence}
+          activeToken={syncToken}
+          syncToken={syncToken}
+          onTokenChange={setSyncToken}
+          _dumasNo={nomorRegisterResmi || 'DUMAS-BARU'}
+        />
+      )}
     </div>
   );
 }
