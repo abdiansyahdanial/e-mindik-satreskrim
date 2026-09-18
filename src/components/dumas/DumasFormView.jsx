@@ -817,8 +817,8 @@ export default function DumasFormView({
           try {
             const parsedLocal = JSON.parse(draftLocal);
             if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
-              setDaftarBukti(parsedLocal);
-              console.log('[RELOAD] Bukti berhasil dimuat dari draft lokal:', parsedLocal.length, 'berkas');
+              parsedLocal.forEach(item => addEvidence(item));
+              console.log('[RELOAD] Bukti berhasil dimuat dari draft lokal via addEvidence:', parsedLocal.length, 'berkas');
             }
           } catch {}
         }
@@ -2765,7 +2765,7 @@ export default function DumasFormView({
           )}
 
           {/* LANGKAH 3: TAMPILAN DEFENSIVE RENDERING PADA DAFTAR BUKTI DIGITAL */}
-          <EvidenceErrorBoundary onReset={() => setDaftarBukti([])}>
+          <EvidenceErrorBoundary onReset={clearEvidence}>
             {Array.isArray(daftarBukti) && daftarBukti.length > 0 ? (
               <div className="space-y-4">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -2850,7 +2850,7 @@ export default function DumasFormView({
                         <span>{bukti.keterangan}</span>
                         <button
                           type="button"
-                          onClick={() => setDaftarBukti(prev => prev.filter((_, i) => i !== index))}
+                          onClick={() => handleHapusBukti(bukti.id || bukti.url)}
                           className="text-red-400 hover:text-red-300 font-medium transition-colors"
                         >
                           Hapus
