@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { ArrowLeft, Shield, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Shield, RotateCcw, Save, Loader2 } from 'lucide-react';
 import PelaporSection from './sections/PelaporSection';
 import TerlaporSection from './sections/TerlaporSection';
+import UraianPerkaraSection from './sections/UraianPerkaraSection';
 import BuktiDigitalSection from './sections/BuktiDigitalSection';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal';
 import {
@@ -20,9 +21,11 @@ export default function DumasFormView({
   nomorRegisterResmi = null,
   perkaraId: _perkaraId,
   onBack,
-  onSubmitDumas: _onSubmitDumas
+  onSubmitDumas
 }) {
-  // State 01: Identitas Pelapor (Mendukung hidrasi OCR data / default)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // State 01: Identitas Pelapor
   const [pelapor, setPelapor] = useState(() => ({
     nik: initialOcrData?.pelapor?.nik || initialOcrData?.pelapor_nik || '',
     nama: initialOcrData?.pelapor?.nama || initialOcrData?.pelapor_nama || initialOcrData?.pelapor?.nama_lengkap || '',
@@ -35,85 +38,63 @@ export default function DumasFormView({
     telepon: initialOcrData?.pelapor?.telepon || initialOcrData?.pelapor?.kontak || initialOcrData?.pelapor_kontak || '',
     alamat: initialOcrData?.pelapor?.alamat || initialOcrData?.pelapor_alamat || ''
   }));
+  const handlePelaporChange = useCallback((field, value) => setPelapor((prev) => ({ ...prev, [field]: value })), []);
 
-  const handlePelaporChange = useCallback((field, value) => {
-    setPelapor((prev) => ({ ...prev, [field]: value }));
-  }, []);
-
-  // State 02 & 03: Saksi-Saksi & Pihak Terlapor
+  // State 02 & 03: Saksi & Terlapor
   const [saksiList, setSaksiList] = useState(() =>
     Array.isArray(initialOcrData?.saksiList) && initialOcrData.saksiList.length > 0
       ? initialOcrData.saksiList
       : [{ id: 'saksi-1', nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: 'Saksi Fakta' }]
   );
-
   const [terlaporList, setTerlaporList] = useState(() =>
     Array.isArray(initialOcrData?.terlaporList) && initialOcrData.terlaporList.length > 0
       ? initialOcrData.terlaporList
       : [{ id: 'terlapor-1', nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: 'Terlapor Utama' }]
   );
 
-  const handleAddSaksi = useCallback(() => {
-    setSaksiList((prev) => [
-      ...prev,
-      { id: `saksi_${Date.now()}`, nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: `Saksi ${prev.length + 1}` }
-    ]);
-  }, []);
+  const handleAddSaksi = useCallback(() => setSaksiList((p) => [...p, { id: `s_${Date.now()}`, nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: `Saksi ${p.length + 1}` }]), []);
+  const handleUpdateSaksi = useCallback((i, f, v) => setSaksiList((p) => { const c = [...p]; if (c[i]) c[i] = { ...c[i], [f]: v }; return c; }), []);
+  const handleRemoveSaksi = useCallback((i) => setSaksiList((p) => p.filter((_, idx) => idx !== i)), []);
 
-  const handleUpdateSaksi = useCallback((idx, field, value) => {
-    setSaksiList((prev) => {
-      const copy = [...prev];
-      if (copy[idx]) copy[idx] = { ...copy[idx], [field]: value };
-      return copy;
-    });
-  }, []);
+  const handleAddTerlapor = useCallback(() => setTerlaporList((p) => [...p, { id: `t_${Date.now()}`, nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: `Terlapor ${p.length + 1}` }]), []);
+  const handleUpdateTerlapor = useCallback((i, f, v) => setTerlaporList((p) => { const c = [...p]; if (c[i]) c[i] = { ...c[i], [f]: v }; return c; }), []);
+  const handleRemoveTerlapor = useCallback((i) => setTerlaporList((p) => p.filter((_, idx) => idx !== i)), []);
 
-  const handleRemoveSaksi = useCallback((idx) => {
-    setSaksiList((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
+  // State 04: Peristiwa & Uraian Kejadian (Kronologi)
+  const [caseInfo, setCaseInfo] = useState(() => ({
+    waktu_kejadian: initialOcrData?.caseInfo?.waktu_kejadian || initialOcrData?.waktu_kejadian || '',
+    tkp: initialOcrData?.caseInfo?.tkp || initialOcrData?.tkp || '',
+    tindak_pidana: initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || '',
+    pasal: initialOcrData?.caseInfo?.pasal || initialOcrData?.pasal || '',
+    uraian: initialOcrData?.caseInfo?.uraian || initialOcrData?.uraian || ''
+  }));
+  const handleCaseInfoChange = useCallback((field, value) => setCaseInfo((prev) => ({ ...prev, [field]: value })), []);
 
-  const handleAddTerlapor = useCallback(() => {
-    setTerlaporList((prev) => [
-      ...prev,
-      { id: `terlapor_${Date.now()}`, nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: `Terlapor ${prev.length + 1}` }
-    ]);
-  }, []);
-
-  const handleUpdateTerlapor = useCallback((idx, field, value) => {
-    setTerlaporList((prev) => {
-      const copy = [...prev];
-      if (copy[idx]) copy[idx] = { ...copy[idx], [field]: value };
-      return copy;
-    });
-  }, []);
-
-  const handleRemoveTerlapor = useCallback((idx) => {
-    setTerlaporList((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
-
-  // Single Source of Truth untuk Bukti Digital Dumas
+  // State 05: Bukti Digital Dumas
   const [daftarBukti, setDaftarBukti] = useState(() => getStoredEvidence());
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const [syncToken, setSyncToken] = useState(
-    () => `dumas_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`
-  );
+  const [syncToken, setSyncToken] = useState(() => `dumas_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`);
 
-  const handleAddEvidence = useCallback((newItem) => {
-    if (!newItem) return;
-    setDaftarBukti((prev) => appendEvidenceSafely(prev, newItem));
-  }, []);
-
-  const handleRemoveEvidence = useCallback((targetKey) => {
-    if (!targetKey) return;
-    setDaftarBukti((prev) => removeEvidenceSafely(prev, targetKey));
-  }, []);
-
+  const handleAddEvidence = useCallback((item) => { if (item) setDaftarBukti((prev) => appendEvidenceSafely(prev, item)); }, []);
+  const handleRemoveEvidence = useCallback((key) => { if (key) setDaftarBukti((prev) => removeEvidenceSafely(prev, key)); }, []);
   const handleResetBukti = useCallback(() => {
-    const confirmReset = window.confirm('Kosongkan semua daftar berkas bukti yang tersimpan?');
-    if (!confirmReset) return;
-    resetEvidenceStore();
-    setDaftarBukti([]);
+    if (window.confirm('Kosongkan semua berkas bukti yang tersimpan?')) {
+      resetEvidenceStore();
+      setDaftarBukti([]);
+    }
   }, []);
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (typeof onSubmitDumas === 'function') {
+      setIsSubmitting(true);
+      try {
+        await onSubmitDumas({ pelapor, saksiList, terlaporList, caseInfo, daftarBukti });
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto py-6 px-4 space-y-6 text-zinc-100">
@@ -149,7 +130,6 @@ export default function DumasFormView({
           </div>
         </div>
 
-        {/* Quick Action Reset Bukti (Pure Inline Style Anti-Balok Putih) */}
         {daftarBukti.length > 0 && (
           <button
             type="button"
@@ -174,13 +154,10 @@ export default function DumasFormView({
         )}
       </div>
 
-      {/* Bagian 01: Identitas Pelapor (Modular Section) */}
-      <PelaporSection 
-        data={pelapor} 
-        onChange={handlePelaporChange} 
-      />
+      {/* Bagian 01: Identitas Pelapor */}
+      <PelaporSection data={pelapor} onChange={handlePelaporChange} />
 
-      {/* Bagian 02 & 03: Saksi & Terlapor (Modular Section) */}
+      {/* Bagian 02 & 03: Saksi & Terlapor */}
       <TerlaporSection
         terlaporList={terlaporList}
         onAddTerlapor={handleAddTerlapor}
@@ -192,13 +169,78 @@ export default function DumasFormView({
         onRemoveSaksi={handleRemoveSaksi}
       />
 
-      {/* Bagian 05: Bukti Digital (Modular Section) */}
+      {/* Bagian 04: Peristiwa & Kronologi Kasus */}
+      <UraianPerkaraSection caseInfo={caseInfo} onChange={handleCaseInfoChange} />
+
+      {/* Bagian 05: Bukti Digital */}
       <BuktiDigitalSection
         daftarBukti={daftarBukti}
         onAddEvidence={handleAddEvidence}
         onRemoveEvidence={handleRemoveEvidence}
         onOpenQrModal={() => setIsQrModalOpen(true)}
       />
+
+      {/* Sticky Bottom Action Bar */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          backgroundColor: 'rgba(17, 22, 34, 0.95)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid #1E293B',
+          borderRadius: '0.75rem',
+          padding: '0.875rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          zIndex: 30,
+          boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.4)'
+        }}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            padding: '0.5rem 1rem',
+            borderRadius: '0.5rem',
+            fontSize: '0.75rem',
+            fontFamily: 'monospace',
+            color: '#CBD5E1',
+            backgroundColor: '#1E2638',
+            border: '1px solid #292F42',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem'
+          }}
+        >
+          <ArrowLeft size={14} />
+          Batal
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          style={{
+            padding: '0.5rem 1.25rem',
+            borderRadius: '0.5rem',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: '#FFFFFF',
+            backgroundColor: isSubmitting ? '#991B1B' : '#DC2626',
+            border: '1px solid #EF4444',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            boxShadow: '0 0 12px rgba(220, 38, 38, 0.3)'
+          }}
+        >
+          {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+          {isSubmitting ? 'Menyimpan Dumas...' : 'Simpan Laporan Dumas'}
+        </button>
+      </div>
 
       {/* Modal Sinkronisasi QR Code HP */}
       <EvidenceQrSyncModal
