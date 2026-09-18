@@ -164,6 +164,7 @@ export default function BuktiDigitalSection({
             type="file"
             accept=".pdf,.jpg,.jpeg,.png,.webp"
             multiple
+            style={{ display: 'none' }}
             className="hidden"
             onChange={handleFileChange}
           />
