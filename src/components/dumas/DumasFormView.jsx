@@ -50,13 +50,13 @@ export default function DumasFormView({
   return (
     <div className="w-full max-w-6xl mx-auto py-6 px-4 space-y-6 text-zinc-100">
       {/* Header Navigasi & Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#111622] border border-[#1E293B] rounded-xl p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-4">
         <div className="flex items-center gap-3">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="p-2 rounded-lg bg-[#1B1F2C] border border-[#292F42] hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors"
+              className="p-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
               title="Kembali ke Daftar Dumas"
             >
               <ArrowLeft size={18} />
