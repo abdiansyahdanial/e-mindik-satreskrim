@@ -241,11 +241,12 @@ export default function MobileUploadView() {
       // 3. Siapkan payload data foto resmi & reaktif
       const evidenceData = {
         id: `bb_${Date.now()}`,
+        senderId: 'MOBILE_HP',         // Identifier pengirim — dipakai listener untuk filter self-echo
         nama_berkas: targetName,
         nama_file: targetName,
         name: targetName,
         fileName: targetName,
-        url: finalUrl, // URL presigned GET atau publik Cloudflare R2 yang valid
+        url: finalUrl,
         fileUrl: finalUrl,
         file_url: finalUrl,
         previewUrl: finalUrl,

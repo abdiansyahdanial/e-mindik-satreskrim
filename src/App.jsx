@@ -31,7 +31,17 @@ export default function App() {
   const [dumasList, setDumasList] = useState([]);
   const [personnel, setPersonnel] = useState([]);
   const [documents, setDocuments] = useState([]);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Pertahankan posisi tab aktif saat browser refresh
+    // Hanya tab yang valid yang dipulihkan — tab terbatas akses (personnel, admin-templates)
+    // akan divalidasi lebih lanjut oleh guard useEffect di bawah.
+    try {
+      const saved = sessionStorage.getItem('emindik_active_tab');
+      const validTabs = ['dashboard', 'dumas', 'cases', 'generator', 'archives', 'personnel', 'admin-templates'];
+      if (saved && validTabs.includes(saved)) return saved;
+    } catch {}
+    return 'dashboard';
+  });
 
   // Modal States
   const [selectedCaseForDetail, setSelectedCaseForDetail] = useState(null);
@@ -290,6 +300,13 @@ export default function App() {
       showToast('Akses dibatasi: Menu ini hanya dapat diakses oleh Super Admin Satreskrim.');
     }
   }, [userRole, activeTab]);
+
+  // 4. Persist Tab Aktif ke sessionStorage — dipulihkan saat browser refresh
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('emindik_active_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
 
   // Handlers
   const handleLoginSuccess = ({ user: authUser, profile, role, status }) => {

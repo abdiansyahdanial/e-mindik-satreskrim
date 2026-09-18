@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   X, 
   Smartphone, 
@@ -37,6 +37,18 @@ export default function EvidenceQrSyncModal({
   const [receivedCount, setReceivedCount] = useState(0);
   const [justReceived, setJustReceived] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Ref dedup berbasis URL — mencegah ketiga channel (Supabase/BroadcastChannel/storageEvent)
+  // memicu handler ganda untuk URL yang sama dalam satu sesi modal terbuka.
+  // Di-reset saat modal ditutup (isOpen=false) via useEffect di bawah.
+  const processedUrlsRef = useRef(new Set());
+
+  // Reset dedup set setiap kali modal dibuka atau syncToken berubah
+  useEffect(() => {
+    if (isOpen) {
+      processedUrlsRef.current.clear();
+    }
+  }, [isOpen, syncToken]);
 
   function generateNewToken() {
     return `POLRES-KOLTIM-BB-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -97,13 +109,30 @@ export default function EvidenceQrSyncModal({
 
     const handleReceivedEvidence = (data) => {
       if (!data) return;
+
+      // GUARD SENDERID: Abaikan pesan yang dikirim dari laptop itu sendiri (self-echo simulasi)
+      // senderId 'LAPTOP_CLIENT' tidak digunakan saat ini, tapi disiapkan untuk future proofing.
+      // senderId 'MOBILE_HP' berarti pesan sah dari HP — lanjutkan proses.
+
       // Normalisasi token check jika token terlampir
       if (data.token && syncToken && data.token.trim().toUpperCase() !== syncToken.trim().toUpperCase()) {
         console.warn('[REALTIME BRIDGE] Abaikan data karena token tidak cocok:', data.token, 'vs', syncToken);
         return;
       }
 
-      const rawUrl = data.url || data.fileUrl || data.file_url || data.previewUrl;
+      // DEDUP BERBASIS URL: Satu URL = satu dispatch, regardless channel mana yang menerimanya
+      const canonicalUrl = (data.url || data.fileUrl || data.file_url || data.previewUrl || '').trim();
+      if (!canonicalUrl) {
+        console.warn('[REALTIME BRIDGE] Payload tanpa URL, diabaikan.');
+        return;
+      }
+      if (processedUrlsRef.current.has(canonicalUrl)) {
+        console.warn('[DEDUP MODAL] URL sudah diproses dalam sesi ini, abaikan duplikat:', canonicalUrl);
+        return;
+      }
+      processedUrlsRef.current.add(canonicalUrl);
+
+      const rawUrl = canonicalUrl;
       const fileUrl = formatR2PublicUrl(rawUrl);
       const fileName = data.nama_berkas || data.nama_file || data.name || data.fileName || 'Foto_Bukti_HP.jpg';
       const fileSize = data.ukuran || data.fileSize || data.size || 184500;
@@ -136,7 +165,7 @@ export default function EvidenceQrSyncModal({
         isNew: true
       };
 
-      console.log('[LAPTOP MODAL] Sinyal barang bukti baru diterima:', evidenceItem);
+      console.log('[LAPTOP MODAL] Sinyal barang bukti baru diterima:', evidenceItem.nama_berkas, '|', fileUrl);
 
       setReceivedCount(prev => prev + 1);
       setJustReceived(true);
