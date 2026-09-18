@@ -116,22 +116,34 @@ export default function BuktiDigitalSection({
 
   return (
     <div 
-      className="border rounded-xl p-5 space-y-6 text-zinc-100 shadow-sm"
-      style={{ backgroundColor: '#111622', borderColor: '#1E293B' }}
+      style={{ 
+        backgroundColor: '#111622', 
+        border: '1px solid #1E293B', 
+        borderRadius: '0.75rem', 
+        padding: '1.25rem',
+        color: '#F1F5F9'
+      }}
     >
       {/* Header Bagian */}
       <div 
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4"
-        style={{ borderColor: '#1E293B' }}
+        style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          gap: '0.75rem', 
+          borderBottom: '1px solid #1E293B', 
+          paddingBottom: '1rem' 
+        }}
       >
         <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-            <h3 className="text-base font-bold text-white tracking-wide">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ width: '0.625rem', height: '0.625rem', borderRadius: '50%', backgroundColor: '#EF4444', display: 'inline-block' }} />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF', margin: 0, letterSpacing: '0.025em' }}>
               05. LAMPIRAN BARANG BUKTI DIGITAL
             </h3>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p style={{ fontSize: '0.75rem', color: '#94A3B8', margin: '0.25rem 0 0 0' }}>
             Unggah dokumen PDF atau foto barang bukti fisik melalui Laptop atau Kamera HP secara nirkabel.
           </p>
         </div>
@@ -140,10 +152,17 @@ export default function BuktiDigitalSection({
         <div>
           {daftarBukti.length > 0 ? (
             <span 
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold border"
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontFamily: 'monospace',
+                fontWeight: 700,
                 backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                borderColor: 'rgba(16, 185, 129, 0.35)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
                 color: '#34D399'
               }}
             >
@@ -152,10 +171,16 @@ export default function BuktiDigitalSection({
             </span>
           ) : (
             <span 
-              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono text-zinc-400 border"
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontFamily: 'monospace',
+                color: '#94A3B8',
                 backgroundColor: '#1B2230',
-                borderColor: '#263347'
+                border: '1px solid #263347'
               }}
             >
               0 Berkas Terlampir
@@ -164,13 +189,14 @@ export default function BuktiDigitalSection({
         </div>
       </div>
 
-      {/* Dual Upload Console (Konsol A & B) */}
+      {/* Pembungkus Grid Konsol A & B */}
       <div 
-        className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4"
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-          gap: '1rem' 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+          gap: '1rem', 
+          marginTop: '1rem', 
+          marginBottom: '1.5rem' 
         }}
       >
         {/* Konsol Input A: PC / Laptop */}
@@ -179,10 +205,16 @@ export default function BuktiDigitalSection({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="relative border rounded-xl p-5 flex flex-col gap-3 cursor-pointer transition-all duration-200"
           style={{ 
             backgroundColor: isDragOver ? 'rgba(56, 189, 248, 0.08)' : '#141C2B', 
-            borderColor: isDragOver ? '#38BDF8' : '#263347',
+            border: isDragOver ? '1px solid #38BDF8' : '1px solid #263347', 
+            borderRadius: '0.75rem', 
+            padding: '1rem', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '0.75rem', 
+            cursor: 'pointer',
+            transition: 'all 0.2s',
             boxShadow: isDragOver ? '0 0 20px rgba(56, 189, 248, 0.2)' : 'none'
           }}
         >
@@ -192,47 +224,67 @@ export default function BuktiDigitalSection({
             accept=".pdf,.jpg,.jpeg,.png,.webp"
             multiple
             style={{ display: 'none' }}
-            className="hidden"
             onChange={handleFileChange}
           />
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-sky-400" />
-              <span className="text-[10px] font-mono font-bold text-sky-400 tracking-wider uppercase">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', backgroundColor: '#38BDF8', display: 'inline-block' }} />
+              <span style={{ fontSize: '0.625rem', fontFamily: 'monospace', fontWeight: 700, color: '#38BDF8', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                 Konsol Input A • Storage Lokal
               </span>
             </div>
             <span 
-              className="text-[10px] font-mono text-zinc-400 border px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}
+              style={{ 
+                fontSize: '0.625rem', 
+                fontFamily: 'monospace', 
+                color: '#94A3B8', 
+                backgroundColor: '#0B0F17', 
+                border: '1px solid #263347', 
+                padding: '0.125rem 0.375rem', 
+                borderRadius: '0.25rem' 
+              }}
             >
               PC / LAPTOP
             </span>
           </div>
 
-          <div className="flex items-center gap-3 py-1">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.25rem 0' }}>
             <div 
-              className="w-11 h-11 rounded-lg border flex items-center justify-center text-sky-400 shrink-0"
-              style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', borderColor: 'rgba(56, 189, 248, 0.3)' }}
+              style={{ 
+                width: '2.75rem', 
+                height: '2.75rem', 
+                borderRadius: '0.5rem', 
+                backgroundColor: 'rgba(56, 189, 248, 0.1)', 
+                border: '1px solid rgba(56, 189, 248, 0.3)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                color: '#38BDF8',
+                flexShrink: 0
+              }}
             >
               {isUploading ? <Loader2 size={22} className="animate-spin" /> : <UploadCloud size={22} />}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-zinc-100">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#F1F5F9' }}>
                 {isUploading ? 'Sedang Mengunggah Berkas...' : 'Pilih Berkas dari Komputer'}
               </div>
-              <div className="text-xs text-zinc-400 truncate">
+              <div style={{ fontSize: '0.75rem', color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 Klik telusuri atau seret berkas langsung ke area ini
               </div>
             </div>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-md border text-xs font-semibold hover:bg-sky-500/30 transition-colors"
               style={{ 
-                backgroundColor: 'rgba(56, 189, 248, 0.15)', 
-                borderColor: 'rgba(56, 189, 248, 0.35)', 
-                color: '#38BDF8' 
+                padding: '0.375rem 0.75rem', 
+                borderRadius: '0.375rem', 
+                backgroundColor: 'rgba(56, 189, 248, 0.1)', 
+                border: '1px solid rgba(56, 189, 248, 0.3)', 
+                color: '#38bdf8', 
+                fontSize: '0.75rem', 
+                fontWeight: 600,
+                cursor: 'pointer'
               }}
             >
               Telusuri
@@ -240,60 +292,98 @@ export default function BuktiDigitalSection({
           </div>
 
           <div 
-            className="flex items-center gap-1.5 pt-2 border-t text-[10px] font-mono text-zinc-500"
-            style={{ borderColor: '#1E293B' }}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.375rem', 
+              paddingTop: '0.5rem', 
+              borderTop: '1px solid #1E293B', 
+              fontSize: '0.625rem', 
+              fontFamily: 'monospace', 
+              color: '#64748B' 
+            }}
           >
             <span>Dukungan:</span>
-            <span className="text-sky-400 border px-1 rounded" style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}>PDF</span>
-            <span className="text-rose-400 border px-1 rounded" style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}>JPG</span>
-            <span className="text-emerald-400 border px-1 rounded" style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}>PNG</span>
-            <span className="ml-auto text-zinc-400">Maks 25 MB</span>
+            <span style={{ color: '#38BDF8', backgroundColor: '#0B0F17', border: '1px solid #263347', padding: '0.0625rem 0.25rem', borderRadius: '0.125rem' }}>PDF</span>
+            <span style={{ color: '#F43F5E', backgroundColor: '#0B0F17', border: '1px solid #263347', padding: '0.0625rem 0.25rem', borderRadius: '0.125rem' }}>JPG</span>
+            <span style={{ color: '#34D399', backgroundColor: '#0B0F17', border: '1px solid #263347', padding: '0.0625rem 0.25rem', borderRadius: '0.125rem' }}>PNG</span>
+            <span style={{ marginLeft: 'auto', color: '#94A3B8' }}>Maks 25 MB</span>
           </div>
         </div>
 
         {/* Konsol Input B: Live QR Bridge Kamera HP */}
         <div
           onClick={onOpenQrModal}
-          className="border rounded-xl p-5 flex flex-col gap-3 cursor-pointer transition-all duration-200"
-          style={{ backgroundColor: '#141C2B', borderColor: '#263347' }}
+          style={{ 
+            backgroundColor: '#141C2B', 
+            border: '1px solid #263347', 
+            borderRadius: '0.75rem', 
+            padding: '1rem', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '0.75rem', 
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-[10px] font-mono font-bold text-red-400 tracking-wider uppercase">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', backgroundColor: '#EF4444', display: 'inline-block' }} />
+              <span style={{ fontSize: '0.625rem', fontFamily: 'monospace', fontWeight: 700, color: '#F87171', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                 Konsol Input B • Live QR Bridge
               </span>
             </div>
             <span 
-              className="text-[10px] font-mono text-amber-400 border px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: '#0B0F17', borderColor: '#263347' }}
+              style={{ 
+                fontSize: '0.625rem', 
+                fontFamily: 'monospace', 
+                color: '#F59E0B', 
+                backgroundColor: '#0B0F17', 
+                border: '1px solid #263347', 
+                padding: '0.125rem 0.375rem', 
+                borderRadius: '0.25rem' 
+              }}
             >
               KAMERA HP
             </span>
           </div>
 
-          <div className="flex items-center gap-3 py-1">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.25rem 0' }}>
             <div 
-              className="w-11 h-11 rounded-lg border flex items-center justify-center text-red-400 shrink-0"
-              style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+              style={{ 
+                width: '2.75rem', 
+                height: '2.75rem', 
+                borderRadius: '0.5rem', 
+                backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                border: '1px solid rgba(239, 68, 68, 0.3)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                color: '#EF4444',
+                flexShrink: 0
+              }}
             >
               <Smartphone size={22} />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-zinc-100">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#F1F5F9' }}>
                 Pindai Bukti via Kamera HP
               </div>
-              <div className="text-xs text-zinc-400 truncate">
+              <div style={{ fontSize: '0.75rem', color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 Foto barang bukti via ponsel & sinkron otomatis
               </div>
             </div>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-md border text-xs font-semibold hover:bg-rose-500/30 transition-colors"
               style={{ 
-                backgroundColor: 'rgba(244, 63, 94, 0.15)', 
-                borderColor: 'rgba(244, 63, 94, 0.35)', 
-                color: '#F43F5E' 
+                padding: '0.375rem 0.75rem', 
+                borderRadius: '0.375rem', 
+                backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                border: '1px solid rgba(239, 68, 68, 0.3)', 
+                color: '#ef4444', 
+                fontSize: '0.75rem', 
+                fontWeight: 600,
+                cursor: 'pointer'
               }}
             >
               Buka QR
@@ -301,200 +391,275 @@ export default function BuktiDigitalSection({
           </div>
 
           <div 
-            className="flex items-center justify-between pt-2 border-t text-[10px] font-mono"
-            style={{ borderColor: '#1E293B' }}
-          >
-            <span className="text-emerald-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              Live Sync R2 Aktif
-            </span>
-            <span className="text-zinc-500">Nirkabel / Tanpa Kabel Data</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Grid Kartu Bukti Digital */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-mono uppercase font-bold text-zinc-400 tracking-wider">
-            Daftar Lampiran Bukti ({daftarBukti.length})
-          </span>
-        </div>
-
-        {daftarBukti.length > 0 ? (
-          <div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"
             style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', 
-              gap: '1rem' 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              paddingTop: '0.5rem', 
+              borderTop: '1px solid #1E293B', 
+              fontSize: '0.625rem', 
+              fontFamily: 'monospace' 
             }}
           >
-            {daftarBukti.map((item, idx) => {
-              const url = item.url || item.fileUrl || '';
-              const isPdf = item.tipe?.includes('pdf') || url.toLowerCase().endsWith('.pdf');
-              const sizeKb = Math.round((item.ukuran || item.size || 0) / 1024);
+            <span style={{ color: '#34D399', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <span style={{ width: '0.375rem', height: '0.375rem', borderRadius: '50%', backgroundColor: '#34D399', display: 'inline-block' }} />
+              Live Sync R2 Aktif
+            </span>
+            <span style={{ color: '#64748B' }}>Nirkabel / Tanpa Kabel Data</span>
+          </div>
+        </div>
+      </div>
 
-              return (
+      {/* Header Daftar Bukti */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+        <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', letterSpacing: '0.05em' }}>
+          Daftar Lampiran Bukti ({daftarBukti.length})
+        </span>
+      </div>
+
+      {/* Grid Daftar Bukti di Bawah */}
+      {daftarBukti.length > 0 ? (
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', 
+            gap: '1rem', 
+            marginTop: '0.75rem' 
+          }}
+        >
+          {daftarBukti.map((item, idx) => {
+            const url = item.url || item.fileUrl || '';
+            const isPdf = item.tipe?.includes('pdf') || url.toLowerCase().endsWith('.pdf');
+            const sizeKb = Math.round((item.ukuran || item.size || 0) / 1024);
+
+            return (
+              <div
+                key={item.id || `evidence-${idx}`}
+                style={{ 
+                  backgroundColor: '#141C2B', 
+                  border: '1px solid #263347', 
+                  borderRadius: '0.75rem', 
+                  overflow: 'hidden', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'space-between' 
+                }}
+              >
+                {/* Media Preview Box */}
                 <div
-                  key={item.id || `evidence-${idx}`}
-                  className="border rounded-xl overflow-hidden flex flex-col justify-between transition-all"
-                  style={{ backgroundColor: '#141C2B', borderColor: '#263347' }}
+                  onClick={() => setPreviewItem(item)}
+                  style={{ 
+                    position: 'relative', 
+                    width: '100%', 
+                    height: '11rem', 
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    cursor: 'pointer', 
+                    overflow: 'hidden', 
+                    borderBottom: '1px solid #1E293B' 
+                  }}
+                  title="Klik untuk memperbesar pratinjau"
                 >
-                  {/* Media Preview Box */}
-                  <div
-                    onClick={() => setPreviewItem(item)}
-                    className="relative w-full h-44 bg-black/70 flex items-center justify-center cursor-pointer group overflow-hidden border-b"
-                    style={{ borderColor: '#1E293B' }}
-                    title="Klik untuk memperbesar pratinjau"
-                  >
-                    {isPdf ? (
-                      <div className="flex flex-col items-center gap-2 text-rose-400">
-                        <FileText size={40} />
-                        <span className="text-xs font-mono text-zinc-400">DOKUMEN PDF</span>
-                      </div>
-                    ) : url ? (
-                      <>
-                        <img
-                          src={url}
-                          alt={item.nama_berkas || 'Barang Bukti'}
-                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.style.display = 'none';
-                            if (e.currentTarget.nextSibling) {
-                              e.currentTarget.nextSibling.style.display = 'flex';
-                            }
-                          }}
-                        />
-                        <div className="hidden flex-col items-center justify-center text-zinc-500 text-xs gap-1">
-                          <ImageIcon size={32} />
-                          <span>Gagal memuat pratinjau</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1 text-zinc-500">
-                        <ImageIcon size={32} />
-                        <span className="text-xs">Tidak ada URL</span>
-                      </div>
-                    )}
-
-                    {/* Hover Overlay Icon */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-1.5 text-xs font-medium">
-                      <Eye size={16} /> Pratinjau
+                  {isPdf ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: '#FB7185' }}>
+                      <FileText size={40} />
+                      <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#94A3B8' }}>DOKUMEN PDF</span>
                     </div>
+                  ) : url ? (
+                    <>
+                      <img
+                        src={url}
+                        alt={item.nama_berkas || 'Barang Bukti'}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.nextSibling) {
+                            e.currentTarget.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                      <div style={{ display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: '0.75rem', gap: '0.25rem' }}>
+                        <ImageIcon size={32} />
+                        <span>Gagal memuat pratinjau</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', color: '#64748B' }}>
+                      <ImageIcon size={32} />
+                      <span style={{ fontSize: '0.75rem' }}>Tidak ada URL</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Card Content & Metadata */}
+                <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.6875rem', fontFamily: 'monospace' }}>
+                    <span 
+                      style={{
+                        padding: '0.125rem 0.375rem',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.625rem',
+                        fontWeight: 700,
+                        backgroundColor: isPdf ? 'rgba(244, 63, 94, 0.1)' : 'rgba(56, 189, 248, 0.1)',
+                        border: isPdf ? '1px solid rgba(244, 63, 94, 0.3)' : '1px solid rgba(56, 189, 248, 0.3)',
+                        color: isPdf ? '#FB7185' : '#38BDF8'
+                      }}
+                    >
+                      {isPdf ? 'PDF' : 'FOTO_R2'}
+                    </span>
+                    <span style={{ color: '#64748B' }}>
+                      {sizeKb > 0 ? `${sizeKb} KB` : 'N/A'}
+                    </span>
                   </div>
 
-                  {/* Card Content & Metadata */}
-                  <div className="p-3 space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-mono">
-                      <span 
-                        className="px-1.5 py-0.5 rounded text-[10px] font-bold border"
-                        style={{
-                          backgroundColor: isPdf ? 'rgba(244, 63, 94, 0.1)' : 'rgba(56, 189, 248, 0.1)',
-                          borderColor: isPdf ? 'rgba(244, 63, 94, 0.3)' : 'rgba(56, 189, 248, 0.3)',
-                          color: isPdf ? '#FB7185' : '#38BDF8'
-                        }}
-                      >
-                        {isPdf ? 'PDF' : 'FOTO_R2'}
-                      </span>
-                      <span className="text-zinc-500">
-                        {sizeKb > 0 ? `${sizeKb} KB` : 'N/A'}
-                      </span>
-                    </div>
+                  <div 
+                    style={{ fontSize: '0.75rem', fontWeight: 600, color: '#E2E8F0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={item.nama_berkas || item.nama || 'Berkas Bukti'}
+                  >
+                    {item.nama_berkas || item.nama || 'Berkas Bukti'}
+                  </div>
 
-                    <div 
-                      className="text-xs font-semibold text-zinc-200 truncate"
-                      title={item.nama_berkas || item.nama || 'Berkas Bukti'}
+                  {item.keterangan && (
+                    <div style={{ fontSize: '0.6875rem', color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.keterangan}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      paddingTop: '0.5rem', 
+                      borderTop: '1px solid #1E293B' 
+                    }}
+                  >
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: '0.6875rem', color: '#38BDF8', display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none', fontWeight: 500 }}
                     >
-                      {item.nama_berkas || item.nama || 'Berkas Bukti'}
-                    </div>
+                      <ExternalLink size={12} /> Buka Asli
+                    </a>
 
-                    {item.keterangan && (
-                      <div className="text-[11px] text-zinc-400 line-clamp-1">
-                        {item.keterangan}
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div 
-                      className="flex items-center justify-between pt-2 border-t"
-                      style={{ borderColor: '#1E293B' }}
+                    <button
+                      type="button"
+                      onClick={() => onRemoveEvidence(item.id || url)}
+                      style={{ 
+                        fontSize: '0.6875rem', 
+                        color: '#F87171', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.25rem', 
+                        fontWeight: 500, 
+                        background: 'none', 
+                        border: 'none', 
+                        cursor: 'pointer', 
+                        padding: '0.25rem 0.5rem', 
+                        borderRadius: '0.25rem' 
+                      }}
+                      title="Hapus berkas bukti ini"
                     >
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 font-medium"
-                      >
-                        <ExternalLink size={12} /> Buka Asli
-                      </a>
-
-                      <button
-                        type="button"
-                        onClick={() => onRemoveEvidence(item.id || url)}
-                        className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1 font-medium px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
-                        title="Hapus berkas bukti ini"
-                      >
-                        <Trash2 size={13} /> Hapus
-                      </button>
-                    </div>
+                      <Trash2 size={13} /> Hapus
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div 
-            className="border border-dashed rounded-xl p-8 text-center text-zinc-500 text-xs flex flex-col items-center gap-2"
-            style={{ backgroundColor: 'rgba(20, 28, 43, 0.4)', borderColor: '#263347' }}
-          >
-            <UploadCloud size={28} className="text-zinc-600" />
-            <span>Belum ada barang bukti yang diunggah.</span>
-            <span className="text-[11px] text-zinc-600">
-              Gunakan Konsol A untuk upload dari komputer atau Konsol B untuk memindai via kamera HP.
-            </span>
-          </div>
-        )}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div 
+          style={{ 
+            border: '1px dashed #263347', 
+            borderRadius: '0.75rem', 
+            padding: '2rem', 
+            textAlign: 'center', 
+            color: '#64748B', 
+            fontSize: '0.75rem', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            backgroundColor: 'rgba(20, 28, 43, 0.4)',
+            marginTop: '0.75rem'
+          }}
+        >
+          <UploadCloud size={28} style={{ color: '#475569' }} />
+          <span>Belum ada barang bukti yang diunggah.</span>
+          <span style={{ fontSize: '0.6875rem', color: '#475569' }}>
+            Gunakan Konsol A untuk upload dari komputer atau Konsol B untuk memindai via kamera HP.
+          </span>
+        </div>
+      )}
 
       {/* Lightbox Preview Modal */}
       {previewItem && (
         <div 
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            zIndex: 50, 
+            backgroundColor: 'rgba(0, 0, 0, 0.85)', 
+            backdropFilter: 'blur(4px)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: '1rem' 
+          }}
           onClick={() => setPreviewItem(null)}
         >
           <div 
-            className="border rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
-            style={{ backgroundColor: '#141C2B', borderColor: '#263347' }}
+            style={{ 
+              backgroundColor: '#141C2B', 
+              border: '1px solid #263347', 
+              borderRadius: '0.75rem', 
+              maxWidth: '48rem', 
+              width: '100%', 
+              maxHeight: '90vh', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              overflow: 'hidden', 
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' 
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div 
-              className="p-3 border-b flex items-center justify-between"
-              style={{ borderColor: '#1E293B' }}
+              style={{ 
+                padding: '0.75rem', 
+                borderBottom: '1px solid #1E293B', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between' 
+              }}
             >
-              <span className="text-xs font-mono text-zinc-300 font-bold truncate">
+              <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#CBD5E1', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {previewItem.nama_berkas || 'Pratinjau Berkas'}
               </span>
               <button
                 type="button"
                 onClick={() => setPreviewItem(null)}
-                className="text-zinc-400 hover:text-white p-1 rounded"
+                style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '0.25rem', display: 'flex', alignItems: 'center' }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="flex-1 bg-black/90 p-4 flex items-center justify-center overflow-auto min-h-[300px]">
+            <div style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.9)', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', minHeight: '300px' }}>
               {previewItem.tipe?.includes('pdf') || (previewItem.url || '').toLowerCase().endsWith('.pdf') ? (
-                <div className="flex flex-col items-center gap-3 text-center">
-                  <FileText size={48} className="text-rose-400" />
-                  <span className="text-sm text-zinc-300">Pratinjau dokumen PDF</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', textAlign: 'center' }}>
+                  <FileText size={48} style={{ color: '#FB7185' }} />
+                  <span style={{ fontSize: '0.875rem', color: '#CBD5E1' }}>Pratinjau dokumen PDF</span>
                   <a
                     href={previewItem.url || previewItem.fileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-500 transition-all flex items-center gap-2"
+                    style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', backgroundColor: '#DC2626', color: '#FFFFFF', fontSize: '0.75rem', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                   >
                     <ExternalLink size={14} /> Buka Dokumen PDF di Tab Baru
                   </a>
@@ -503,7 +668,7 @@ export default function BuktiDigitalSection({
                 <img
                   src={previewItem.url || previewItem.fileUrl}
                   alt={previewItem.nama_berkas}
-                  className="max-w-full max-h-[70vh] object-contain rounded"
+                  style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '0.25rem' }}
                 />
               )}
             </div>
