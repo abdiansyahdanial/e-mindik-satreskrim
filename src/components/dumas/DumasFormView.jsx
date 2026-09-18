@@ -1,16 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ArrowLeft, Shield, RotateCcw, Save, Loader2 } from 'lucide-react';
 import PelaporSection from './sections/PelaporSection';
 import TerlaporSection from './sections/TerlaporSection';
 import UraianPerkaraSection from './sections/UraianPerkaraSection';
 import BuktiDigitalSection from './sections/BuktiDigitalSection';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal';
-import {
-  getStoredEvidence,
-  appendEvidenceSafely,
-  removeEvidenceSafely,
-  resetEvidenceStore
-} from '../../utils/dumasEvidenceStore';
+
+const EVID_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
 export default function DumasFormView({
   mode = 'create',
@@ -70,18 +66,60 @@ export default function DumasFormView({
   }));
   const handleCaseInfoChange = useCallback((field, value) => setCaseInfo((prev) => ({ ...prev, [field]: value })), []);
 
-  // State 05: Bukti Digital Dumas
-  const [daftarBukti, setDaftarBukti] = useState(() => getStoredEvidence());
+  // State 05: Bukti Digital Dumas (Dukungan Refresh & Deduplikasi)
+  const [daftarBukti, setDaftarBukti] = useState(() => {
+    try {
+      const saved = localStorage.getItem(EVID_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Gagal membaca cache bukti:', e);
+    }
+    return initialOcrData?.barang_bukti || [];
+  });
+
+  // Simpan otomatis ke localStorage setiap kali ada berkas baru masuk/dihapus
+  useEffect(() => {
+    try {
+      localStorage.setItem(EVID_STORAGE_KEY, JSON.stringify(daftarBukti));
+    } catch (e) {
+      console.warn('Gagal menyimpan cache bukti:', e);
+    }
+  }, [daftarBukti]);
+
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [syncToken, setSyncToken] = useState(() => `dumas_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`);
 
-  const handleAddEvidence = useCallback((item) => { if (item) setDaftarBukti((prev) => appendEvidenceSafely(prev, item)); }, []);
-  const handleRemoveEvidence = useCallback((key) => { if (key) setDaftarBukti((prev) => removeEvidenceSafely(prev, key)); }, []);
-  const handleResetBukti = useCallback(() => {
-    if (window.confirm('Kosongkan semua berkas bukti yang tersimpan?')) {
-      resetEvidenceStore();
-      setDaftarBukti([]);
-    }
+  // Cegah duplikasi berkas secara ketat berdasarkan URL atau nama berkas
+  const handleAddEvidence = useCallback((newItem) => {
+    if (!newItem) return;
+    setDaftarBukti((prev) => {
+      const itemUrl = newItem.url || newItem.fileUrl || newItem.file_url;
+      const itemName = newItem.nama_berkas || newItem.name || newItem.nama_file;
+
+      const isDuplicate = prev.some((b) => {
+        const prevUrl = b.url || b.fileUrl || b.file_url;
+        const prevName = b.nama_berkas || b.name || b.nama_file;
+        return (itemUrl && prevUrl === itemUrl) || (itemName && prevName === itemName);
+      });
+
+      if (isDuplicate) return prev;
+      return [...prev, newItem];
+    });
+  }, []);
+
+  const handleRemoveEvidence = useCallback((key) => {
+    if (!key) return;
+    setDaftarBukti((prev) => prev.filter((b) => b.id !== key && b.url !== key && b.fileUrl !== key));
+  }, []);
+
+  const handleClearEvidence = useCallback(() => {
+    setDaftarBukti([]);
+    try {
+      localStorage.removeItem(EVID_STORAGE_KEY);
+    } catch {}
   }, []);
 
   const handleSubmit = async (e) => {
@@ -158,6 +196,10 @@ export default function DumasFormView({
       try {
         // Panggil dengan 2 argumen: newDumasData dan daftarBukti
         await onSubmitDumas(newDumasData, daftarBukti);
+        // Hapus cache storage bukti setelah submit selesai dan berhasil
+        try {
+          localStorage.removeItem(EVID_STORAGE_KEY);
+        } catch {}
       } finally {
         setIsSubmitting(false);
       }
@@ -201,7 +243,7 @@ export default function DumasFormView({
         {daftarBukti.length > 0 && (
           <button
             type="button"
-            onClick={handleResetBukti}
+            onClick={handleClearEvidence}
             style={{
               backgroundColor: 'rgba(244, 63, 94, 0.1)',
               border: '1px solid rgba(244, 63, 94, 0.3)',
