@@ -105,7 +105,7 @@ export default function EvidenceQrSyncModal({
 
   // 2. Realtime Listener: Terima unggahan foto bukti dari kamera ponsel HP penyidik secara live
   useEffect(() => {
-    if (!isOpen || isExpired || !syncToken) return;
+    if (!isOpen || !syncToken) return;
 
     const handleReceivedEvidence = (data) => {
       if (!data) return;
@@ -157,7 +157,7 @@ export default function EvidenceQrSyncModal({
         kategori_bukti: isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
         file_size_formatted: data.file_size_formatted || `${(fileSize / 1024).toFixed(0)} KB`,
         key: data.key,
-        keterangan: data.keterangan || 'Foto barang bukti fisik diambil via pemindaian HP (Cloudflare R2)',
+        keterangan: data.keterangan || (isPdf ? 'Dokumen berkas perkara (via scan HP)' : 'Foto bukti fisik (via scan HP)'),
         hash_sha256: data.hash_sha256 || Array.from(crypto.getRandomValues(new Uint8Array(16)))
           .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
         uploaded_at: data.uploaded_at || data.timestamp || new Date().toISOString(),
@@ -165,26 +165,36 @@ export default function EvidenceQrSyncModal({
         isNew: true
       };
 
-      console.log('[LAPTOP MODAL] Sinyal barang bukti baru diterima:', evidenceItem.nama_berkas, '|', fileUrl);
+      const finalEvidence = {
+        ...evidenceItem,
+        id: evidenceItem.id || `bb_${Date.now()}`,
+        keterangan: evidenceItem.keterangan || (evidenceItem.kategori_bukti === 'DOKUMEN_PDF' ? 'Dokumen berkas perkara (via scan HP)' : 'Foto bukti fisik (via scan HP)'),
+        nama_file: evidenceItem.nama_berkas || evidenceItem.name || 'Bukti_Digital.jpg',
+        created_at: new Date().toISOString()
+      };
+
+      console.log('[LAPTOP MODAL] Sinyal barang bukti baru diterima & otomatis disimpan:', finalEvidence.nama_file, '|', fileUrl);
 
       setReceivedCount(prev => prev + 1);
       setJustReceived(true);
       setTimeout(() => setJustReceived(false), 4000);
 
-      // Delegasikan ke onEvidenceReceived jika ada (agar DumasFormView menjadi single handler):
-      if (onEvidenceReceived) {
-        onEvidenceReceived(evidenceItem);
-      } else if (setDaftarBukti) {
+      // Jika props setDaftarBukti tersedia, langsung tambahkan finalEvidence ke state daftar bukti
+      if (setDaftarBukti) {
         setDaftarBukti((prev) => {
-          // Hindari duplikasi jika URL sudah terdaftar
-          const targetCheckUrl = (fileUrl || evidenceItem.url || evidenceItem.fileUrl || '').trim();
-          const exists = prev.some((item) => (item.url || item.fileUrl || '').trim() === targetCheckUrl);
+          const targetUrl = (finalEvidence.url || finalEvidence.fileUrl || '').trim();
+          const exists = prev.some((item) => (item.url || item.fileUrl || '').trim() === targetUrl);
           if (exists) {
-            console.warn('[DEDUP MODAL] Mengabaikan duplikat untuk URL:', targetCheckUrl);
+            console.warn('[DEDUP MODAL] Mengabaikan duplikat untuk URL:', targetUrl);
             return prev;
           }
-          return [...prev, evidenceItem];
+          return [...prev, finalEvidence];
         });
+      }
+
+      // Jika props onEvidenceReceived tersedia, panggil onEvidenceReceived(finalEvidence, true)
+      if (onEvidenceReceived) {
+        onEvidenceReceived(finalEvidence, true);
       }
     };
 
@@ -228,7 +238,7 @@ export default function EvidenceQrSyncModal({
       if (bc) bc.close();
       window.removeEventListener('storage', handleStorage);
     };
-  }, [isOpen, isExpired, syncToken, onEvidenceReceived, setDaftarBukti]);
+  }, [isOpen, syncToken, onEvidenceReceived, setDaftarBukti]);
 
   // Handle ESC Key to Close
   useEffect(() => {
@@ -304,12 +314,29 @@ export default function EvidenceQrSyncModal({
         diunggah_pada: new Date().toISOString()
       };
 
+      const finalEvidence = {
+        ...evidenceItem,
+        id: evidenceItem.id || `bb_${Date.now()}`,
+        keterangan: evidenceItem.keterangan || 'Foto bukti fisik (via scan HP)',
+        nama_file: evidenceItem.nama_berkas || evidenceItem.name || 'Bukti_Digital.jpg',
+        created_at: new Date().toISOString()
+      };
+
       setReceivedCount(prev => prev + 1);
       setJustReceived(true);
-      setTimeout(() => setJustReceived(false), 2500);
+      setTimeout(() => setJustReceived(false), 4000);
+
+      if (setDaftarBukti) {
+        setDaftarBukti((prev) => {
+          const targetUrl = (finalEvidence.url || finalEvidence.fileUrl || finalEvidence.previewUrl || '').trim();
+          const exists = prev.some((item) => (item.url || item.fileUrl || item.previewUrl || '').trim() === targetUrl);
+          if (exists) return prev;
+          return [...prev, finalEvidence];
+        });
+      }
 
       if (onEvidenceReceived) {
-        onEvidenceReceived(evidenceItem);
+        onEvidenceReceived(finalEvidence, true);
       }
     }, 'image/jpeg');
   };
@@ -642,7 +669,7 @@ export default function EvidenceQrSyncModal({
               }}
             >
               <CheckCircle2 size={16} />
-              <span>Foto bukti berhasil diterima dari ponsel! ({receivedCount} berkas)</span>
+              <span>Berkas berhasil diterima dan otomatis disimpan! ({receivedCount} berkas)</span>
             </div>
           )}
 
