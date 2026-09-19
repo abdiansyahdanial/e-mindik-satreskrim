@@ -5,6 +5,8 @@ import TerlaporSection from './sections/TerlaporSection';
 import UraianPerkaraSection from './sections/UraianPerkaraSection';
 import BuktiDigitalSection from './sections/BuktiDigitalSection';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal';
+import { supabase } from '../../supabaseClient.js';
+import { deleteR2File } from '../../lib/r2Client.js';
 
 const EVID_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
@@ -110,9 +112,57 @@ export default function DumasFormView({
     });
   }, []);
 
-  const handleRemoveEvidence = useCallback((key) => {
-    if (!key) return;
-    setDaftarBukti((prev) => prev.filter((b) => b.id !== key && b.url !== key && b.fileUrl !== key));
+  const handleRemoveEvidence = useCallback(async (evidenceItem) => {
+    if (!evidenceItem) return;
+
+    const targetId = typeof evidenceItem === 'object' ? evidenceItem.id : evidenceItem;
+    const targetUrl = typeof evidenceItem === 'object' ? (evidenceItem.file_url || evidenceItem.url || evidenceItem.previewUrl) : evidenceItem;
+
+    // 1. Dapatkan path R2
+    let pathToDelete = null;
+    if (typeof evidenceItem === 'object') {
+      pathToDelete = evidenceItem.file_path || evidenceItem.filePath || evidenceItem.key;
+      if (!pathToDelete && targetUrl && !targetUrl.startsWith('blob:')) {
+        try {
+          const u = new URL(targetUrl);
+          pathToDelete = u.pathname.replace(/^\/+/, '');
+        } catch {}
+      }
+    }
+
+    // 2. Hapus berkas fisik langsung dari Cloudflare R2
+    if (pathToDelete) {
+      try {
+        const cleanKey = pathToDelete.replace(/^emindik-storage\//, '').replace(/^\/+/, '');
+        await deleteR2File(cleanKey);
+        console.log('[R2 Realtime Cleanup] Berkas bukti berhasil dihapus dari R2:', cleanKey);
+      } catch (r2Err) {
+        console.warn('[R2 Realtime Cleanup] Gagal menghapus berkas bukti dari R2:', r2Err);
+      }
+    }
+
+    // 3. Jika bukti sudah tercatat di Supabase barang_bukti (UUID valid), hapus barisnya
+    const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(str));
+    if (targetId && isUUID(targetId)) {
+      try {
+        await supabase.from('barang_bukti').delete().eq('id', targetId);
+      } catch (dbErr) {
+        console.warn('Gagal menghapus baris barang_bukti di Supabase:', dbErr);
+      }
+    }
+
+    // 4. Perbarui state UI & local storage
+    setDaftarBukti((prev) => {
+      const updated = prev.filter((b) => {
+        if (targetId && b.id === targetId) return false;
+        if (targetUrl && (b.url === targetUrl || b.file_url === targetUrl || b.fileUrl === targetUrl)) return false;
+        return true;
+      });
+      try {
+        localStorage.setItem(EVID_STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   }, []);
 
   const handleClearEvidence = useCallback(() => {

@@ -579,7 +579,7 @@ export default function BuktiDigitalSection({
 
                     <button
                       type="button"
-                      onClick={() => onRemoveEvidence(item.id || url)}
+                      onClick={() => onRemoveEvidence(item)}
                       style={{ 
                         fontSize: '0.6875rem', 
                         color: '#F87171', 

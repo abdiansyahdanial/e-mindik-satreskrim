@@ -22,6 +22,8 @@ import { deleteEvidenceFromDumas } from '../../services/dumasService.js';
 import { formatR2PublicUrl } from '../../lib/r2Client.js';
 import { supabase } from '../../supabaseClient';
 
+const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(str));
+
 export default function DumasDetailView({
   dumasItem,
   onBack,
@@ -40,130 +42,62 @@ export default function DumasDetailView({
     setPerkara(dumasItem);
   }
 
+  const fetchedLpRef = useRef(null);
+
   // Hydration Query: Muat ulang bukti digital dari tabel barang_bukti berdasarkan nomor register resmi Dumas
   useEffect(() => {
-    const fetchBuktiForDetail = async () => {
-      const nomorRegister = perkara?.nomor_lp || dumasItem?.nomor_lp;
-      const idPerkara = perkara?.id || dumasItem?.id;
-      if (!nomorRegister && !idPerkara) return;
+    const nomorRegister = perkara?.nomor_lp || dumasItem?.nomor_lp;
+    const idPerkara = perkara?.id || dumasItem?.id;
 
+    // Lewati jika belum ada nomor register atau sudah pernah di-fetch untuk nomor LP ini
+    if (!nomorRegister && (!idPerkara || !isUUID(idPerkara))) return;
+    const fetchKey = nomorRegister || idPerkara;
+    if (fetchedLpRef.current === fetchKey) return;
+
+    const fetchBuktiForDetail = async () => {
       try {
         let query = supabase.from('barang_bukti').select('*');
-        if (nomorRegister && idPerkara) {
-          query = query.or(`nomor_register.eq.${nomorRegister},id_perkara.eq.${idPerkara}`);
-        } else if (nomorRegister) {
+
+        if (nomorRegister) {
           query = query.eq('nomor_register', nomorRegister);
-        } else {
+        } else if (idPerkara && isUUID(idPerkara)) {
           query = query.eq('id_perkara', idPerkara);
         }
 
-        const { data, error } = await query.order('created_at', { ascending: true });
+        const { data: bbData, error: bbErr } = await query.order('created_at', { ascending: true });
 
-        if (!error && data && data.length > 0) {
-          const formatted = data.map((b) => ({
-            id: b.id,
-            nama_file: b.nama_berkas,
-            nama_berkas: b.nama_berkas,
-            file_url: b.file_url,
-            url: b.file_url,
-            fileUrl: b.file_url,
-            previewUrl: b.file_url,
-            mime_type: b.tipe_berkas,
-            tipe: b.tipe_berkas,
-            file_size_bytes: b.ukuran_berkas,
-            ukuran: b.ukuran_berkas,
-            file_size_formatted: `${(Number(b.ukuran_berkas || 0) / 1024).toFixed(0)} KB`,
-            kategori_bukti: b.nama_berkas?.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
-            keterangan: b.keterangan || 'Barang bukti digital',
-            storage_provider: b.storage_provider || 'cloudflare_r2',
-            diunggah_pada: b.created_at,
-            created_at: b.created_at
+        if (!bbErr && Array.isArray(bbData)) {
+          fetchedLpRef.current = fetchKey; // Tandai sudah diambil agar tidak loop
+
+          const formatted = bbData.map((row) => ({
+            id: row.id,
+            nama_file: row.nama_berkas || row.nama_file || 'Berkas Bukti',
+            file_url: row.file_url || row.url,
+            url: row.file_url || row.url,
+            kategori_bukti: row.tipe_berkas?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+            mime_type: row.tipe_berkas,
+            file_size_bytes: row.ukuran_berkas,
+            keterangan: row.keterangan,
+            hash_sha256: row.hash_sha256,
+            created_at: row.created_at
           }));
 
           setPerkara((prev) => {
             if (!prev) return prev;
-            const currentList = Array.isArray(prev.lampiran_barang_bukti) ? prev.lampiran_barang_bukti : [];
-            const existingUrls = new Set(currentList.map(item => item.file_url || item.url));
-            const newItems = formatted.filter(item => !existingUrls.has(item.file_url));
-            if (newItems.length === 0 && currentList.length > 0) return prev;
-            const merged = [...currentList, ...newItems];
-            const updated = {
+            return {
               ...prev,
-              lampiran_barang_bukti: merged,
-              barang_bukti: merged
+              lampiran_barang_bukti: formatted,
+              barang_bukti: formatted
             };
-            if (onUpdateDumas) {
-              onUpdateDumas(updated);
-            }
-            return updated;
           });
-          console.log(`[DETAIL HYDRATION] Berhasil memuat ${formatted.length} bukti dari database untuk ${nomorRegister}`);
-          return;
-        }
-
-        // Fallback 1: tabel lampiran_barang_bukti jika ada idPerkara
-        if (idPerkara) {
-          const { data: lbData } = await supabase
-            .from('lampiran_barang_bukti')
-            .select('*')
-            .eq('laporan_id', idPerkara);
-
-          if (lbData && lbData.length > 0) {
-            const formattedLb = lbData.map(b => ({
-              id: b.id,
-              nama_file: b.nama_file,
-              nama_berkas: b.nama_file,
-              file_url: b.file_url,
-              url: b.file_url,
-              file_size_bytes: b.file_size_bytes,
-              file_size_formatted: `${(Number(b.file_size_bytes || 0) / 1024).toFixed(0)} KB`,
-              mime_type: b.mime_type,
-              keterangan: b.keterangan,
-              kategori_bukti: b.kategori_bukti,
-              diunggah_pada: b.diunggah_pada
-            }));
-            setPerkara(prev => {
-              if (!prev) return prev;
-              const updated = {
-                ...prev,
-                lampiran_barang_bukti: formattedLb,
-                barang_bukti: formattedLb
-              };
-              if (onUpdateDumas) onUpdateDumas(updated);
-              return updated;
-            });
-            return;
-          }
-        }
-
-        // Fallback 2: localStorage draft_bb_${nomorRegister}
-        if (nomorRegister) {
-          const draftLocal = localStorage.getItem(`draft_bb_${nomorRegister}`);
-          if (draftLocal) {
-            try {
-              const parsed = JSON.parse(draftLocal);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                setPerkara(prev => {
-                  if (!prev) return prev;
-                  const updated = {
-                    ...prev,
-                    lampiran_barang_bukti: parsed,
-                    barang_bukti: parsed
-                  };
-                  if (onUpdateDumas) onUpdateDumas(updated);
-                  return updated;
-                });
-              }
-            } catch {}
-          }
         }
       } catch (err) {
-        console.error('[FETCH BUKTI DETAIL ERROR]:', err);
+        console.warn('Gagal memuat barang bukti untuk detail:', err);
       }
     };
 
     fetchBuktiForDetail();
-  }, [perkara?.nomor_lp, perkara?.id, dumasItem?.nomor_lp, dumasItem?.id]);
+  }, [perkara?.nomor_lp, dumasItem?.nomor_lp, perkara?.id, dumasItem?.id]);
 
   if (!perkara) {
     return (
@@ -236,7 +170,12 @@ export default function DumasDetailView({
     }
 
     try {
-      await deleteEvidenceFromDumas(perkara.id, bb.id, bb.file_path);
+      await deleteEvidenceFromDumas(
+        perkara.id,
+        bb.id,
+        bb.file_path || null,
+        bb.file_url || bb.url || null
+      );
     } catch (err) {
       console.warn('Gagal menghapus barang bukti dari backend:', err);
     }
@@ -1370,8 +1309,8 @@ export default function DumasDetailView({
       {/* ========================================================= */}
       <AddEvidenceModal
         isOpen={isAddEvidenceOpen}
-        dumasId={perkara?.id}
-        dumasNo={perkara?.nomor_lp}
+        dumasId={perkara?.id || dumasItem?.id}
+        dumasNo={perkara?.nomor_lp || dumasItem?.nomor_lp}
         onClose={() => setIsAddEvidenceOpen(false)}
         onSuccess={handleEvidenceAdded}
       />

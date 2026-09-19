@@ -74,7 +74,7 @@ export default function AddEvidenceModal({
         keterangan: keterangan.trim() || selectedFile.keterangan || 'Lampiran bukti digital perkara pengaduan'
       };
 
-      const result = await addEvidenceToDumas(dumasId, payload);
+      const result = await addEvidenceToDumas(dumasId, payload, dumasNo);
       if (result.success && result.evidence) {
         if (onSuccess) {
           onSuccess(result.evidence);
