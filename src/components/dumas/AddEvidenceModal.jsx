@@ -6,11 +6,12 @@ import {
   FileText, 
   Image as ImageIcon, 
   CheckCircle2, 
-  AlertCircle,
+  AlertCircle, 
   Loader2
 } from 'lucide-react';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal.jsx';
 import { addEvidenceToDumas } from '../../services/dumasService.js';
+import { compressImageClient, convertImagesToSinglePdf } from '../../utils/evidenceDocHelper.js';
 
 export default function AddEvidenceModal({
   isOpen = true,
@@ -29,27 +30,64 @@ export default function AddEvidenceModal({
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    const isPdf = file.type.includes('pdf') || file.name.endsWith('.pdf');
-    const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
-    const mime = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
+    try {
+      setErrorMsg(null);
+      let finalFile = null;
 
-    setSelectedFile({
-      name: file.name,
-      nama_file: file.name,
-      size: file.size,
-      file_size_formatted: `${(file.size / 1024).toFixed(0)} KB`,
-      type: mime,
-      mime_type: mime,
-      kategori_bukti: category,
-      previewUrl: URL.createObjectURL(file),
-      file: file,
-      rawFile: file,
-    });
-    setErrorMsg(null);
+      if (files.length === 1) {
+        const file = files[0];
+        const isPdf = file.type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf');
+
+        if (isPdf) {
+          finalFile = file;
+        } else if (file.type.startsWith('image/')) {
+          // Kompresi otomatis gambar tunggal
+          finalFile = await compressImageClient(file, 1800, 0.75);
+        } else {
+          finalFile = file;
+        }
+      } else {
+        // Jika petugas memilih atau memotret beberapa halaman sekaligus
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length > 0) {
+          const compressedList = [];
+          for (const img of imageFiles) {
+            const cImg = await compressImageClient(img, 1800, 0.75);
+            compressedList.push(cImg);
+          }
+          const generatedName = `Dokumen_Bukti_${Date.now()}.pdf`;
+          finalFile = await convertImagesToSinglePdf(compressedList, generatedName);
+        } else {
+          finalFile = files[0];
+        }
+      }
+
+      if (!finalFile) return;
+
+      const isPdf = finalFile.type.includes('pdf') || finalFile.name.toLowerCase().endsWith('.pdf');
+      const category = isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG';
+      const mime = isPdf ? 'application/pdf' : (finalFile.type || 'image/jpeg');
+
+      setSelectedFile({
+        name: finalFile.name,
+        nama_file: finalFile.name,
+        size: finalFile.size,
+        file_size_formatted: `${(finalFile.size / 1024).toFixed(0)} KB`,
+        type: mime,
+        mime_type: mime,
+        kategori_bukti: category,
+        previewUrl: URL.createObjectURL(finalFile),
+        file: finalFile,
+        rawFile: finalFile,
+      });
+    } catch (err) {
+      console.error('Gagal memproses berkas bukti:', err);
+      setErrorMsg('Gagal memproses gambar/dokumen. Silakan coba lagi.');
+    }
   };
 
   const handleQrEvidenceReceived = (evidenceItem) => {
@@ -259,6 +297,7 @@ export default function AddEvidenceModal({
               ref={fileInputRef}
               type="file"
               accept=".pdf,.jpg,.jpeg,.png,.webp"
+              multiple
               onChange={handleFileChange}
               style={{ display: 'none' }}
             />

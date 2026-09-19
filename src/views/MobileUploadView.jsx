@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Camera, 
   UploadCloud, 
@@ -9,9 +9,47 @@ import {
   RefreshCw,
   Lock,
   Clock,
-  ShieldAlert
+  ShieldAlert,
+  Trash2,
+  Plus,
+  FileText,
+  Image as ImageIcon
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { compressImageClient, convertImagesToSinglePdf } from '../utils/evidenceDocHelper.js';
+
+// Extract token & expiry from URL search params or hash robustly
+const getSessionParams = () => {
+  if (typeof window === 'undefined') {
+    const now = Date.now();
+    return { token: 'SESI-DEMO-KOLTIM', targetExp: now + 120000 };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  let token = searchParams.get('token');
+  let expParam = searchParams.get('expiresAt') || searchParams.get('exp');
+  let createdParam = searchParams.get('createdAt') || searchParams.get('created_at');
+
+  if (!token && window.location.hash) {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    token = hashParams.get('token');
+    if (!expParam) expParam = hashParams.get('expiresAt') || hashParams.get('exp');
+    if (!createdParam) createdParam = hashParams.get('createdAt') || hashParams.get('created_at');
+  }
+
+  token = token || 'SESI-DEMO-KOLTIM';
+  const now = Date.now();
+  let targetExp;
+  if (expParam && !isNaN(Number(expParam))) {
+    targetExp = Number(expParam);
+  } else if (createdParam && !isNaN(Number(createdParam))) {
+    targetExp = Number(createdParam) + 120 * 1000;
+  } else {
+    targetExp = now + 120 * 1000;
+  }
+
+  return { token, targetExp };
+};
 
 export default function MobileUploadView() {
   const syncChannelRef = useRef(null);
@@ -21,38 +59,10 @@ export default function MobileUploadView() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Extract token & expiry from URL search params or hash robustly
-  const getSessionParams = () => {
-    if (typeof window === 'undefined') {
-      const now = Date.now();
-      return { token: 'SESI-DEMO-KOLTIM', targetExp: now + 120000 };
-    }
-
-    const searchParams = new URLSearchParams(window.location.search);
-    let token = searchParams.get('token');
-    let expParam = searchParams.get('expiresAt') || searchParams.get('exp');
-    let createdParam = searchParams.get('createdAt') || searchParams.get('created_at');
-
-    if (!token && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-      token = hashParams.get('token');
-      if (!expParam) expParam = hashParams.get('expiresAt') || hashParams.get('exp');
-      if (!createdParam) createdParam = hashParams.get('createdAt') || hashParams.get('created_at');
-    }
-
-    token = token || 'SESI-DEMO-KOLTIM';
-    const now = Date.now();
-    let targetExp;
-    if (expParam && !isNaN(Number(expParam))) {
-      targetExp = Number(expParam);
-    } else if (createdParam && !isNaN(Number(createdParam))) {
-      targetExp = Number(createdParam) + 120 * 1000;
-    } else {
-      targetExp = now + 120 * 1000;
-    }
-
-    return { token, targetExp };
-  };
+  // Mode: 'single' (Objek Fisik Tunggal) atau 'doc' (Dokumen Multi-Halaman)
+  const [captureMode, setCaptureMode] = useState('single');
+  const [docPages, setDocPages] = useState([]); // Array of File/Blob terkompresi
+  const [isProcessingDoc, setIsProcessingDoc] = useState(false);
 
   const [sessionParams] = useState(getSessionParams);
   const token = sessionParams.token;
@@ -159,20 +169,70 @@ export default function MobileUploadView() {
     } catch {}
   };
 
-  const handleFileCapture = (e) => {
+  const handleFileCapture = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setSelectedFile(file);
-    setIsSuccess(false);
-    setErrorMsg(null);
+    // Reset input value agar dapat memotret foto baru berturut-turut
+    e.target.value = '';
 
-    if (file.type.includes('image')) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    } else {
-      setPreviewUrl(null);
+    try {
+      setErrorMsg(null);
+      if (captureMode === 'single') {
+        // Mode Objek Fisik: Kompresi gambar tunggal
+        let processed = file;
+        if (file.type.startsWith('image/')) {
+          processed = await compressImageClient(file, 1800, 0.75);
+        }
+        setSelectedFile(processed);
+        setIsSuccess(false);
+        setPreviewUrl(URL.createObjectURL(processed));
+      } else {
+        // Mode Dokumen Multi-Halaman: Kompresi lembar lalu tambahkan ke antrean halaman
+        setIsProcessingDoc(true);
+        let compressed = file;
+        if (file.type.startsWith('image/')) {
+          compressed = await compressImageClient(file, 1800, 0.75);
+        }
+        const updatedPages = [...docPages, compressed];
+        setDocPages(updatedPages);
+
+        // Langsung generate preview / bundle PDF sementara
+        const generatedPdf = await convertImagesToSinglePdf(
+          updatedPages,
+          `Dokumen_Bukti_${Date.now()}.pdf`
+        );
+        setSelectedFile(generatedPdf);
+        setIsSuccess(false);
+      }
+    } catch (err) {
+      console.error('Gagal memproses foto di HP:', err);
+      setErrorMsg('Gagal memproses gambar. Silakan coba kembali.');
+    } finally {
+      setIsProcessingDoc(false);
     }
+  };
+
+  const handleRemovePage = useCallback(async (indexToRemove) => {
+    const remaining = docPages.filter((_, idx) => idx !== indexToRemove);
+    setDocPages(remaining);
+    if (remaining.length === 0) {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+    } else {
+      const generatedPdf = await convertImagesToSinglePdf(
+        remaining,
+        `Dokumen_Bukti_${Date.now()}.pdf`
+      );
+      setSelectedFile(generatedPdf);
+    }
+  }, [docPages]);
+
+  const handleResetCapture = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setDocPages([]);
+    setIsSuccess(false);
   };
 
   const handleUpload = async () => {
@@ -504,11 +564,7 @@ export default function MobileUploadView() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedFile(null);
-                      setPreviewUrl(null);
-                      setIsSuccess(false);
-                    }}
+                    onClick={handleResetCapture}
                     style={{
                       marginTop: '8px',
                       padding: '8px 16px',
@@ -527,6 +583,127 @@ export default function MobileUploadView() {
                 </div>
               ) : (
                 <>
+                  {/* Pilihan Mode Pengambilan */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setCaptureMode('single'); handleResetCapture(); }}
+                      style={{
+                        padding: '10px 8px',
+                        borderRadius: '8px',
+                        border: captureMode === 'single' ? '1px solid #3B82F6' : '1px solid #334155',
+                        backgroundColor: captureMode === 'single' ? 'rgba(59, 130, 246, 0.15)' : '#0B0D13',
+                        color: captureMode === 'single' ? '#60A5FA' : '#94A3B8',
+                        fontSize: '11px',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <ImageIcon size={14} /> Objek Fisik (1 Foto)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { setCaptureMode('doc'); handleResetCapture(); }}
+                      style={{
+                        padding: '10px 8px',
+                        borderRadius: '8px',
+                        border: captureMode === 'doc' ? '1px solid #10B981' : '1px solid #334155',
+                        backgroundColor: captureMode === 'doc' ? 'rgba(16, 185, 129, 0.15)' : '#0B0D13',
+                        color: captureMode === 'doc' ? '#34D399' : '#94A3B8',
+                        fontSize: '11px',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <FileText size={14} /> Dokumen (Multi-Lembar)
+                    </button>
+                  </div>
+
+                  {/* Daftar Thumbnail Halaman jika dalam Mode Dokumen */}
+                  {captureMode === 'doc' && docPages.length > 0 && (
+                    <div style={{ marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace' }}>
+                          Lembar Terkumpul ({docPages.length} Halaman)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleResetCapture}
+                          style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          Reset Semua
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px' }}>
+                        {docPages.map((pageFile, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              position: 'relative',
+                              width: '70px',
+                              height: '90px',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              border: '1px solid #334155',
+                              flexShrink: 0,
+                              backgroundColor: '#0B0D13'
+                            }}
+                          >
+                            <img
+                              src={URL.createObjectURL(pageFile)}
+                              alt={`Hal ${idx + 1}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                bottom: 2,
+                                left: 2,
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                color: '#FFF',
+                                fontSize: '9px',
+                                padding: '1px 4px',
+                                borderRadius: '3px'
+                              }}
+                            >
+                              #{idx + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePage(idx)}
+                              style={{
+                                position: 'absolute',
+                                top: 2,
+                                right: 2,
+                                backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                                border: 'none',
+                                borderRadius: '3px',
+                                color: '#FFF',
+                                padding: '2px',
+                                cursor: 'pointer',
+                                display: 'flex'
+                              }}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Capture Card */}
                   <label 
                     htmlFor="mobile-camera-input"
@@ -534,13 +711,13 @@ export default function MobileUploadView() {
                       border: '2px dashed #334155',
                       backgroundColor: '#0B0D13',
                       borderRadius: '14px',
-                      padding: previewUrl ? '12px' : '32px 20px',
+                      padding: previewUrl && captureMode === 'single' ? '12px' : '32px 20px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '12px',
-                      cursor: 'pointer',
+                      cursor: isProcessingDoc ? 'wait' : 'pointer',
                       textAlign: 'center',
                       minHeight: '180px'
                     }}
@@ -551,12 +728,48 @@ export default function MobileUploadView() {
                       type="file"
                       accept="image/*,application/pdf"
                       capture="environment"
-                      disabled={isExpired}
+                      disabled={isExpired || isProcessingDoc}
                       style={{ display: 'none' }}
                       onChange={handleFileCapture}
                     />
 
-                    {previewUrl ? (
+                    {isProcessingDoc ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <RefreshCw size={28} color="#10B981" className="animate-spin" />
+                        <div>
+                          <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#10B981' }}>
+                            Mengompres &amp; Menata Lembar...
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+                            Sedang menyatukan dokumen ke format PDF
+                          </div>
+                        </div>
+                      </div>
+                    ) : captureMode === 'doc' && docPages.length > 0 ? (
+                      <>
+                        <div style={{
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '14px',
+                          backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#10B981'
+                        }}>
+                          <Plus size={28} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF' }}>
+                            + Foto Lembar Berikutnya
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+                            Ketuk untuk memotret halaman ke-{docPages.length + 1}
+                          </div>
+                        </div>
+                      </>
+                    ) : previewUrl && captureMode === 'single' ? (
                       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                         <img 
                           src={previewUrl} 
@@ -573,21 +786,23 @@ export default function MobileUploadView() {
                           width: '56px',
                           height: '56px',
                           borderRadius: '14px',
-                          backgroundColor: 'rgba(229, 46, 46, 0.15)',
-                          border: '1px solid rgba(229, 46, 46, 0.4)',
+                          backgroundColor: captureMode === 'doc' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(229, 46, 46, 0.15)',
+                          border: captureMode === 'doc' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(229, 46, 46, 0.4)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#FF352D'
+                          color: captureMode === 'doc' ? '#10B981' : '#FF352D'
                         }}>
                           <Camera size={28} />
                         </div>
                         <div>
                           <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF' }}>
-                            Buka Kamera HP
+                            {captureMode === 'doc' ? 'Buka Kamera HP (Lembar #1)' : 'Buka Kamera HP'}
                           </div>
                           <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
-                            Ketuk di sini untuk mengambil foto bukti fisik langsung
+                            {captureMode === 'doc' 
+                              ? 'Ketuk di sini untuk mengambil foto lembar pertama dokumen'
+                              : 'Ketuk di sini untuk mengambil foto bukti fisik langsung'}
                           </div>
                         </div>
                       </>
