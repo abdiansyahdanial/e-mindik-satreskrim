@@ -8,9 +8,7 @@ import {
   saveDumasRecord, 
   deleteDumasRecord, 
   convertDumasToCase,
-  hasDumasDraft,
-  safeGetLocalStorage,
-  sanitizeEvidenceList
+  hasDumasDraft
 } from '../services/dumasService';
 import '../styles/dumas.css';
 
@@ -146,7 +144,12 @@ export default function DumasView({
   // 3. Handler Hapus Dumas
   const handleDeleteDumas = async (id) => {
     try {
-      await deleteDumasRecord(id);
+      const res = await deleteDumasRecord(id);
+      if (!res?.success) {
+        alert(`Gagal menghapus berkas dumas dari server: ${res?.error || 'Terjadi kesalahan sistem'}`);
+        return;
+      }
+      
       setDumasList(prev => prev.filter(d => d.id !== id));
       if (selectedDumas?.id === id) {
         setSelectedDumas(null);
@@ -160,7 +163,8 @@ export default function DumasView({
         onShowToast('Berkas aduan masyarakat berhasil dihapus.');
       }
     } catch (err) {
-      console.error('Gagal hapus dumas:', err);
+      console.error('Error handleDeleteDumas:', err);
+      alert(`Terjadi kesalahan: ${err.message}`);
     }
   };
 

@@ -646,28 +646,55 @@ export async function deleteDumasRecord(id) {
       await Promise.allSettled(deleteTasks);
     }
 
-    // 5. Hapus relasi database Supabase
+    // 5. Hapus relasi database Supabase (Cascade anak terlebih dahulu)
     try {
       if (nomorLp) {
         await supabase.from('barang_bukti').delete().eq('nomor_register', nomorLp);
-      } else if (validUuid) {
-        await supabase.from('barang_bukti').delete().eq('id_perkara', id);
       }
-    } catch {}
-
-    if (validUuid) {
-      await supabase.from('saksi_dumas').delete().eq('laporan_id', id).catch(() => {});
+      if (validUuid) {
+        try {
+          await supabase.from('barang_bukti').delete().eq('laporan_id', id);
+        } catch {}
+        try {
+          await supabase.from('barang_bukti').delete().eq('id_perkara', id);
+        } catch {}
+        try {
+          await supabase.from('saksi_dumas').delete().eq('laporan_id', id);
+        } catch {}
+        try {
+          await supabase.from('terlapor_dumas').delete().eq('laporan_id', id);
+        } catch {}
+        try {
+          await supabase.from('dumas_status_history').delete().eq('laporan_id', id);
+        } catch {}
+        try {
+          await supabase.from('dumas_status_history').delete().eq('dumas_id', id);
+        } catch {}
+      }
+    } catch (cascadeErr) {
+      console.warn('[DELETE DUMAS] Notice penghapusan tabel relasi anak:', cascadeErr);
     }
 
+    // 6. Jalankan penghapusan tabel utama laporan_pengaduan
+    let delError = null;
     try {
       if (validUuid) {
-        await supabase.from('laporan_pengaduan').delete().eq('id', id);
+        const res = await supabase.from('laporan_pengaduan').delete().eq('id', id);
+        delError = res.error;
       } else if (nomorLp) {
-        await supabase.from('laporan_pengaduan').delete().eq('nomor_lp', nomorLp);
+        const res = await supabase.from('laporan_pengaduan').delete().eq('nomor_lp', nomorLp);
+        delError = res.error;
       }
-    } catch {}
+    } catch (e) {
+      delError = e;
+    }
 
-    // 6. Hapus dari LocalStorage
+    if (delError) {
+      console.error('[DELETE DUMAS] Gagal menghapus laporan_pengaduan:', delError);
+      return { success: false, error: delError.message || 'Gagal menghapus dari database Supabase' };
+    }
+
+    // 7. Hapus dari LocalStorage
     try {
       const raw = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
       if (raw) {
