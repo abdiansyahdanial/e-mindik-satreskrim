@@ -27,6 +27,8 @@ export default function DumasFormView({
   const [pelapor, setPelapor] = useState(() => ({
     nik: initialOcrData?.pelapor?.nik || initialOcrData?.pelapor_nik || '',
     nama: initialOcrData?.pelapor?.nama || initialOcrData?.pelapor_nama || initialOcrData?.pelapor?.nama_lengkap || '',
+    tempat_tanggal_lahir: initialOcrData?.pelapor?.tempat_tanggal_lahir || initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor_ttl || initialOcrData?.pelapor_tempat_tanggal_lahir || [initialOcrData?.pelapor?.tempat_lahir || initialOcrData?.pelapor_tempat_lahir, initialOcrData?.pelapor?.tanggal_lahir || initialOcrData?.pelapor_tanggal_lahir].filter(Boolean).join(', ') || '',
+    ttl: initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor?.tempat_tanggal_lahir || initialOcrData?.pelapor_ttl || '',
     tempat_lahir: initialOcrData?.pelapor?.tempat_lahir || initialOcrData?.pelapor_tempat_lahir || '',
     tanggal_lahir: initialOcrData?.pelapor?.tanggal_lahir || initialOcrData?.pelapor_tanggal_lahir || '',
     jenis_kelamin: initialOcrData?.pelapor?.jenis_kelamin || 'Laki-laki',
@@ -58,13 +60,13 @@ export default function DumasFormView({
   const handleUpdateTerlapor = useCallback((i, f, v) => setTerlaporList((p) => { const c = [...p]; if (c[i]) c[i] = { ...c[i], [f]: v }; return c; }), []);
   const handleRemoveTerlapor = useCallback((i) => setTerlaporList((p) => p.filter((_, idx) => idx !== i)), []);
 
-  // State 04: Peristiwa & Uraian Kejadian (Kronologi)
+  // State 04: Peristiwa & Uraian Kejadian (Kronologi Lengkap Verbatim)
   const [caseInfo, setCaseInfo] = useState(() => ({
-    waktu_kejadian: initialOcrData?.caseInfo?.waktu_kejadian || initialOcrData?.waktu_kejadian || '',
-    tkp: initialOcrData?.caseInfo?.tkp || initialOcrData?.tkp || '',
-    tindak_pidana: initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || '',
-    pasal: initialOcrData?.caseInfo?.pasal || initialOcrData?.pasal || '',
-    uraian: initialOcrData?.caseInfo?.uraian || initialOcrData?.uraian || ''
+    waktu_kejadian: initialOcrData?.caseInfo?.waktu_kejadian || initialOcrData?.waktu_kejadian || initialOcrData?.waktu || '',
+    tkp: initialOcrData?.caseInfo?.tkp || initialOcrData?.tkp || initialOcrData?.locus_delicti || '',
+    tindak_pidana: initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || initialOcrData?.dugaan_tindak_pidana || '',
+    pasal: initialOcrData?.caseInfo?.pasal || initialOcrData?.pasal || initialOcrData?.pasal_disangkakan || '',
+    uraian: initialOcrData?.caseInfo?.uraian || initialOcrData?.uraian || initialOcrData?.uraian_kejadian || initialOcrData?.ringkasan_posisi_kasus || initialOcrData?.kronologis || ''
   }));
   const handleCaseInfoChange = useCallback((field, value) => setCaseInfo((prev) => ({ ...prev, [field]: value })), []);
 
@@ -187,8 +189,8 @@ export default function DumasFormView({
     const primaryTerlapor = terlaporList[0] || {};
     const generatedNo = nomorRegisterResmi || `DUMAS/${Date.now().toString().slice(-4)}/SPKT/RES-KOLTIM`;
 
-    // Gabungkan TTL pelapor jika terpisah
-    const pelaporTtl = pelapor.ttl || [pelapor.tempat_lahir, pelapor.tanggal_lahir].filter(Boolean).join(', ');
+    // Gabungkan TTL pelapor jika terpisah (utamakan single input tempat_tanggal_lahir / ttl)
+    const pelaporTtl = pelapor.tempat_tanggal_lahir || pelapor.ttl || [pelapor.tempat_lahir, pelapor.tanggal_lahir].filter(Boolean).join(', ');
     const terlaporTtl = primaryTerlapor.ttl || [primaryTerlapor.tempat_lahir, primaryTerlapor.tanggal_lahir].filter(Boolean).join(', ');
 
     const newDumasData = {
@@ -260,31 +262,79 @@ export default function DumasFormView({
     <div className="w-full max-w-6xl mx-auto py-6 px-4 space-y-6 text-zinc-100">
       {/* Header Navigasi & Status */}
       <div 
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl p-4"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl p-4 sm:p-5"
         style={{ backgroundColor: '#111622', borderColor: '#1E293B' }}
       >
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="p-2 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+              className="p-2.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
               title="Kembali ke Daftar Dumas"
             >
               <ArrowLeft size={18} />
             </button>
           )}
           <div>
-            <div className="flex items-center gap-2">
-              <Shield size={18} className="text-red-500" />
-              <h2 className="text-lg font-bold tracking-tight text-white">
-                FORMULIR PENGADUAN MASYARAKAT (DUMAS)
-              </h2>
-              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 font-bold">
-                {mode === 'edit' ? 'MODE EDIT' : 'MODE BARU'}
-              </span>
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flexWrap: 'wrap'
+              }}
+            >
+              <div 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  flexShrink: 0
+                }}
+              >
+                {isSubmitting ? (
+                  <Loader2 size={20} className="text-red-500 animate-spin" />
+                ) : (
+                  <Shield size={20} className="text-red-500" />
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h2 
+                  style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 700,
+                    letterSpacing: '-0.025em',
+                    color: '#FFFFFF',
+                    margin: 0,
+                    lineHeight: 1.3
+                  }}
+                >
+                  FORMULIR PENGADUAN MASYARAKAT (DUMAS)
+                </h2>
+                <span 
+                  style={{
+                    fontSize: '10px',
+                    fontFamily: 'monospace',
+                    textTransform: 'uppercase',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#F87171',
+                    fontWeight: 700
+                  }}
+                >
+                  {mode === 'edit' ? 'MODE EDIT' : 'MODE BARU'}
+                </span>
+              </div>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-xs text-zinc-400 mt-1 pl-[50px]">
               Modul formulir terpadu SAT RESKRIM POLRES KOLAKA TIMUR
             </p>
           </div>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { User, Phone, MapPin, CreditCard, Calendar, Briefcase, Flag } from 'lucide-react';
 
 export default function PelaporSection({ data = {}, onChange }) {
   const handleChange = (field, value) => {
@@ -140,36 +139,23 @@ export default function PelaporSection({ data = {}, onChange }) {
           </div>
         </div>
 
-        {/* Baris 2: Tempat Lahir & Tanggal Lahir */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-          <div>
-            <label htmlFor="pelapor_tempat_lahir" style={labelStyle}>
-              TEMPAT LAHIR
-            </label>
-            <input
-              id="pelapor_tempat_lahir"
-              name="pelapor_tempat_lahir"
-              type="text"
-              value={data.tempat_lahir || ''}
-              onChange={(e) => handleChange('tempat_lahir', e.target.value)}
-              placeholder="Contoh: Kolaka Timur"
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="pelapor_tanggal_lahir" style={labelStyle}>
-              TANGGAL LAHIR
-            </label>
-            <input
-              id="pelapor_tanggal_lahir"
-              name="pelapor_tanggal_lahir"
-              type="date"
-              value={data.tanggal_lahir || ''}
-              onChange={(e) => handleChange('tanggal_lahir', e.target.value)}
-              style={inputStyle}
-            />
-          </div>
+        {/* Baris 2: Tempat & Tanggal Lahir (Single Text Input) */}
+        <div>
+          <label htmlFor="pelapor_tempat_tanggal_lahir" style={labelStyle}>
+            TEMPAT, TGL LAHIR
+          </label>
+          <input
+            id="pelapor_tempat_tanggal_lahir"
+            name="pelapor_tempat_tanggal_lahir"
+            type="text"
+            value={data.tempat_tanggal_lahir || data.ttl || (data.tempat_lahir ? `${data.tempat_lahir}${data.tanggal_lahir ? `, ${data.tanggal_lahir}` : ''}` : (data.tanggal_lahir || ''))}
+            onChange={(e) => {
+              handleChange('tempat_tanggal_lahir', e.target.value);
+              handleChange('ttl', e.target.value);
+            }}
+            placeholder="Contoh: Kolaka, 12 Mei 1990"
+            style={inputStyle}
+          />
         </div>
 
         {/* Baris 3: Jenis Kelamin, Agama, Kewarganegaraan */}

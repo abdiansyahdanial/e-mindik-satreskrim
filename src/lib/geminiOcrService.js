@@ -209,7 +209,8 @@ export async function scanSuratPengaduan(files, options = {}) {
       tanggal_surat: sanitizeField(parsedData.tanggal_surat || parsedData.tgl_surat || parsedData.perkara?.tanggal_surat),
       pelapor_nama: sanitizeField(parsedData.pelapor_nama || parsedData.pelapor?.nama_lengkap || parsedData.pelapor?.nama),
       pelapor_nik: sanitizeField(parsedData.pelapor_nik || parsedData.pelapor?.nik),
-      pelapor_ttl: sanitizeField(parsedData.pelapor_ttl || parsedData.pelapor?.ttl || (parsedData.pelapor?.tempat_lahir ? `${parsedData.pelapor.tempat_lahir}, ${parsedData.pelapor.tgl_lahir || ''}` : '')),
+      pelapor_ttl: sanitizeField(parsedData.pelapor_ttl || parsedData.pelapor?.ttl || parsedData.pelapor?.tempat_tanggal_lahir || (parsedData.pelapor?.tempat_lahir ? `${parsedData.pelapor.tempat_lahir}, ${parsedData.pelapor.tgl_lahir || ''}` : '')),
+      pelapor_tempat_tanggal_lahir: sanitizeField(parsedData.pelapor_ttl || parsedData.pelapor?.ttl || parsedData.pelapor?.tempat_tanggal_lahir || (parsedData.pelapor?.tempat_lahir ? `${parsedData.pelapor.tempat_lahir}, ${parsedData.pelapor.tgl_lahir || ''}` : '')),
       pelapor_pekerjaan: sanitizeField(parsedData.pelapor_pekerjaan || parsedData.pelapor?.pekerjaan),
       pelapor_agama: sanitizeField(parsedData.pelapor_agama || parsedData.pelapor?.agama) || 'Islam',
       pelapor_alamat: sanitizeField(parsedData.pelapor_alamat || parsedData.pelapor?.alamat),
@@ -441,10 +442,12 @@ export function mapOcrResultToDumasForm(ocrData) {
 
   // 1. Ekstrak Pelapor
   const rawPelapor = ocrData.pelapor || {};
+  const pelaporTtlValue = sanitizeField(ocrData.pelapor_ttl || ocrData.pelapor_tempat_tanggal_lahir || rawPelapor.ttl || rawPelapor.tempat_tanggal_lahir || (rawPelapor.tempat_lahir ? `${rawPelapor.tempat_lahir}, ${rawPelapor.tgl_lahir || rawPelapor.tanggal_lahir || ''}` : ''));
   const mappedPelapor = {
     nama: sanitizeField(ocrData.pelapor_nama || rawPelapor.nama_lengkap || rawPelapor.nama),
     nik: sanitizeField(ocrData.pelapor_nik || rawPelapor.nik),
-    ttl: sanitizeField(ocrData.pelapor_ttl || rawPelapor.ttl),
+    ttl: pelaporTtlValue,
+    tempat_tanggal_lahir: pelaporTtlValue,
     pekerjaan: sanitizeField(ocrData.pelapor_pekerjaan || rawPelapor.pekerjaan),
     agama: sanitizeField(ocrData.pelapor_agama || rawPelapor.agama) || 'Islam',
     alamat: sanitizeField(ocrData.pelapor_alamat || rawPelapor.alamat),

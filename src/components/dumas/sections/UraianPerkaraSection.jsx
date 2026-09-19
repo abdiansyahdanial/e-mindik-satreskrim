@@ -1,5 +1,4 @@
 import React from 'react';
-import { FileText, MapPin, Calendar, AlertCircle } from 'lucide-react';
 
 export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
   const handleChange = (field, value) => {
@@ -172,19 +171,19 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
           </div>
         </div>
 
-        {/* Baris 3: Uraian Singkat Kronologi Kejadian */}
+        {/* Baris 3: Narasi Kronologi Kejadian Lengkap */}
         <div>
           <label htmlFor="dumas_uraian" style={labelStyle}>
-            RINGKASAN POSISI KASUS / URAIAN KRONOLOGIS KEJADIAN <span style={{ color: '#EF4444' }}>*</span>
+            RINGKASAN POSISI KASUS / URAIAN KRONOLOGIS KEJADIAN LENGKAP <span style={{ color: '#EF4444' }}>*</span>
           </label>
           <textarea
             id="dumas_uraian"
             name="uraian"
-            rows={5}
+            rows={8}
             value={caseInfo.uraian || caseInfo.uraian_kejadian || ''}
             onChange={(e) => handleChange('uraian', e.target.value)}
-            placeholder="Jelaskan secara kronologis duduk perkara aduan masyarakat, fakta-fakta yang terjadi, serta kerugian yang dialami..."
-            style={{ ...inputStyle, resize: 'vertical', minHeight: '120px', lineHeight: '1.5' }}
+            placeholder="Salinan lengkap kronologis atau uraian kejadian persis sesuai dokumen laporan/aduan..."
+            style={{ ...inputStyle, resize: 'vertical', minHeight: '160px', lineHeight: '1.6' }}
           />
         </div>
       </div>

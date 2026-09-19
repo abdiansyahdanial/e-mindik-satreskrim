@@ -52,30 +52,35 @@ export default async function handler(req, res) {
       };
     });
 
-    // Prompt kedinasan Satreskrim untuk ekstraksi entitas formil dengan struktur ringkas hemat token
+    // Prompt kedinasan Satreskrim untuk ekstraksi entitas formil dan kronologis dokumen verbatim
     const systemPrompt = `Anda adalah asisten AI resmi Satreskrim Kepolisian Republik Indonesia (POLRI).
-TUGAS UTAMA: Ekstraksi OCR dokumen pengaduan/laporan masyarakat ke format JSON ringkas.
-DILARANG MERINGKAS ATAU MEMOTONG TEKS KRONOLOGIS/URAIAN. Salin teks kejadian secara lengkap dan verbatim (kata demi kata) sesuai dokumen fisik.
-PENTING: Pastikan selalu menutup struktur JSON dengan sempurna (tutup kurung kurawal dan siku valid). Jika mendekati batas panjang teks, utamakan menyelesaikan format JSON yang valid.
+TUGAS UTAMA: Ekstraksi OCR dokumen pengaduan/laporan masyarakat ke format JSON secara presisi.
 
-FORMAT WAJIB JSON (Gunakan key ringkas berikut tanpa kata pengantar atau codeblock):
+ATURAN KETAT KRONOLOGIS & URAIAN KEJADIAN:
+Salin seluruh kronologis atau uraian kejadian persis sesuai teks asli dokumen yang dipindai tanpa meringkas, memotong, atau mengubah redaksinya. Tampilkan narasi selengkap-lengkapnya (full transcript).
+
+ATURAN IDENTITAS PELAPOR & PIHAK:
+- Pada bagian "ttl" pelapor: Masukkan string Tempat dan Tanggal Lahir utuh apa adanya sebagaimana tertulis pada dokumen (contoh: "Kolaka, 12 Mei 1990"), JANGAN memisahkan tempat dan tanggal lahir, dan JANGAN mengubah ke format tanggal ISO.
+- Pastikan selalu menutup struktur JSON dengan sempurna (tutup kurung kurawal dan siku valid).
+
+FORMAT WAJIB JSON (Hanya kembalikan objek JSON valid tanpa kata pengantar atau markdown):
 {
   "pidana": "jenis dugaan tindak pidana",
   "pasal": "pasal sangkaan KUHP/UU",
-  "waktu": "waktu/hari/tgl/jam kejadian (tempus)",
-  "tkp": "tempat kejadian perkara (locus)",
-  "uraian": "salin kronologis lengkap verbatim sesuai dokumen fisik",
+  "waktu": "waktu/hari/tgl/jam kejadian (tempus delicti)",
+  "tkp": "tempat kejadian perkara (locus delicti)",
+  "uraian": "salin seluruh kronologis atau uraian kejadian persis sesuai teks asli dokumen yang dipindai tanpa meringkas, memotong, atau mengubah redaksinya. Tampilkan narasi selengkap-lengkapnya (full transcript)",
   "nomor_surat": "",
   "tanggal_surat": "",
   "pelapor": { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "hp": "" },
-  "terlapor": [ { "nama": "", "pekerjaan": "", "alamat": "", "hp": "" } ],
-  "saksi": [ { "nama": "", "pekerjaan": "", "alamat": "", "hp": "" } ]
+  "terlapor": [ { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "hp": "" } ],
+  "saksi": [ { "nama": "", "nik": "", "ttl": "", "pekerjaan": "", "agama": "Islam", "alamat": "", "hp": "" } ]
 }`;
 
     const userMessageContent = [
       {
         type: "text",
-        text: "Analisis seluruh lembar dokumen fisik di atas. Ekstrak ke format JSON ringkas (pidana, pasal, waktu, tkp, uraian verbatim, pelapor, terlapor, saksi). PENTING: Wajib selesaikan dan tutup kurung kurawal JSON secara valid. Hanya kembalikan raw JSON tanpa teks pengantar.",
+        text: "Analisis seluruh lembar dokumen fisik di atas. Ekstrak ke format JSON. PENTING: Salin seluruh kronologis atau uraian kejadian persis sesuai teks asli dokumen yang dipindai tanpa meringkas, memotong, atau mengubah redaksinya. Tampilkan narasi selengkap-lengkapnya (full transcript). Ekstrak TTL pelapor sebagai satu string utuh. Wajib selesaikan dan tutup kurung kurawal JSON secara valid.",
       },
       ...formattedImages,
     ];
@@ -91,7 +96,7 @@ FORMAT WAJIB JSON (Gunakan key ringkas berikut tanpa kata pengantar atau codeblo
       ],
       response_format: { type: "json_object" },
       temperature: 0.1,
-      max_tokens: 950,
+      max_tokens: 3500,
     };
 
     // Sembunyikan reasoning format pada model Qwen agar kompatibel penuh dengan json_object mode
