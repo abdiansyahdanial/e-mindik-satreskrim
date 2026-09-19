@@ -26,6 +26,7 @@ export default function AddEvidenceModal({
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [autoSaveMsg, setAutoSaveMsg] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -93,7 +94,7 @@ export default function AddEvidenceModal({
 
   const handleQrEvidenceReceived = async (evidenceItem) => {
     try {
-      // 1. Jika ada dumasId dan fungsi addEvidenceToDumas tersedia, langsung simpan secara otomatis
+      // 1. Jika ada dumasId dan fungsi addEvidenceToDumas tersedia, langsung simpan secara otomatis ke database
       if (dumasId && typeof addEvidenceToDumas === 'function') {
         const payload = {
           ...evidenceItem,
@@ -105,16 +106,25 @@ export default function AddEvidenceModal({
           saveCallback(res.evidence);
         }
       } else {
-        // Fallback jika mode form baru (belum ada ID dumas), set file terakhir
-        setSelectedFile(evidenceItem);
-        if (evidenceItem.keterangan) setKeterangan(evidenceItem.keterangan);
+        // Fallback jika mode form baru (belum ada ID dumas), teruskan ke parent callback
+        const saveCallback = onSaveSuccess || onSuccess;
+        if (saveCallback) {
+          saveCallback(evidenceItem);
+        }
       }
 
+      // Kosongkan input formulir sementara agar bersih dan siap menerima foto berikutnya
+      setSelectedFile(null);
+      setKeterangan('');
       setErrorMsg(null);
+      setAutoSaveMsg('Bukti baru berhasil disimpan otomatis! Siap menerima foto/dokumen berikutnya dari HP.');
+      setTimeout(() => setAutoSaveMsg(null), 6000);
+
       // PENTING: JANGAN jalankan setIsQrModalOpen(false). 
-      // Biarkan modal QR tetap terbuka agar channel realtime tetap standby menerima foto ke-2, ke-3, dst.
+      // Biarkan modal QR tetap standby/terbuka agar channel realtime tetap standby menerima foto ke-2, ke-3, dst.
     } catch (err) {
       console.error('Gagal memproses bukti realtime dari HP:', err);
+      setErrorMsg('Gagal memproses bukti dari HP: ' + (err.message || 'Error'));
     }
   };
 
@@ -398,6 +408,14 @@ export default function AddEvidenceModal({
             ) : (
               <div style={{ padding: '16px', textAlign: 'center', backgroundColor: '#0B0D13', borderRadius: '8px', border: '1px dashed #292F42', color: '#64748B', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
                 Belum ada berkas bukti yang dipilih. Silakan pilih salah satu opsi di atas.
+              </div>
+            )}
+
+            {/* Auto-save notification badge */}
+            {autoSaveMsg && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10B981', color: '#34D399', padding: '10px 12px', borderRadius: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
+                <CheckCircle2 size={16} />
+                <span>{autoSaveMsg}</span>
               </div>
             )}
 
