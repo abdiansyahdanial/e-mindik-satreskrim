@@ -18,7 +18,8 @@ export default function AddEvidenceModal({
   dumasId,
   dumasNo,
   onClose,
-  onSuccess
+  onSuccess,
+  onSaveSuccess
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [keterangan, setKeterangan] = useState('');
@@ -90,11 +91,31 @@ export default function AddEvidenceModal({
     }
   };
 
-  const handleQrEvidenceReceived = (evidenceItem) => {
-    setSelectedFile(evidenceItem);
-    setKeterangan(evidenceItem.keterangan || '');
-    setIsQrModalOpen(false);
-    setErrorMsg(null);
+  const handleQrEvidenceReceived = async (evidenceItem) => {
+    try {
+      // 1. Jika ada dumasId dan fungsi addEvidenceToDumas tersedia, langsung simpan secara otomatis
+      if (dumasId && typeof addEvidenceToDumas === 'function') {
+        const payload = {
+          ...evidenceItem,
+          keterangan: evidenceItem.keterangan || (evidenceItem.kategori_bukti === 'DOKUMEN_PDF' ? 'Dokumen berkas perkara (via HP)' : 'Foto bukti fisik (via HP)')
+        };
+        const res = await addEvidenceToDumas(dumasId, payload, dumasNo);
+        const saveCallback = onSaveSuccess || onSuccess;
+        if (res?.success && res?.evidence && saveCallback) {
+          saveCallback(res.evidence);
+        }
+      } else {
+        // Fallback jika mode form baru (belum ada ID dumas), set file terakhir
+        setSelectedFile(evidenceItem);
+        if (evidenceItem.keterangan) setKeterangan(evidenceItem.keterangan);
+      }
+
+      setErrorMsg(null);
+      // PENTING: JANGAN jalankan setIsQrModalOpen(false). 
+      // Biarkan modal QR tetap terbuka agar channel realtime tetap standby menerima foto ke-2, ke-3, dst.
+    } catch (err) {
+      console.error('Gagal memproses bukti realtime dari HP:', err);
+    }
   };
 
   const handleSaveEvidence = async () => {

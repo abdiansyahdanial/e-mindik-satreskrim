@@ -669,7 +669,7 @@ export default function EvidenceQrSyncModal({
               }}
             >
               <CheckCircle2 size={16} />
-              <span>Berkas berhasil diterima dan otomatis disimpan! ({receivedCount} berkas)</span>
+              <span>Bukti berhasil diterima &amp; disimpan! ({receivedCount} berkas). Anda dapat mengambil foto berikutnya dari HP</span>
             </div>
           )}
 
