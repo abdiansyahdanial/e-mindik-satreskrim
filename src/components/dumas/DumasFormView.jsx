@@ -96,21 +96,39 @@ export default function DumasFormView({
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [syncToken, setSyncToken] = useState(() => `dumas_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`);
 
-  // Cegah duplikasi berkas secara ketat berdasarkan URL atau nama berkas
+  // Cegah duplikasi berkas: hanya tolak jika URL Cloudflare R2 sama persis, dan beri nomor urut otomatis jika nama berbenturan
   const handleAddEvidence = useCallback((newItem) => {
     if (!newItem) return;
     setDaftarBukti((prev) => {
-      const itemUrl = newItem.url || newItem.fileUrl || newItem.file_url;
-      const itemName = newItem.nama_berkas || newItem.name || newItem.nama_file;
+      const itemUrl = (newItem.url || newItem.fileUrl || newItem.file_url || '').trim();
+      
+      // 1. Hanya tolak jika URL Cloudflare R2 persis sama (benar-benar file fisik yang sama)
+      if (itemUrl) {
+        const urlExists = prev.some((b) => {
+          const prevUrl = (b.url || b.fileUrl || b.file_url || '').trim();
+          return prevUrl === itemUrl;
+        });
+        if (urlExists) return prev;
+      }
 
-      const isDuplicate = prev.some((b) => {
-        const prevUrl = b.url || b.fileUrl || b.file_url;
-        const prevName = b.nama_berkas || b.name || b.nama_file;
-        return (itemUrl && prevUrl === itemUrl) || (itemName && prevName === itemName);
-      });
+      // 2. Beri nama unik jika nama default kamera berbenturan
+      let finalName = newItem.nama_berkas || newItem.nama_file || newItem.name || 'Bukti_Digital.jpg';
+      const sameNameCount = prev.filter(b => (b.nama_berkas || b.nama_file || b.name || '').startsWith(finalName.replace(/\.[^/.]+$/, ''))).length;
+      if (sameNameCount > 0) {
+        const ext = finalName.includes('.') ? finalName.substring(finalName.lastIndexOf('.')) : '';
+        const base = finalName.replace(/\.[^/.]+$/, '');
+        finalName = `${base}_(${sameNameCount + 1})${ext}`;
+      }
 
-      if (isDuplicate) return prev;
-      return [...prev, newItem];
+      const cleanItem = {
+        ...newItem,
+        id: newItem.id || `bb_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        nama_berkas: finalName,
+        nama_file: finalName,
+        name: finalName
+      };
+
+      return [...prev, cleanItem];
     });
   }, []);
 
