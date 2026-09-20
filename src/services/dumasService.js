@@ -147,6 +147,82 @@ export function generateDumasNumber(sequenceNumber = 1, date = new Date()) {
 }
 
 /**
+ * Generator nomor resmi dinas Dumas Satreskrim Polres Kolaka Timur:
+ * Format: B/DUMAS/[Urut]/[BulanRomawi]/[Tahun]/SPKT/Polres Koltim/Polda Sultra
+ * Query otomatis ke Supabase (tabel laporan_pengaduan) dengan fallback offline aman.
+ *
+ * @returns {Promise<string>}
+ */
+export async function generateNomorDumasResmi() {
+  const currentYear = new Date().getFullYear();
+  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  const currentMonthRoman = romanMonths[new Date().getMonth()] || 'I';
+  const defaultFallback = `B/DUMAS/01/${currentMonthRoman}/${currentYear}/SPKT/Polres Koltim/Polda Sultra`;
+
+  try {
+    let dbRecords = [];
+
+    // 1. Query record dumas dari Supabase
+    try {
+      const { data, error } = await supabase
+        .from('laporan_pengaduan')
+        .select('nomor_lp, created_at, tanggal_lapor')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        dbRecords = data;
+      }
+    } catch (dbErr) {
+      console.warn('[generateNomorDumasResmi] Gagal query Supabase:', dbErr);
+    }
+
+    // 2. Baca juga dari LocalStorage untuk sinkronisasi draf offline / data terkini
+    const localRecords = safeGetLocalStorage(DUMAS_LOCAL_STORAGE_KEY, []);
+
+    // Gabungkan seluruh record untuk pengecekan urutan
+    const combinedRecords = [...dbRecords, ...localRecords];
+
+    let maxNumber = 0;
+    let yearRecordsCount = 0;
+
+    for (const item of combinedRecords) {
+      if (!item) continue;
+      const noLp = (item.nomor_lp || item.nomor_register || '').trim();
+      const dateStr = item.created_at || item.tanggal_lapor;
+      const itemYear = dateStr ? new Date(dateStr).getFullYear() : null;
+
+      // Periksa apakah berkaitan dengan tahun berjalan
+      const matchesYear = itemYear === currentYear || noLp.includes(String(currentYear));
+
+      if (matchesYear) {
+        yearRecordsCount++;
+
+        if (noLp) {
+          // Cari angka urut dari pola: B/DUMAS/01/..., DUMAS/B/01/..., DUMAS/01/..., dll.
+          const match = noLp.match(/(?:B\/)?DUMAS\/(?:B\/)?(\d+)\//i) || noLp.match(/DUMAS.*?(\d+)/i);
+          if (match && match[1]) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxNumber) {
+              maxNumber = num;
+            }
+          }
+        }
+      }
+    }
+
+    // Nomor berikutnya: jika ada nomor urut tertinggi gunakan + 1, jika belum ada gunakan hitungan count + 1 atau mulai dari 1
+    const nextSeq = maxNumber > 0 ? maxNumber + 1 : (yearRecordsCount > 0 ? yearRecordsCount + 1 : 1);
+    const paddedNumber = String(nextSeq).padStart(2, '0');
+
+    return `B/DUMAS/${paddedNumber}/${currentMonthRoman}/${currentYear}/SPKT/Polres Koltim/Polda Sultra`;
+  } catch (err) {
+    console.warn('[generateNomorDumasResmi] Error saat generate nomor dumas:', err);
+    return defaultFallback;
+  }
+}
+
+
+/**
  * Data awal (seed demo) sesuai spesifikasi Map Berkas Kedinasan
  */
 export const initialDumasRecords = [

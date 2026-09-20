@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowLeft, Shield, RotateCcw, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Shield, RotateCcw, Save, Loader2, Hash } from 'lucide-react';
 import PelaporSection from './sections/PelaporSection';
 import TerlaporSection from './sections/TerlaporSection';
 import UraianPerkaraSection from './sections/UraianPerkaraSection';
@@ -7,6 +7,7 @@ import BuktiDigitalSection from './sections/BuktiDigitalSection';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal';
 import { supabase } from '../../supabaseClient.js';
 import { deleteR2File } from '../../lib/r2Client.js';
+import { generateNomorDumasResmi } from '../../services/dumasService.js';
 
 const EVID_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
@@ -22,6 +23,67 @@ export default function DumasFormView({
   onSubmitDumas
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingNo, setIsGeneratingNo] = useState(false);
+
+  // Ambil nomor surat hasil scan OCR jika tersedia
+  const ocrNomorSurat = (
+    initialOcrData?.nomor_surat ||
+    initialOcrData?.no_surat ||
+    initialOcrData?.caseInfo?.nomor_surat ||
+    initialOcrData?.caseInfo?.no_surat ||
+    ''
+  ).trim();
+
+  // State 00: Nomor Registrasi Dinas Dumas
+  const [nomorDumas, setNomorDumas] = useState(nomorRegisterResmi || ocrNomorSurat || '');
+
+  // Inisialisasi nomor registrasi dumas otomatis saat formulir dibuka pertama kali
+  useEffect(() => {
+    let isMounted = true;
+    async function initNomor() {
+      // 1. Jika nomor register resmi sudah diteruskan dari props (mode edit), utamakan itu
+      if (nomorRegisterResmi) {
+        setNomorDumas(nomorRegisterResmi);
+        return;
+      }
+
+      // 2. Jika ada nomor surat dari hasil scan OCR, dahulukan
+      if (ocrNomorSurat) {
+        setNomorDumas(ocrNomorSurat);
+        return;
+      }
+
+      // 3. Jika belum ada nomor sama sekali, buatkan nomor resmi otomatis
+      if (!nomorDumas) {
+        setIsGeneratingNo(true);
+        try {
+          const autoNo = await generateNomorDumasResmi();
+          if (isMounted) setNomorDumas(autoNo);
+        } catch (err) {
+          console.warn('Gagal generate nomor dumas:', err);
+        } finally {
+          if (isMounted) setIsGeneratingNo(false);
+        }
+      }
+    }
+
+    initNomor();
+    return () => {
+      isMounted = false;
+    };
+  }, [nomorRegisterResmi, ocrNomorSurat]);
+
+  const handleResetNomorOtomatis = async () => {
+    setIsGeneratingNo(true);
+    try {
+      const autoNo = await generateNomorDumasResmi();
+      setNomorDumas(autoNo);
+    } catch (err) {
+      console.warn('Gagal reset nomor dumas:', err);
+    } finally {
+      setIsGeneratingNo(false);
+    }
+  };
 
   // State 01: Identitas Pelapor
   const [pelapor, setPelapor] = useState(() => ({
@@ -205,7 +267,7 @@ export default function DumasFormView({
     }
 
     const primaryTerlapor = terlaporList[0] || {};
-    const generatedNo = nomorRegisterResmi || `DUMAS/${Date.now().toString().slice(-4)}/SPKT/RES-KOLTIM`;
+    const generatedNo = nomorDumas?.trim() || nomorRegisterResmi || (await generateNomorDumasResmi());
 
     // Gabungkan TTL pelapor jika terpisah (utamakan single input tempat_tanggal_lahir / ttl)
     const pelaporTtl = pelapor.tempat_tanggal_lahir || pelapor.ttl || [pelapor.tempat_lahir, pelapor.tanggal_lahir].filter(Boolean).join(', ');
@@ -382,6 +444,63 @@ export default function DumasFormView({
         )}
       </div>
 
+      {/* Bagian Informasi Registrasi & Nomor Dumas */}
+      <div 
+        className="border rounded-xl p-4 sm:p-5"
+        style={{ backgroundColor: '#111622', borderColor: '#1E293B' }}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
+          <label className="text-xs font-semibold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+            <Hash size={14} className="text-red-400" />
+            Nomor Registrasi Dumas (Otomatis / Bisa Diedit Manual)
+            <span className="text-red-400">*</span>
+          </label>
+          {ocrNomorSurat && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-zinc-400">Hasil Scan OCR:</span>
+              <button
+                type="button"
+                onClick={() => setNomorDumas(ocrNomorSurat)}
+                className={`text-[11px] font-mono px-2 py-0.5 rounded border transition-colors ${
+                  nomorDumas === ocrNomorSurat
+                    ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-300'
+                    : 'bg-slate-800/80 border-slate-700 text-sky-400 hover:text-white hover:border-sky-500'
+                }`}
+                title="Gunakan nomor surat hasil scan dokumen OCR"
+              >
+                Gunakan No. OCR
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={nomorDumas}
+              onChange={(e) => setNomorDumas(e.target.value)}
+              placeholder="B/DUMAS/01/IX/2026/SPKT/Polres Koltim/Polda Sultra"
+              className="w-full bg-[#0D111A] border border-slate-700 focus:border-red-500 rounded-lg px-3.5 py-2.5 text-sm text-amber-300 font-mono tracking-wide placeholder-zinc-600 focus:outline-none transition-colors shadow-inner"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleResetNomorOtomatis}
+            disabled={isGeneratingNo}
+            className="px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-300 hover:text-white transition-colors flex items-center justify-center gap-1.5 shrink-0"
+            title="Kembalikan ke nomor registrasi rekomendasi sistem dinas"
+          >
+            {isGeneratingNo ? (
+              <Loader2 size={13} className="animate-spin text-red-400" />
+            ) : (
+              <RotateCcw size={13} className="text-slate-400" />
+            )}
+            <span>Reset Nomor Otomatis</span>
+          </button>
+        </div>
+      </div>
+
       {/* Bagian 01: Identitas Pelapor */}
       <PelaporSection data={pelapor} onChange={handlePelaporChange} />
 
@@ -479,7 +598,7 @@ export default function DumasFormView({
           activeToken={syncToken}
           syncToken={syncToken}
           onTokenChange={setSyncToken}
-          _dumasNo={nomorRegisterResmi || 'DUMAS-BARU'}
+          _dumasNo={nomorDumas?.trim() || nomorRegisterResmi || 'DUMAS-BARU'}
         />
       )}
     </div>
