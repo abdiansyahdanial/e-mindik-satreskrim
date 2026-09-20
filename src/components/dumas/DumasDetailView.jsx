@@ -21,7 +21,7 @@ import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
 import { deleteEvidenceFromDumas } from '../../services/dumasService.js';
 import { formatR2PublicUrl } from '../../lib/r2Client.js';
 import { supabase } from '../../supabaseClient';
-import { printSuratPengaduan } from '../../utils/dumasPrintGenerator.js';
+import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
 
 const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(str));
 
@@ -1257,7 +1257,7 @@ export default function DumasDetailView({
             {/* Tombol [CETAK TANDA TERIMA LAPORAN (STTL)] */}
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={() => printTandaTerimaDumas(perkara || dumasItem)}
               className="bg-[#121721] hover:bg-[#1B1F2C] border border-[#E52E2E]/60 text-red-400 hover:text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors dumas-btn-cetak-secondary"
               style={{
                 display: 'inline-flex',

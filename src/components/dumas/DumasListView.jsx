@@ -11,7 +11,7 @@ import {
   Printer
 } from 'lucide-react';
 import { CRIME_CATEGORIES } from '../../constants/crimeCategories.js';
-import { printSuratPengaduan } from '../../utils/dumasPrintGenerator.js';
+import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
 
 // Kamus kata kunci / alias tindak pidana untuk pencocokan pintar (fuzzy keyword matching)
 const CRIME_KEYWORD_ALIASES = {
@@ -586,6 +586,16 @@ export default function DumasListView({
                               title="Cetak Surat Laporan Pengaduan (Dumas)"
                             >
                               <Printer size={14} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => printTandaTerimaDumas(item)}
+                              className="dumas-action-btn"
+                              style={{ color: '#34D399' }}
+                              title="Cetak Tanda Terima Laporan (STTLP)"
+                            >
+                              <FileText size={14} />
                             </button>
 
                             <button

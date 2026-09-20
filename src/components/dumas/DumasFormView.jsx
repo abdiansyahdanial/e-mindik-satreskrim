@@ -8,7 +8,7 @@ import EvidenceQrSyncModal from './EvidenceQrSyncModal';
 import { supabase } from '../../supabaseClient.js';
 import { deleteR2File } from '../../lib/r2Client.js';
 import { generateNomorDumasResmi } from '../../services/dumasService.js';
-import { printSuratPengaduan } from '../../utils/dumasPrintGenerator.js';
+import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
 
 const EVID_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
@@ -644,19 +644,35 @@ export default function DumasFormView({
             onClick={() => {
               const currentFormData = {
                 nomor_lp: nomorDumas,
+                nomor_dumas: nomorDumas,
+                nomor_sttlp: nomorDumas,
                 pelapor,
                 pelapor_nama: pelapor.nama,
+                nama_pelapor: pelapor.nama,
+                nik: pelapor.nik,
+                nik_pelapor: pelapor.nik,
+                kewarganegaraan: pelapor.kewarganegaraan,
+                jenis_kelamin: pelapor.jenis_kelamin || pelapor.jk,
+                tempat_lahir: pelapor.tempat_lahir,
+                tanggal_lahir: pelapor.tanggal_lahir,
                 pelapor_ttl: pelapor.tempat_tanggal_lahir || pelapor.ttl || [pelapor.tempat_lahir, pelapor.tanggal_lahir].filter(Boolean).join(', '),
                 pelapor_pekerjaan: pelapor.pekerjaan,
+                pekerjaan: pelapor.pekerjaan,
                 pelapor_agama: pelapor.agama,
+                agama: pelapor.agama,
                 pelapor_alamat: pelapor.alamat,
+                alamat: pelapor.alamat,
                 pelapor_kontak: pelapor.telepon,
+                no_hp: pelapor.telepon,
+                kontak: pelapor.telepon,
                 terlapor_list: terlaporList,
                 saksi_list: saksiList,
                 tindak_pidana: caseInfo.tindak_pidana,
                 pasal_disangkakan: caseInfo.pasal,
                 locus_delicti: caseInfo.tkp,
+                locus: caseInfo.tkp,
                 tempus_delicti: caseInfo.waktu_kejadian,
+                tempus: caseInfo.waktu_kejadian,
                 uraian_kejadian: caseInfo.uraian
               };
               printSuratPengaduan(currentFormData);
@@ -678,6 +694,63 @@ export default function DumasFormView({
           >
             <Printer size={14} />
             <span>Cetak Dumas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const currentFormData = {
+                nomor_lp: nomorDumas,
+                nomor_dumas: nomorDumas,
+                nomor_sttlp: nomorDumas,
+                pelapor,
+                pelapor_nama: pelapor.nama,
+                nama_pelapor: pelapor.nama,
+                nik: pelapor.nik,
+                nik_pelapor: pelapor.nik,
+                kewarganegaraan: pelapor.kewarganegaraan,
+                jenis_kelamin: pelapor.jenis_kelamin || pelapor.jk,
+                tempat_lahir: pelapor.tempat_lahir,
+                tanggal_lahir: pelapor.tanggal_lahir,
+                pelapor_ttl: pelapor.tempat_tanggal_lahir || pelapor.ttl || [pelapor.tempat_lahir, pelapor.tanggal_lahir].filter(Boolean).join(', '),
+                pelapor_pekerjaan: pelapor.pekerjaan,
+                pekerjaan: pelapor.pekerjaan,
+                pelapor_agama: pelapor.agama,
+                agama: pelapor.agama,
+                pelapor_alamat: pelapor.alamat,
+                alamat: pelapor.alamat,
+                pelapor_kontak: pelapor.telepon,
+                no_hp: pelapor.telepon,
+                kontak: pelapor.telepon,
+                terlapor_list: terlaporList,
+                saksi_list: saksiList,
+                tindak_pidana: caseInfo.tindak_pidana,
+                pasal_disangkakan: caseInfo.pasal,
+                locus_delicti: caseInfo.tkp,
+                locus: caseInfo.tkp,
+                tempus_delicti: caseInfo.waktu_kejadian,
+                tempus: caseInfo.waktu_kejadian,
+                uraian_kejadian: caseInfo.uraian
+              };
+              printTandaTerimaDumas(currentFormData);
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '0.5rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#34D399',
+              backgroundColor: '#0F172A',
+              border: '1px solid #1E293B',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem'
+            }}
+            title="Cetak Surat Tanda Penerimaan Laporan (STTLP)"
+          >
+            <FileText size={14} />
+            <span>Cetak Tanda Terima</span>
           </button>
 
           <button
