@@ -10,8 +10,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
-  const apiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
-  if (!apiKey) {
+  const rawApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
+  const apiKeys = rawApiKey
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean);
+
+  if (apiKeys.length === 0) {
     return res.status(500).json({
       success: false,
       error: "GROQ_API_KEY belum dikonfigurasi di environment server.",
@@ -26,9 +31,6 @@ export default async function handler(req, res) {
         error: "Payload gambar tidak valid atau kosong.",
       });
     }
-
-    // Inisialisasi Groq client resmi
-    const groq = new Groq({ apiKey });
 
     // Format gambar ke format OpenAI/Groq image_url
     const formattedImages = images.map((img) => {
@@ -104,29 +106,81 @@ FORMAT WAJIB JSON (Hanya kembalikan objek JSON valid tanpa kata pengantar atau m
       requestParams.reasoning_format = "hidden";
     }
 
-    let completion;
-    try {
-      completion = await groq.chat.completions.create(requestParams);
-    } catch (firstErr) {
-      const errStr = String(firstErr?.message || '');
-      const isJsonValidateErr = firstErr?.status === 400 || 
-        errStr.includes('json_validate_failed') || 
-        errStr.includes('max completion tokens') ||
-        errStr.includes('400');
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-      if (isJsonValidateErr) {
-        console.warn('[Groq OCR] Terdeteksi 400 json_validate_failed / token limit, melakukan fallback call...');
-        const fallbackParams = { ...requestParams };
-        delete fallbackParams.response_format;
-        completion = await groq.chat.completions.create(fallbackParams);
-      } else {
-        throw firstErr;
+    const isRateLimitError = (err) => {
+      const errStr = String(err?.message || '');
+      return (
+        err?.status === 429 ||
+        errStr.includes('429') ||
+        errStr.toLowerCase().includes('rate limit') ||
+        errStr.toLowerCase().includes('tokens per minute') ||
+        errStr.toLowerCase().includes('rate_limit')
+      );
+    };
+
+    let completion = null;
+    let lastError = null;
+
+    // Iterasi melalui pool key yang tersedia jika terjadi error 429 / rate limit.
+    // Jika hanya ada 1 key, berikan kesempatan 1x retry. Jika banyak key, lakukan rotasi ke key berikutnya.
+    const maxAttempts = apiKeys.length === 1 ? 2 : apiKeys.length;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const keyIndex = attempt % apiKeys.length;
+      const currentApiKey = apiKeys[keyIndex];
+      const groq = new Groq({ apiKey: currentApiKey });
+
+      console.log(`[Groq OCR] Menjalankan pemindaian (Attempt ${attempt + 1}/${maxAttempts}) menggunakan API Key #${keyIndex + 1} (${currentApiKey.substring(0, 6)}...)`);
+
+      try {
+        try {
+          completion = await groq.chat.completions.create(requestParams);
+        } catch (firstErr) {
+          if (isRateLimitError(firstErr)) {
+            throw firstErr;
+          }
+
+          const errStr = String(firstErr?.message || '');
+          const isJsonValidateErr = firstErr?.status === 400 || 
+            errStr.includes('json_validate_failed') || 
+            errStr.includes('max completion tokens') ||
+            errStr.includes('400');
+
+          if (isJsonValidateErr) {
+            console.warn('[Groq OCR] Terdeteksi 400 json_validate_failed / token limit, melakukan fallback call...');
+            const fallbackParams = { ...requestParams };
+            delete fallbackParams.response_format;
+            completion = await groq.chat.completions.create(fallbackParams);
+          } else {
+            throw firstErr;
+          }
+        }
+
+        if (completion && completion.choices?.[0]?.message?.content) {
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+        if (isRateLimitError(err)) {
+          console.warn(`[Groq OCR] API Key #${keyIndex + 1} terkena Rate Limit (429): ${err.message}`);
+          if (attempt < maxAttempts - 1) {
+            console.log('[Groq OCR] Memberikan jeda sleep 1.5 detik sebelum berganti key / mencoba kembali...');
+            await sleep(1500);
+            continue;
+          }
+        } else {
+          // Jika error bukan rate limit (misal parameter tidak valid), hentikan dan lempar error
+          throw err;
+        }
       }
     }
 
     if (!completion || !completion.choices?.[0]?.message?.content) {
+      if (lastError) throw lastError;
       throw new Error("Gagal menerima respons ekstraksi dari Groq Vision AI.");
     }
+
 
     const rawContent = completion.choices[0].message.content.trim();
 

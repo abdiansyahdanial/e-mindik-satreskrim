@@ -48,7 +48,78 @@ export const sanitizeField = (val) => {
 };
 
 /**
+ * Helper untuk me-resize dan mengompresi gambar menggunakan HTMLCanvasElement di browser.
+ * Membatasi dimensi gambar (max width/height) ke 1200 piksel dengan menjaga aspek rasio,
+ * dan mengekspor gambar via canvas.toDataURL('image/jpeg', 0.75).
+ *
+ * @param {Blob|File} imageFile - File gambar atau Blob
+ * @param {number} [maxDimension=1200] - Batas ukuran maksimal sisi terpanjang
+ * @param {number} [quality=0.75] - Kualitas kompresi JPEG (0.0 - 1.0)
+ * @returns {Promise<{ base64: string, mimeType: string }>}
+ */
+export const resizeImageFile = (imageFile, maxDimension = 1200, quality = 0.75) => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return reject(new Error('HTMLCanvasElement tidak tersedia di lingkungan non-browser.'));
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(imageFile);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      try {
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width >= height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('Gagal menginisialisasi 2D context canvas.');
+        }
+
+        // Aktifkan image smoothing untuk hasil resize berkualitas tinggi
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const parts = dataUrl.split(',');
+        resolve({
+          base64: parts[1],
+          mimeType: 'image/jpeg',
+        });
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Gagal memuat berkas gambar ke elemen Image untuk di-resize.'));
+    };
+
+    img.src = objectUrl;
+  });
+};
+
+/**
  * Konversi berkas gambar (File, Blob, ArrayBuffer, Buffer, atau data URL) menjadi base64 string
+ * Mendukung otomatisasi resize via canvas untuk File/Blob sebelum di-encode.
  * @param {File|Blob|ArrayBuffer|string} imageFile
  * @returns {Promise<{ base64: string, mimeType: string }>}
  */
@@ -70,6 +141,16 @@ export const convertImageToBase64 = async (imageFile) => {
 
   // Jika input berupa File atau Blob (Browser environment)
   if (typeof Blob !== 'undefined' && imageFile instanceof Blob) {
+    // 1. Upayakan kompresi & resize ke maks 1200px / JPEG 0.75 terlebih dahulu via canvas
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      try {
+        return await resizeImageFile(imageFile, 1200, 0.75);
+      } catch (resizeErr) {
+        console.warn('[OCR Resizer] Gagal resize canvas, fallback ke FileReader asli:', resizeErr);
+      }
+    }
+
+    // 2. Fallback via FileReader asli jika canvas resize gagal atau di lingkungan non-DOM
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -109,6 +190,7 @@ export const convertImageToBase64 = async (imageFile) => {
 
   throw new Error('Tipe data berkas tidak didukung untuk pemindaian OCR.');
 };
+
 
 
 
@@ -563,6 +645,7 @@ export default {
   scanSuratPengaduan,
   mapOcrResultToDumasForm,
   convertImageToBase64,
+  resizeImageFile,
   sanitizeField,
   getGeminiApiKey,
 };
