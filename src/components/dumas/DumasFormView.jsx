@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowLeft, Shield, RotateCcw, Save, Loader2, Hash, FileText } from 'lucide-react';
+import { ArrowLeft, Shield, RotateCcw, Save, Loader2, Hash, FileText, Printer } from 'lucide-react';
 import PelaporSection from './sections/PelaporSection';
 import TerlaporSection from './sections/TerlaporSection';
 import UraianPerkaraSection from './sections/UraianPerkaraSection';
@@ -8,6 +8,7 @@ import EvidenceQrSyncModal from './EvidenceQrSyncModal';
 import { supabase } from '../../supabaseClient.js';
 import { deleteR2File } from '../../lib/r2Client.js';
 import { generateNomorDumasResmi } from '../../services/dumasService.js';
+import { printSuratPengaduan } from '../../utils/dumasPrintGenerator.js';
 
 const EVID_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
@@ -637,28 +638,71 @@ export default function DumasFormView({
           Batal
         </button>
 
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          style={{
-            padding: '0.5rem 1.25rem',
-            borderRadius: '0.5rem',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: '#FFFFFF',
-            backgroundColor: isSubmitting ? '#991B1B' : '#DC2626',
-            border: '1px solid #EF4444',
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            boxShadow: '0 0 12px rgba(220, 38, 38, 0.3)'
-          }}
-        >
-          {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-          {isSubmitting ? 'Menyimpan Dumas...' : 'Simpan Laporan Dumas'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              const currentFormData = {
+                nomor_lp: nomorDumas,
+                pelapor,
+                pelapor_nama: pelapor.nama,
+                pelapor_ttl: pelapor.tempat_tanggal_lahir || pelapor.ttl || [pelapor.tempat_lahir, pelapor.tanggal_lahir].filter(Boolean).join(', '),
+                pelapor_pekerjaan: pelapor.pekerjaan,
+                pelapor_agama: pelapor.agama,
+                pelapor_alamat: pelapor.alamat,
+                pelapor_kontak: pelapor.telepon,
+                terlapor_list: terlaporList,
+                saksi_list: saksiList,
+                tindak_pidana: caseInfo.tindak_pidana,
+                pasal_disangkakan: caseInfo.pasal,
+                locus_delicti: caseInfo.tkp,
+                tempus_delicti: caseInfo.waktu_kejadian,
+                uraian_kejadian: caseInfo.uraian
+              };
+              printSuratPengaduan(currentFormData);
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '0.5rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#38BDF8',
+              backgroundColor: '#0F172A',
+              border: '1px solid #1E293B',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem'
+            }}
+            title="Cetak Surat Laporan Pengaduan (Dumas)"
+          >
+            <Printer size={14} />
+            <span>Cetak Dumas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            style={{
+              padding: '0.5rem 1.25rem',
+              borderRadius: '0.5rem',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              color: '#FFFFFF',
+              backgroundColor: isSubmitting ? '#991B1B' : '#DC2626',
+              border: '1px solid #EF4444',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 0 12px rgba(220, 38, 38, 0.3)'
+            }}
+          >
+            {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {isSubmitting ? 'Menyimpan Dumas...' : 'Simpan Laporan Dumas'}
+          </button>
+        </div>
       </div>
 
       {/* Modal Sinkronisasi QR Code HP (Hanya di-mount saat modal dibuka) */}

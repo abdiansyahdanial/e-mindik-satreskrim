@@ -7,9 +7,11 @@ import {
   FileText, 
   Trash2,
   Clock,
-  Filter
+  Filter,
+  Printer
 } from 'lucide-react';
 import { CRIME_CATEGORIES } from '../../constants/crimeCategories.js';
+import { printSuratPengaduan } from '../../utils/dumasPrintGenerator.js';
 
 // Kamus kata kunci / alias tindak pidana untuk pencocokan pintar (fuzzy keyword matching)
 const CRIME_KEYWORD_ALIASES = {
@@ -574,6 +576,16 @@ export default function DumasListView({
                               title="Buka Map Berkas Kedinasan"
                             >
                               <FolderOpen size={14} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => printSuratPengaduan(item)}
+                              className="dumas-action-btn"
+                              style={{ color: '#38BDF8' }}
+                              title="Cetak Surat Laporan Pengaduan (Dumas)"
+                            >
+                              <Printer size={14} />
                             </button>
 
                             <button
