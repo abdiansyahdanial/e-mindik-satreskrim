@@ -61,6 +61,10 @@ TUGAS UTAMA: Ekstraksi OCR dokumen pengaduan/laporan masyarakat ke format JSON s
 ATURAN KETAT KRONOLOGIS & URAIAN KEJADIAN:
 Salin seluruh kronologis atau uraian kejadian persis sesuai teks asli dokumen yang dipindai tanpa meringkas, memotong, atau mengubah redaksinya. Tampilkan narasi selengkap-lengkapnya (full transcript).
 
+PENTING:
+- DILARANG KERAS mengulang-ulang kalimat atau kata yang sama berkali-kali. Jika teks dalam dokumen sudah selesai atau terpotong, segera akhiri narasi.
+- Tuliskan hanya fakta yang benar-benar terbaca di dokumen secara bersih dan koheren.
+
 ATURAN IDENTITAS PELAPOR & PIHAK:
 - Pada bagian "ttl" pelapor: Masukkan string Tempat dan Tanggal Lahir utuh apa adanya sebagaimana tertulis pada dokumen (contoh: "Kolaka, 12 Mei 1990"), JANGAN memisahkan tempat dan tanggal lahir, dan JANGAN mengubah ke format tanggal ISO.
 - Pastikan selalu menutup struktur JSON dengan sempurna (tutup kurung kurawal dan siku valid).
@@ -97,8 +101,10 @@ FORMAT WAJIB JSON (Hanya kembalikan objek JSON valid tanpa kata pengantar atau m
         { role: "user", content: userMessageContent },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.1,
+      temperature: 0.2,
       max_tokens: 3500,
+      frequency_penalty: 0.5,
+      presence_penalty: 0.3,
     };
 
     // Sembunyikan reasoning format pada model Qwen agar kompatibel penuh dengan json_object mode
@@ -399,6 +405,23 @@ FORMAT WAJIB JSON (Hanya kembalikan objek JSON valid tanpa kata pengantar atau m
         ...pObj,
       },
     };
+
+    function removeRepetitiveLoops(text) {
+      if (!text || typeof text !== 'string') return text;
+      return text.replace(/(.{10,120}?)\s*(?:\1\s*){3,}/gis, '$1 ');
+    }
+
+    resultPayload.uraian = removeRepetitiveLoops(resultPayload.uraian);
+    resultPayload.uraian_kejadian = removeRepetitiveLoops(resultPayload.uraian_kejadian);
+    resultPayload.kronologis = removeRepetitiveLoops(resultPayload.kronologis);
+    resultPayload.ringkasan_posisi_kasus = removeRepetitiveLoops(resultPayload.ringkasan_posisi_kasus);
+
+    if (resultPayload.peristiwa) {
+      resultPayload.peristiwa.uraian = resultPayload.uraian;
+      resultPayload.peristiwa.uraian_kejadian = resultPayload.uraian_kejadian;
+      resultPayload.peristiwa.kronologis = resultPayload.kronologis;
+      resultPayload.peristiwa.ringkasan_posisi_kasus = resultPayload.ringkasan_posisi_kasus;
+    }
 
     return res.status(200).json({
       success: true,

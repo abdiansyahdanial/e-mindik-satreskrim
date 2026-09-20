@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowLeft, Shield, RotateCcw, Save, Loader2, Hash } from 'lucide-react';
+import { ArrowLeft, Shield, RotateCcw, Save, Loader2, Hash, FileText } from 'lucide-react';
 import PelaporSection from './sections/PelaporSection';
 import TerlaporSection from './sections/TerlaporSection';
 import UraianPerkaraSection from './sections/UraianPerkaraSection';
@@ -350,12 +350,27 @@ export default function DumasFormView({
             <button
               type="button"
               onClick={onBack}
-              className="p-2.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                borderRadius: '0.5rem',
+                backgroundColor: '#1f2937',
+                border: '1px solid #374151',
+                color: '#cbd5e1',
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'background-color 0.2s ease'
+              }}
               title="Kembali ke Daftar Dumas"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={18} color="#cbd5e1" />
             </button>
           )}
+
+
           <div>
             <div 
               style={{
@@ -446,26 +461,53 @@ export default function DumasFormView({
 
       {/* Bagian Informasi Registrasi & Nomor Dumas */}
       <div 
-        className="border rounded-xl p-4 sm:p-5"
-        style={{ backgroundColor: '#111622', borderColor: '#1E293B' }}
+        style={{
+          backgroundColor: '#111827',
+          border: '1px solid #1f2937',
+          borderRadius: '0.75rem',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+        }}
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
-          <label className="text-xs font-semibold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
-            <Hash size={14} className="text-red-400" />
-            Nomor Registrasi Dumas (Otomatis / Bisa Diedit Manual)
-            <span className="text-red-400">*</span>
-          </label>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FileText size={15} style={{ color: '#60a5fa' }} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#e2e8f0' }}>
+              Nomor Registrasi Dumas
+            </span>
+            <span style={{ color: '#f87171' }}>*</span>
+            <span 
+              style={{
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                color: '#60a5fa',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: '0.25rem',
+                padding: '0.125rem 0.5rem'
+              }}
+            >
+              Otomatis Sistem / Bisa Diedit Manual
+            </span>
+          </div>
+
           {ocrNomorSurat && (
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-zinc-400">Hasil Scan OCR:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>Scan OCR:</span>
               <button
                 type="button"
                 onClick={() => setNomorDumas(ocrNomorSurat)}
-                className={`text-[11px] font-mono px-2 py-0.5 rounded border transition-colors ${
-                  nomorDumas === ocrNomorSurat
-                    ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-300'
-                    : 'bg-slate-800/80 border-slate-700 text-sky-400 hover:text-white hover:border-sky-500'
-                }`}
+                style={{
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  padding: '0.125rem 0.5rem',
+                  borderRadius: '0.25rem',
+                  cursor: 'pointer',
+                  backgroundColor: nomorDumas === ocrNomorSurat ? 'rgba(6, 78, 59, 0.6)' : '#1e293b',
+                  color: nomorDumas === ocrNomorSurat ? '#6ee7b7' : '#38bdf8',
+                  border: nomorDumas === ocrNomorSurat ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid #334155'
+                }}
                 title="Gunakan nomor surat hasil scan dokumen OCR"
               >
                 Gunakan No. OCR
@@ -474,32 +516,62 @@ export default function DumasFormView({
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-          <div className="relative flex-1">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ position: 'absolute', top: 0, bottom: 0, left: '0.75rem', display: 'flex', alignItems: 'center', pointerEvents: 'none', color: '#64748b' }}>
+              <Hash size={15} />
+            </div>
             <input
               type="text"
               value={nomorDumas}
               onChange={(e) => setNomorDumas(e.target.value)}
               placeholder="B/DUMAS/01/IX/2026/SPKT/Polres Koltim/Polda Sultra"
-              className="w-full bg-[#0D111A] border border-slate-700 focus:border-red-500 rounded-lg px-3.5 py-2.5 text-sm text-amber-300 font-mono tracking-wide placeholder-zinc-600 focus:outline-none transition-colors shadow-inner"
+              style={{
+                width: '100%',
+                backgroundColor: '#030712',
+                border: '1px solid #374151',
+                borderRadius: '0.5rem',
+                padding: '0.5rem 1rem 0.5rem 2.25rem',
+                fontSize: '0.875rem',
+                fontFamily: 'monospace',
+                color: '#34d399',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
             />
           </div>
+          
           <button
             type="button"
             onClick={handleResetNomorOtomatis}
             disabled={isGeneratingNo}
-            className="px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-300 hover:text-white transition-colors flex items-center justify-center gap-1.5 shrink-0"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              padding: '0.5rem 0.875rem',
+              backgroundColor: '#1f2937',
+              border: '1px solid #374151',
+              borderRadius: '0.5rem',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              color: '#e2e8f0',
+              cursor: isGeneratingNo ? 'not-allowed' : 'pointer',
+              opacity: isGeneratingNo ? 0.5 : 1,
+              whiteSpace: 'nowrap'
+            }}
             title="Kembalikan ke nomor registrasi rekomendasi sistem dinas"
           >
             {isGeneratingNo ? (
-              <Loader2 size={13} className="animate-spin text-red-400" />
+              <Loader2 size={13} className="animate-spin" style={{ color: '#60a5fa' }} />
             ) : (
-              <RotateCcw size={13} className="text-slate-400" />
+              <RotateCcw size={13} style={{ color: '#cbd5e1' }} />
             )}
             <span>Reset Nomor Otomatis</span>
           </button>
         </div>
       </div>
+
 
       {/* Bagian 01: Identitas Pelapor */}
       <PelaporSection data={pelapor} onChange={handlePelaporChange} />
