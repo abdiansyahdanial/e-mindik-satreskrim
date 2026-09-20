@@ -9,6 +9,7 @@ import { supabase } from '../../supabaseClient.js';
 import { deleteR2File } from '../../lib/r2Client.js';
 import { generateNomorDumasResmi } from '../../services/dumasService.js';
 import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
+import ModalSelectPamapta from './ModalSelectPamapta';
 
 const EVID_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
@@ -25,6 +26,8 @@ export default function DumasFormView({
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingNo, setIsGeneratingNo] = useState(false);
+  const [isPamaptaModalOpen, setIsPamaptaModalOpen] = useState(false);
+  const [tempFormDataForPrint, setTempFormDataForPrint] = useState(null);
 
   // Ambil nomor surat hasil scan OCR jika tersedia
   const ocrNomorSurat = (
@@ -732,7 +735,8 @@ export default function DumasFormView({
                 tempus: caseInfo.waktu_kejadian,
                 uraian_kejadian: caseInfo.uraian
               };
-              printTandaTerimaDumas(currentFormData);
+              setTempFormDataForPrint(currentFormData);
+              setIsPamaptaModalOpen(true);
             }}
             style={{
               padding: '0.5rem 1rem',
@@ -788,6 +792,20 @@ export default function DumasFormView({
           syncToken={syncToken}
           onTokenChange={setSyncToken}
           _dumasNo={nomorDumas?.trim() || nomorRegisterResmi || 'DUMAS-BARU'}
+        />
+      )}
+
+      {/* Modal Pilihan Pejabat PAMAPTA untuk Cetak STTL */}
+      {isPamaptaModalOpen && (
+        <ModalSelectPamapta
+          isOpen={isPamaptaModalOpen}
+          onClose={() => setIsPamaptaModalOpen(false)}
+          onConfirmPrint={(officer) => {
+            setIsPamaptaModalOpen(false);
+            if (tempFormDataForPrint) {
+              printTandaTerimaDumas(tempFormDataForPrint, officer);
+            }
+          }}
         />
       )}
     </div>

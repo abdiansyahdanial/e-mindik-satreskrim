@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import AddEvidenceModal from './AddEvidenceModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
+import ModalSelectPamapta from './ModalSelectPamapta.jsx';
 import { deleteEvidenceFromDumas } from '../../services/dumasService.js';
 import { formatR2PublicUrl } from '../../lib/r2Client.js';
 import { supabase } from '../../supabaseClient';
@@ -33,6 +34,7 @@ export default function DumasDetailView({
 }) {
   const [copied, setCopied] = useState(false);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+  const [isPamaptaModalOpen, setIsPamaptaModalOpen] = useState(false);
   const [perkara, setPerkara] = useState(dumasItem);
   const [isAddEvidenceOpen, setIsAddEvidenceOpen] = useState(false);
   const [previewEvidence, setPreviewEvidence] = useState(null);
@@ -1257,7 +1259,7 @@ export default function DumasDetailView({
             {/* Tombol [CETAK TANDA TERIMA LAPORAN (STTL)] */}
             <button
               type="button"
-              onClick={() => printTandaTerimaDumas(perkara || dumasItem)}
+              onClick={() => setIsPamaptaModalOpen(true)}
               className="bg-[#121721] hover:bg-[#1B1F2C] border border-[#E52E2E]/60 text-red-400 hover:text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors dumas-btn-cetak-secondary"
               style={{
                 display: 'inline-flex',
@@ -1504,6 +1506,18 @@ export default function DumasDetailView({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Pilihan Pejabat PAMAPTA untuk Cetak STTL */}
+      {isPamaptaModalOpen && (
+        <ModalSelectPamapta
+          isOpen={isPamaptaModalOpen}
+          onClose={() => setIsPamaptaModalOpen(false)}
+          onConfirmPrint={(officer) => {
+            setIsPamaptaModalOpen(false);
+            printTandaTerimaDumas(perkara || dumasItem, officer);
+          }}
+        />
       )}
 
     </div>

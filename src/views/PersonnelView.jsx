@@ -13,6 +13,7 @@ import {
   Radio,
   Edit3
 } from 'lucide-react';
+import SpktPersonnelTab from '../components/personnel/SpktPersonnelTab.jsx';
 
 export const cleanOfficerName = (nama) => {
   if (!nama) return '';
@@ -29,6 +30,7 @@ export default function PersonnelView({
   onUpdatePersonnel,
   userRole = 'super_admin' 
 }) {
+  const [activeTabSub, setActiveTabSub] = useState('penyidik'); // 'penyidik' | 'spkt'
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingPersonnel, setEditingPersonnel] = useState(null);
   const [personnelToDelete, setPersonnelToDelete] = useState(null);
@@ -158,7 +160,84 @@ export default function PersonnelView({
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Title & Action */}
+      {/* ======================================================= */}
+      {/* TAB SWITCHER SUB-MENU DIREKTORI PERSONEL */}
+      {/* ======================================================= */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '4px',
+          backgroundColor: '#121721',
+          border: '1px solid #1E293B',
+          borderRadius: '10px',
+          width: 'fit-content'
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTabSub('penyidik')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: activeTabSub === 'penyidik' ? '1px solid rgba(255, 53, 45, 0.4)' : '1px solid transparent',
+            backgroundColor: activeTabSub === 'penyidik' ? 'rgba(255, 53, 45, 0.12)' : 'transparent',
+            color: activeTabSub === 'penyidik' ? '#FF574D' : '#94A3B8',
+            fontSize: '13px',
+            fontWeight: activeTabSub === 'penyidik' ? 700 : 500,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Shield size={16} color={activeTabSub === 'penyidik' ? '#FF574D' : 'currentColor'} />
+          <span>Personel Penyidik Satreskrim</span>
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: '10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              backgroundColor: activeTabSub === 'penyidik' ? 'rgba(255, 53, 45, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+              color: activeTabSub === 'penyidik' ? '#FFF' : '#94A3B8'
+            }}
+          >
+            {personnel.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTabSub('spkt')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: activeTabSub === 'spkt' ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid transparent',
+            backgroundColor: activeTabSub === 'spkt' ? 'rgba(52, 211, 153, 0.12)' : 'transparent',
+            color: activeTabSub === 'spkt' ? '#34D399' : '#94A3B8',
+            fontSize: '13px',
+            fontWeight: activeTabSub === 'spkt' ? 700 : 500,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <BadgeCheck size={16} color={activeTabSub === 'spkt' ? '#34D399' : 'currentColor'} />
+          <span>Personel SPKT (Piket / STTL)</span>
+        </button>
+      </div>
+
+      {/* ======================================================= */}
+      {/* KONTEN TAB DIREKTORI */}
+      {/* ======================================================= */}
+      {activeTabSub === 'penyidik' ? (
+        <>
+          {/* Title & Action */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -746,6 +825,10 @@ export default function PersonnelView({
             </form>
           </div>
         </div>
+      )}
+        </>
+      ) : (
+        <SpktPersonnelTab userRole={userRole} />
       )}
     </div>
   );

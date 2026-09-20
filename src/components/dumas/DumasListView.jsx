@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { CRIME_CATEGORIES } from '../../constants/crimeCategories.js';
 import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
+import ModalSelectPamapta from './ModalSelectPamapta';
 
 // Kamus kata kunci / alias tindak pidana untuk pencocokan pintar (fuzzy keyword matching)
 const CRIME_KEYWORD_ALIASES = {
@@ -238,6 +239,8 @@ export default function DumasListView({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedCrimeCategory, setSelectedCrimeCategory] = useState('');
+  const [isPamaptaModalOpen, setIsPamaptaModalOpen] = useState(false);
+  const [selectedDumasForPrint, setSelectedDumasForPrint] = useState(null);
 
   // Filter Data (Pencarian teks, kategori tindak pidana cerdas, dan status berkas)
   const filteredList = dumasList.filter(item => {
@@ -590,7 +593,10 @@ export default function DumasListView({
 
                             <button
                               type="button"
-                              onClick={() => printTandaTerimaDumas(item)}
+                              onClick={() => {
+                                setSelectedDumasForPrint(item);
+                                setIsPamaptaModalOpen(true);
+                              }}
                               className="dumas-action-btn"
                               style={{ color: '#34D399' }}
                               title="Cetak Tanda Terima Laporan (STTLP)"
@@ -641,6 +647,23 @@ export default function DumasListView({
         </div>
 
       </div>
+
+      {/* Modal Pilihan Pejabat PAMAPTA untuk Cetak STTL */}
+      {isPamaptaModalOpen && (
+        <ModalSelectPamapta
+          isOpen={isPamaptaModalOpen}
+          onClose={() => {
+            setIsPamaptaModalOpen(false);
+            setSelectedDumasForPrint(null);
+          }}
+          onConfirmPrint={(officer) => {
+            setIsPamaptaModalOpen(false);
+            if (selectedDumasForPrint) {
+              printTandaTerimaDumas(selectedDumasForPrint, officer);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
