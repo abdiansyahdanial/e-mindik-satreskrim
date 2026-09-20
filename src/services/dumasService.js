@@ -497,121 +497,193 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
 
   // 2. Kirim ke Supabase jika tabel tersedia
   let supabaseResult = null;
+
+  // Buat pemetaan payload lengkap dari completeRecord
+  const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(str));
+
+  const payload = {
+    nomor_lp: completeRecord.nomor_lp,
+    tanggal_surat: completeRecord.tanggal_surat || new Date().toISOString(),
+    pelapor_nama: completeRecord.pelapor_nama || '',
+    pelapor_nik: completeRecord.pelapor_nik || '',
+    pelapor_tempat_lahir: completeRecord.pelapor_tempat_lahir || '',
+    pelapor_tanggal_lahir: completeRecord.pelapor_tanggal_lahir || null,
+    pelapor_jenis_kelamin: completeRecord.pelapor_jenis_kelamin || 'Laki-laki',
+    pelapor_pekerjaan: completeRecord.pelapor_pekerjaan || '',
+    pelapor_kewarganegaraan: completeRecord.pelapor_kewarganegaraan || 'WNI',
+    pelapor_agama: completeRecord.pelapor_agama || 'Islam',
+    pelapor_alamat: completeRecord.pelapor_alamat || '',
+    pelapor_telepon: completeRecord.pelapor_telepon || '',
+    terlapor_nama: completeRecord.terlapor_nama || '',
+    terlapor_kontak: completeRecord.terlapor_kontak || '',
+    terlapor_alamat: completeRecord.terlapor_alamat || '',
+    terlapor_pekerjaan: completeRecord.terlapor_pekerjaan || '',
+    terlapor_status: completeRecord.terlapor_status || 'Terlapor Utama',
+    saksi_nama: completeRecord.saksi_nama || '',
+    saksi_kontak: completeRecord.saksi_kontak || '',
+    saksi_alamat: completeRecord.saksi_alamat || '',
+    saksi_keterangan: completeRecord.saksi_keterangan || '',
+    saksi_daftar: completeRecord.saksi_daftar || [],
+    tindak_pidana: completeRecord.tindak_pidana || '',
+    pasal_disangkakan: completeRecord.pasal_disangkakan || '',
+    tempus_delicti: completeRecord.tempus_delicti || '',
+    locus_delicti: completeRecord.locus_delicti || '',
+    uraian_kejadian: completeRecord.uraian_kejadian || '',
+    status_berkas: completeRecord.status_berkas || 'Tahap Penyelidikan (Sp.Lidik)'
+  };
+
+  // Sanitasi payload agar sinkron dengan kolom skema PostgreSQL laporan_pengaduan (mencegah error PGRST204)
+  const allowedCols = new Set([
+    'id', 'nomor_lp', 'tanggal_surat', 'tanggal_lapor',
+    'pelapor_nama', 'pelapor_nik', 'pelapor_ttl', 'pelapor_pekerjaan',
+    'pelapor_agama', 'pelapor_kontak', 'pelapor_alamat',
+    'terlapor_nama', 'terlapor_nik', 'terlapor_ttl', 'terlapor_pekerjaan',
+    'terlapor_agama', 'terlapor_status', 'terlapor_domisili', 'terlapor_kontak',
+    'saksi_list', 'terlapor_list', 'saksi', 'terlapor', 'pelapor', 'perkara',
+    'tindak_pidana', 'pasal_disangkakan', 'tempus_delicti', 'locus_delicti',
+    'uraian_kejadian', 'status_berkas', 'status', 'status_tahap', 'is_locked_spkt',
+    'penyidik_id', 'penyidik_nama', 'barang_bukti', 'created_at', 'user_id',
+    'tanggal_serah_terima', 'penyerah_nama', 'penyerah_pangkat_nrp',
+    'penerima_nama', 'penerima_pangkat_nrp', 'catatan_ekspedisi'
+  ]);
+
+  const dbPayload = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (allowedCols.has(key)) {
+      dbPayload[key] = value;
+    }
+  }
+
+  // Mapping kolom ekuivalen / fallback untuk kolom skema database
+  if (!dbPayload.pelapor_ttl) {
+    const ttlParts = [completeRecord.pelapor_ttl, payload.pelapor_tempat_lahir, payload.pelapor_tanggal_lahir].filter(Boolean);
+    if (ttlParts.length > 0) dbPayload.pelapor_ttl = ttlParts.join(', ');
+  }
+  if (!dbPayload.pelapor_kontak) {
+    dbPayload.pelapor_kontak = completeRecord.pelapor_kontak || payload.pelapor_telepon || '';
+  }
+  if (!dbPayload.terlapor_domisili) {
+    dbPayload.terlapor_domisili = completeRecord.terlapor_domisili || payload.terlapor_alamat || '';
+  }
+  if (!dbPayload.saksi_list || (Array.isArray(dbPayload.saksi_list) && dbPayload.saksi_list.length === 0)) {
+    if (Array.isArray(completeRecord.saksi_list) && completeRecord.saksi_list.length > 0) {
+      dbPayload.saksi_list = completeRecord.saksi_list;
+    } else if (Array.isArray(payload.saksi_daftar) && payload.saksi_daftar.length > 0) {
+      dbPayload.saksi_list = payload.saksi_daftar;
+    } else if (payload.saksi_nama) {
+      dbPayload.saksi_list = [{
+        nama: payload.saksi_nama,
+        kontak: payload.saksi_kontak || '',
+        alamat: payload.saksi_alamat || '',
+        keterangan: payload.saksi_keterangan || ''
+      }];
+    }
+  }
+  if (!dbPayload.terlapor_list || (Array.isArray(dbPayload.terlapor_list) && dbPayload.terlapor_list.length === 0)) {
+    if (Array.isArray(completeRecord.terlapor_list) && completeRecord.terlapor_list.length > 0) {
+      dbPayload.terlapor_list = completeRecord.terlapor_list;
+    } else if (payload.terlapor_nama) {
+      dbPayload.terlapor_list = [{
+        nama: payload.terlapor_nama,
+        kontak: payload.terlapor_kontak || '',
+        domisili: payload.terlapor_alamat || '',
+        pekerjaan: payload.terlapor_pekerjaan || '',
+        status: payload.terlapor_status || 'Terlapor Utama'
+      }];
+    }
+  }
+
   try {
-    const validSaksi = Array.isArray(completeRecord.saksi_list)
-      ? completeRecord.saksi_list.filter((s) => s && s.nama && s.nama.trim() !== '')
-      : [];
+    let savedRecord = null;
+    const targetId = completeRecord.id;
 
-    const validTerlapor = Array.isArray(completeRecord.terlapor_list)
-      ? completeRecord.terlapor_list.filter((t) => t && t.nama && t.nama.trim() !== '')
-      : [];
+    if (targetId && isUUID(targetId)) {
+      // Mode EDIT (Update baris eksisting di Supabase)
+      const { data, error } = await supabase
+        .from('laporan_pengaduan')
+        .update(dbPayload)
+        .eq('id', targetId)
+        .select()
+        .maybeSingle();
 
-    const payload = {
-      nomor_lp: completeRecord.nomor_lp,
-      penyidik_id: completeRecord.penyidik_id || null,
-      penyidik_nama: completeRecord.penyidik_nama || 'Penyidik Satreskrim',
-      pelapor_nama: completeRecord.pelapor_nama,
-      pelapor_nik: completeRecord.pelapor_nik,
-      pelapor_ttl: completeRecord.pelapor_ttl || '',
-      pelapor_pekerjaan: completeRecord.pelapor_pekerjaan || '',
-      pelapor_agama: completeRecord.pelapor_agama || '',
-      pelapor_kontak: completeRecord.pelapor_kontak || '',
-      pelapor_alamat: completeRecord.pelapor_alamat || '',
-      saksi_list: validSaksi,
-      saksi: validSaksi,
-      terlapor_list: validTerlapor,
-      terlapor: validTerlapor,
-      terlapor_nama: completeRecord.terlapor_nama,
-      terlapor_nik: completeRecord.terlapor_nik || '',
-      terlapor_ttl: completeRecord.terlapor_ttl || '',
-      terlapor_pekerjaan: completeRecord.terlapor_pekerjaan || '',
-      terlapor_agama: completeRecord.terlapor_agama || '',
-      terlapor_status: completeRecord.terlapor_status || 'Terlapor Utama',
-      terlapor_domisili: completeRecord.terlapor_domisili || '',
-      terlapor_kontak: completeRecord.terlapor_kontak || '',
-      tindak_pidana: completeRecord.tindak_pidana || 'Dugaan Tindak Pidana',
-      pasal_disangkakan: completeRecord.pasal_disangkakan || '',
-      tempus_delicti: completeRecord.tempus_delicti || '',
-      locus_delicti: completeRecord.locus_delicti || '',
-      uraian_kejadian: completeRecord.uraian_kejadian || '',
-      status_berkas: completeRecord.status_berkas || 'Tahap Penyelidikan (Sp.Lidik)',
-    };
+      if (error) {
+        console.warn('[saveDumasRecord] Gagal update via id, coba update via nomor_lp:', error);
+        const { data: retryData, error: retryErr } = await supabase
+          .from('laporan_pengaduan')
+          .update(dbPayload)
+          .eq('nomor_lp', completeRecord.nomor_lp)
+          .select()
+          .maybeSingle();
+        if (retryErr) throw retryErr;
+        savedRecord = retryData;
+      } else {
+        savedRecord = data;
+      }
+    } else {
+      // Mode INSERT (Data baru)
+      const insertPayload = {
+        ...dbPayload,
+        ...(targetId && isUUID(targetId) ? { id: targetId } : {})
+      };
+      const { data, error } = await supabase
+        .from('laporan_pengaduan')
+        .insert([insertPayload])
+        .select()
+        .single();
 
-    console.log("[Dumas Submit] Payload data yang disimpan:", payload);
+      if (error) throw error;
+      savedRecord = data;
+      if (savedRecord?.id) {
+        completeRecord.id = savedRecord.id;
+      }
+    }
 
-    const { data, error } = await supabase
-      .from('laporan_pengaduan')
-      .insert([payload])
-      .select()
-      .maybeSingle();
+    // 3. Simpan lampiran barang bukti baru ke tabel barang_bukti
+    const allEvidence = [
+      ...(Array.isArray(completeRecord.lampiran_barang_bukti) ? completeRecord.lampiran_barang_bukti : []),
+      ...(Array.isArray(completeRecord.barang_bukti) ? completeRecord.barang_bukti : [])
+    ];
 
-    if (!error && data) {
-      supabaseResult = data;
-      completeRecord.id = data.id || completeRecord.id;
+    if (allEvidence.length > 0) {
+      const parentId = savedRecord?.id || completeRecord.id;
+      const parentNoLp = savedRecord?.nomor_lp || completeRecord.nomor_lp;
 
-      // Update ulang ke DUMAS_LOCAL_STORAGE_KEY dengan ID dan metadata resmi dari Supabase
+      for (const bb of allEvidence) {
+        const fileUrl = (bb.file_url || bb.url || bb.fileUrl || '').trim();
+        if (!fileUrl) continue;
+
+        // Cek apakah bukti ini sudah tersimpan di Supabase
+        const { data: existingBb } = await supabase
+          .from('barang_bukti')
+          .select('id')
+          .eq('file_url', fileUrl)
+          .maybeSingle();
+
+        if (!existingBb) {
+          await supabase.from('barang_bukti').insert([{
+            nomor_register: parentNoLp,
+            id_perkara: isUUID(parentId) ? parentId : null,
+            nama_berkas: bb.nama_file || bb.nama_berkas || 'Berkas Bukti',
+            file_url: fileUrl,
+            tipe_berkas: bb.mime_type || bb.tipe || 'image/jpeg',
+            ukuran_berkas: bb.file_size_bytes || bb.ukuran || 0
+          }]);
+        }
+      }
+    }
+
+    if (savedRecord) {
+      supabaseResult = savedRecord;
+      // Sinkronkan ke cache lokal
       try {
         const rawNow = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
         const listNow = rawNow ? JSON.parse(rawNow) : [];
         const syncedList = [completeRecord, ...listNow.filter(item => item.id !== completeRecord.id && item.nomor_lp !== completeRecord.nomor_lp)];
         localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(syncedList));
       } catch {}
-
-      // Batch insert ke tabel relasi saksi_dumas jika tabel relasi tersedia
-      if (validSaksi.length > 0) {
-        try {
-          const saksiRows = validSaksi.map((s) => ({
-            laporan_id: data.id,
-            nama: s.nama,
-            nik: s.nik || '',
-            ttl: s.ttl || '',
-            pekerjaan: s.pekerjaan || '',
-            agama: s.agama || 'Islam',
-            alamat: s.alamat || '',
-            kontak: s.kontak || '',
-            role_label: s.role_label || 'Saksi',
-          }));
-          await supabase.from('saksi_dumas').insert(saksiRows);
-        } catch {}
-      }
-
-      // Simpan bukti digital HANYA ke tabel barang_bukti (Single Source of Truth, bebas duplikasi)
-      if (completeRecord.lampiran_barang_bukti?.length > 0) {
-        try {
-          const seenBb = new Set();
-          const barangBuktiPayloads = [];
-
-          for (const bb of completeRecord.lampiran_barang_bukti) {
-            const targetUrl = (bb.file_url || bb.url || bb.fileUrl || '').trim();
-            const targetHash = bb.hash_sha256 ? `hash_${bb.hash_sha256}` : '';
-            const key = targetUrl || targetHash || (bb.nama_file || bb.nama_berkas);
-
-            if (!key || seenBb.has(key)) continue;
-            seenBb.add(key);
-
-            barangBuktiPayloads.push({
-              nomor_register: completeRecord.nomor_lp,
-              nama_berkas: bb.nama_file || bb.nama_berkas || 'Berkas Bukti',
-              file_url: targetUrl,
-              tipe_berkas: bb.mime_type || bb.tipe || 'image/jpeg',
-              ukuran_berkas: bb.file_size_bytes || bb.ukuran || 0,
-              keterangan: bb.keterangan || 'Barang bukti digital',
-              storage_provider: 'cloudflare_r2',
-              created_at: new Date().toISOString()
-            });
-          }
-
-          if (barangBuktiPayloads.length > 0) {
-            await supabase.from('barang_bukti').insert(barangBuktiPayloads);
-            console.log('[PERSISTENCE] Bukti berhasil disimpan ke tabel barang_bukti untuk register:', completeRecord.nomor_lp);
-          }
-        } catch (bbErr) {
-          console.warn('Notice: Gagal menyimpan ke tabel barang_bukti:', bbErr);
-        }
-      }
     }
-  } catch (err) {
-    console.warn('Sinkronisasi Supabase tertunda, data tersimpan di browser storage:', err);
+  } catch (dbErr) {
+    console.error('[saveDumasRecord] Terjadi kesalahan saat sinkronisasi Supabase:', dbErr);
   }
 
   return {
@@ -1048,3 +1120,90 @@ export function convertDumasToCase(dumasItem) {
     lampiran_barang_bukti: dumasItem.lampiran_barang_bukti || [],
   };
 }
+
+/**
+ * Memperbarui record Dumas yang sudah ada di Supabase & Local Cache
+ */
+export async function updateDumasRecord(id, updatedData, evidenceFiles = []) {
+  return saveDumasRecord({ ...updatedData, id, _isEdit: true }, evidenceFiles);
+}
+
+/**
+ * Alur Serah Terima Dumas Digital dari SPKT ke Satreskrim
+ * (Chain-of-Custody & Status Locking)
+ */
+export const submitHandoverSpktToReskrim = async ({
+  laporanId,
+  nomorLp,
+  penyerahNama = 'Petugas Piket SPKT',
+  penyerahPangkatNrp = '-',
+  penerimaNama = 'Piket / Urmintu Satreskrim',
+  penerimaPangkatNrp = '-',
+  catatanEkspedisi = 'Berkas diserahkan dari SPKT ke Satreskrim'
+}) => {
+  const timestamp = new Date().toISOString();
+
+  // 1. Update status berkas di laporan_pengaduan
+  const { data, error } = await supabase
+    .from('laporan_pengaduan')
+    .update({
+      status_tahap: 'SERAH_TERIMA_SATRESKRIM',
+      status_berkas: 'Diserahkan ke Satreskrim (Menunggu Telaah)',
+      is_locked_spkt: true,
+      tanggal_serah_terima: timestamp,
+      penyerah_nama: penyerahNama || 'Petugas Piket SPKT',
+      penyerah_pangkat_nrp: penyerahPangkatNrp || '-',
+      penerima_nama: penerimaNama || 'Piket / Urmintu Satreskrim',
+      penerima_pangkat_nrp: penerimaPangkatNrp || '-',
+      catatan_ekspedisi: catatanEkspedisi || 'Berkas diserahkan dari SPKT ke Satreskrim'
+    })
+    .eq('id', laporanId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // 2. Catat jejak riwayat di dumas_status_history
+  try {
+    await supabase.from('dumas_status_history').insert([{
+      laporan_id: laporanId,
+      nomor_lp: nomorLp,
+      status_sebelumnya: 'SPKT',
+      status_baru: 'SERAH_TERIMA_SATRESKRIM',
+      keterangan: catatanEkspedisi || 'Berkas diserahkan dari SPKT ke Satreskrim',
+      diubah_oleh: 'SPKT / Satreskrim'
+    }]);
+  } catch (histErr) {
+    console.warn('Gagal mencatat dumas_status_history:', histErr);
+  }
+
+  // 3. Sinkronkan pembaruan ke cache lokal jika tersedia
+  try {
+    const raw = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
+    if (raw) {
+      const list = JSON.parse(raw);
+      const updatedList = list.map(item => {
+        if (item.id === laporanId || (nomorLp && item.nomor_lp === nomorLp)) {
+          return {
+            ...item,
+            status_tahap: 'SERAH_TERIMA_SATRESKRIM',
+            status_berkas: 'Diserahkan ke Satreskrim (Menunggu Telaah)',
+            is_locked_spkt: true,
+            tanggal_serah_terima: timestamp,
+            penyerah_nama: penyerahNama || 'Petugas Piket SPKT',
+            penyerah_pangkat_nrp: penyerahPangkatNrp || '-',
+            penerima_nama: penerimaNama || 'Piket / Urmintu Satreskrim',
+            penerima_pangkat_nrp: penerimaPangkatNrp || '-',
+            catatan_ekspedisi: catatanEkspedisi || 'Berkas diserahkan dari SPKT ke Satreskrim'
+          };
+        }
+        return item;
+      });
+      localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+    }
+  } catch (localErr) {
+    console.warn('Gagal update local storage dumas:', localErr);
+  }
+
+  return data;
+};

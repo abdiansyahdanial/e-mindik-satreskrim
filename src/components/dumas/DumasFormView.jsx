@@ -7,7 +7,7 @@ import BuktiDigitalSection from './sections/BuktiDigitalSection';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal';
 import { supabase } from '../../supabaseClient.js';
 import { deleteR2File } from '../../lib/r2Client.js';
-import { generateNomorDumasResmi } from '../../services/dumasService.js';
+import { generateNomorDumasResmi, isUUID } from '../../services/dumasService.js';
 import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
 import ModalSelectPamapta from './ModalSelectPamapta';
 
@@ -15,6 +15,7 @@ const EVID_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
 export default function DumasFormView({
   mode = 'create',
+  initialData = null,
   initialOcrFile: _initialOcrFile,
   initialOcrFiles: _initialOcrFiles,
   initialOcrData,
@@ -39,15 +40,21 @@ export default function DumasFormView({
   ).trim();
 
   // State 00: Nomor Registrasi Dinas Dumas
-  const [nomorDumas, setNomorDumas] = useState(nomorRegisterResmi || ocrNomorSurat || '');
+  const [nomorDumas, setNomorDumas] = useState(
+    nomorRegisterResmi ||
+    initialData?.nomor_lp ||
+    initialData?.nomor_register ||
+    ocrNomorSurat ||
+    ''
+  );
 
   // Inisialisasi nomor registrasi dumas otomatis saat formulir dibuka pertama kali
   useEffect(() => {
     let isMounted = true;
     async function initNomor() {
-      // 1. Jika nomor register resmi sudah diteruskan dari props (mode edit), utamakan itu
-      if (nomorRegisterResmi) {
-        setNomorDumas(nomorRegisterResmi);
+      // 1. Jika nomor register resmi atau data awal sudah ada (mode edit), utamakan itu
+      if (nomorRegisterResmi || initialData?.nomor_lp || initialData?.nomor_register) {
+        setNomorDumas(nomorRegisterResmi || initialData?.nomor_lp || initialData?.nomor_register);
         return;
       }
 
@@ -57,8 +64,8 @@ export default function DumasFormView({
         return;
       }
 
-      // 3. Jika belum ada nomor sama sekali, buatkan nomor resmi otomatis
-      if (!nomorDumas) {
+      // 3. Jika belum ada nomor sama sekali dan bukan mode edit, buatkan nomor resmi otomatis
+      if (!nomorDumas && mode !== 'edit') {
         setIsGeneratingNo(true);
         try {
           const autoNo = await generateNomorDumasResmi();
@@ -75,7 +82,7 @@ export default function DumasFormView({
     return () => {
       isMounted = false;
     };
-  }, [nomorRegisterResmi, ocrNomorSurat]);
+  }, [nomorRegisterResmi, initialData, ocrNomorSurat, mode]);
 
   const handleResetNomorOtomatis = async () => {
     setIsGeneratingNo(true);
@@ -89,34 +96,82 @@ export default function DumasFormView({
     }
   };
 
-  // State 01: Identitas Pelapor
-  const [pelapor, setPelapor] = useState(() => ({
-    nik: initialOcrData?.pelapor?.nik || initialOcrData?.pelapor_nik || '',
-    nama: initialOcrData?.pelapor?.nama || initialOcrData?.pelapor_nama || initialOcrData?.pelapor?.nama_lengkap || '',
-    tempat_tanggal_lahir: initialOcrData?.pelapor?.tempat_tanggal_lahir || initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor_ttl || initialOcrData?.pelapor_tempat_tanggal_lahir || [initialOcrData?.pelapor?.tempat_lahir || initialOcrData?.pelapor_tempat_lahir, initialOcrData?.pelapor?.tanggal_lahir || initialOcrData?.pelapor_tanggal_lahir].filter(Boolean).join(', ') || '',
-    ttl: initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor?.tempat_tanggal_lahir || initialOcrData?.pelapor_ttl || '',
-    tempat_lahir: initialOcrData?.pelapor?.tempat_lahir || initialOcrData?.pelapor_tempat_lahir || '',
-    tanggal_lahir: initialOcrData?.pelapor?.tanggal_lahir || initialOcrData?.pelapor_tanggal_lahir || '',
-    jenis_kelamin: initialOcrData?.pelapor?.jenis_kelamin || 'Laki-laki',
-    agama: initialOcrData?.pelapor?.agama || 'Islam',
-    pekerjaan: initialOcrData?.pelapor?.pekerjaan || initialOcrData?.pelapor_pekerjaan || '',
-    kewarganegaraan: initialOcrData?.pelapor?.kewarganegaraan || 'WNI',
-    telepon: initialOcrData?.pelapor?.telepon || initialOcrData?.pelapor?.kontak || initialOcrData?.pelapor_kontak || '',
-    alamat: initialOcrData?.pelapor?.alamat || initialOcrData?.pelapor_alamat || ''
-  }));
+  // State 01: Identitas Pelapor (Populate dari initialData atau initialOcrData)
+  const [pelapor, setPelapor] = useState(() => {
+    if (initialData) {
+      const p = initialData.pelapor || {};
+      const ttlCombined = initialData.pelapor_ttl || p.tempat_tanggal_lahir || p.ttl || [initialData.pelapor_tempat_lahir || p.tempat_lahir, initialData.pelapor_tanggal_lahir || p.tanggal_lahir].filter(Boolean).join(', ') || '';
+      return {
+        nik: initialData.pelapor_nik || p.nik || initialData.nik_pelapor || '',
+        nama: initialData.pelapor_nama || p.nama || initialData.nama_pelapor || p.nama_lengkap || '',
+        tempat_tanggal_lahir: ttlCombined,
+        ttl: ttlCombined,
+        tempat_lahir: initialData.pelapor_tempat_lahir || p.tempat_lahir || (ttlCombined ? ttlCombined.split(',')[0]?.trim() : ''),
+        tanggal_lahir: initialData.pelapor_tanggal_lahir || p.tanggal_lahir || (ttlCombined && ttlCombined.includes(',') ? ttlCombined.split(',')[1]?.trim() : ''),
+        jenis_kelamin: initialData.pelapor_jenis_kelamin || p.jenis_kelamin || p.jk || initialData.jenis_kelamin || 'Laki-laki',
+        agama: initialData.pelapor_agama || p.agama || initialData.agama || 'Islam',
+        pekerjaan: initialData.pelapor_pekerjaan || p.pekerjaan || initialData.pekerjaan || '',
+        kewarganegaraan: initialData.pelapor_kewarganegaraan || p.kewarganegaraan || 'WNI',
+        telepon: initialData.pelapor_kontak || p.telepon || p.kontak || initialData.kontak || initialData.no_hp || '',
+        alamat: initialData.pelapor_alamat || p.alamat || initialData.alamat || ''
+      };
+    }
+    return {
+      nik: initialOcrData?.pelapor?.nik || initialOcrData?.pelapor_nik || '',
+      nama: initialOcrData?.pelapor?.nama || initialOcrData?.pelapor_nama || initialOcrData?.pelapor?.nama_lengkap || '',
+      tempat_tanggal_lahir: initialOcrData?.pelapor?.tempat_tanggal_lahir || initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor_ttl || initialOcrData?.pelapor_tempat_tanggal_lahir || [initialOcrData?.pelapor?.tempat_lahir || initialOcrData?.pelapor_tempat_lahir, initialOcrData?.pelapor?.tanggal_lahir || initialOcrData?.pelapor_tanggal_lahir].filter(Boolean).join(', ') || '',
+      ttl: initialOcrData?.pelapor?.ttl || initialOcrData?.pelapor?.tempat_tanggal_lahir || initialOcrData?.pelapor_ttl || '',
+      tempat_lahir: initialOcrData?.pelapor?.tempat_lahir || initialOcrData?.pelapor_tempat_lahir || '',
+      tanggal_lahir: initialOcrData?.pelapor?.tanggal_lahir || initialOcrData?.pelapor_tanggal_lahir || '',
+      jenis_kelamin: initialOcrData?.pelapor?.jenis_kelamin || 'Laki-laki',
+      agama: initialOcrData?.pelapor?.agama || 'Islam',
+      pekerjaan: initialOcrData?.pelapor?.pekerjaan || initialOcrData?.pelapor_pekerjaan || '',
+      kewarganegaraan: initialOcrData?.pelapor?.kewarganegaraan || 'WNI',
+      telepon: initialOcrData?.pelapor?.telepon || initialOcrData?.pelapor?.kontak || initialOcrData?.pelapor_kontak || '',
+      alamat: initialOcrData?.pelapor?.alamat || initialOcrData?.pelapor_alamat || ''
+    };
+  });
   const handlePelaporChange = useCallback((field, value) => setPelapor((prev) => ({ ...prev, [field]: value })), []);
 
   // State 02 & 03: Saksi & Terlapor
-  const [saksiList, setSaksiList] = useState(() =>
-    Array.isArray(initialOcrData?.saksiList) && initialOcrData.saksiList.length > 0
-      ? initialOcrData.saksiList
-      : [{ id: 'saksi-1', nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: 'Saksi Fakta' }]
-  );
-  const [terlaporList, setTerlaporList] = useState(() =>
-    Array.isArray(initialOcrData?.terlaporList) && initialOcrData.terlaporList.length > 0
-      ? initialOcrData.terlaporList
-      : [{ id: 'terlapor-1', nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: 'Terlapor Utama' }]
-  );
+  const [saksiList, setSaksiList] = useState(() => {
+    if (Array.isArray(initialData?.saksi_list) && initialData.saksi_list.length > 0) {
+      return initialData.saksi_list;
+    }
+    if (Array.isArray(initialData?.saksi) && initialData.saksi.length > 0) {
+      return initialData.saksi;
+    }
+    if (Array.isArray(initialOcrData?.saksiList) && initialOcrData.saksiList.length > 0) {
+      return initialOcrData.saksiList;
+    }
+    return [{ id: 'saksi-1', nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: 'Saksi Fakta' }];
+  });
+
+  const [terlaporList, setTerlaporList] = useState(() => {
+    if (Array.isArray(initialData?.terlapor_list) && initialData.terlapor_list.length > 0) {
+      return initialData.terlapor_list;
+    }
+    if (Array.isArray(initialData?.terlapor) && initialData.terlapor.length > 0) {
+      return initialData.terlapor;
+    }
+    if (initialData?.terlapor_nama) {
+      return [{
+        id: 'terlapor-1',
+        nama: initialData.terlapor_nama,
+        nik: initialData.terlapor_nik || '',
+        ttl: initialData.terlapor_ttl || '',
+        pekerjaan: initialData.terlapor_pekerjaan || '',
+        agama: initialData.terlapor_agama || 'Islam',
+        alamat: initialData.terlapor_domisili || '',
+        kontak: initialData.terlapor_kontak || '',
+        role_label: initialData.terlapor_status || 'Terlapor Utama'
+      }];
+    }
+    if (Array.isArray(initialOcrData?.terlaporList) && initialOcrData.terlaporList.length > 0) {
+      return initialOcrData.terlaporList;
+    }
+    return [{ id: 'terlapor-1', nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: 'Terlapor Utama' }];
+  });
 
   const handleAddSaksi = useCallback(() => setSaksiList((p) => [...p, { id: `s_${Date.now()}`, nama: '', nik: '', ttl: '', pekerjaan: '', agama: 'Islam', alamat: '', kontak: '', role_label: `Saksi ${p.length + 1}` }]), []);
   const handleUpdateSaksi = useCallback((i, f, v) => setSaksiList((p) => { const c = [...p]; if (c[i]) c[i] = { ...c[i], [f]: v }; return c; }), []);
@@ -128,36 +183,145 @@ export default function DumasFormView({
 
   // State 04: Peristiwa & Uraian Kejadian (Kronologi Lengkap Verbatim)
   const [caseInfo, setCaseInfo] = useState(() => ({
-    waktu_kejadian: initialOcrData?.caseInfo?.waktu_kejadian || initialOcrData?.waktu_kejadian || initialOcrData?.waktu || '',
-    tkp: initialOcrData?.caseInfo?.tkp || initialOcrData?.tkp || initialOcrData?.locus_delicti || '',
-    tindak_pidana: initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || initialOcrData?.dugaan_tindak_pidana || '',
-    pasal: initialOcrData?.caseInfo?.pasal || initialOcrData?.pasal || initialOcrData?.pasal_disangkakan || '',
-    uraian: initialOcrData?.caseInfo?.uraian || initialOcrData?.uraian || initialOcrData?.uraian_kejadian || initialOcrData?.ringkasan_posisi_kasus || initialOcrData?.kronologis || ''
+    waktu_kejadian: initialData?.tempus_delicti || initialData?.waktu_kejadian || initialOcrData?.caseInfo?.waktu_kejadian || initialOcrData?.waktu_kejadian || initialOcrData?.waktu || '',
+    tkp: initialData?.locus_delicti || initialData?.tkp || initialOcrData?.caseInfo?.tkp || initialOcrData?.tkp || initialOcrData?.locus_delicti || '',
+    tindak_pidana: initialData?.tindak_pidana || initialData?.dugaan_tindak_pidana || initialOcrData?.caseInfo?.tindak_pidana || initialOcrData?.tindak_pidana || initialOcrData?.dugaan_tindak_pidana || '',
+    pasal: initialData?.pasal_disangkakan || initialData?.pasal || initialOcrData?.caseInfo?.pasal || initialOcrData?.pasal || initialOcrData?.pasal_disangkakan || '',
+    uraian: initialData?.uraian_kejadian || initialData?.uraian_singkat || initialData?.uraian || initialOcrData?.caseInfo?.uraian || initialOcrData?.uraian || initialOcrData?.uraian_kejadian || initialOcrData?.ringkasan_posisi_kasus || initialOcrData?.kronologis || ''
   }));
   const handleCaseInfoChange = useCallback((field, value) => setCaseInfo((prev) => ({ ...prev, [field]: value })), []);
 
   // State 05: Bukti Digital Dumas (Dukungan Refresh & Deduplikasi)
   const [daftarBukti, setDaftarBukti] = useState(() => {
-    try {
-      const saved = localStorage.getItem(EVID_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    if (Array.isArray(initialData?.lampiran_barang_bukti) && initialData.lampiran_barang_bukti.length > 0) {
+      return initialData.lampiran_barang_bukti;
+    }
+    if (Array.isArray(initialData?.barang_bukti) && initialData.barang_bukti.length > 0) {
+      return initialData.barang_bukti;
+    }
+    if (mode !== 'edit') {
+      try {
+        const saved = localStorage.getItem(EVID_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {
+        console.warn('Gagal membaca cache bukti:', e);
       }
-    } catch (e) {
-      console.warn('Gagal membaca cache bukti:', e);
     }
     return initialOcrData?.barang_bukti || [];
   });
 
-  // Simpan otomatis ke localStorage setiap kali ada berkas baru masuk/dihapus
+  // Simpan otomatis ke localStorage setiap kali ada berkas baru masuk/dihapus (hanya pada mode create)
   useEffect(() => {
+    if (mode === 'edit') return;
     try {
       localStorage.setItem(EVID_STORAGE_KEY, JSON.stringify(daftarBukti));
     } catch (e) {
       console.warn('Gagal menyimpan cache bukti:', e);
     }
-  }, [daftarBukti]);
+  }, [daftarBukti, mode]);
+
+  // Sinkronkan daftarBukti & field form saat initialData berganti/dimuat ulang
+  useEffect(() => {
+    if (initialData) {
+      if (initialData.nomor_lp || initialData.nomor_register) {
+        setNomorDumas(initialData.nomor_lp || initialData.nomor_register);
+      }
+
+      const p = initialData.pelapor || {};
+      const ttlCombined = initialData.pelapor_ttl || p.tempat_tanggal_lahir || p.ttl || [initialData.pelapor_tempat_lahir || p.tempat_lahir, initialData.pelapor_tanggal_lahir || p.tanggal_lahir].filter(Boolean).join(', ') || '';
+      setPelapor({
+        nik: initialData.pelapor_nik || p.nik || initialData.nik_pelapor || '',
+        nama: initialData.pelapor_nama || p.nama || initialData.nama_pelapor || p.nama_lengkap || '',
+        tempat_tanggal_lahir: ttlCombined,
+        ttl: ttlCombined,
+        tempat_lahir: initialData.pelapor_tempat_lahir || p.tempat_lahir || (ttlCombined ? ttlCombined.split(',')[0]?.trim() : ''),
+        tanggal_lahir: initialData.pelapor_tanggal_lahir || p.tanggal_lahir || (ttlCombined && ttlCombined.includes(',') ? ttlCombined.split(',')[1]?.trim() : ''),
+        jenis_kelamin: initialData.pelapor_jenis_kelamin || p.jenis_kelamin || p.jk || initialData.jenis_kelamin || 'Laki-laki',
+        agama: initialData.pelapor_agama || p.agama || initialData.agama || 'Islam',
+        pekerjaan: initialData.pelapor_pekerjaan || p.pekerjaan || initialData.pekerjaan || '',
+        kewarganegaraan: initialData.pelapor_kewarganegaraan || p.kewarganegaraan || 'WNI',
+        telepon: initialData.pelapor_kontak || p.telepon || p.kontak || initialData.kontak || initialData.no_hp || '',
+        alamat: initialData.pelapor_alamat || p.alamat || initialData.alamat || ''
+      });
+
+      if (Array.isArray(initialData.saksi_list) && initialData.saksi_list.length > 0) {
+        setSaksiList(initialData.saksi_list);
+      } else if (Array.isArray(initialData.saksi) && initialData.saksi.length > 0) {
+        setSaksiList(initialData.saksi);
+      }
+
+      if (Array.isArray(initialData.terlapor_list) && initialData.terlapor_list.length > 0) {
+        setTerlaporList(initialData.terlapor_list);
+      } else if (Array.isArray(initialData.terlapor) && initialData.terlapor.length > 0) {
+        setTerlaporList(initialData.terlapor);
+      } else if (initialData.terlapor_nama) {
+        setTerlaporList([{
+          id: 'terlapor-1',
+          nama: initialData.terlapor_nama,
+          nik: initialData.terlapor_nik || '',
+          ttl: initialData.terlapor_ttl || '',
+          pekerjaan: initialData.terlapor_pekerjaan || '',
+          agama: initialData.terlapor_agama || 'Islam',
+          alamat: initialData.terlapor_domisili || '',
+          kontak: initialData.terlapor_kontak || '',
+          role_label: initialData.terlapor_status || 'Terlapor Utama'
+        }]);
+      }
+
+      setCaseInfo({
+        waktu_kejadian: initialData.tempus_delicti || initialData.waktu_kejadian || '',
+        tkp: initialData.locus_delicti || initialData.tkp || '',
+        tindak_pidana: initialData.tindak_pidana || initialData.dugaan_tindak_pidana || '',
+        pasal: initialData.pasal_disangkakan || initialData.pasal || '',
+        uraian: initialData.uraian_kejadian || initialData.uraian_singkat || initialData.uraian || ''
+      });
+
+      const existingEvidence = 
+        (Array.isArray(initialData.lampiran_barang_bukti) && initialData.lampiran_barang_bukti.length > 0)
+          ? initialData.lampiran_barang_bukti
+          : (Array.isArray(initialData.barang_bukti) && initialData.barang_bukti.length > 0)
+            ? initialData.barang_bukti
+            : [];
+      
+      if (existingEvidence.length > 0) {
+        setDaftarBukti(existingEvidence);
+      } else if (initialData.nomor_lp || (initialData.id && isUUID(initialData.id))) {
+        // Fallback fetch dari Supabase barang_bukti jika object belum memuat relasi bukti
+        const loadBuktiFromDb = async () => {
+          try {
+            let query = supabase.from('barang_bukti').select('*');
+            if (initialData.nomor_lp) {
+              query = query.eq('nomor_register', initialData.nomor_lp);
+            } else {
+              query = query.eq('id_perkara', initialData.id);
+            }
+            const { data: bbRows } = await query.order('created_at', { ascending: true });
+            if (bbRows && bbRows.length > 0) {
+              const formatted = bbRows.map(row => ({
+                id: row.id,
+                nama_file: row.nama_berkas || row.nama_file || 'Berkas Bukti',
+                file_url: row.file_url || row.url,
+                url: row.file_url || row.url,
+                kategori_bukti: row.tipe_berkas?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
+                mime_type: row.tipe_berkas,
+                file_size_bytes: row.ukuran_berkas,
+                keterangan: row.keterangan,
+                hash_sha256: row.hash_sha256,
+                created_at: row.created_at
+              }));
+              setDaftarBukti(formatted);
+            }
+          } catch (e) {
+            console.warn('Gagal memuat barang bukti untuk form edit:', e);
+          }
+        };
+        loadBuktiFromDb();
+      }
+    }
+  }, [initialData]);
 
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [syncToken, setSyncToken] = useState(() => `dumas_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`);
@@ -278,13 +442,17 @@ export default function DumasFormView({
     const terlaporTtl = primaryTerlapor.ttl || [primaryTerlapor.tempat_lahir, primaryTerlapor.tanggal_lahir].filter(Boolean).join(', ');
 
     const newDumasData = {
+      ...(initialData || {}),
+      id: initialData?.id || _perkaraId || undefined,
       nomor_lp: generatedNo,
       nomor_register: generatedNo,
-      tanggal_lapor: new Date().toISOString(),
-      penyidik_id: currentUserProfile?.id || 'penyidik-spkt',
-      penyidik_nama: currentUserProfile?.nama || 'Penyidik Penerima SPKT',
-      penyidik_nrp: currentUserProfile?.nrp || '-',
-      status_berkas: 'Tahap Penyelidikan (Sp.Lidik)',
+      tanggal_lapor: initialData?.tanggal_lapor || new Date().toISOString(),
+      penyidik_id: initialData?.penyidik_id || currentUserProfile?.id || 'penyidik-spkt',
+      penyidik_nama: initialData?.penyidik_nama || currentUserProfile?.nama || 'Penyidik Penerima SPKT',
+      penyidik_nrp: initialData?.penyidik_nrp || currentUserProfile?.nrp || '-',
+      status_berkas: initialData?.status_berkas || 'Tahap Penyelidikan (Sp.Lidik)',
+      status_tahap: initialData?.status_tahap || undefined,
+      is_locked_spkt: initialData?.is_locked_spkt || false,
 
       // Identitas Pelapor (Flat Fields)
       pelapor_nama: pelapor.nama,
@@ -324,7 +492,9 @@ export default function DumasFormView({
       // Raw/Structured Object untuk kelengkapan
       pelapor,
       barang_bukti: daftarBukti,
-      daftar_bukti: daftarBukti
+      daftar_bukti: daftarBukti,
+      lampiran_barang_bukti: daftarBukti,
+      _isEdit: mode === 'edit'
     };
 
     if (typeof onSubmitDumas === 'function') {
@@ -777,7 +947,11 @@ export default function DumasFormView({
             }}
           >
             {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            {isSubmitting ? 'Menyimpan Dumas...' : 'Simpan Laporan Dumas'}
+            {isSubmitting
+              ? 'Menyimpan Dumas...'
+              : mode === 'edit'
+              ? 'Simpan Perubahan Dumas'
+              : 'Simpan Laporan Dumas'}
           </button>
         </div>
       </div>

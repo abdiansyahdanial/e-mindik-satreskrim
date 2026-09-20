@@ -120,17 +120,27 @@ export default function DumasView({
   // 2. Handler Submit Form Dumas
   const handleSubmitDumas = async (newRecord, evidenceFiles = []) => {
     try {
-      const result = await saveDumasRecord(newRecord, evidenceFiles);
+      const isEditMode = formMode === 'edit';
+      const result = await saveDumasRecord({ ...newRecord, _isEdit: isEditMode }, evidenceFiles);
       if (result.success && result.record) {
         try {
           localStorage.removeItem('emindik_active_dumas_form_draft');
           localStorage.removeItem('emindik_draft_form_perkara_v1');
         } catch {}
-        setDumasList(prev => [result.record, ...prev.filter(d => d.id !== result.record.id)]);
+        setDumasList(prev => {
+          const exists = prev.some(d => d.id === result.record.id || (result.record.nomor_lp && d.nomor_lp === result.record.nomor_lp));
+          if (exists) {
+            return prev.map(d => (d.id === result.record.id || (result.record.nomor_lp && d.nomor_lp === result.record.nomor_lp)) ? result.record : d);
+          }
+          return [result.record, ...prev];
+        });
         setSelectedDumas(result.record);
         setSubView('detail');
         if (onShowToast) {
-          onShowToast(`Laporan Dumas ${result.record.nomor_lp} berhasil teregistrasi!`);
+          onShowToast(isEditMode
+            ? `Perubahan berkas Dumas ${result.record.nomor_lp} berhasil disimpan!`
+            : `Laporan Dumas ${result.record.nomor_lp} berhasil teregistrasi!`
+          );
         }
       }
       return result;
@@ -206,15 +216,22 @@ export default function DumasView({
         <DumasErrorBoundary onResetView={() => setSubView('list')}>
           {DumasFormView ? (
             <DumasFormView
-              key={initialOcrData ? 'form-ocr-active' : (selectedDumas?.id || formMountKey)}
+              key={formMode === 'edit' ? `form-edit-${selectedDumas?.id || Date.now()}` : (initialOcrData ? 'form-ocr-active' : (selectedDumas?.id || formMountKey))}
               mode={formMode}
+              initialData={selectedDumas}
               initialOcrFile={initialOcrFile}
               initialOcrFiles={initialOcrFiles}
               initialOcrData={initialOcrData}
               currentUserProfile={currentUserProfile}
               nomorRegisterResmi={selectedDumas?.nomor_lp || initialOcrData?.nomor_lp || initialOcrData?.nomor_register || null}
               perkaraId={selectedDumas?.id || initialOcrData?.id || null}
-              onBack={() => setSubView('list')}
+              onBack={() => {
+                if (formMode === 'edit' && selectedDumas) {
+                  setSubView('detail');
+                } else {
+                  setSubView('list');
+                }
+              }}
               onSubmitDumas={handleSubmitDumas}
             />
           ) : (
@@ -243,6 +260,15 @@ export default function DumasView({
           onUpdateDumas={(updatedRecord) => {
             setSelectedDumas(updatedRecord);
             setDumasList(prev => prev.map(d => d.id === updatedRecord.id ? updatedRecord : d));
+          }}
+          onEditDumas={(item) => {
+            setSelectedDumas(item);
+            setFormMode('edit');
+            setSubView('form');
+            try {
+              sessionStorage.setItem('emindik_active_dumas_item', JSON.stringify(item));
+              sessionStorage.setItem('emindik_dumas_subview', 'form');
+            } catch {}
           }}
         />
       )}

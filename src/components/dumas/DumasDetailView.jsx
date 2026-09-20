@@ -14,27 +14,49 @@ import {
   Eye,
   Download,
   Plus,
-  Trash2
+  Trash2,
+  Lock,
+  Send
 } from 'lucide-react';
 import AddEvidenceModal from './AddEvidenceModal.jsx';
 import EvidenceLightboxModal from './EvidenceLightboxModal.jsx';
 import ModalSelectPamapta from './ModalSelectPamapta.jsx';
-import { deleteEvidenceFromDumas } from '../../services/dumasService.js';
+import ModalHandoverSpkt from './ModalHandoverSpkt.jsx';
+import { deleteEvidenceFromDumas, submitHandoverSpktToReskrim } from '../../services/dumasService.js';
 import { formatR2PublicUrl } from '../../lib/r2Client.js';
 import { supabase } from '../../supabaseClient';
 import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
 
 const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(str));
 
+const formatTanggalSerahTerima = (isoString) => {
+  if (!isoString) return '-';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    return d.toLocaleString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) + ' WITA';
+  } catch {
+    return isoString;
+  }
+};
+
 export default function DumasDetailView({
   dumasItem,
   onBack,
   onOpenGeneratorForDumas,
-  onUpdateDumas
+  onUpdateDumas,
+  onEditDumas
 }) {
   const [copied, setCopied] = useState(false);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [isPamaptaModalOpen, setIsPamaptaModalOpen] = useState(false);
+  const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
   const [perkara, setPerkara] = useState(dumasItem);
   const [isAddEvidenceOpen, setIsAddEvidenceOpen] = useState(false);
   const [previewEvidence, setPreviewEvidence] = useState(null);
@@ -303,8 +325,39 @@ export default function DumasDetailView({
           </button>
         </div>
 
-        {/* Tombol Aksi Kanan: Lanjut Buat Sprin */}
-        <div>
+        {/* Tombol Aksi Kanan: Edit Pengaduan & Lanjut Buat Sprin */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {onEditDumas && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!perkara?.is_locked_spkt) {
+                  onEditDumas(perkara);
+                }
+              }}
+              disabled={Boolean(perkara?.is_locked_spkt)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontWeight: 600,
+                backgroundColor: perkara?.is_locked_spkt ? '#181C25' : '#121721',
+                border: `1px solid ${perkara?.is_locked_spkt ? '#292F42' : '#334155'}`,
+                color: perkara?.is_locked_spkt ? '#64748B' : '#CBD5E1',
+                cursor: perkara?.is_locked_spkt ? 'not-allowed' : 'pointer',
+                opacity: perkara?.is_locked_spkt ? 0.6 : 1
+              }}
+              title={perkara?.is_locked_spkt ? "Berkas telah diserahkan ke Satreskrim dan terkunci demi integritas chain of custody." : "Edit Data Dumas"}
+            >
+              {perkara?.is_locked_spkt ? <Lock size={13} /> : <FileText size={13} />}
+              <span>{perkara?.is_locked_spkt ? 'Data Terkunci' : 'Edit Pengaduan'}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => onOpenGeneratorForDumas && onOpenGeneratorForDumas(perkara)}
@@ -336,110 +389,219 @@ export default function DumasDetailView({
       {/* 2. BANNER STATUS BERKAS (QUICK STATUS BAR) */}
       {/* ========================================================= */}
       <section
-        className="bg-[#121721] border border-[#292F42] rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-md dumas-quick-status-bar"
+        className="bg-[#121721] border border-[#292F42] rounded-xl p-4 flex flex-col gap-3 shadow-md dumas-quick-status-bar"
         style={{
           backgroundColor: '#121721',
           border: '1px solid #292F42',
           borderRadius: '12px',
           padding: '16px',
           display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
+          flexDirection: 'column',
+          gap: '12px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
         }}
       >
-        <div className="flex items-center gap-3.5" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div
-            className="w-10 h-10 rounded-lg bg-red-950/60 border border-red-800 flex items-center justify-center text-red-400 font-mono font-bold text-base"
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(127, 29, 29, 0.5)',
-              border: '1px solid #991B1B',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#F87171',
-              fontWeight: 700,
-              fontSize: '16px',
-              fontFamily: 'JetBrains Mono, monospace'
-            }}
-          >
-            01
-          </div>
-          <div>
-            <div className="text-[11px] font-mono tracking-wider text-slate-400 uppercase" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.06em', color: '#94A3B8', textTransform: 'uppercase' }}>
-              Status Administrasi Berkas
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <div className="flex items-center gap-3.5" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div
+              className="w-10 h-10 rounded-lg border flex items-center justify-center font-mono font-bold text-base"
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                backgroundColor: perkara?.is_locked_spkt ? 'rgba(6, 78, 59, 0.4)' : 'rgba(127, 29, 29, 0.5)',
+                border: perkara?.is_locked_spkt ? '1px solid #059669' : '1px solid #991B1B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: perkara?.is_locked_spkt ? '#34D399' : '#F87171',
+                fontWeight: 700,
+                fontSize: '16px',
+                fontFamily: 'JetBrains Mono, monospace'
+              }}
+            >
+              {perkara?.is_locked_spkt ? <Lock size={18} /> : '01'}
             </div>
-            <div className="flex items-center gap-2.5 mt-1" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-              <span
-                className="bg-amber-950/70 text-amber-300 border border-amber-800/80 px-2.5 py-1 rounded text-xs font-mono font-bold inline-flex items-center gap-1.5 dumas-badge-status-tahap"
+            <div>
+              <div className="text-[11px] font-mono tracking-wider text-slate-400 uppercase" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.06em', color: '#94A3B8', textTransform: 'uppercase' }}>
+                Status Administrasi Berkas
+              </div>
+              <div className="flex items-center gap-2.5 mt-1" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
+                {perkara?.is_locked_spkt ? (
+                  <span
+                    className="bg-emerald-950/80 text-emerald-300 border border-emerald-700/80 px-2.5 py-1 rounded text-xs font-mono font-bold inline-flex items-center gap-1.5"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontWeight: 700,
+                      backgroundColor: 'rgba(6, 78, 59, 0.8)',
+                      color: '#6EE7B7',
+                      border: '1px solid #059669'
+                    }}
+                  >
+                    <Lock size={12} />
+                    <span>🔒 BERKAS TELAH DISERAHKAN KE SATRESKRIM</span>
+                  </span>
+                ) : (
+                  <span
+                    className="bg-amber-950/70 text-amber-300 border border-amber-800/80 px-2.5 py-1 rounded text-xs font-mono font-bold inline-flex items-center gap-1.5 dumas-badge-status-tahap"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontWeight: 700,
+                      backgroundColor: 'rgba(69, 26, 3, 0.7)',
+                      color: '#FCD34D',
+                      border: '1px solid #92400E'
+                    }}
+                  >
+                    ● {perkara?.status_berkas || 'TAHAP PENYELIDIKAN (SP.LIDIK)'}
+                  </span>
+                )}
+
+                <span className="text-xs text-slate-400 font-sans hidden sm:inline" style={{ fontSize: '12px', color: '#94A3B8' }}>
+                  {perkara?.is_locked_spkt ? 'Data Terkunci (Chain-of-Custody Terjaga)' : 'Tinjauan Resume & Digital Evidence'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-mono" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', flexWrap: 'wrap' }}>
+            {!perkara?.is_locked_spkt && (
+              <button
+                type="button"
+                onClick={() => setIsHandoverModalOpen(true)}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-2 cursor-pointer transition-all shadow-md"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: '#F59E0B',
+                  color: '#0F172A',
+                  border: 'none',
+                  fontSize: '12px',
                   fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 700,
-                  backgroundColor: 'rgba(69, 26, 3, 0.7)',
-                  color: '#FCD34D',
-                  border: '1px solid #92400E'
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 0 16px rgba(245, 158, 11, 0.35)'
                 }}
+                title="Serahkan berkas fisik dan digital dari SPKT ke Satreskrim"
               >
-                ● {perkara?.status_berkas || 'TAHAP PENYELIDIKAN (SP.LIDIK)'}
+                <Send size={13} />
+                <span>Serahkan Berkas ke Satreskrim</span>
+              </button>
+            )}
+
+            <div
+              className="bg-[#0B0D13] px-3 py-1.5 rounded-md border border-[#292F42]"
+              style={{
+                backgroundColor: '#0B0D13',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid #292F42'
+              }}
+            >
+              <span className="text-slate-500" style={{ color: '#64748B' }}>PENYIDIK PENERIMA:</span>
+              <span className="text-slate-100 font-semibold ml-2" style={{ color: '#F1F5F9', fontWeight: 600, marginLeft: '6px' }}>
+                {perkara?.penyidik_nama || 'Bripka Andi Pratama, S.H.'}
               </span>
-              <span className="text-xs text-slate-400 font-sans hidden sm:inline" style={{ fontSize: '12px', color: '#94A3B8' }}>
-                Tinjauan Resume &amp; Digital Evidence
+              <span className="text-[#FF352D] text-[11px] ml-1.5" style={{ color: '#FF352D', fontSize: '11px', marginLeft: '6px' }}>
+                [{perkara?.penyidik_nrp || 'NRP: 89040112'}]
               </span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsSchemaModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1F2C] hover:bg-[#252B3B] text-slate-300 border border-[#292F42] transition-colors cursor-pointer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                backgroundColor: '#1B1F2C',
+                color: '#CBD5E1',
+                border: '1px solid #292F42',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontFamily: 'JetBrains Mono, monospace'
+              }}
+            >
+              <Database size={13} color="#FF352D" />
+              <span>Skema DB</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-mono" style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
+        {/* Informasi Ringkas Serah Terima Jika Berkas Telah Diserahkan */}
+        {perkara?.is_locked_spkt && (
           <div
-            className="bg-[#0B0D13] px-3 py-1.5 rounded-md border border-[#292F42]"
             style={{
-              backgroundColor: '#0B0D13',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              border: '1px solid #292F42'
-            }}
-          >
-            <span className="text-slate-500" style={{ color: '#64748B' }}>PENYIDIK PENERIMA:</span>
-            <span className="text-slate-100 font-semibold ml-2" style={{ color: '#F1F5F9', fontWeight: 600, marginLeft: '6px' }}>
-              {perkara?.penyidik_nama || 'Bripka Andi Pratama, S.H.'}
-            </span>
-            <span className="text-[#FF352D] text-[11px] ml-1.5" style={{ color: '#FF352D', fontSize: '11px', marginLeft: '6px' }}>
-              [{perkara?.penyidik_nrp || 'NRP: 89040112'}]
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsSchemaModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1F2C] hover:bg-[#252B3B] text-slate-300 border border-[#292F42] transition-colors cursor-pointer"
-            style={{
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              backgroundColor: '#1B1F2C',
-              color: '#CBD5E1',
-              border: '1px solid #292F42',
-              cursor: 'pointer',
-              fontSize: '12px',
+              flexWrap: 'wrap',
+              gap: '12px',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              backgroundColor: '#0B0D13',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              fontSize: '11px',
               fontFamily: 'JetBrains Mono, monospace'
             }}
           >
-            <Database size={13} color="#FF352D" />
-            <span>Skema DB</span>
-          </button>
-        </div>
+            <div>
+              <span style={{ color: '#64748B' }}>TANGGAL SERAH TERIMA: </span>
+              <span style={{ color: '#34D399', fontWeight: 700 }}>
+                {formatTanggalSerahTerima(perkara?.tanggal_serah_terima)}
+              </span>
+            </div>
+
+            <span style={{ color: '#334155' }}>|</span>
+
+            <div>
+              <span style={{ color: '#64748B' }}>PENYERAH (SPKT): </span>
+              <span style={{ color: '#F1F5F9', fontWeight: 600 }}>
+                {perkara?.penyerah_nama || '-'}
+              </span>
+              {perkara?.penyerah_pangkat_nrp && (
+                <span style={{ color: '#94A3B8', marginLeft: '4px' }}>({perkara.penyerah_pangkat_nrp})</span>
+              )}
+            </div>
+
+            <span style={{ color: '#334155' }}>|</span>
+
+            <div>
+              <span style={{ color: '#64748B' }}>PENERIMA (SATRESKRIM): </span>
+              <span style={{ color: '#38BDF8', fontWeight: 600 }}>
+                {perkara?.penerima_nama || perkara?.penyidik_nama || '-'}
+              </span>
+              {perkara?.penerima_pangkat_nrp && (
+                <span style={{ color: '#94A3B8', marginLeft: '4px' }}>({perkara.penerima_pangkat_nrp})</span>
+              )}
+            </div>
+
+            {perkara?.catatan_ekspedisi && (
+              <>
+                <span style={{ color: '#334155' }}>|</span>
+                <div style={{ flex: '1 1 100%', marginTop: '2px', color: '#94A3B8' }}>
+                  <span style={{ color: '#64748B' }}>CATATAN EKSPEDISI: </span>
+                  <span style={{ color: '#CBD5E1' }}>{perkara.catatan_ekspedisi}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </section>
 
       {/* ========================================================= */}
@@ -1516,6 +1678,29 @@ export default function DumasDetailView({
           onConfirmPrint={(officer) => {
             setIsPamaptaModalOpen(false);
             printTandaTerimaDumas(perkara || dumasItem, officer);
+          }}
+        />
+      )}
+
+      {/* Modal Serah Terima Berkas SPKT ke Satreskrim */}
+      {isHandoverModalOpen && (
+        <ModalHandoverSpkt
+          isOpen={isHandoverModalOpen}
+          dumasItem={perkara || dumasItem}
+          onClose={() => setIsHandoverModalOpen(false)}
+          onSuccess={(updatedData) => {
+            setIsHandoverModalOpen(false);
+            const fresh = {
+              ...(perkara || dumasItem),
+              ...updatedData,
+              is_locked_spkt: true,
+              status_tahap: 'SERAH_TERIMA_SATRESKRIM',
+              status_berkas: 'Diserahkan ke Satreskrim (Menunggu Telaah)'
+            };
+            setPerkara(fresh);
+            if (onUpdateDumas) {
+              onUpdateDumas(fresh);
+            }
           }}
         />
       )}
