@@ -18,9 +18,11 @@ import {
   Shield,
   Clock,
   Calendar,
-  MapPin
+  MapPin,
+  Lock,
+  Layers,
+  Check
 } from 'lucide-react';
-import { mockTemplates } from '../data/mockTemplates';
 import { mockPersonnel } from '../data/mockPersonnel';
 import { supabase } from '../supabaseClient';
 import { 
@@ -49,6 +51,1029 @@ import {
   getPresetTitle 
 } from '../constants/mindikPresets';
 
+// --- DAFTAR KLASTER BAKU SIDIK (A s.d. G) ---
+export const SIDIK_CLUSTERS = [
+  { id: 'A', name: 'A. SP.SIDIK', fullName: 'SURAT PERINTAH PENYIDIKAN' },
+  { id: 'B', name: 'B. SPDP', fullName: 'PEMBERITAHUAN DIMULAINYA PENYIDIKAN (SPDP)' },
+  { id: 'C', name: 'C. TERSANGKA', fullName: 'TINDAKAN TERHADAP TERSANGKA (TAP, GIL, KAP, DPO)' },
+  { id: 'D', name: 'D. SITA/GELEDAH', fullName: 'PENYITAAN & PENGGELEDAHAN' },
+  { id: 'E', name: 'E. SAKSI/KORBAN', fullName: 'KORBAN DAN SAKSI' },
+  { id: 'F', name: 'F. PENAHANAN', fullName: 'PENAHANAN (BERJENJANG)' },
+  { id: 'G', name: 'G. BERKAS PERKARA', fullName: 'BERKAS PERKARA (TAHAP I & TAHAP II)' },
+];
+
+// --- MASTER URUTAN BAKU MINDIK SIDIK (RIGID & TIDAK BOLEH DILANGKAHI) ---
+export const MASTER_MINDIK_SIDIK = [
+  // A. SURAT PERINTAH PENYIDIKAN
+  {
+    cluster: 'A',
+    itemNumber: 1,
+    code: 'SPRIN_SIDIK',
+    title: 'SURAT PERINTAH PENYIDIKAN (SP.SIDIK)',
+    type: 'Wajib 1 - Gerbang Utama',
+    isMandatory: true,
+    aliases: ['SP_SIDIK', 'SPRIN_SIDIK_MORE_5'],
+    keywords: ['PERINTAH PENYIDIKAN'],
+  },
+  {
+    cluster: 'A',
+    itemNumber: 2,
+    code: 'SPGAS_SIDIK',
+    title: 'SURAT PERINTAH TUGAS PENYIDIKAN (SP.GAS.SIDIK)',
+    type: 'Wajib 2 - Syarat: SP.SIDIK sudah terbit',
+    isMandatory: true,
+    aliases: ['SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'SPGAS_SIDIK_MORE_5', 'SPRIN_TUGAS_PENYIDIKAN'],
+    keywords: ['TUGAS PENYIDIKAN'],
+  },
+  {
+    cluster: 'A',
+    itemNumber: 3,
+    code: 'SPRIN_SIDIK_TAMBAHAN',
+    title: 'SURAT PERINTAH PENYIDIKAN TAMBAHAN',
+    type: 'Opsional - Syarat: SP.GAS.SIDIK sudah ada',
+    isMandatory: false,
+    aliases: ['SP_SIDIK_TAMBAHAN'],
+    keywords: ['PENYIDIKAN TAMBAHAN'],
+  },
+  {
+    cluster: 'A',
+    itemNumber: 4,
+    code: 'SPGAS_SIDIK_TAMBAHAN',
+    title: 'SURAT PERINTAH TUGAS PENYIDIKAN TAMBAHAN',
+    type: 'Opsional - Syarat: SP.GAS.SIDIK sudah ada',
+    isMandatory: false,
+    aliases: ['SPRIN_GAS_SIDIK_TAMBAHAN', 'SP_GAS_SIDIK_TAMBAHAN'],
+    keywords: ['TUGAS PENYIDIKAN TAMBAHAN'],
+  },
+  {
+    cluster: 'A',
+    itemNumber: 5,
+    code: 'SPRIN_SIDIK_LANJUTAN',
+    title: 'SURAT PERINTAH PENYIDIKAN LANJUTAN',
+    type: 'Opsional - Syarat: SP.GAS.SIDIK sudah ada',
+    isMandatory: false,
+    aliases: ['SP_SIDIK_LANJUTAN'],
+    keywords: ['PENYIDIKAN LANJUTAN'],
+  },
+  {
+    cluster: 'A',
+    itemNumber: 6,
+    code: 'SPGAS_SIDIK_LANJUTAN',
+    title: 'SURAT PERINTAH TUGAS PENYIDIKAN LANJUTAN',
+    type: 'Opsional - Syarat: SP.GAS.SIDIK sudah ada',
+    isMandatory: false,
+    aliases: ['SPRIN_GAS_SIDIK_LANJUTAN', 'SP_GAS_SIDIK_LANJUTAN'],
+    keywords: ['TUGAS PENYIDIKAN LANJUTAN'],
+  },
+
+  // B. PEMBERITAHUAN DIMULAINYA PENYIDIKAN (SPDP)
+  {
+    cluster: 'B',
+    itemNumber: 1,
+    code: 'SPDP_TERLAPOR',
+    title: 'SURAT PEMBERITAHUAN DIMULAINYA PENYIDIKAN DENGAN TERLAPOR (SPDP TERLAPOR)',
+    type: 'Wajib 3 - Syarat: SP.GAS.SIDIK sudah ada',
+    isMandatory: true,
+    aliases: ['SPDP', 'SPDP_DENGAN_TERLAPOR'],
+    keywords: ['SPDP DENGAN TERLAPOR', 'SPDP TERLAPOR'],
+  },
+  {
+    cluster: 'B',
+    itemNumber: 2,
+    code: 'SPDP_MORE_1_TERLAPOR',
+    title: 'SURAT PEMBERITAHUAN DIMULAINYA PENYIDIKAN LEBIH DARI 1 TERLAPOR (SPDP LEBIH DARI 1 TERLAPOR)',
+    type: 'Wajib 3 - Syarat: SP.GAS.SIDIK sudah ada',
+    isMandatory: true,
+    aliases: ['SPDP_LEBIH_1_TERLAPOR', 'SPDP_MORE_1_TERLAPOR'],
+    keywords: ['LEBIH DARI 1 TERLAPOR', 'LEBIH 1 TERLAPOR'],
+  },
+  {
+    cluster: 'B',
+    itemNumber: 3,
+    code: 'SPDP_TANPA_NAMA',
+    title: 'SURAT PEMBERITAHUAN DIMULAINYA PENYIDIKAN TANPA NAMA (SPDP TANPA NAMA)',
+    type: 'Wajib 3 - Syarat: SP.GAS.SIDIK sudah ada',
+    isMandatory: true,
+    aliases: ['SPDP_NO_NAME'],
+    keywords: ['SPDP TANPA NAMA', 'TANPA NAMA'],
+  },
+  {
+    cluster: 'B',
+    itemNumber: 4,
+    code: 'SPDP_TSK',
+    title: 'SURAT PEMBERITAHUAN DIMULAINYA PENYIDIKAN DENGAN TERSANGKA (SPDP TERSANGKA)',
+    type: 'Wajib 5 - Syarat: S.TAP.TSK Wajib 4 sudah ada!',
+    isMandatory: true,
+    aliases: ['SPDP_TERSANGKA'],
+    keywords: ['DENGAN TERSANGKA', 'SPDP TERSANGKA'],
+  },
+  {
+    cluster: 'B',
+    itemNumber: 5,
+    code: 'SPDP_MORE_1_TSK',
+    title: 'SURAT PEMBERITAHUAN DIMULAINYA PENYIDIKAN LEBIH DARI 1 TERSANGKA (SPDP LEBIH DARI 1 TERSANGKA)',
+    type: 'Wajib 5 - Syarat: S.TAP.TSK Wajib 4 sudah ada!',
+    isMandatory: true,
+    aliases: ['SPDP_MORE_1_TERSANGKA', 'SPDP_LEBIH_1_TSK'],
+    keywords: ['LEBIH DARI 1 TERSANGKA', 'LEBIH 1 TERSANGKA'],
+  },
+
+  // C. TINDAKAN TERHADAP TERSANGKA (TAP, GIL, KAP, DPO)
+  {
+    cluster: 'C',
+    itemNumber: 1,
+    code: 'SP_TAP_TSK',
+    title: 'SURAT KETETAPAN PENETAPAN TERSANGKA (S.TAP.TSK)',
+    type: 'Wajib 4 - Syarat: SP.SIDIK & SP.GAS.SIDIK sudah ada',
+    isMandatory: true,
+    aliases: ['TAP_TSK', 'S_TAP_TSK'],
+    keywords: ['PENETAPAN TERSANGKA', 'S.TAP.TSK', 'SP.TAP'],
+  },
+  {
+    cluster: 'C',
+    itemNumber: 2,
+    code: 'SPGL_TSK_1',
+    title: 'SURAT PANGGILAN TERSANGKA KE-1',
+    type: 'Wajib 6 - Syarat: S.TAP.TSK Wajib 4 sudah terbit',
+    isMandatory: true,
+    aliases: ['PANGGILAN_TSK_1', 'SPGL_1_TSK'],
+    keywords: ['PANGGILAN TERSANGKA KE-1', 'PANGGILAN TERSANGKA 1'],
+  },
+  {
+    cluster: 'C',
+    itemNumber: 3,
+    code: 'SPGL_TSK_2',
+    title: 'SURAT PANGGILAN TERSANGKA KE-2',
+    type: 'Wajib 6 - Syarat: Surat Panggilan Ke-1 sudah ada',
+    isMandatory: true,
+    aliases: ['PANGGILAN_TSK_2', 'SPGL_2_TSK'],
+    keywords: ['PANGGILAN TERSANGKA KE-2', 'PANGGILAN TERSANGKA 2'],
+  },
+  {
+    cluster: 'C',
+    itemNumber: 4,
+    code: 'SPRIN_BAWA_TSK',
+    title: 'SURAT PERINTAH MEMBAWA TERSANGKA',
+    type: 'Wajib 6 - Syarat: Surat Panggilan Ke-2 sudah ada',
+    isMandatory: true,
+    aliases: ['SPRIN_BAWA_TSK_DAN_BA', 'SP_BAWA_TSK', 'BAWA_TSK'],
+    keywords: ['MEMBAWA TERSANGKA'],
+  },
+  {
+    cluster: 'C',
+    itemNumber: 5,
+    code: 'SPRIN_KAP',
+    title: 'SURAT PERINTAH PENANGKAPAN (SP.KAP)',
+    type: 'Wajib 6 - Syarat: S.TAP.TSK Wajib 4 sudah terbit',
+    isMandatory: true,
+    aliases: ['SPRIN_KAP_DAN_BA', 'SP_KAP', 'BA_KAP'],
+    keywords: ['PERINTAH PENANGKAPAN', 'SP.KAP'],
+  },
+  {
+    cluster: 'C',
+    itemNumber: 6,
+    code: 'DPO',
+    title: 'DAFTAR PENCARIAN ORANG (DPO)',
+    type: 'Opsional - Syarat: S.TAP.TSK sudah terbit',
+    isMandatory: false,
+    aliases: ['SURAT_DPO'],
+    keywords: ['PENCARIAN ORANG', 'DPO'],
+  },
+
+  // D. PENYITAAN & PENGGELEDAHAN
+  {
+    cluster: 'D',
+    itemNumber: 1,
+    code: 'SPRIN_SITA_UMUM',
+    title: 'SURAT PERINTAH PENYITAAN UMUM (SP.SITA UMUM)',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SP_SITA_UMUM', 'SPRIN_SITA'],
+    keywords: ['PENYITAAN UMUM', 'PERINTAH PENYITAAN'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 2,
+    code: 'BA_SITA',
+    title: 'BERITA ACARA PENYITAAN (BA SITA)',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['BERITA_ACARA_SITA'],
+    keywords: ['BERITA ACARA PENYITAAN', 'BA SITA'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 3,
+    code: 'TANDA_TERIMA_SITA',
+    title: 'SURAT TANDA PENERIMAAN / TANDA TERIMA PENYITAAN',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SURAT_TANDA_PENERIMAAN_SITA', 'STP_SITA'],
+    keywords: ['TANDA PENERIMAAN', 'TANDA TERIMA PENYITAAN'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 4,
+    code: 'MINTA_SETUJU_SITA_PN',
+    title: 'SURAT PERMINTAAN PERSETUJUAN PENYITAAN KE PENGADILAN NEGERI',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SURAT_MINTA_PERSETUJUAN_SITA_PN'],
+    keywords: ['PERSETUJUAN PENYITAAN KE PENGADILAN NEGERI', 'PERSETUJUAN PENYITAAN'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 5,
+    code: 'MOHON_IZIN_SITA_PN',
+    title: 'SURAT PERMOHONAN IZIN PENYITAAN KE PENGADILAN NEGERI',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SURAT_PERMOHONAN_IZIN_SITA_PN'],
+    keywords: ['IZIN PENYITAAN KE PENGADILAN NEGERI', 'PERMOHONAN IZIN PENYITAAN'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 6,
+    code: 'SPRIN_SITA_IZIN_KPN',
+    title: 'SURAT PERINTAH PENYITAAN SETELAH IZIN KETUA PENGADILAN NEGERI',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SP_SITA_IZIN_KPN'],
+    keywords: ['PENYITAAN SETELAH IZIN', 'IZIN KETUA PENGADILAN NEGERI'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 7,
+    code: 'SPRIN_GELEDAH_RUMAH',
+    title: 'SURAT PERINTAH PENGGELEDAHAN RUMAH',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SP_GELEDAH_RUMAH'],
+    keywords: ['PENGGELEDAHAN RUMAH'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 8,
+    code: 'SPRIN_GELEDAH_BADAN',
+    title: 'SURAT PERINTAH PENGGELEDAHAN BADAN',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SP_GELEDAH_BADAN'],
+    keywords: ['PENGGELEDAHAN BADAN'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 9,
+    code: 'MINTA_SETUJU_GELEDAH_PN',
+    title: 'SURAT PERMINTAAN PERSETUJUAN PENGGELEDAHAN KE PENGADILAN NEGERI',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SURAT_MINTA_PERSETUJUAN_GELEDAH_PN'],
+    keywords: ['PERSETUJUAN PENGGELEDAHAN KE PENGADILAN NEGERI', 'PERSETUJUAN PENGGELEDAHAN'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 10,
+    code: 'MOHON_IZIN_GELEDAH_PN',
+    title: 'SURAT PERMOHONAN IZIN PENGGELEDAHAN RUMAH KE PENGADILAN NEGERI',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SURAT_PERMOHONAN_IZIN_GELEDAH_PN'],
+    keywords: ['IZIN PENGGELEDAHAN RUMAH KE PENGADILAN NEGERI', 'IZIN PENGGELEDAHAN'],
+  },
+  {
+    cluster: 'D',
+    itemNumber: 11,
+    code: 'DPB',
+    title: 'DAFTAR PENCARIAN BARANG (DPB)',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['DAFTAR_PENCARIAN_BARANG'],
+    keywords: ['PENCARIAN BARANG', 'DPB'],
+  },
+
+  // E. KORBAN DAN SAKSI
+  {
+    cluster: 'E',
+    itemNumber: 1,
+    code: 'SPGL_SAKSI_1',
+    title: 'SURAT PANGGILAN SAKSI KE-1',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['PANGGILAN_SAKSI_1'],
+    keywords: ['PANGGILAN SAKSI KE-1', 'PANGGILAN SAKSI 1'],
+  },
+  {
+    cluster: 'E',
+    itemNumber: 2,
+    code: 'SPGL_SAKSI_2',
+    title: 'SURAT PANGGILAN SAKSI KE-2',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['PANGGILAN_SAKSI_2'],
+    keywords: ['PANGGILAN SAKSI KE-2', 'PANGGILAN SAKSI 2'],
+  },
+  {
+    cluster: 'E',
+    itemNumber: 3,
+    code: 'BA_HAK_KORBAN',
+    title: 'BERITA ACARA PENYAMPAIAN HAK-HAK KORBAN',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['HAK_KORBAN'],
+    keywords: ['HAK-HAK KORBAN', 'HAK KORBAN'],
+  },
+  {
+    cluster: 'E',
+    itemNumber: 4,
+    code: 'BA_HAK_SAKSI',
+    title: 'BERITA ACARA PENYAMPAIAN HAK-HAK SAKSI',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['HAK_SAKSI'],
+    keywords: ['HAK-HAK SAKSI', 'HAK SAKSI'],
+  },
+  {
+    cluster: 'E',
+    itemNumber: 5,
+    code: 'BA_HAK_PEREMPUAN',
+    title: 'BERITA ACARA PENYAMPAIAN HAK-HAK PEREMPUAN',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['HAK_PEREMPUAN'],
+    keywords: ['HAK-HAK PEREMPUAN', 'HAK PEREMPUAN'],
+  },
+  {
+    cluster: 'E',
+    itemNumber: 6,
+    code: 'BA_HAK_LANSIA',
+    title: 'BERITA ACARA PENYAMPAIAN HAK-HAK LANSIA',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['HAK_LANSIA'],
+    keywords: ['HAK-HAK LANSIA', 'HAK LANSIA'],
+  },
+  {
+    cluster: 'E',
+    itemNumber: 7,
+    code: 'SPRIN_BAWA_SAKSI',
+    title: 'SURAT PERINTAH MEMBAWA SAKSI',
+    type: 'Opsional - Syarat: SP.SIDIK & SP.GAS.SIDIK',
+    isMandatory: false,
+    aliases: ['SP_BAWA_SAKSI'],
+    keywords: ['MEMBAWA SAKSI'],
+  },
+
+  // F. PENAHANAN (BERJENJANG)
+  {
+    cluster: 'F',
+    itemNumber: 1,
+    code: 'SPRIN_HAN',
+    title: 'SURAT PERINTAH PENAHANAN (SP.HAN)',
+    type: 'Wajib 7 - Syarat MUTLAK: Minimal salah satu dari Wajib 6',
+    isMandatory: true,
+    aliases: ['SP_HAN', 'SPRIN_HAN_DAN_BA', 'BA_HAN'],
+    keywords: ['PERINTAH PENAHANAN', 'SP.HAN'],
+  },
+  {
+    cluster: 'F',
+    itemNumber: 2,
+    code: 'MINTA_PANJANG_HAN_40_KN',
+    title: 'SURAT PERMINTAAN PERPANJANGAN PENAHANAN 40 HARI KE KEPALA KEJAKSAAN NEGERI',
+    type: 'Wajib 8 - Syarat: SP.HAN sudah ada',
+    isMandatory: true,
+    aliases: ['SURAT_MINTA_PERPANJANG_HAN_40_HARI_KN'],
+    keywords: ['PERMINTAAN PERPANJANGAN PENAHANAN 40 HARI'],
+  },
+  {
+    cluster: 'F',
+    itemNumber: 3,
+    code: 'SPRIN_PANJANG_HAN_40_KN',
+    title: 'SURAT PERINTAH PERPANJANGAN PENAHANAN 40 HARI KEPALA KEJAKSAAN NEGERI',
+    type: 'Wajib 9 - Syarat: Permintaan 40 Hari sudah ada',
+    isMandatory: true,
+    aliases: ['SPRIN_PERPANJANG_HAN_40_HARI_KN_DAN_BA', 'SP_PANJANG_HAN_KN'],
+    keywords: ['PERPANJANGAN PENAHANAN 40 HARI KEPALA KEJAKSAAN NEGERI'],
+  },
+  {
+    cluster: 'F',
+    itemNumber: 4,
+    code: 'MINTA_PANJANG_HAN_30_PN_1',
+    title: 'SURAT PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP I KE KETUA PENGADILAN NEGERI',
+    type: 'Wajib 10 - Syarat: Sprin Panjang KN sudah ada',
+    isMandatory: true,
+    aliases: ['SURAT_MINTA_PERPANJANG_HAN_30_HARI_1_KPN'],
+    keywords: ['PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP I'],
+  },
+  {
+    cluster: 'F',
+    itemNumber: 5,
+    code: 'SPRIN_PANJANG_HAN_30_PN_1',
+    title: 'SURAT PERINTAH PERPANJANGAN PENAHANAN 30 HARI TAHAP I KETUA PENGADILAN NEGERI',
+    type: 'Wajib 11 - Syarat: Permintaan 30 Hari KPN 1 sudah ada',
+    isMandatory: true,
+    aliases: ['SPRIN_PERPANJANG_HAN_30_HARI_1_KPN_DAN_BA'],
+    keywords: ['PERPANJANGAN PENAHANAN 30 HARI TAHAP I KETUA PENGADILAN NEGERI'],
+  },
+  {
+    cluster: 'F',
+    itemNumber: 6,
+    code: 'MINTA_PANJANG_HAN_30_PN_2',
+    title: 'SURAT PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP II KE KETUA PENGADILAN NEGERI',
+    type: 'Wajib 12 - Syarat: Sprin Panjang KPN 1 sudah ada',
+    isMandatory: true,
+    aliases: ['SURAT_MINTA_PERPANJANG_HAN_30_HARI_2_KPN'],
+    keywords: ['PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP II'],
+  },
+  {
+    cluster: 'F',
+    itemNumber: 7,
+    code: 'SPRIN_PANJANG_HAN_30_PN_2',
+    title: 'SURAT PERINTAH PERPANJANGAN PENAHANAN 30 HARI TAHAP II KETUA PENGADILAN NEGERI',
+    type: 'Wajib 13 - Syarat: Permintaan 30 Hari KPN 2 sudah ada',
+    isMandatory: true,
+    aliases: ['SPRIN_PERPANJANG_HAN_30_HARI_2_KPN'],
+    keywords: ['PERPANJANGAN PENAHANAN 30 HARI TAHAP II KETUA PENGADILAN NEGERI'],
+  },
+  {
+    cluster: 'F',
+    itemNumber: 8,
+    code: 'SPRIN_KELUAR_HAN',
+    title: 'SURAT PERINTAH PENGELUARAN TAHANAN',
+    type: 'Opsional - Syarat: SP.HAN sudah ada',
+    isMandatory: false,
+    aliases: ['SP_KELUAR_HAN', 'PENGELUARAN_TAHANAN'],
+    keywords: ['PENGELUARAN TAHANAN'],
+  },
+
+  // G. BERKAS PERKARA (TAHAP I & TAHAP II)
+  {
+    cluster: 'G',
+    itemNumber: 1,
+    code: 'BP_RESKRIM',
+    title: 'BERKAS PERKARA (SAMPUL & DAFTAR ISI)',
+    type: 'Opsional - Syarat: SP.SIDIK, SP.GAS & S.TAP.TSK',
+    isMandatory: false,
+    aliases: ['BERKAS_PERKARA'],
+    keywords: ['BERKAS PERKARA'],
+  },
+  {
+    cluster: 'G',
+    itemNumber: 2,
+    code: 'SURAT_PENGANTAR_BP_TAHAP_1',
+    title: 'SURAT PENGANTAR BERKAS PERKARA TAHAP I KE KEJAKSAAN NEGERI',
+    type: 'Opsional - Syarat: SP.SIDIK, SP.GAS & S.TAP.TSK',
+    isMandatory: false,
+    aliases: ['PENGANTAR_TAHAP_1'],
+    keywords: ['PENGANTAR BERKAS PERKARA TAHAP I', 'BERKAS PERKARA TAHAP I'],
+  },
+  {
+    cluster: 'G',
+    itemNumber: 3,
+    code: 'SURAT_PENYERAHAN_TAHAP_2',
+    title: 'SURAT PENYERAHAN TANGGUNG JAWAB TERSANGKA DAN BARANG BUKTI (TAHAP II)',
+    type: 'Opsional - Syarat: SP.SIDIK, SP.GAS & S.TAP.TSK',
+    isMandatory: false,
+    aliases: ['TAHAP_2', 'PENYERAHAN_TAHAP_2'],
+    keywords: ['PENYERAHAN TANGGUNG JAWAB TERSANGKA', 'TAHAP II'],
+  },
+  {
+    cluster: 'G',
+    itemNumber: 4,
+    code: 'BA_PENYERAHAN_TAHAP_2',
+    title: 'BERITA ACARA PENYERAHAN TERSANGKA DAN BARANG BUKTI (TAHAP II)',
+    type: 'Opsional - Syarat: SP.SIDIK, SP.GAS & S.TAP.TSK',
+    isMandatory: false,
+    aliases: ['BA_TAHAP_2'],
+    keywords: ['BERITA ACARA PENYERAHAN TERSANGKA', 'BA PENYERAHAN'],
+  },
+  {
+    cluster: 'G',
+    itemNumber: 5,
+    code: 'RESUME_BP',
+    title: 'RESUME BERKAS PERKARA',
+    type: 'Opsional - Syarat: SP.SIDIK, SP.GAS & S.TAP.TSK',
+    isMandatory: false,
+    aliases: ['RESUME'],
+    keywords: ['RESUME BERKAS PERKARA', 'RESUME'],
+  }
+];
+
+// Helper: Mencari file template Supabase yang diunggah di Template Studio
+export const findUploadedTemplate = (masterItem, allTemplates = []) => {
+  if (!masterItem || !Array.isArray(allTemplates)) return null;
+
+  const mCode = (masterItem.code || '').toUpperCase().trim();
+  const aliases = (masterItem.aliases || []).map(a => a.toUpperCase().trim());
+  const keywords = (masterItem.keywords || []).map(k => k.toUpperCase().trim());
+
+  // 1. Cocokkan berdasarkan kesamaan kode unik atau aliases
+  const codeMatch = allTemplates.find(t => {
+    const tCode = (t.code || '').toUpperCase().trim();
+    return tCode === mCode || aliases.includes(tCode);
+  });
+  if (codeMatch) return codeMatch;
+
+  // 2. Cocokkan berdasarkan kesamaan kata kunci judul resmi
+  const titleMatch = allTemplates.find(t => {
+    const tTitle = (t.title || t.name || '').toUpperCase().trim();
+    return keywords.some(k => tTitle.includes(k));
+  });
+  if (titleMatch) return titleMatch;
+
+  return null;
+};
+
+// Helper 1: Klasifikasi Tahapan Dokumen (LIDIK vs SIDIK)
+export const getTemplateStage = (tpl) => {
+  if (!tpl) return 'SIDIK';
+  const cat = (tpl.category || '').toUpperCase();
+  const code = (tpl.code || '').toUpperCase();
+  const title = (tpl.title || tpl.name || '').toUpperCase();
+
+  if (cat.includes('LIDIK') || cat.includes('PENYELIDIKAN')) return 'LIDIK';
+  if (cat.includes('SIDIK') || cat.includes('PENYIDIKAN')) return 'SIDIK';
+
+  // Cek kata kunci penyelidikan
+  if (
+    code.includes('LIDIK') ||
+    title.includes('PENYELIDIKAN') ||
+    title.includes('LIDIK') ||
+    code.includes('VER') ||
+    code.includes('VEP') ||
+    title.includes('VISUM') ||
+    title.includes('VER') ||
+    title.includes('PSIKIATRIKUM') ||
+    code.includes('SP2HP_LIDIK') ||
+    code.includes('LHP') ||
+    title.includes('HASIL PENYELIDIKAN') ||
+    code.includes('GELAR') ||
+    title.includes('GELAR PERKARA')
+  ) {
+    return 'LIDIK';
+  }
+
+  return 'SIDIK';
+};
+
+// Helper 2: Klasifikasi Klaster Dropdown SIDIK (A s.d. G)
+export const getSidikCluster = (tpl) => {
+  if (!tpl) return 'A';
+  const code = (tpl.code || '').toUpperCase().trim();
+  const title = (tpl.title || tpl.name || '').toUpperCase().trim();
+
+  // A. SURAT PERINTAH PENYIDIKAN
+  if (
+    code === 'SPRIN_SIDIK' || 
+    code === 'SP_SIDIK' || 
+    code === 'SPRIN_GAS_SIDIK' || 
+    code === 'SPGAS_SIDIK' ||
+    code === 'SP_GAS_SIDIK' ||
+    code.includes('SIDIK_TAMBAHAN') ||
+    code.includes('GAS_SIDIK_TAMBAHAN') ||
+    code.includes('SIDIK_LANJUTAN') ||
+    code.includes('GAS_SIDIK_LANJUTAN') ||
+    (title.includes('PERINTAH PENYIDIKAN') && !title.includes('PENGELUARAN') && !title.includes('PENAHANAN')) ||
+    (title.includes('TUGAS PENYIDIKAN') && !title.includes('PENYELIDIKAN'))
+  ) {
+    return 'A';
+  }
+
+  // B. PEMBERITAHUAN DIMULAINYA PENYIDIKAN (SPDP)
+  if (code.includes('SPDP') || title.includes('DIMULAINYA PENYIDIKAN') || title.includes('SPDP')) {
+    return 'B';
+  }
+
+  // C. TINDAKAN TERHADAP TERSANGKA (TAP, GIL, KAP, DPO)
+  if (
+    code.includes('TAP_TSK') ||
+    title.includes('PENETAPAN TERSANGKA') ||
+    title.includes('PANGGILAN TERSANGKA') || 
+    code.includes('SPGL_TSK') ||
+    title.includes('MEMBAWA TERSANGKA') || 
+    code.includes('SPRIN_BAWA_TSK') ||
+    ((code.includes('KAP') || title.includes('PENANGKAPAN')) && !code.includes('LEPAS') && !title.includes('PELEPASAN')) ||
+    code.includes('DPO') || 
+    title.includes('PENCARIAN ORANG')
+  ) {
+    return 'C';
+  }
+
+  // F. PENAHANAN (BERJENJANG) - diprioritaskan sebelum klaster lain untuk kata kunci HAN
+  if (
+    code.includes('HAN') || 
+    title.includes('PENAHANAN') || 
+    title.includes('TAHANAN') ||
+    code.includes('KELUAR_HAN') ||
+    title.includes('PENGELUARAN TAHANAN')
+  ) {
+    return 'F';
+  }
+
+  // D. PENYITAAN & PENGGELEDAHAN
+  if (
+    code.includes('SITA') || 
+    title.includes('PENYITAAN') ||
+    code.includes('GELEDAH') || 
+    title.includes('PENGGELEDAHAN') ||
+    code.includes('DPB') || 
+    title.includes('PENCARIAN BARANG')
+  ) {
+    return 'D';
+  }
+
+  // E. KORBAN DAN SAKSI
+  if (
+    code.includes('SAKSI') || 
+    code.includes('KORBAN') || 
+    title.includes('SAKSI') || 
+    title.includes('KORBAN') ||
+    title.includes('HAK-HAK') ||
+    title.includes('PEREMPUAN') ||
+    title.includes('LANSIA') ||
+    code.includes('HAK_')
+  ) {
+    return 'E';
+  }
+
+  // G. BERKAS PERKARA (TAHAP I & TAHAP II)
+  if (
+    code.includes('BP_') || 
+    code.includes('TAHAP_1') || 
+    code.includes('TAHAP_2') || 
+    code.includes('TAHAP_I') || 
+    code.includes('TAHAP_II') || 
+    title.includes('BERKAS PERKARA') || 
+    title.includes('P-19') || 
+    title.includes('P19') ||
+    title.includes('TAHAP I') ||
+    title.includes('TAHAP II') ||
+    title.includes('TANGGUNG JAWAB TERSANGKA DAN BARANG BUKTI')
+  ) {
+    return 'G';
+  }
+
+  return 'A';
+};
+
+// Helper 3: Penegakan Urutan Wajib Mindik Sidik (Sequential Prerequisite Guard)
+export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [], activeSuspect = null) => {
+  if (!tpl) return { allowed: false, unlocked: false, reason: 'Pilih format template terlebih dahulu.' };
+  
+  // Dokumen pada Tahap Penyelidikan (LIDIK) selalu terbuka
+  if (getTemplateStage(tpl) === 'LIDIK') {
+    return { allowed: true, unlocked: true, reason: '' };
+  }
+
+  const generatedDocs = caseDocs || [];
+  const currentCase = targetCase;
+
+  // Cek riwayat dokumen perkara (dari case_generated_documents atau data case)
+  const hasSpSidik = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase();
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return (
+      c.includes('SP_SIDIK') || 
+      c.includes('SPRIN_SIDIK') || 
+      (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN'))
+    );
+  }) || Boolean(currentCase?.no_sprin_sidik || currentCase?.references?.no_sprin_sidik);
+
+  const hasSpGasSidik = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase();
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return (
+      c.includes('SP_GAS') || 
+      c.includes('SPGAS') || 
+      c.includes('SPRIN_GAS') || 
+      t.includes('TUGAS PENYIDIKAN')
+    );
+  }) || Boolean(currentCase?.no_sprin_gas_sidik || currentCase?.references?.no_sprin_gas_sidik);
+
+  const isValidDocNumber = (val) => {
+    if (!val || typeof val !== 'string') return false;
+    const clean = val.trim().toLowerCase();
+    if (!clean || clean === '-' || clean === '--' || clean.startsWith('...') || clean.includes('belum') || clean === 'null' || clean === 'undefined') {
+      return false;
+    }
+    return true;
+  };
+
+  const hasTapTsk = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase();
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return c.includes('TAP_TSK') || c.includes('S_TAP_TSK') || t.includes('PENETAPAN TERSANGKA');
+  }) || isValidDocNumber(currentCase?.no_sp_tap_tsk);
+
+  const hasPanggilan1 = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase();
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return (
+      c.includes('PANGGILAN_TSK_1') || 
+      c.includes('SPGL_TSK_1') || 
+      c.includes('SPGL_1_TSK') || 
+      t.includes('PANGGILAN TERSANGKA KE-1') || 
+      t.includes('PANGGILAN TERSANGKA 1')
+    );
+  });
+
+  const hasPanggilan2 = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase();
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return (
+      c.includes('PANGGILAN_TSK_2') || 
+      c.includes('SPGL_TSK_2') || 
+      c.includes('SPGL_2_TSK') || 
+      t.includes('PANGGILAN TERSANGKA KE-2') || 
+      t.includes('PANGGILAN TERSANGKA 2')
+    );
+  });
+
+  const hasBawaTsk = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase();
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return (
+      c.includes('BAWA_TSK') || 
+      c.includes('SPRIN_BAWA_TSK') || 
+      t.includes('MEMBAWA TERSANGKA')
+    );
+  });
+
+  const hasSpKap = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase();
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return (
+      (c.includes('KAP') || t.includes('PENANGKAPAN')) && 
+      !c.includes('LEPAS') && 
+      !t.includes('PELEPASAN')
+    );
+  }) || Boolean(
+    activeSuspect?.no_sprin_kap ||
+    currentCase?.no_sprin_kap ||
+    currentCase?.references?.no_sprin_kap ||
+    (Array.isArray(suspects) && suspects.some(s => s.no_sprin_kap))
+  );
+
+  const hasUpayaHadir = hasPanggilan1 || hasPanggilan2 || hasBawaTsk || hasSpKap;
+
+  const hasHan = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase();
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return (
+      c.includes('SP_HAN') || 
+      c.includes('SPRIN_HAN') || 
+      (t.includes('PERINTAH PENAHANAN') && !t.includes('PERPANJANGAN') && !t.includes('PENGELUARAN'))
+    );
+  }) || Boolean(
+    activeSuspect?.no_sprin_han ||
+    currentCase?.no_sprin_han ||
+    currentCase?.references?.no_sprin_han ||
+    (Array.isArray(suspects) && suspects.some(s => s.no_sprin_han))
+  );
+
+  const docCode = (tpl.code || '').toUpperCase().trim();
+  const docTitle = (tpl.title || tpl.name || '').toUpperCase().trim();
+
+  // A. SP.SIDIK (Gerbang Utama Penyidikan Selalu Terbuka)
+  if (
+    docCode === 'SP_SIDIK' || 
+    docCode === 'SPRIN_SIDIK' || 
+    (docTitle.includes('PERINTAH PENYIDIKAN') && !docTitle.includes('TUGAS') && !docTitle.includes('TAMBAHAN') && !docTitle.includes('LANJUTAN'))
+  ) {
+    return { unlocked: true, allowed: true, reason: '' };
+  }
+
+  // A. SP.GAS.SIDIK
+  if (
+    docCode === 'SP_GAS_SIDIK' || 
+    docCode === 'SPRIN_GAS_SIDIK' || 
+    docCode === 'SPGAS_SIDIK' || 
+    (docTitle.includes('TUGAS PENYIDIKAN') && !docTitle.includes('TAMBAHAN') && !docTitle.includes('LANJUTAN'))
+  ) {
+    return { 
+      unlocked: hasSpSidik, 
+      allowed: hasSpSidik, 
+      reason: hasSpSidik ? '' : 'Wajib membuat SP.SIDIK terlebih dahulu.' 
+    };
+  }
+
+  // A. SP.SIDIK / SP.GAS TAMBAHAN & LANJUTAN
+  if (
+    docCode.includes('TAMBAHAN') || 
+    docCode.includes('LANJUTAN') || 
+    docTitle.includes('TAMBAHAN') || 
+    docTitle.includes('LANJUTAN')
+  ) {
+    if (getSidikCluster(tpl) === 'A') {
+      return { 
+        unlocked: hasSpGasSidik, 
+        allowed: hasSpGasSidik, 
+        reason: hasSpGasSidik ? '' : 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.' 
+      };
+    }
+  }
+
+  // 1. S.TAP.TSK (SURAT KETETAPAN PENETAPAN TERSANGKA)
+  // Cukup syarat dasar SP.SIDIK & SP.GAS.SIDIK terpenuhi! Tidak boleh bergantung pada SPDP Tersangka!
+  if (
+    docCode === 'SP_TAP_TSK' ||
+    docCode === 'TAP_TSK' ||
+    docCode === 'S_TAP_TSK' ||
+    docTitle.includes('PENETAPAN TERSANGKA') ||
+    docTitle.includes('S.TAP.TSK')
+  ) {
+    return {
+      unlocked: Boolean(hasSpGasSidik),
+      allowed: Boolean(hasSpGasSidik),
+      reason: hasSpGasSidik ? '' : 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.'
+    };
+  }
+
+  // 2. SPDP TERSANGKA (Wajib 5)
+  // MUTLAK WAJIB ADA S.TAP.TSK TERLEBIH DAHULU!
+  if (
+    docCode === 'SPDP_TSK' ||
+    docCode === 'SPDP_TERSANGKA' ||
+    docCode === 'SPDP_LEBIH_1_TSK' ||
+    docCode === 'SPDP_MORE_1_TSK' ||
+    docTitle.includes('SPDP DENGAN TERSANGKA') ||
+    docTitle.includes('SPDP TERSANGKA') ||
+    docTitle.includes('LEBIH DARI 1 TERSANGKA')
+  ) {
+    return {
+      unlocked: Boolean(hasTapTsk),
+      allowed: Boolean(hasTapTsk),
+      reason: hasTapTsk ? '' : 'Wajib menerbitkan SURAT KETETAPAN PENETAPAN TERSANGKA (S.TAP.TSK) terlebih dahulu.'
+    };
+  }
+
+  // 3. SPDP TERLAPOR / TANPA NAMA (Wajib 3)
+  if (
+    docCode === 'SPDP_TERLAPOR' ||
+    docCode === 'SPDP_LEBIH_1_TERLAPOR' ||
+    docCode === 'SPDP_TANPA_NAMA' ||
+    docCode.startsWith('SPDP') ||
+    docTitle.includes('DIMULAINYA PENYIDIKAN')
+  ) {
+    return {
+      unlocked: Boolean(hasSpGasSidik),
+      allowed: Boolean(hasSpGasSidik),
+      reason: hasSpGasSidik ? '' : 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.'
+    };
+  }
+
+  // C. TINDAKAN TERHADAP TERSANGKA (Wajib 6)
+  if (
+    docCode === 'PANGGILAN_TSK_1' || 
+    docCode === 'SPGL_TSK_1' || 
+    docCode === 'SP_KAP' || 
+    docCode === 'SPRIN_KAP' || 
+    (docTitle.includes('PENANGKAPAN') && !docTitle.includes('PELEPASAN')) || 
+    docTitle.includes('PANGGILAN TERSANGKA KE-1') || 
+    docTitle.includes('PANGGILAN TERSANGKA 1')
+  ) {
+    return { 
+      unlocked: hasTapTsk, 
+      allowed: hasTapTsk, 
+      reason: hasTapTsk ? '' : 'Wajib menerbitkan Penetapan Tersangka (S.TAP.TSK) terlebih dahulu.' 
+    };
+  }
+
+  if (
+    docCode === 'PANGGILAN_TSK_2' || 
+    docCode === 'SPGL_TSK_2' || 
+    docTitle.includes('PANGGILAN TERSANGKA KE-2') || 
+    docTitle.includes('PANGGILAN TERSANGKA 2')
+  ) {
+    return { 
+      unlocked: hasPanggilan1, 
+      allowed: hasPanggilan1, 
+      reason: hasPanggilan1 ? '' : 'Wajib menerbitkan Surat Panggilan Tersangka Ke-1 terlebih dahulu.' 
+    };
+  }
+
+  if (
+    docCode === 'SP_BAWA_TSK' || 
+    docCode === 'SPRIN_BAWA_TSK' || 
+    docCode === 'BAWA_TSK' || 
+    docTitle.includes('MEMBAWA TERSANGKA')
+  ) {
+    return { 
+      unlocked: hasPanggilan2, 
+      allowed: hasPanggilan2, 
+      reason: hasPanggilan2 ? '' : 'Wajib menerbitkan Surat Panggilan Tersangka Ke-2 terlebih dahulu.' 
+    };
+  }
+
+  if (docCode.includes('DPO') || docTitle.includes('PENCARIAN ORANG')) {
+    return { 
+      unlocked: hasTapTsk, 
+      allowed: hasTapTsk, 
+      reason: hasTapTsk ? '' : 'Wajib menerbitkan Penetapan Tersangka (S.TAP.TSK) terlebih dahulu.' 
+    };
+  }
+
+  // F. PENAHANAN (BERJENJANG)
+  if (
+    docCode === 'SP_HAN' || 
+    docCode === 'SPRIN_HAN' || 
+    (docTitle.includes('PERINTAH PENAHANAN') && !docTitle.includes('PERPANJANGAN') && !docTitle.includes('PENGELUARAN'))
+  ) {
+    return { 
+      unlocked: hasUpayaHadir, 
+      allowed: hasUpayaHadir, 
+      reason: hasUpayaHadir ? '' : 'Wajib ada Surat Panggilan / Surat Perintah Membawa / Surat Perintah Penangkapan terlebih dahulu.' 
+    };
+  }
+
+  if (docCode.includes('MINTA_PANJANG_HAN_40') || docTitle.includes('PERMINTAAN PERPANJANGAN PENAHANAN 40 HARI')) {
+    return { 
+      unlocked: hasHan, 
+      allowed: hasHan, 
+      reason: hasHan ? '' : 'Wajib menerbitkan SURAT PERINTAH PENAHANAN (SP.HAN) terlebih dahulu.' 
+    };
+  }
+
+  if (docCode.includes('SPRIN_PANJANG_HAN_40') || docTitle.includes('PERPANJANGAN PENAHANAN 40 HARI KEPALA KEJAKSAAN NEGERI')) {
+    const hasMintaKn = generatedDocs.some(d => (d.template_code || '').includes('MINTA_PANJANG_HAN_40') || (d.title || d.document_title || '').includes('PERMINTAAN PERPANJANGAN PENAHANAN 40 HARI'));
+    return { 
+      unlocked: hasMintaKn, 
+      allowed: hasMintaKn, 
+      reason: hasMintaKn ? '' : 'Wajib mengajukan SURAT PERMINTAAN PERPANJANGAN PENAHANAN 40 HARI KE KN terlebih dahulu.' 
+    };
+  }
+
+  if (docCode.includes('MINTA_PANJANG_HAN_30_PN_1') || docTitle.includes('PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP I')) {
+    const hasPanjangKn = Boolean(currentCase?.no_panjang_han_kn || currentCase?.references?.no_panjang_han_kn || generatedDocs.some(d => (d.template_code || '').includes('SPRIN_PANJANG_HAN_40') || (d.title || d.document_title || '').includes('PERPANJANGAN PENAHANAN 40 HARI KEPALA KEJAKSAAN NEGERI')));
+    return { 
+      unlocked: hasPanjangKn, 
+      allowed: hasPanjangKn, 
+      reason: hasPanjangKn ? '' : 'Wajib menyelesaikan perpanjangan penahanan 40 hari Kejari terlebih dahulu.' 
+    };
+  }
+
+  if (docCode.includes('SPRIN_PANJANG_HAN_30_PN_1') || docTitle.includes('PERPANJANGAN PENAHANAN 30 HARI TAHAP I KETUA PENGADILAN NEGERI')) {
+    const hasMintaPn1 = generatedDocs.some(d => (d.template_code || '').includes('MINTA_PANJANG_HAN_30_PN_1') || (d.title || d.document_title || '').includes('PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP I'));
+    return { 
+      unlocked: hasMintaPn1, 
+      allowed: hasMintaPn1, 
+      reason: hasMintaPn1 ? '' : 'Wajib mengajukan SURAT PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP I KE KPN terlebih dahulu.' 
+    };
+  }
+
+  if (docCode.includes('MINTA_PANJANG_HAN_30_PN_2') || docTitle.includes('PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP II')) {
+    const hasPanjangPn1 = Boolean(currentCase?.no_tap_han_pn_1 || currentCase?.references?.no_tap_han_pn1 || generatedDocs.some(d => (d.template_code || '').includes('SPRIN_PANJANG_HAN_30_PN_1') || (d.title || d.document_title || '').includes('PERPANJANGAN PENAHANAN 30 HARI TAHAP I KETUA PENGADILAN NEGERI')));
+    return { 
+      unlocked: hasPanjangPn1, 
+      allowed: hasPanjangPn1, 
+      reason: hasPanjangPn1 ? '' : 'Wajib menyelesaikan perpanjangan penahanan 30 hari Tahap I PN terlebih dahulu.' 
+    };
+  }
+
+  if (docCode.includes('SPRIN_PANJANG_HAN_30_PN_2') || docTitle.includes('PERPANJANGAN PENAHANAN 30 HARI TAHAP II KETUA PENGADILAN NEGERI')) {
+    const hasMintaPn2 = generatedDocs.some(d => (d.template_code || '').includes('MINTA_PANJANG_HAN_30_PN_2') || (d.title || d.document_title || '').includes('PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP II'));
+    return { 
+      unlocked: hasMintaPn2, 
+      allowed: hasMintaPn2, 
+      reason: hasMintaPn2 ? '' : 'Wajib mengajukan SURAT PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP II KE KPN terlebih dahulu.' 
+    };
+  }
+
+  if (docCode.includes('KELUAR_HAN') || docTitle.includes('PENGELUARAN TAHANAN')) {
+    return { 
+      unlocked: hasHan, 
+      allowed: hasHan, 
+      reason: hasHan ? '' : 'Wajib ada SURAT PERINTAH PENAHANAN (SP.HAN) terlebih dahulu.' 
+    };
+  }
+
+  // G. BERKAS PERKARA (TAHAP I & II)
+  if (getSidikCluster(tpl) === 'G') {
+    if (!hasSpGasSidik) {
+      return { 
+        unlocked: false, 
+        allowed: false, 
+        reason: 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.' 
+      };
+    }
+    if (!hasTapTsk) {
+      return { 
+        unlocked: false, 
+        allowed: false, 
+        reason: 'Wajib menerbitkan SURAT KETETAPAN PENETAPAN TERSANGKA (S.TAP.TSK) terlebih dahulu.' 
+      };
+    }
+    return { unlocked: true, allowed: true, reason: '' };
+  }
+
+  // D & E. SITA, GELEDAH, SAKSI (OPSIONAL)
+  return { 
+    unlocked: hasSpGasSidik, 
+    allowed: hasSpGasSidik, 
+    reason: hasSpGasSidik ? '' : 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.' 
+  };
+};
+
 export default function DocGeneratorView({ 
   cases = [], 
   personnel = [],
@@ -61,14 +1086,27 @@ export default function DocGeneratorView({
 }) {
   const isSuperAdmin = userRole === 'super_admin';
 
-  const [allTemplates, setAllTemplates] = useState(() => {
-    const deleted = getDeletedTemplateCodes();
-    return mockTemplates.filter(t => !deleted.includes(t.code) && !deleted.includes(String(t.id)));
+  // 1. Inisialisasi HANYA dari Template Studio (tanpa mock fallback)
+  const [allTemplates, setAllTemplates] = useState([]);
+  
+  // 2. Sistem Pemilihan Tahapan: 'LIDIK' vs 'SIDIK'
+  const [tahapMindik, setTahapMindik] = useState(() => {
+    if (initialTemplate) {
+      return getTemplateStage(initialTemplate);
+    }
+    return 'SIDIK';
   });
+  const [showTahapModal, setShowTahapModal] = useState(false);
+
+  // Riwayat dokumen yang diterbitkan pada perkara aktif
+  const [caseDocuments, setCaseDocuments] = useState([]);
+
   const [selectedCaseId, setSelectedCaseId] = useState(initialCase ? initialCase.id : (cases[0]?.id || ''));
   const [selectedTemplateCode, setSelectedTemplateCode] = useState(
-    initialTemplate ? initialTemplate.code : 'SPRIN_SIDIK'
+    initialTemplate ? initialTemplate.code : null
   );
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [selectedClusterTab, setSelectedClusterTab] = useState('A');
   const [formValues, setFormValues] = useState({});
   const [isSaved, setIsSaved] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -107,6 +1145,15 @@ export default function DocGeneratorView({
     }
   }, [initialSuspectId]);
 
+  // Sync initialTemplate if props change
+  useEffect(() => {
+    if (initialTemplate) {
+      const stage = getTemplateStage(initialTemplate);
+      setTahapMindik(stage);
+      setSelectedTemplateCode(initialTemplate.code);
+    }
+  }, [initialTemplate]);
+
   // Multi-Korban States
   const [selectedVictimId, setSelectedVictimId] = useState('');
 
@@ -131,7 +1178,9 @@ export default function DocGeneratorView({
   const activePersonnel = personnel.length > 0 ? personnel : mockPersonnel;
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
-  // 1. Fetch templates real-time from Supabase
+  const currentCase = cases.find(c => c.id === selectedCaseId) || cases[0];
+
+  // 1. Fetch templates real-time HANYA dari Supabase Template Studio (Tanpa Mock)
   const fetchTemplates = async () => {
     setIsLoadingTemplates(true);
     try {
@@ -140,18 +1189,73 @@ export default function DocGeneratorView({
         .select('*')
         .order('created_at', { ascending: false });
 
-      const supabaseData = data || [];
-      const merged = [...supabaseData];
+      if (error) {
+        console.warn('Could not fetch supabase templates:', error);
+        setAllTemplates([]);
+        return;
+      }
 
+      const supabaseData = data || [];
       const deleted = getDeletedTemplateCodes();
-      mockTemplates.forEach(mt => {
-        if (!deleted.includes(mt.code) && !deleted.includes(String(mt.id)) && !merged.some(st => st.code === mt.code)) {
-          merged.push(mt);
+
+      // HANYA template yang memiliki file_path atau file_url valid (berasal dari Template Studio)
+      const validTemplates = supabaseData
+        .filter(t => {
+          const hasValidFile = Boolean(
+            (t.file_path && String(t.file_path).trim()) || 
+            (t.file_url && String(t.file_url).trim())
+          );
+          const isNotDeleted = !deleted.includes(t.code) && !deleted.includes(String(t.id));
+          return hasValidFile && isNotDeleted;
+        })
+        .map(t => ({
+          ...t,
+          title: (t.title || t.name || t.code || '').toUpperCase(),
+        }));
+
+      setAllTemplates(validTemplates);
+
+      // Helper: urutkan template sesuai susunan master baku KUHAP (SP.SIDIK -> SP.GAS.SIDIK -> dst)
+      const sortTemplatesByMasterOrder = (tplList = []) => {
+        return [...tplList].sort((a, b) => {
+          const aCode = (a.code || '').toUpperCase().trim();
+          const bCode = (b.code || '').toUpperCase().trim();
+          const idxA = MASTER_MINDIK_SIDIK.findIndex(m => m.code === aCode || (m.aliases || []).includes(aCode));
+          const idxB = MASTER_MINDIK_SIDIK.findIndex(m => m.code === bCode || (m.aliases || []).includes(bCode));
+          const rankA = idxA !== -1 ? idxA : 999;
+          const rankB = idxB !== -1 ? idxB : 999;
+          return rankA - rankB;
+        });
+      };
+
+      // Nilai awal (initial state) selectedTemplateCode:
+      // Prioritaskan memilih template pertama yang SUDAH diunggah di Template Studio dan UNLOCKED.
+      setSelectedTemplateCode(prev => {
+        if (validTemplates.length === 0) return null;
+        if (prev) {
+          const existing = validTemplates.find(t => t.code === prev);
+          if (existing && Boolean((existing.file_path && String(existing.file_path).trim()) || (existing.file_url && String(existing.file_url).trim()))) {
+            const p = checkPrerequisite(existing, currentCase, caseDocuments, caseSuspects, null);
+            if (p.unlocked || p.allowed) return prev;
+          }
         }
+        const availableInStage = validTemplates.filter(t => 
+          getTemplateStage(t) === tahapMindik && 
+          Boolean((t.file_path && String(t.file_path).trim()) || (t.file_url && String(t.file_url).trim()))
+        );
+        const pool = availableInStage.length > 0 ? availableInStage : validTemplates.filter(t => 
+          Boolean((t.file_path && String(t.file_path).trim()) || (t.file_url && String(t.file_url).trim()))
+        );
+        const orderedPool = sortTemplatesByMasterOrder(pool);
+        const firstUnlocked = orderedPool.find(t => {
+          const p = checkPrerequisite(t, currentCase, caseDocuments, caseSuspects, null);
+          return p.unlocked || p.allowed;
+        });
+        return firstUnlocked ? firstUnlocked.code : null;
       });
-      setAllTemplates(merged);
     } catch (err) {
       console.warn('Could not fetch supabase templates:', err);
+      setAllTemplates([]);
     } finally {
       setIsLoadingTemplates(false);
     }
@@ -161,8 +1265,74 @@ export default function DocGeneratorView({
     fetchTemplates();
   }, []);
 
-  const currentCase = cases.find(c => c.id === selectedCaseId) || cases[0];
-  const currentTemplate = allTemplates.find(t => t.code === selectedTemplateCode) || allTemplates[0] || mockTemplates[0];
+  // Muat arsip dokumen dari Supabase (case_generated_documents & documents) untuk validasi prasyarat perkara aktif
+  useEffect(() => {
+    if (!currentCase?.id) {
+      setCaseDocuments([]);
+      return;
+    }
+    const loadCaseDocs = async () => {
+      try {
+        const [resGen, resDocs] = await Promise.allSettled([
+          supabase.from('case_generated_documents').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false }),
+          supabase.from('documents').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false })
+        ]);
+
+        const listGen = (resGen.status === 'fulfilled' && !resGen.value.error && resGen.value.data) ? resGen.value.data : [];
+        const listDocs = (resDocs.status === 'fulfilled' && !resDocs.value.error && resDocs.value.data) ? resDocs.value.data : [];
+
+        setCaseDocuments([...listGen, ...listDocs]);
+      } catch (err) {
+        console.warn('Load case documents notice:', err);
+      }
+    };
+    loadCaseDocs();
+  }, [currentCase?.id]);
+
+  // Otomatis tentukan template awal jika belum terpilih dan ada template yang terbuka
+  useEffect(() => {
+    if (allTemplates.length === 0) return;
+    if (!selectedTemplateCode) {
+      const availableTemplates = allTemplates.filter(t => 
+        Boolean((t.file_path && String(t.file_path).trim()) || (t.file_url && String(t.file_url).trim()))
+      );
+      const inStage = availableTemplates.filter(t => getTemplateStage(t) === tahapMindik);
+      const pool = inStage.length > 0 ? inStage : availableTemplates;
+      const sortTemplatesByMasterOrder = (tplList = []) => {
+        return [...tplList].sort((a, b) => {
+          const aCode = (a.code || '').toUpperCase().trim();
+          const bCode = (b.code || '').toUpperCase().trim();
+          const idxA = MASTER_MINDIK_SIDIK.findIndex(m => m.code === aCode || (m.aliases || []).includes(aCode));
+          const idxB = MASTER_MINDIK_SIDIK.findIndex(m => m.code === bCode || (m.aliases || []).includes(bCode));
+          const rankA = idxA !== -1 ? idxA : 999;
+          const rankB = idxB !== -1 ? idxB : 999;
+          return rankA - rankB;
+        });
+      };
+      const orderedPool = sortTemplatesByMasterOrder(pool);
+      const firstUnlocked = orderedPool.find(t => {
+        const p = checkPrerequisite(t, currentCase, caseDocuments, caseSuspects, null);
+        return p.unlocked || p.allowed;
+      });
+      if (firstUnlocked) {
+        setSelectedTemplateCode(firstUnlocked.code);
+      }
+    }
+  }, [allTemplates, tahapMindik, caseDocuments.length, currentCase?.id]);
+
+  // Daftar template yang masuk ke tahapan aktif (LIDIK vs SIDIK)
+  const currentStageTemplates = (allTemplates || []).filter(t => getTemplateStage(t) === tahapMindik);
+
+  // Strictly bind currentTemplate to selectedTemplateCode (null if none selected)
+  const currentTemplate = selectedTemplateCode 
+    ? (allTemplates.find(t => t.code === selectedTemplateCode) || null)
+    : null;
+
+  // Cek ketersediaan file fisik template dari Template Studio
+  const isTemplateAvailableInStudio = Boolean(
+    (currentTemplate?.file_path && String(currentTemplate.file_path).trim()) || 
+    (currentTemplate?.file_url && String(currentTemplate.file_url).trim())
+  );
 
   // Data Korban dari perkara (mendukung array victims di root perkara atau references.victims)
   const registeredVictims = (() => {
@@ -489,6 +1659,31 @@ export default function DocGeneratorView({
   const selectedTemplate = currentTemplate;
   const activeCase = currentCase;
   const prevTemplateIdRef = useRef(currentTemplate?.id || selectedTemplateCode);
+
+  const currentPrereq = currentTemplate
+    ? (tahapMindik === 'SIDIK'
+        ? checkPrerequisite(currentTemplate, currentCase, caseDocuments, caseSuspects, selectedSuspect)
+        : { allowed: true, reason: '' })
+    : { allowed: false, reason: 'Belum ada format dokumen Mindik yang dipilih.' };
+
+  const handleSelectTahap = (stage) => {
+    setTahapMindik(stage);
+    setShowTahapModal(false);
+
+    const stageTpls = allTemplates.filter(t => getTemplateStage(t) === stage);
+    if (stageTpls.length > 0) {
+      if (!stageTpls.some(t => t.code === selectedTemplateCode)) {
+        // Cari template pertama yang memenuhi prasyarat di tahapan ini
+        const firstAllowed = stageTpls.find(t => {
+          const p = checkPrerequisite(t, currentCase, caseDocuments, caseSuspects, selectedSuspect);
+          return p.allowed;
+        }) || stageTpls[0];
+        setSelectedTemplateCode(firstAllowed.code);
+      }
+    } else {
+      setSelectedTemplateCode('');
+    }
+  };
 
   const setNomorSurat = (val) => {
     setFormValues(prev => ({
@@ -1420,6 +2615,13 @@ export default function DocGeneratorView({
   // Main Generator action (Pizzip + Docxtemplater + Supabase Storage)
   const handleTriggerGenerate = async () => {
     if (!currentCase || !currentTemplate) return;
+    if (!currentPrereq.allowed) {
+      setGeneratorNotice({
+        type: 'warning',
+        message: `Tidak dapat men-generate dokumen: ${currentPrereq.reason}`
+      });
+      return;
+    }
 
     setIsGenerating(true);
     setGeneratorNotice(null);
@@ -1600,7 +2802,33 @@ export default function DocGeneratorView({
     if (onSaveDocument) {
       onSaveDocument(newDoc);
     }
+    setCaseDocuments(prev => [newDoc, ...prev]);
     setIsSaved(true);
+
+    try {
+      await Promise.allSettled([
+        supabase.from('case_generated_documents').insert({
+          case_id: currentCase.id,
+          template_id: currentTemplate.id,
+          template_code: currentTemplate.code,
+          doc_title: currentTemplate.title,
+          doc_number: docNumber || '-',
+          meta_values: { ...formValues },
+          created_at: new Date().toISOString()
+        }),
+        supabase.from('documents').insert({
+          case_id: currentCase.id,
+          template_id: currentTemplate.id,
+          template_code: currentTemplate.code,
+          doc_title: currentTemplate.title,
+          doc_number: docNumber || '-',
+          meta_values: { ...formValues },
+          created_at: new Date().toISOString()
+        })
+      ]);
+    } catch (dbErr) {
+      console.warn('Record generated document notice:', dbErr);
+    }
   };
 
   // --- TEMPLATE MANAGEMENT ACTIONS (KHUSUS SUPER ADMIN) ---
@@ -1947,29 +3175,214 @@ export default function DocGeneratorView({
               )}
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <select
-                value={selectedTemplateCode}
-                onChange={(e) => setSelectedTemplateCode(e.target.value)}
-                className="form-select"
+            {/* BADGE PENANDA FASE / TAHAPAN MINDIK AKTIF DENGAN TOMBOL UBAH */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 12px',
+              backgroundColor: tahapMindik === 'SIDIK' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+              border: tahapMindik === 'SIDIK' ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
+              borderRadius: '8px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {tahapMindik === 'SIDIK' ? (
+                  <Shield size={16} color="var(--accent-red)" />
+                ) : (
+                  <Clock size={16} color="var(--accent-amber)" />
+                )}
+                <div>
+                  <div style={{
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    letterSpacing: '0.4px',
+                    color: tahapMindik === 'SIDIK' ? '#FCA5A5' : '#FDE68A'
+                  }}>
+                    {tahapMindik === 'SIDIK' ? '[ TAHAP PENYIDIKAN (SIDIK) ]' : '[ TAHAP PENYELIDIKAN (LIDIK) ]'}
+                  </div>
+                  <div style={{ fontSize: '9.5px', color: '#94A3B8' }}>
+                    {tahapMindik === 'SIDIK' ? 'Fase Pro-Justitia (Penegakan Urutan Klaster A s.d. G)' : 'Fase Klarifikasi & Pengumpulan Bukti Awal'}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowTahapModal(true)}
+                className="btn btn-secondary btn-sm"
                 style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  backgroundColor: '#1b2229',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '8px',
-                  color: '#ffffff',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
+                  fontSize: '10.5px',
+                  padding: '4px 8px',
+                  gap: '4px',
+                  borderColor: tahapMindik === 'SIDIK' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)'
                 }}
+                title="Ganti Tahapan Mindik (Penyelidikan vs Penyidikan)"
               >
-                {(allTemplates || []).map((t) => (
-                  <option key={t.id || t.code} value={t.code} style={{ backgroundColor: '#14181d', color: '#fff' }}>
-                    {t.title || t.name || t.code} {t.category ? `(${t.category})` : ''}
-                  </option>
-                ))}
-              </select>
+                <Layers size={12} />
+                <span>Ubah Tahapan</span>
+              </button>
+            </div>
+
+            {/* CARD PEMILIH DOKUMEN RINGKAS (PENGGANTI DROPDOWN PANJANG) */}
+            <div style={{
+              marginTop: '8px',
+              marginBottom: '16px',
+              padding: '14px 16px',
+              backgroundColor: '#111827',
+              border: currentTemplate ? '1px solid rgba(255, 53, 45, 0.35)' : '1px dashed rgba(255, 255, 255, 0.2)',
+              borderRadius: '10px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
+            }}>
+              {currentTemplate ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <span style={{
+                        fontSize: '10px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.6px',
+                        color: 'var(--accent-red)',
+                        fontWeight: 800
+                      }}>
+                        {tahapMindik === 'SIDIK' ? (
+                          (() => {
+                            const cId = getSidikCluster(currentTemplate);
+                            const cl = SIDIK_CLUSTERS.find(c => c.id === cId);
+                            return cl ? `${cl.name} — ${cl.fullName}` : 'FORMAT MINDIK SIDIK';
+                          })()
+                        ) : 'DOKUMEN TAHAP PENYELIDIKAN (LIDIK)'}
+                      </span>
+                      <h4 style={{
+                        fontSize: '14px',
+                        fontWeight: 800,
+                        color: '#FFFFFF',
+                        margin: 0,
+                        textTransform: 'uppercase',
+                        lineHeight: 1.4,
+                        letterSpacing: '0.3px'
+                      }}>
+                        {(currentTemplate.title || currentTemplate.name || currentTemplate.code || '').toUpperCase()}
+                      </h4>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                      <span className="badge badge-green" style={{ fontSize: '9px', padding: '3px 7px', fontWeight: 700 }}>
+                        TERSEDIA DI STUDIO
+                      </span>
+                      {currentPrereq.allowed ? (
+                        <span style={{ fontSize: '10px', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <Check size={11} />
+                          <span>Terbuka</span>
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '10px', color: 'var(--accent-red)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <Lock size={11} />
+                          <span>Terkunci</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingTop: '10px',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                    marginTop: '2px',
+                    flexWrap: 'wrap',
+                    gap: '8px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="mono" style={{ fontSize: '11px', color: '#94A3B8' }}>
+                        Kode: <strong style={{ color: '#E2E8F0' }}>{currentTemplate.code}</strong>
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cId = getSidikCluster(currentTemplate);
+                        setSelectedClusterTab(cId || 'A');
+                        setIsDocModalOpen(true);
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        fontSize: '11px',
+                        padding: '6px 14px',
+                        fontWeight: 700,
+                        borderColor: 'rgba(255, 53, 45, 0.5)',
+                        color: '#ffffff',
+                        background: 'rgba(255, 53, 45, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <FileText size={13} color="var(--accent-red)" />
+                      <span>GANTI DOKUMEN MINDIK</span>
+                    </button>
+                  </div>
+
+                  {/* BANNER PERINGATAN KETIKA FORMAT TERPILIH BELUM MEMENUHI PRASYARAT */}
+                  {!currentPrereq.allowed && (
+                    <div style={{
+                      marginTop: '6px',
+                      padding: '10px 12px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '8px',
+                      color: '#FCA5A5',
+                      fontSize: '11.5px',
+                      lineHeight: '1.45'
+                    }}>
+                      <AlertTriangle size={16} color="var(--accent-red)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <strong style={{ color: '#EF4444', display: 'block', marginBottom: '2px' }}>
+                          PRASYARAT FORMIL BELUM TERPENUHI:
+                        </strong>
+                        <span>{currentPrereq.reason}</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{
+                  padding: '20px 12px',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <AlertCircle size={28} color="#94A3B8" />
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#E2E8F0' }}>
+                    BELUM ADA DOKUMEN MINDIK DIPILIH
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#94A3B8', maxWidth: '320px', lineHeight: 1.4 }}>
+                    Silakan pilih format dokumen Mindik yang tersedia di Template Studio dan terbuka untuk perkara ini.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClusterTab('A');
+                      setIsDocModalOpen(true);
+                    }}
+                    className="btn btn-primary btn-sm"
+                    style={{ marginTop: '6px', fontSize: '11px', padding: '6px 16px', fontWeight: 700 }}
+                  >
+                    <Plus size={13} />
+                    <span>PILIH DOKUMEN MINDIK</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1980,14 +3393,31 @@ export default function DocGeneratorView({
                 <span className="badge" style={{ background: '#2a343f', border: '1px solid rgba(255, 53, 45, 0.4)', color: '#ffffff', fontSize: '10px', padding: '1px 5px' }}>3</span>
                 <span style={{ color: '#ffffff', fontWeight: 700 }}>PARAMETER & VARIABEL DOKUMEN</span>
               </label>
-              {isIndividualDoc ? (
-                <span className="badge badge-red" style={{ fontSize: '9px' }}>DOKUMEN PERORANGAN</span>
-              ) : (
-                <span className="badge" style={{ background: '#2d3748', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '9px' }}>DOKUMEN KOLEKTIF</span>
-              )}
+              {currentTemplate ? (
+                isIndividualDoc ? (
+                  <span className="badge badge-red" style={{ fontSize: '9px' }}>DOKUMEN PERORANGAN</span>
+                ) : (
+                  <span className="badge" style={{ background: '#2d3748', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#ffffff', fontSize: '9px' }}>DOKUMEN KOLEKTIF</span>
+                )
+              ) : null}
             </div>
 
-            {/* PANEL KHUSUS SP.TAP TSK: PENETAPAN TERSANGKA RESMI */}
+            {!currentTemplate ? (
+              <div style={{
+                padding: '36px 20px',
+                textAlign: 'center',
+                background: 'rgba(15, 23, 42, 0.4)',
+                borderRadius: '8px',
+                border: '1px dashed rgba(255, 255, 255, 0.15)',
+                color: '#94A3B8',
+                fontSize: '12px'
+              }}>
+                <FileSignature size={28} color="#64748B" style={{ marginBottom: '8px', display: 'inline-block' }} />
+                <p style={{ margin: 0, fontWeight: 600 }}>Silakan pilih format dokumen Mindik terlebih dahulu untuk mengisi parameter & variabel dokumen.</p>
+              </div>
+            ) : (
+              <>
+                {/* PANEL KHUSUS SP.TAP TSK: PENETAPAN TERSANGKA RESMI */}
             {isSpTapDoc && (
               <div style={{
                 padding: '14px',
@@ -2959,7 +4389,7 @@ export default function DocGeneratorView({
             {/* Primary Action Button to Generate Real .docx */}
             <button
               type="button"
-              disabled={isGenerating}
+              disabled={isGenerating || !currentPrereq.allowed || !currentTemplate || !isTemplateAvailableInStudio}
               onClick={handleTriggerGenerate}
               className="btn btn-primary"
               style={{
@@ -2968,17 +4398,30 @@ export default function DocGeneratorView({
                 padding: '12px',
                 fontSize: '13px',
                 fontWeight: 700,
-                boxShadow: '0 4px 16px rgba(255, 53, 45, 0.35)',
+                boxShadow: (!currentPrereq.allowed || !currentTemplate || !isTemplateAvailableInStudio) ? 'none' : '0 4px 16px rgba(255, 53, 45, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
+                opacity: (!currentPrereq.allowed || !currentTemplate || !isTemplateAvailableInStudio) ? 0.6 : 1,
+                cursor: (!currentPrereq.allowed || !currentTemplate || !isTemplateAvailableInStudio) ? 'not-allowed' : 'pointer',
               }}
+              title={!currentPrereq.allowed ? `Prasyarat belum terpenuhi: ${currentPrereq.reason}` : (!currentTemplate ? 'Pilih template terlebih dahulu' : (!isTemplateAvailableInStudio ? 'Master dokumen .docx belum diunggah di Template Studio' : 'Generate Dokumen Resmi (.docx) dari Supabase'))}
             >
               {isGenerating ? (
                 <>
                   <RefreshCw size={16} className="animate-pulse" />
                   <span>Mengambil Template & Merender File .docx...</span>
+                </>
+              ) : !currentPrereq.allowed ? (
+                <>
+                  <Lock size={16} />
+                  <span>DOKUMEN TERKUNCI (SELESAIKAN PRASYARAT FORMIL)</span>
+                </>
+              ) : !isTemplateAvailableInStudio ? (
+                <>
+                  <FileText size={16} />
+                  <span>TEMPLATE BELUM TERSEDIA DI STUDIO</span>
                 </>
               ) : (
                 <>
@@ -2987,25 +4430,770 @@ export default function DocGeneratorView({
                 </>
               )}
             </button>
+              </>
+            )}
           </div>
         </div>
 
         {/* Right: Live Interactive Document Sheet */}
         <div>
-          <OfficialDocPreview
-            selectedCase={currentCase}
-            template={currentTemplate}
-            formValues={formValues}
-            personnel={activePersonnel}
-            activeSuspect={selectedSuspect}
-            suspectsList={caseSuspects}
-            activeVictim={selectedVictim}
-            victimsList={registeredVictims}
-            onSaveArchive={handleSave}
-            isSaved={isSaved}
-          />
+          {!currentTemplate ? (
+            <div className="glass" style={{
+              padding: '60px 24px',
+              textAlign: 'center',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '520px',
+              gap: '14px'
+            }}>
+              <FileSignature size={48} color="#94A3B8" />
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#F1F5F9', margin: 0 }}>
+                Belum Ada Format Dokumen Mindik Terpilih
+              </h3>
+              <p style={{ color: '#94A3B8', fontSize: '13px', maxWidth: '420px', margin: 0, lineHeight: 1.5 }}>
+                Pilih format dokumen Mindik dari panel sebelah kiri atau buka katalog dokumen untuk memuat naskah dinas resmi.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedClusterTab('A');
+                  setIsDocModalOpen(true);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ marginTop: '8px', fontWeight: 700 }}
+              >
+                PILIH DOKUMEN MINDIK
+              </button>
+            </div>
+          ) : !isTemplateAvailableInStudio ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '550px',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '2px dashed rgba(255, 255, 255, 0.15)',
+              borderRadius: '12px',
+              color: '#94a3b8',
+              textAlign: 'center',
+              padding: '40px'
+            }}>
+              <FileText size={48} style={{ opacity: 0.4, marginBottom: '16px' }} />
+              <h3 style={{ color: '#ffffff', marginBottom: '8px', fontSize: '18px' }}>Template Belum Tersedia di Template Studio</h3>
+              <p style={{ maxWidth: '420px', fontSize: '13px', lineHeight: '1.6' }}>
+                Master dokumen resmi Microsoft Word (.docx) untuk <strong>{currentTemplate?.title || currentTemplate?.name}</strong> belum diunggah ke Supabase Storage.
+              </p>
+              <span style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
+                Silakan unggah master template di menu <strong>Template Studio</strong> untuk mulai mengenerate dokumen ini.
+              </span>
+            </div>
+          ) : (
+            <OfficialDocPreview
+              selectedCase={currentCase}
+              template={currentTemplate}
+              formValues={formValues}
+              personnel={activePersonnel}
+              activeSuspect={selectedSuspect}
+              suspectsList={caseSuspects}
+              activeVictim={selectedVictim}
+              victimsList={registeredVictims}
+              onSaveArchive={handleSave}
+              isSaved={isSaved}
+            />
+          )}
         </div>
       </div>
+
+      {/* --- MODAL POP-UP PEMILIHAN DOKUMEN MINDIK (KATALOG MINDIK) --- */}
+      {isDocModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsDocModalOpen(false)} style={{ zIndex: 1100 }}>
+          <div 
+            className="modal-content" 
+            style={{
+              maxWidth: '960px',
+              width: '95%',
+              maxHeight: '88vh',
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: '#0c111d',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '14px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Top Header */}
+            <div className="modal-header" style={{
+              padding: '16px 20px',
+              backgroundColor: '#101726',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 53, 45, 0.15)',
+                  border: '1px solid rgba(255, 53, 45, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FileSignature size={20} color="#ff352d" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#FFFFFF', letterSpacing: '0.4px' }}>
+                    KATALOG ADMINISTRASI PENYIDIKAN (MINDIK)
+                  </h3>
+                  <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '2px' }}>
+                    Pilih format dokumen resmi sesuai hierarki dan prasyarat formil KUHAP
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Stage Indicator / Switcher */}
+                <div style={{
+                  display: 'flex',
+                  background: '#090d16',
+                  borderRadius: '8px',
+                  padding: '3px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTahapMindik('SIDIK');
+                      setSelectedClusterTab('A');
+                    }}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: tahapMindik === 'SIDIK' ? 'rgba(239, 68, 68, 0.25)' : 'transparent',
+                      color: tahapMindik === 'SIDIK' ? '#FCA5A5' : '#94A3B8'
+                    }}
+                  >
+                    SIDIK
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTahapMindik('LIDIK');
+                    }}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: tahapMindik === 'LIDIK' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                      color: tahapMindik === 'LIDIK' ? '#FDE68A' : '#94A3B8'
+                    }}
+                  >
+                    LIDIK
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsDocModalOpen(false)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    color: '#94A3B8',
+                    cursor: 'pointer',
+                    padding: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Tutup Katalog"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Cluster Navigation Tabs */}
+            {tahapMindik === 'SIDIK' && (
+              <div style={{
+                backgroundColor: '#090d16',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '8px 16px 0',
+                overflowX: 'auto',
+                display: 'flex',
+                gap: '4px',
+                scrollbarWidth: 'thin'
+              }}>
+                {SIDIK_CLUSTERS.map(cluster => {
+                  const isActive = selectedClusterTab === cluster.id;
+                  return (
+                    <button
+                      key={cluster.id}
+                      type="button"
+                      onClick={() => setSelectedClusterTab(cluster.id)}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '8px 8px 0 0',
+                        fontSize: '11.5px',
+                        fontWeight: 800,
+                        letterSpacing: '0.3px',
+                        border: 'none',
+                        borderBottom: isActive ? '3px solid #ff352d' : '3px solid transparent',
+                        background: isActive ? '#141d2e' : 'transparent',
+                        color: isActive ? '#FFFFFF' : '#94A3B8',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 150ms ease'
+                      }}
+                    >
+                      {cluster.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Modal Body: List/Grid Kartu Dokumen */}
+            <div style={{
+              padding: '20px',
+              overflowY: 'auto',
+              flex: 1,
+              backgroundColor: '#0c111d'
+            }}>
+              {tahapMindik === 'SIDIK' ? (() => {
+                const clusterMasterItems = MASTER_MINDIK_SIDIK.filter(item => item.cluster === selectedClusterTab);
+                
+                // Cari template yang cocok di allTemplates
+                const clusterWithUploads = clusterMasterItems.map(item => {
+                  const uploadedTpl = findUploadedTemplate(item, allTemplates);
+                  return { item, uploadedTpl };
+                });
+
+                // Cek apakah ada satupun template yang diunggah di studio untuk klaster ini
+                const uploadedCount = clusterWithUploads.filter(c => Boolean(c.uploadedTpl)).length;
+
+                // Tambahkan template kustom jika ada yang terunggah di klaster ini tapi tidak ada di master list
+                const customUploaded = allTemplates.filter(t => 
+                  getSidikCluster(t) === selectedClusterTab &&
+                  !clusterWithUploads.some(c => c.uploadedTpl?.code === t.code)
+                );
+                const totalUploaded = uploadedCount + customUploaded.length;
+
+                if (totalUploaded === 0) {
+                  return (
+                    <div style={{
+                      padding: '50px 20px',
+                      textAlign: 'center',
+                      background: 'rgba(15, 23, 42, 0.4)',
+                      borderRadius: '12px',
+                      border: '1px dashed rgba(255, 255, 255, 0.15)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '12px',
+                      margin: '10px 0'
+                    }}>
+                      <AlertCircle size={44} color="#94A3B8" />
+                      <h4 style={{ color: '#F1F5F9', fontSize: '15px', fontWeight: 700, margin: 0 }}>
+                        Template belum tersedia di Template Studio.
+                      </h4>
+                      <p style={{ color: '#94A3B8', fontSize: '12.5px', maxWidth: '440px', margin: 0, lineHeight: 1.5 }}>
+                        Silakan unggah format template terlebih dahulu melalui Template Studio agar dapat digunakan dalam perkara ini.
+                      </p>
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsDocModalOpen(false);
+                            if (onOpenTemplateStudio) onOpenTemplateStudio();
+                          }}
+                          className="btn btn-primary btn-sm"
+                          style={{ marginTop: '8px', fontWeight: 700 }}
+                        >
+                          Buka Template Studio
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '4px',
+                      padding: '0 4px'
+                    }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8' }}>
+                        DAFTAR DOKUMEN DALAM KLASTER INI ({clusterWithUploads.length + customUploaded.length} Format)
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        {uploadedCount + customUploaded.length} Tersedia di Studio
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                      {clusterWithUploads.map(({ item, uploadedTpl }) => {
+                        const isUploaded = Boolean(uploadedTpl);
+                        const prereq = isUploaded 
+                          ? checkPrerequisite(uploadedTpl, currentCase, caseDocuments, caseSuspects, selectedSuspect)
+                          : { allowed: false, reason: 'Template belum diunggah di Template Studio.' };
+                        const isUnlocked = isUploaded && prereq.allowed;
+                        const isSelected = isUploaded && selectedTemplateCode === uploadedTpl.code;
+
+                        return (
+                          <div
+                            key={item.code}
+                            onClick={() => {
+                              if (isUnlocked) {
+                                setSelectedTemplateCode(uploadedTpl.code);
+                                setIsDocModalOpen(false);
+                              }
+                            }}
+                            style={{
+                              padding: '12px 16px',
+                              borderRadius: '10px',
+                              backgroundColor: isSelected
+                                ? 'rgba(255, 53, 45, 0.15)'
+                                : isUnlocked
+                                  ? '#111827'
+                                  : 'rgba(17, 24, 39, 0.6)',
+                              border: isSelected
+                                ? '1.5px solid #ff352d'
+                                : isUnlocked
+                                  ? '1px solid rgba(255, 255, 255, 0.12)'
+                                  : '1px solid rgba(255, 255, 255, 0.05)',
+                              cursor: isUnlocked ? 'pointer' : 'not-allowed',
+                              opacity: isUnlocked ? 1 : 0.65,
+                              transition: 'all 150ms ease',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                              boxShadow: isSelected ? '0 0 12px rgba(255, 53, 45, 0.3)' : 'none'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{
+                                  fontSize: '11px',
+                                  fontWeight: 800,
+                                  color: '#64748B',
+                                  minWidth: '22px'
+                                }}>
+                                  #{item.itemNumber}
+                                </span>
+                                <span style={{
+                                  fontSize: '13px',
+                                  fontWeight: 800,
+                                  color: isUnlocked ? '#FFFFFF' : '#94A3B8',
+                                  textTransform: 'uppercase'
+                                }}>
+                                  {item.title}
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                <span className="badge" style={{
+                                  fontSize: '9px',
+                                  padding: '2px 6px',
+                                  background: item.type.includes('Wajib') ? 'rgba(56, 189, 248, 0.15)' : 'rgba(148, 163, 184, 0.15)',
+                                  color: item.type.includes('Wajib') ? '#38BDF8' : '#94A3B8',
+                                  border: `1px solid ${item.type.includes('Wajib') ? 'rgba(56, 189, 248, 0.3)' : 'rgba(148, 163, 184, 0.2)'}`
+                                }}>
+                                  {item.type}
+                                </span>
+
+                                {!isUploaded ? (
+                                  <span className="badge" style={{
+                                    fontSize: '9px',
+                                    padding: '2px 6px',
+                                    background: 'rgba(100, 116, 139, 0.2)',
+                                    color: '#94A3B8',
+                                    border: '1px solid rgba(100, 116, 139, 0.3)'
+                                  }}>
+                                    Template Belum Diunggah di Studio
+                                  </span>
+                                ) : isUnlocked ? (
+                                  <span className="badge badge-green" style={{ fontSize: '9px', padding: '2px 7px', fontWeight: 700 }}>
+                                    TERSEDIA
+                                  </span>
+                                ) : (
+                                  <span className="badge badge-red" style={{ fontSize: '9px', padding: '2px 7px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <Lock size={10} />
+                                    <span>TERKUNCI</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Warning Tooltip Baris jika Terkunci */}
+                            {isUploaded && !prereq.allowed && (
+                              <div style={{
+                                fontSize: '11px',
+                                color: '#FCA5A5',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                borderLeft: '3px solid var(--accent-red)',
+                                marginTop: '2px'
+                              }}>
+                                🔒 Wajib membuat {prereq.reason}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Custom Uploaded Templates if any */}
+                      {customUploaded.map(customTpl => {
+                        const prereq = checkPrerequisite(customTpl, currentCase, caseDocuments, caseSuspects, selectedSuspect);
+                        const isUnlocked = prereq.allowed;
+                        const isSelected = selectedTemplateCode === customTpl.code;
+
+                        return (
+                          <div
+                            key={customTpl.id || customTpl.code}
+                            onClick={() => {
+                              if (isUnlocked) {
+                                setSelectedTemplateCode(customTpl.code);
+                                setIsDocModalOpen(false);
+                              }
+                            }}
+                            style={{
+                              padding: '12px 16px',
+                              borderRadius: '10px',
+                              backgroundColor: isSelected
+                                ? 'rgba(255, 53, 45, 0.15)'
+                                : isUnlocked
+                                  ? '#111827'
+                                  : 'rgba(17, 24, 39, 0.6)',
+                              border: isSelected
+                                ? '1.5px solid #ff352d'
+                                : isUnlocked
+                                  ? '1px solid rgba(255, 255, 255, 0.12)'
+                                  : '1px solid rgba(255, 255, 255, 0.05)',
+                              cursor: isUnlocked ? 'pointer' : 'not-allowed',
+                              opacity: isUnlocked ? 1 : 0.65,
+                              transition: 'all 150ms ease',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 800, color: isUnlocked ? '#FFFFFF' : '#94A3B8', textTransform: 'uppercase' }}>
+                                {(customTpl.title || customTpl.name || customTpl.code).toUpperCase()}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span className="badge badge-green" style={{ fontSize: '9px', padding: '2px 7px', fontWeight: 700 }}>
+                                  TERSEDIA
+                                </span>
+                                {!isUnlocked && (
+                                  <span className="badge badge-red" style={{ fontSize: '9px', padding: '2px 7px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <Lock size={10} />
+                                    <span>TERKUNCI</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {!prereq.allowed && (
+                              <div style={{
+                                fontSize: '11px',
+                                color: '#FCA5A5',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                borderLeft: '3px solid var(--accent-red)',
+                                marginTop: '2px'
+                              }}>
+                                🔒 Wajib membuat {prereq.reason}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })() : (() => {
+                const lidikTemplates = allTemplates.filter(t => getTemplateStage(t) === 'LIDIK');
+                if (lidikTemplates.length === 0) {
+                  return (
+                    <div style={{
+                      padding: '50px 20px',
+                      textAlign: 'center',
+                      background: 'rgba(15, 23, 42, 0.4)',
+                      borderRadius: '12px',
+                      border: '1px dashed rgba(255, 255, 255, 0.15)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '12px'
+                    }}>
+                      <AlertCircle size={44} color="#94A3B8" />
+                      <h4 style={{ color: '#F1F5F9', fontSize: '15px', fontWeight: 700, margin: 0 }}>
+                        Template belum tersedia di Template Studio.
+                      </h4>
+                      <p style={{ color: '#94A3B8', fontSize: '12.5px', maxWidth: '440px', margin: 0, lineHeight: 1.5 }}>
+                        Silakan unggah format template penyelidikan (LIDIK) terlebih dahulu di Template Studio.
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                    {lidikTemplates.map(t => {
+                      const isSelected = selectedTemplateCode === t.code;
+                      return (
+                        <div
+                          key={t.id || t.code}
+                          onClick={() => {
+                            setSelectedTemplateCode(t.code);
+                            setIsDocModalOpen(false);
+                          }}
+                          style={{
+                            padding: '12px 16px',
+                            borderRadius: '10px',
+                            backgroundColor: isSelected ? 'rgba(245, 158, 11, 0.15)' : '#111827',
+                            border: isSelected ? '1.5px solid var(--accent-amber)' : '1px solid rgba(255, 255, 255, 0.12)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            transition: 'all 150ms ease'
+                          }}
+                        >
+                          <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase' }}>
+                            {(t.title || t.name || t.code).toUpperCase()}
+                          </span>
+                          <span className="badge badge-amber" style={{ fontSize: '9px', padding: '2px 7px', fontWeight: 700 }}>
+                            TERSEDIA
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="modal-footer" style={{
+              padding: '12px 20px',
+              backgroundColor: '#101726',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+                Hanya format dokumen yang telah diunggah filenya di <strong>Template Studio</strong> yang dapat dipilih.
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDocModalOpen(false)}
+                className="btn btn-secondary btn-sm"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL PEMILIHAN TAHAPAN MINDIK: LIDIK VS SIDIK --- */}
+      {showTahapModal && (
+        <div className="modal-backdrop" onClick={() => setShowTahapModal(false)}>
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '820px', width: '94%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '8px',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Layers size={20} color="var(--accent-red)" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, letterSpacing: '0.4px', color: '#fff' }}>
+                    PILIH TAHAPAN ADMINISTRASI PENYIDIKAN (MINDIK)
+                  </h3>
+                  <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                    Pilih fase penanganan perkara aktif untuk klasifikasi format dokumen Mindik dan aturan validasi formil.
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                onClick={() => setShowTahapModal(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gap: '16px'
+              }}>
+                {/* KARTU 1: TAHAP PENYELIDIKAN (LIDIK) */}
+                <div
+                  onClick={() => handleSelectTahap('LIDIK')}
+                  style={{
+                    padding: '18px',
+                    backgroundColor: tahapMindik === 'LIDIK' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                    border: tahapMindik === 'LIDIK' ? '2px solid var(--accent-amber)' : '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <span className="badge badge-amber" style={{ fontSize: '10px', padding: '3px 8px' }}>
+                        FASE 1: PENYELIDIKAN (LIDIK)
+                      </span>
+                      {tahapMindik === 'LIDIK' && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-amber)', fontSize: '11px', fontWeight: 800 }}>
+                          <Check size={14} /> AKTIF
+                        </span>
+                      )}
+                    </div>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 800, color: '#fff' }}>
+                      TAHAP PENYELIDIKAN (LIDIK)
+                    </h4>
+                    <p style={{ fontSize: '11.5px', color: '#94A3B8', margin: '0 0 12px 0', lineHeight: 1.45 }}>
+                      Rangkaian kegiatan penyelidik untuk mencari dan menemukan suatu peristiwa pidana guna menentukan dapat atau tidaknya dilakukan penyidikan.
+                    </p>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#E2E8F0', marginBottom: '6px' }}>
+                      Klasifikasi Dokumen LIDIK:
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '11px', color: '#CBD5E1', lineHeight: 1.6 }}>
+                      <li>SURAT PERINTAH PENYELIDIKAN</li>
+                      <li>SURAT PERINTAH TUGAS PENYELIDIKAN</li>
+                      <li>SURAT PERMINTAAN VISUM ET REPERTUM (VER)</li>
+                      <li>SURAT PERMINTAAN VISUM ET PSIKIATRIKUM (VER)</li>
+                      <li>SURAT PEMBERITAHUAN PERKEMBANGAN HASIL PENYELIDIKAN</li>
+                      <li>LAPORAN HASIL PENYELIDIKAN</li>
+                      <li>NOTA DINAS UNDANGAN GELAR PERKARA</li>
+                      <li>LAPORAN HASIL GELAR PERKARA</li>
+                    </ul>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`btn ${tahapMindik === 'LIDIK' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                    style={{
+                      marginTop: '16px',
+                      width: '100%',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      backgroundColor: tahapMindik === 'LIDIK' ? 'var(--accent-amber)' : undefined,
+                      borderColor: tahapMindik === 'LIDIK' ? 'var(--accent-amber)' : undefined,
+                      color: tahapMindik === 'LIDIK' ? '#000' : undefined
+                    }}
+                  >
+                    {tahapMindik === 'LIDIK' ? 'Tahapan Sedang Aktif' : 'PILIH TAHAP PENYELIDIKAN'}
+                  </button>
+                </div>
+
+                {/* KARTU 2: TAHAP PENYIDIKAN (SIDIK) */}
+                <div
+                  onClick={() => handleSelectTahap('SIDIK')}
+                  style={{
+                    padding: '18px',
+                    backgroundColor: tahapMindik === 'SIDIK' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                    border: tahapMindik === 'SIDIK' ? '2px solid var(--accent-red)' : '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <span className="badge badge-red" style={{ fontSize: '10px', padding: '3px 8px' }}>
+                        FASE 2: PENYIDIKAN (SIDIK)
+                      </span>
+                      {tahapMindik === 'SIDIK' && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-red)', fontSize: '11px', fontWeight: 800 }}>
+                          <Check size={14} /> AKTIF
+                        </span>
+                      )}
+                    </div>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 800, color: '#fff' }}>
+                      TAHAP PENYIDIKAN (SIDIK)
+                    </h4>
+                    <p style={{ fontSize: '11.5px', color: '#94A3B8', margin: '0 0 12px 0', lineHeight: 1.45 }}>
+                      Rangkaian tindakan penyidik menurut KUHAP untuk mengumpulkan bukti dan menemukan tersangkanya dengan validasi berjenjang (Klaster A s.d. G).
+                    </p>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#E2E8F0', marginBottom: '6px' }}>
+                      Klaster Dokumen Berjenjang:
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '11px', color: '#CBD5E1', lineHeight: 1.6 }}>
+                      <li><strong>A. SURAT PERINTAH PENYIDIKAN</strong> (SP.Sidik & SP.Gas.Sidik)</li>
+                      <li><strong>B. PEMBERITAHUAN DIMULAINYA PENYIDIKAN (SPDP)</strong></li>
+                      <li><strong>C. TINDAKAN TERHADAP TERSANGKA</strong> (Tap, Gil, Kap, DPO)</li>
+                      <li><strong>D. PENYITAAN & PENGGELEDAHAN</strong></li>
+                      <li><strong>E. KORBAN DAN SAKSI</strong></li>
+                      <li><strong>F. PENAHANAN</strong> (Berjenjang 40H & 30H)</li>
+                      <li><strong>G. BERKAS PERKARA</strong> (Tahap I & Tahap II)</li>
+                    </ul>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`btn ${tahapMindik === 'SIDIK' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                    style={{
+                      marginTop: '16px',
+                      width: '100%',
+                      justifyContent: 'center',
+                      fontWeight: 700
+                    }}
+                  >
+                    {tahapMindik === 'SIDIK' ? 'Tahapan Sedang Aktif' : 'PILIH TAHAP PENYIDIKAN'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- MODAL 1: TAMBAH FORMAT TEMPLATE (.DOCX) (KHUSUS SUPER ADMIN) --- */}
       {isAddModalOpen && (

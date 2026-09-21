@@ -14,9 +14,9 @@ import {
 import { 
   generatePdfBlob, 
   generateAndDownloadDocx, 
-  buildMindikVariables,
-  buildMindikPayload,
-  formatTanggalIndonesia
+  buildMindikVariables, 
+  buildMindikPayload, 
+  formatTanggalIndonesia 
 } from '../utils/mindikGenerator';
 
 export default function OfficialDocPreview({ 
@@ -38,6 +38,9 @@ export default function OfficialDocPreview({
   const [errorMessage, setErrorMessage] = useState(null);
   const [downloadSuccessNotice, setDownloadSuccessNotice] = useState(null);
   const [showVariableMap, setShowVariableMap] = useState(false);
+
+  // Default ke mode PDF resmi Polri
+  const [activePreviewTab, setActivePreviewTab] = useState('pdf');
 
   // References for memory management and debouncing
   const prevPdfUrlRef = useRef(null);
@@ -62,18 +65,23 @@ export default function OfficialDocPreview({
     { activeSuspect, suspectsList, activeVictim, victimsList, template }
   ) : {};
 
-  // Core update function: True file-to-file conversion with memory cache & instant fallback
+  const isTemplateAvailableInStudio = Boolean(
+    (template?.file_path && String(template.file_path).trim()) || 
+    (template?.file_url && String(template.file_url).trim())
+  );
+
+  // Core update function: Selalu mengeksekusi generatePdfBlob dengan memory cache & instant fallback
   const updatePreview = useCallback(async (isManual = false) => {
     if (!template || !selectedCase) return;
 
-    if (!template.file_path) {
+    if (!isTemplateAvailableInStudio) {
       setHasPhysicalFile(false);
       setErrorMessage(null);
       return;
     }
 
-    // Optimization: If variables and template haven't changed, skip conversion
-    const currentKey = `${template.id || template.file_path}_${activeSuspect?.id || 'all'}_${activeSuspect?.nama || ''}_${activeVictim?.id || activeVictim?.nama || 'vic'}_${nomorSurat}_${tanggalSurat}_${JSON.stringify(formValues)}`;
+    // Optimasi: Jika variabel dan template tidak berubah, skip render ulang
+    const currentKey = `${template.id || template.file_path || template.file_url}_${activeSuspect?.id || 'all'}_${activeSuspect?.nama || ''}_${activeVictim?.id || activeVictim?.nama || 'vic'}_${nomorSurat}_${tanggalSurat}_${JSON.stringify(formValues)}`;
     if (!isManual && lastRenderedKeyRef.current === currentKey && prevPdfUrlRef.current) {
       return;
     }
@@ -83,6 +91,7 @@ export default function OfficialDocPreview({
     setErrorMessage(null);
 
     try {
+      // Injeksi variabel dinamis ke template .docx Supabase dan konversi ke PDF F4 Polri
       const res = await generatePdfBlob({
         template,
         caseData: selectedCase,
@@ -100,7 +109,7 @@ export default function OfficialDocPreview({
         return;
       }
 
-      // Seamless transition: Revoke old Object URL only after new PDF is ready
+      // Seamless transition: Revoke Object URL lama setelah PDF baru siap
       if (prevPdfUrlRef.current && prevPdfUrlRef.current !== res.pdfBlobUrl) {
         URL.revokeObjectURL(prevPdfUrlRef.current);
       }
@@ -114,9 +123,9 @@ export default function OfficialDocPreview({
     } finally {
       setIsUpdating(false);
     }
-  }, [template, selectedCase, activeSuspect, suspectsList, activeVictim, victimsList, formValues, personnel, nomorSurat, tanggalSurat]);
+  }, [template, selectedCase, activeSuspect, suspectsList, activeVictim, victimsList, formValues, personnel, nomorSurat, tanggalSurat, isTemplateAvailableInStudio]);
 
-  // Live synchronization: triggers instantly when selectedSuspect, nomorSurat, or tanggalSurat changes
+  // Live synchronization: Terpicu seketika saat selectedSuspect, nomorSurat, atau tanggalSurat berubah
   useEffect(() => {
     if (!template || !selectedCase) {
       if (prevPdfUrlRef.current) {
@@ -144,6 +153,7 @@ export default function OfficialDocPreview({
   }, [
     template?.id, 
     template?.file_path, 
+    template?.file_url,
     selectedCase?.id, 
     activeSuspect, 
     activeSuspect?.id, 
@@ -229,7 +239,7 @@ export default function OfficialDocPreview({
             <FileCheck size={12} color="#ff352d" />
             <span>DOKUMEN ASLI FISIK (PDF F4 POLRI)</span>
           </span>
-          {template?.file_path ? (
+          {isTemplateAvailableInStudio ? (
             <span className="badge" style={{ background: '#2a343f', border: '1px solid rgba(255, 255, 255, 0.12)', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Sparkles size={11} color="#ff352d" />
               <span>TEMPLATE .DOCX (SUPABASE)</span>
@@ -239,6 +249,7 @@ export default function OfficialDocPreview({
               BELUM ADA MASTER FILE .DOCX
             </span>
           )}
+
           {currentDataMap?.TANGGAL_SURAT && (
             <span className="badge" style={{ background: '#1e262e', border: '1px solid rgba(255, 53, 45, 0.3)', color: '#cbd5e1', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }} title="Tanggal resmi surat">
               <span>{currentDataMap.TEMPAT_SURAT || 'Tirawuta'}, {currentDataMap.TANGGAL_SURAT}</span>
@@ -249,11 +260,11 @@ export default function OfficialDocPreview({
         {/* Buttons */}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Refresh button */}
-          {template?.file_path && (
+          {isTemplateAvailableInStudio && (
             <button
               type="button"
               onClick={() => updatePreview(true)}
-              disabled={isUpdating}
+              disabled={isUpdating || !isTemplateAvailableInStudio}
               className="btn btn-secondary btn-sm"
               title="Paksa pembaruan pratinjau PDF seketika tanpa menunggu debounce"
             >
@@ -276,56 +287,65 @@ export default function OfficialDocPreview({
           )}
 
           {/* Download DOCX */}
-          {template?.file_path && (
-            <button 
-              type="button"
-              disabled={isDownloading}
-              onClick={handleDownloadDocx}
-              className="btn btn-primary btn-sm"
-              style={{
-                boxShadow: '0 4px 16px rgba(255, 53, 45, 0.35)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-              title="Generate dan unduh file Word (.docx) murni dari template Supabase Storage"
-            >
-              {isDownloading ? (
-                <>
-                  <RefreshCw size={13} className="animate-pulse" />
-                  <span>Memproses...</span>
-                </>
-              ) : (
-                <>
-                  <Download size={13} />
-                  <span>Unduh .docx</span>
-                </>
-              )}
-            </button>
-          )}
+          <button 
+            type="button"
+            disabled={isDownloading || !isTemplateAvailableInStudio}
+            onClick={handleDownloadDocx}
+            className="btn btn-primary btn-sm"
+            style={{
+              boxShadow: isTemplateAvailableInStudio ? '0 4px 16px rgba(255, 53, 45, 0.35)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              opacity: isTemplateAvailableInStudio ? 1 : 0.5,
+              cursor: isTemplateAvailableInStudio ? 'pointer' : 'not-allowed'
+            }}
+            title={isTemplateAvailableInStudio ? "Generate dan unduh file Word (.docx) murni dari template Supabase Storage" : "Master dokumen .docx belum diunggah di Template Studio"}
+          >
+            {isDownloading ? (
+              <>
+                <RefreshCw size={13} className="animate-pulse" />
+                <span>Memproses...</span>
+              </>
+            ) : (
+              <>
+                <Download size={13} />
+                <span>Unduh .docx</span>
+              </>
+            )}
+          </button>
 
           {onSaveArchive && (
             <button 
               type="button"
+              disabled={!isTemplateAvailableInStudio}
               onClick={onSaveArchive}
               className="btn btn-secondary btn-sm"
+              style={{
+                opacity: isTemplateAvailableInStudio ? 1 : 0.5,
+                cursor: isTemplateAvailableInStudio ? 'pointer' : 'not-allowed'
+              }}
+              title={isTemplateAvailableInStudio ? "Simpan arsip" : "Master dokumen belum tersedia"}
             >
               <CheckCircle2 size={13} color={isSaved ? 'var(--accent-green)' : 'currentColor'} />
               <span>{isSaved ? 'Tersimpan' : 'Simpan'}</span>
             </button>
           )}
 
-          {pdfUrl && (
-            <button 
-              type="button"
-              onClick={() => window.open(pdfUrl, '_blank')}
-              className="btn btn-secondary btn-sm"
-              title="Buka lembar PDF penuh di tab baru untuk dicetak"
-            >
-              <Printer size={13} />
-              <span>Cetak / PDF</span>
-            </button>
-          )}
+          <button 
+            type="button"
+            disabled={!isTemplateAvailableInStudio || !pdfUrl}
+            onClick={() => pdfUrl && window.open(pdfUrl, '_blank')}
+            className="btn btn-secondary btn-sm"
+            style={{
+              opacity: (isTemplateAvailableInStudio && pdfUrl) ? 1 : 0.5,
+              cursor: (isTemplateAvailableInStudio && pdfUrl) ? 'pointer' : 'not-allowed'
+            }}
+            title={isTemplateAvailableInStudio && pdfUrl ? "Buka lembar PDF penuh di tab baru untuk dicetak" : "Pratinjau PDF belum tersedia"}
+          >
+            <Printer size={13} />
+            <span>Cetak / PDF</span>
+          </button>
         </div>
 
         {/* Chain of Reference Strip */}
@@ -367,8 +387,8 @@ export default function OfficialDocPreview({
           </div>
         )}
 
-        {/* Pejabat & Penandatangan Strip */}
-        {selectedCase && (currentDataMap?.ATASAN_NAMA || currentDataMap?.PENYIDIK_1_NAMA) && (
+        {/* Chain of Signers Strip */}
+        {currentDataMap?.ATASAN_NAMA && (
           <div style={{
             width: '100%',
             display: 'flex',
@@ -382,9 +402,7 @@ export default function OfficialDocPreview({
             flexWrap: 'wrap'
           }}>
             <span style={{ color: '#ff352d', fontWeight: 700 }}>PENANDATANGAN OTOMATIS:</span>
-            {currentDataMap.ATASAN_NAMA && (
-              <span>Kasat: <strong style={{ color: '#fff' }}>{currentDataMap.ATASAN_PANGKAT} {currentDataMap.ATASAN_NAMA}</strong> {currentDataMap.ATASAN_NRP ? `(NRP: ${currentDataMap.ATASAN_NRP})` : ''}</span>
-            )}
+            <span>Kasat: <strong style={{ color: '#fff' }}>{currentDataMap.ATASAN_PANGKAT} {currentDataMap.ATASAN_NAMA}</strong> {currentDataMap.ATASAN_NRP ? `(NRP: ${currentDataMap.ATASAN_NRP})` : ''}</span>
             {currentDataMap.PENYIDIK_1_NAMA && (
               <span>Kanit/P1: <strong style={{ color: '#fff' }}>{currentDataMap.PENYIDIK_1_PANGKAT} {currentDataMap.PENYIDIK_1_NAMA}</strong> {currentDataMap.PENYIDIK_1_NRP ? `(NRP: ${currentDataMap.PENYIDIK_1_NRP})` : ''}</span>
             )}
@@ -505,25 +523,28 @@ export default function OfficialDocPreview({
       )}
 
       {/* Main Document Display Canvas */}
-      {!hasPhysicalFile && template && !template.file_path ? (
+      {!isTemplateAvailableInStudio ? (
         <div style={{
-          padding: '60px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '550px',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '2px dashed rgba(255, 255, 255, 0.15)',
+          borderRadius: '12px',
+          color: '#94a3b8',
           textAlign: 'center',
-          background: '#0F172A',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid #334155',
-          color: '#94A3B8'
+          padding: '40px'
         }}>
-          <FileText size={48} style={{ color: '#F59E0B', margin: '0 auto 16px' }} />
-          <div style={{ fontWeight: 700, fontSize: '16px', color: '#FFFFFF', marginBottom: '8px' }}>
-            Master Template Word (.docx) Belum Tersedia
-          </div>
-          <p style={{ fontSize: '13px', lineHeight: 1.5, margin: '0 0 16px' }}>
-            Template <strong>"{template.title}"</strong> belum ditautkan dengan file fisik <code>.docx</code> di Supabase Storage.
+          <FileText size={48} style={{ opacity: 0.4, marginBottom: '16px' }} />
+          <h3 style={{ color: '#ffffff', marginBottom: '8px', fontSize: '18px' }}>Template Belum Tersedia di Template Studio</h3>
+          <p style={{ maxWidth: '420px', fontSize: '13px', lineHeight: '1.6' }}>
+            Master dokumen resmi Microsoft Word (.docx) untuk <strong>{template?.title || template?.name}</strong> belum diunggah ke Supabase Storage.
           </p>
-          <div style={{ fontSize: '12px', color: '#64748B' }}>
-            Unggah file master template melalui menu <strong>Template Studio</strong> agar lembar dokumen dapat dikonversi ke PDF fisik kedinasan.
-          </div>
+          <span style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
+            Silakan unggah master template di menu <strong>Template Studio</strong> untuk mulai mengenerate dokumen ini.
+          </span>
         </div>
       ) : !pdfUrl ? (
         <div 
@@ -557,7 +578,7 @@ export default function OfficialDocPreview({
             }}
           />
           <div style={{ fontSize: '14px', fontWeight: 600, color: '#f8fafc' }}>
-            Memuat Dokumen Fisik Asli...
+            Memuat Dokumen Fisik Asli (PDF F4)...
           </div>
           <div style={{ fontSize: '12px', color: '#64748b' }}>
             Menginjeksi variabel perkara &rarr; Konversi ke format PDF F4 standar Polri
