@@ -1908,89 +1908,68 @@ export default function DocGeneratorView({
                 <span style={{ color: '#ffffff', fontWeight: 700 }}>PILIH FORMAT DOKUMEN MINDIK</span>
               </label>
 
-              {/* KHUSUS SUPER ADMIN: Tombol Tambah Format */}
+              {/* KHUSUS SUPER ADMIN: Tombol Tambah, Edit & Hapus Format */}
               {isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="btn btn-primary btn-sm"
-                  style={{ fontSize: '11px', padding: '4px 8px', gap: '4px' }}
-                  title="Tambah format template baru ke Supabase Storage (Khusus Super Admin)"
-                >
-                  <Plus size={13} />
-                  <span>Tambah Format</span>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {currentTemplate && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEdit(currentTemplate, e)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ padding: '4px 6px', fontSize: '11px' }}
+                        title="Edit judul, kategori, atau deskripsi format template"
+                      >
+                        <Edit3 size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenDelete(currentTemplate, e)}
+                        className="btn btn-danger btn-sm"
+                        style={{ padding: '4px 6px', fontSize: '11px' }}
+                        title="Hapus format template ini dari Supabase"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="btn btn-primary btn-sm"
+                    style={{ fontSize: '11px', padding: '4px 8px', gap: '4px' }}
+                    title="Tambah format template baru ke Supabase Storage (Khusus Super Admin)"
+                  >
+                    <Plus size={13} />
+                    <span>Tambah Format</span>
+                  </button>
+                </div>
               )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '340px', overflowY: 'auto', paddingRight: '2px' }}>
-              {(allTemplates || []).map((t) => {
-                const isSelected = selectedTemplateCode === t.code;
-                const isCloud = Boolean(t.file_path || t.file_url);
-                return (
-                  <div
-                    key={t.id || t.code}
-                    onClick={() => setSelectedTemplateCode(t.code)}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      background: isSelected ? 'rgba(255, 53, 45, 0.12)' : 'var(--bg-secondary)',
-                      border: isSelected ? '1px solid #ff352d' : '1px solid var(--border-glass)',
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <span className={`badge ${t.category === 'SURAT PERINTAH' ? 'badge-red' : 'badge-neutral'}`} style={{ fontSize: '9px', background: t.category === 'SURAT PERINTAH' ? 'rgba(239, 68, 68, 0.2)' : '#2a343f', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}>
-                          {t.code || '-'}
-                        </span>
-                        {isCloud && (
-                          <span className="badge" style={{ background: '#2a343f', border: '1px solid rgba(255, 255, 255, 0.12)', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <Cloud size={10} color="#ff352d" />
-                            <span>SUPABASE .DOCX</span>
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '12.5px', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#FFF' : 'var(--text-primary)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {t.title || t.name}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {/* KHUSUS SUPER ADMIN: Tombol Edit & Hapus Format */}
-                      {isSuperAdmin && (
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button
-                            type="button"
-                            onClick={(e) => handleOpenEdit(t, e)}
-                            className="btn btn-secondary btn-sm"
-                            style={{ padding: '3px 6px', fontSize: '10px' }}
-                            title="Edit judul, kategori, atau deskripsi format template"
-                          >
-                            <Edit3 size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleOpenDelete(t, e)}
-                            className="btn btn-danger btn-sm"
-                            style={{ padding: '3px 6px', fontSize: '10px' }}
-                            title="Hapus format template ini dari Supabase"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      )}
-
-                      {isSelected && <ChevronRight size={16} color="#ff352d" />}
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ marginBottom: '16px' }}>
+              <select
+                value={selectedTemplateCode}
+                onChange={(e) => setSelectedTemplateCode(e.target.value)}
+                className="form-select"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  backgroundColor: '#1b2229',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '8px',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {(allTemplates || []).map((t) => (
+                  <option key={t.id || t.code} value={t.code} style={{ backgroundColor: '#14181d', color: '#fff' }}>
+                    {t.title || t.name || t.code} {t.category ? `(${t.category})` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -2345,7 +2324,7 @@ export default function DocGeneratorView({
             )}
 
             {/* Selector Korban / Saksi Korban */}
-            {(isVictimDoc || registeredVictims.length > 0) && (
+            {isVictimDoc && (
               <div style={{
                 padding: '12px',
                 background: 'rgba(168, 85, 247, 0.08)',
@@ -2421,7 +2400,7 @@ export default function DocGeneratorView({
             )}
 
             {/* Tim Penyidik Otomatis untuk Dokumen Penugasan / Kolektif Perkara (SPRIN SIDIK / SPRIN GAS SIDIK) */}
-            {(isSprinSidik || isSprinGasSidik) && currentCase && (
+            {false && (isSprinSidik || isSprinGasSidik) && currentCase && (
               <div style={{
                 padding: '12px',
                 background: '#1e262e',
@@ -2516,7 +2495,7 @@ export default function DocGeneratorView({
             )}
 
             {/* Rantai Rujukan Perkara (Chain of Reference) */}
-            {currentCase && (
+            {false && currentCase && (
               <div style={{
                 padding: '10px 12px',
                 background: '#1e262e',
