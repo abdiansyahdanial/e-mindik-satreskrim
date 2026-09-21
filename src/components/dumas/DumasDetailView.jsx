@@ -178,6 +178,11 @@ export default function DumasDetailView({
   };
 
   const handleDeleteEvidence = async (bb) => {
+    if (perkara?.is_locked_spkt) {
+      alert('Berkas telah diserahkan dan berstatus terkunci. Barang bukti tidak dapat dihapus demi integritas chain of custody.');
+      return;
+    }
+
     const confirmDelete = window.confirm(
       `Apakah Anda yakin ingin menghapus barang bukti "${bb.nama_file || 'Berkas'}" secara permanen?\n\nTindakan ini akan menghapus record dari database dan file dari Cloudflare R2.`
     );
@@ -1042,29 +1047,51 @@ export default function DumasDetailView({
           </div>
 
           {/* Tombol Aksi Tambah Barang Bukti */}
-          <button
-            type="button"
-            onClick={() => setIsAddEvidenceOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(229, 46, 46, 0.15)',
-              border: '1px solid #E52E2E',
-              color: '#FF6B6B',
-              fontSize: '11px',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 0 12px rgba(229, 46, 46, 0.25)'
-            }}
-          >
-            <Plus size={13} />
-            <span>+ Tambah Barang Bukti</span>
-          </button>
+          {!perkara?.is_locked_spkt ? (
+            <button
+              type="button"
+              onClick={() => setIsAddEvidenceOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(229, 46, 46, 0.15)',
+                border: '1px solid #E52E2E',
+                color: '#FF6B6B',
+                fontSize: '11px',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 0 12px rgba(229, 46, 46, 0.25)'
+              }}
+            >
+              <Plus size={13} />
+              <span>+ Tambah Barang Bukti</span>
+            </button>
+          ) : (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-emerald-400 text-xs font-mono"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(6, 78, 59, 0.4)',
+                border: '1px solid rgba(6, 95, 70, 0.6)',
+                color: '#34D399',
+                fontSize: '11px',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontWeight: 600
+              }}
+            >
+              <Lock size={13} />
+              <span>Bukti Terkunci (Chain-of-Custody)</span>
+            </div>
+          )}
         </div>
 
         {/* Grid Kartu Responsif 3 Kolom */}
@@ -1270,29 +1297,31 @@ export default function DumasDetailView({
                       <Download size={13} />
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteEvidence(bb)}
-                      style={{
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                        border: '1px solid rgba(239, 68, 68, 0.35)',
-                        color: '#F87171',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                        fontSize: '11px',
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontWeight: 600
-                      }}
-                      title="Hapus Barang Bukti ini secara permanen"
-                    >
-                      <Trash2 size={13} />
-                      <span>Hapus</span>
-                    </button>
+                    {!perkara?.is_locked_spkt && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEvidence(bb)}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                          color: '#F87171',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          fontSize: '11px',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          fontWeight: 600
+                        }}
+                        title="Hapus Barang Bukti ini secara permanen"
+                      >
+                        <Trash2 size={13} />
+                        <span>Hapus</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );
