@@ -643,7 +643,9 @@ export default function App() {
       doc_number: docToSave.doc_number || docToSave.nomor_surat || '-',
       nomor_surat: docToSave.nomor_surat || docToSave.doc_number || '-',
       meta_values: docToSave.meta_values || docToSave.metadata || {},
-      created_at: docToSave.created_at || new Date().toISOString()
+      created_at: docToSave.created_at || docToSave.tgl_surat || docToSave.tanggal_surat || new Date().toISOString(),
+      tgl_surat: docToSave.tgl_surat || docToSave.tanggal_surat || docToSave.created_at || null,
+      tanggal_surat: docToSave.tanggal_surat || docToSave.tgl_surat || docToSave.created_at || null
     };
 
     setDocuments((prev) => [cleanPayload, ...prev.filter(d => d.id !== cleanPayload.id)]);

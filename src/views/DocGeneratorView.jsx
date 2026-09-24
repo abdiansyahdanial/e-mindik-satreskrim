@@ -2817,6 +2817,35 @@ export default function DocGeneratorView({
       || formValues.nomor_lp 
       || '-';
 
+    // Ekstraksi tanggal surat dari input form
+    const inputDate = formValues.TANGGAL_SURAT 
+      || formValues.tanggal_surat 
+      || formValues.TGL_SURAT 
+      || formValues.tgl_surat 
+      || formValues.DOC_DATE 
+      || formValues.doc_date 
+      || formValues.TANGGAL_DOKUMEN 
+      || formValues.tanggal_dokumen 
+      || formValues.TGL_DIKELUARKAN
+      || formValues.tanggal_dikeluarkan
+      || docDate;
+
+    // Format tanggal ISO yang valid untuk database
+    let finalDocDate = new Date().toISOString();
+    if (inputDate) {
+      try {
+        const parsed = new Date(inputDate);
+        if (!isNaN(parsed.getTime())) {
+          finalDocDate = parsed.toISOString();
+        } else {
+          // Jika format teks string tanggal biasa, simpan apa adanya
+          finalDocDate = inputDate;
+        }
+      } catch (e) {
+        finalDocDate = inputDate;
+      }
+    }
+
     const newDoc = {
       id: crypto.randomUUID(),
       case_id: currentCase?.id ? String(currentCase.id) : null,
@@ -2830,7 +2859,9 @@ export default function DocGeneratorView({
       template_code: currentTemplate?.code || 'MINDIK',
       meta_values: { ...formValues },
       metadata: { ...formValues },
-      created_at: new Date().toISOString()
+      created_at: finalDocDate,
+      tgl_surat: inputDate || finalDocDate,
+      tanggal_surat: inputDate || finalDocDate
     };
 
     if (onSaveDocument) {

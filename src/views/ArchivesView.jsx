@@ -138,9 +138,11 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
             ) : (
               filteredDocs.map((doc, idx) => {
                 const relatedCase = safeCases.find((c) => c.id === doc?.case_id);
-                const displayDate = doc?.created_at
-                  ? formatTanggalIndonesia(doc.created_at)
-                  : '-';
+                const displayDate = (doc?.tgl_surat ? formatTanggalIndonesia(doc.tgl_surat) : null)
+                  || (doc?.tanggal_surat ? formatTanggalIndonesia(doc.tanggal_surat) : null)
+                  || doc?.tgl_surat 
+                  || doc?.tanggal_surat 
+                  || (doc?.created_at ? formatTanggalIndonesia(doc.created_at) : '-');
 
                 return (
                   <tr key={doc?.id || `doc-${idx}`}>
