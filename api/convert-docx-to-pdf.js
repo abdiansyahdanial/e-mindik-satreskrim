@@ -527,7 +527,9 @@ export default async function handler(req, res) {
       }
     }
 
-    if (jsonBody && (jsonBody.storagePath || jsonBody.fileUrl)) {
+    if (jsonBody && jsonBody.docxBase64) {
+      docxBuffer = Buffer.from(jsonBody.docxBase64, 'base64');
+    } else if (jsonBody && (jsonBody.storagePath || jsonBody.fileUrl)) {
       const targetUrl = jsonBody.fileUrl || (
         jsonBody.storagePath.startsWith('http')
           ? jsonBody.storagePath
@@ -539,8 +541,6 @@ export default async function handler(req, res) {
       }
       const ab = await sRes.arrayBuffer();
       docxBuffer = Buffer.from(ab);
-    } else if (jsonBody && jsonBody.docxBase64) {
-      docxBuffer = Buffer.from(jsonBody.docxBase64, 'base64');
     }
 
     // 2. If not parsed from JSON, read raw buffer / FormData / multipart stream

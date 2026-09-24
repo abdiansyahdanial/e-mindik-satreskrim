@@ -580,8 +580,27 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   // A. SURAT AKTIF & LOGIKA EFEKTIF FORMAT SP TAP TERSANGKA
   const selectedTemplate = (arg1 && (arg1.template || arg1.selectedTemplate)) || activeCase?.template || null;
-  const tplCode = (selectedTemplate?.code || cleanInput.TEMPLATE_CODE || cleanInput.template_code || '').toUpperCase();
-  const tplName = (selectedTemplate?.name || selectedTemplate?.title || cleanInput.TEMPLATE_TITLE || cleanInput.template_title || '').toLowerCase();
+  const tplCode = (
+    selectedTemplate?.code || 
+    selectedTemplate?.kode || 
+    selectedTemplate?.kode_dokumen || 
+    selectedTemplate?.document_code || 
+    cleanInput.TEMPLATE_CODE || 
+    cleanInput.template_code || 
+    cleanInput.KODE || 
+    cleanInput.kode || 
+    ''
+  ).toUpperCase();
+
+  const tplName = (
+    selectedTemplate?.name || 
+    selectedTemplate?.nama || 
+    selectedTemplate?.title || 
+    selectedTemplate?.judul || 
+    cleanInput.TEMPLATE_TITLE || 
+    cleanInput.template_title || 
+    ''
+  ).toLowerCase();
 
   const isSpTap = selectedTemplate?.code === 'SP_TAP_TSK' || 
                   tplCode.includes('TAP_TSK') ||
@@ -781,24 +800,24 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const korbanAlamat = cleanInput.KORBAN_ALAMAT || cleanInput.korban_alamat || resolvedVictim?.alamat || (resolvedVictim ? '' : (activeCase?.locus || ''));
 
   // F. PENYIDIK & PEJABAT
-  // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama - Pangkat WAJIB Lengkap)
+  // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama - Pangkat Singkat Baku)
   const atasanNama = cleanInput.ATASAN_NAMA || cleanInput.atasan_nama || activeCase?.kasat_nama || '';
   const atasanPangkatRaw = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.kasat_pangkat || activeCase?.atasan_pangkat || '';
-  const atasanPangkat = formatPangkatLengkap(atasanPangkatRaw);
+  const atasanPangkat = (toPangkatSingkat(atasanPangkatRaw) || atasanPangkatRaw).trim();
   const atasanNrp = cleanInput.ATASAN_NRP || cleanInput.atasan_nrp || activeCase?.kasat_nrp || '';
 
-  // Tanda Tangan Kanit / Yang Menerima Perintah / Pemeriksa BA (Pangkat WAJIB Format Lengkap)
+  // Tanda Tangan Kanit / Yang Menerima Perintah / Pemeriksa BA (Pangkat Singkat Baku)
   const penyidikNama = cleanInput.PENYIDIK_NAMA || cleanInput.penyidik_nama || activeCase?.penyidik_1_nama || '';
   const penyidikPangkatRaw = cleanInput.PENYIDIK_PANGKAT || cleanInput.penyidik_pangkat || activeCase?.penyidik_1_pangkat || activeCase?.penyidik_pangkat || '';
-  const penyidikPangkat = formatPangkatLengkap(penyidikPangkatRaw);
+  const penyidikPangkat = (toPangkatSingkat(penyidikPangkatRaw) || penyidikPangkatRaw).trim();
   const penyidikNrp = cleanInput.PENYIDIK_NRP || cleanInput.penyidik_nrp || activeCase?.penyidik_1_nrp || activeCase?.penyidik_nrp || '';
   const penyidikJabatan = cleanInput.PENYIDIK_JABATAN || cleanInput.penyidik_jabatan || activeCase?.penyidik_1_jabatan || activeCase?.penyidik_jabatan || '';
 
-  // Penyidik Penangan Perkara (Bukti Penyerahan Surat - Pangkat WAJIB Format Lengkap)
+  // Penyidik Penangan Perkara (Bukti Penyerahan Surat - Pangkat Singkat Baku)
   const penanganCase = getPenyidikPenangan(activeCase);
   const penanganNama = cleanInput.PENYIDIK_PENANGAN_NAMA || cleanInput.penyidik_penangan_nama || penanganCase?.nama || activeCase?.penyidik_1_nama || penyidikNama || '';
   const penanganPangkatRaw = cleanInput.PENYIDIK_PENANGAN_PANGKAT || cleanInput.penyidik_penangan_pangkat || penanganCase?.pangkat || activeCase?.penyidik_1_pangkat || penyidikPangkatRaw || penyidikPangkat || '';
-  const penanganPangkat = formatPangkatLengkap(penanganPangkatRaw);
+  const penanganPangkat = (toPangkatSingkat(penanganPangkatRaw) || penanganPangkatRaw).trim();
   const penanganNrp = cleanInput.PENYIDIK_PENANGAN_NRP || cleanInput.penyidik_penangan_nrp || penanganCase?.nrp || activeCase?.penyidik_1_nrp || penyidikNrp || '';
   const penanganJabatan = cleanInput.PENYIDIK_PENANGAN_JABATAN || cleanInput.penyidik_penangan_jabatan || penanganCase?.jabatan || activeCase?.penyidik_1_jabatan || penyidikJabatan || 'Penyidik';
   const penanganPangkatNrp = penanganPangkat && penanganNrp ? `${penanganPangkat} / ${penanganNrp}` : (penanganPangkat || penanganNrp || '');
@@ -860,10 +879,12 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   const baseMap = {
     // A. SURAT AKTIF (Resmi UPPERCASE)
-    NOMOR_SURAT: nomorSurat,
+    NOMOR_SURAT: effectiveNomorSurat || nomorSurat || '',
+    nomor_surat: effectiveNomorSurat || nomorSurat || '',
     TANGGAL_SURAT: tanggalSurat,
-    NOMOR_SURAT_HEADER: formatNomorSuratHeader(nomorSurat),
-    nomor_surat_header: formatNomorSuratHeader(nomorSurat),
+    tanggal_surat: tanggalSurat,
+    NOMOR_SURAT_HEADER: formatNomorSuratHeader(effectiveNomorSurat || nomorSurat),
+    nomor_surat_header: formatNomorSuratHeader(effectiveNomorSurat || nomorSurat),
     TANGGAL_SURAT_HEADER: formatTanggalSuratHeader(tanggalSurat),
     tanggal_surat_header: formatTanggalSuratHeader(tanggalSurat),
     TEMPAT_SURAT: tempatSurat,
@@ -1294,16 +1315,14 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     INVESTIGATORS_LIST: timPenyidik,
 
     // Legacy Aliases
-    DOC_NO: nomorSurat,
-    doc_no: nomorSurat,
+    DOC_NO: effectiveNomorSurat || nomorSurat || '',
+    doc_no: effectiveNomorSurat || nomorSurat || '',
     DOC_LOCATION: tempatSurat,
     doc_location: tempatSurat,
     DOC_DATE: tanggalSurat,
     doc_date: tanggalSurat,
     TEMPAT_LAHIR: activeSuspect?.tempat_lahir || '',
-    tempat_lahir: activeSuspect?.tempat_lahir || '',
     TGL_LAHIR: formattedTglLahirSuspect,
-    tgl_lahir: formattedTglLahirSuspect,
 
     // Dukungan Multi-Tersangka & Terlapor (Array Perulangan Dokumen Kolektif, misal SPDP)
     tersangka_list: (Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : (activeSuspect ? [activeSuspect] : []))
@@ -1551,31 +1570,36 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.doc_date = tanggalSurat;
 
   // Sisipkan tag header baru tanpa menimpa tag yang sudah ada (Universal Header Naskah Dinas)
-  if (isSpTap && effectiveNomorSurat) {
+  if (effectiveNomorSurat) {
     finalPayload.NOMOR_SURAT = effectiveNomorSurat;
     finalPayload.nomor_surat = effectiveNomorSurat;
     finalPayload.DOC_NO = effectiveNomorSurat;
     finalPayload.doc_no = effectiveNomorSurat;
-    finalPayload.NOMOR_SP_TAP = effectiveNomorSurat;
-    finalPayload.nomor_sp_tap = effectiveNomorSurat;
-    finalPayload.NO_SP_TAP_TSK = effectiveNomorSurat;
-    finalPayload.no_sp_tap_tsk = effectiveNomorSurat;
-    finalPayload.NOMOR_SP_TAP_TSK = effectiveNomorSurat;
-    finalPayload.nomor_sp_tap_tsk = effectiveNomorSurat;
+    if (isSpTap) {
+      finalPayload.NOMOR_SP_TAP = effectiveNomorSurat;
+      finalPayload.nomor_sp_tap = effectiveNomorSurat;
+      finalPayload.NO_SP_TAP_TSK = effectiveNomorSurat;
+      finalPayload.no_sp_tap_tsk = effectiveNomorSurat;
+      finalPayload.NOMOR_SP_TAP_TSK = effectiveNomorSurat;
+      finalPayload.nomor_sp_tap_tsk = effectiveNomorSurat;
+    }
   }
 
-  finalPayload.NOMOR_SURAT_HEADER = formatNomorSuratHeader(finalPayload.NOMOR_SURAT || nomorSurat);
+  const finalNomorSurat = effectiveNomorSurat || finalPayload.NOMOR_SURAT || nomorSurat || '';
+  finalPayload.NOMOR_SURAT = finalNomorSurat;
+  finalPayload.nomor_surat = finalNomorSurat;
+  finalPayload.NOMOR_SURAT_HEADER = formatNomorSuratHeader(finalNomorSurat);
   finalPayload.nomor_surat_header = finalPayload.NOMOR_SURAT_HEADER;
 
   finalPayload.TANGGAL_SURAT_HEADER = formatTanggalSuratHeader(finalPayload.TANGGAL_SURAT || tanggalSurat);
   finalPayload.tanggal_surat_header = finalPayload.TANGGAL_SURAT_HEADER;
 
-  // 1. Pangkat Atasan (Ekspansi Otomatis ke Pangkat Lengkap Polri)
+  // 1. Pangkat Atasan
   const atasanPangkatRawFinal = activeCase?.atasan_pangkat || activeCase?.kasat_pangkat || finalPayload.ATASAN_PANGKAT || '';
-  finalPayload.ATASAN_PANGKAT = formatPangkatLengkap(atasanPangkatRawFinal);
+  finalPayload.ATASAN_PANGKAT = atasanPangkatRawFinal.trim();
   finalPayload.atasan_pangkat = finalPayload.ATASAN_PANGKAT;
 
-  // 2. Penyidik Penangan Perkara (Pangkat Lengkap untuk Bukti Penyerahan Surat)
+  // 2. Penyidik Penangan Perkara (Pangkat Singkat Baku untuk Bukti Penyerahan Surat)
   const penanganFinal = getPenyidikPenangan(activeCase) || activeCase?.penyidik_1 || {
     nama: finalPayload.PENYIDIK_1_NAMA || finalPayload.PENYIDIK_NAMA || '',
     pangkat: finalPayload.PENYIDIK_1_PANGKAT || finalPayload.PENYIDIK_PANGKAT || '',
@@ -1586,7 +1610,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.PENYIDIK_PENANGAN_NAMA = finalPayload.PENYIDIK_PENANGAN_NAMA || penanganFinal?.nama || '';
   finalPayload.penyidik_penangan_nama = finalPayload.PENYIDIK_PENANGAN_NAMA;
 
-  finalPayload.PENYIDIK_PENANGAN_PANGKAT = formatPangkatLengkap(finalPayload.PENYIDIK_PENANGAN_PANGKAT || penanganFinal?.pangkat || '');
+  const penanganPangkatRawFinal = finalPayload.PENYIDIK_PENANGAN_PANGKAT || penanganFinal?.pangkat || '';
+  finalPayload.PENYIDIK_PENANGAN_PANGKAT = (toPangkatSingkat(penanganPangkatRawFinal) || penanganPangkatRawFinal).trim();
   finalPayload.penyidik_penangan_pangkat = finalPayload.PENYIDIK_PENANGAN_PANGKAT;
 
   finalPayload.PENYIDIK_PENANGAN_NRP = finalPayload.PENYIDIK_PENANGAN_NRP || penanganFinal?.nrp || '';
@@ -1601,15 +1626,15 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.PENYIDIK_PENANGAN_PANGKAT_NRP = finalPenanganPktNrp;
   finalPayload.penyidik_penangan_pangkat_nrp = finalPenanganPktNrp;
 
-  // 3. Pangkat Penandatangan Sisi Kiri: Yang Menerima Perintah / Kanit (WAJIB Format Lengkap Resmi)
+  // 3. Pangkat Penandatangan Sisi Kiri: Yang Menerima Perintah / Kanit (Pangkat Singkat Baku)
   const penyidikPangkatRawFinal = cleanInput.PENYIDIK_PANGKAT || cleanInput.penyidik_pangkat || activeCase?.penyidik_pangkat || activeCase?.penyidik_1_pangkat || '';
-  finalPayload.PENYIDIK_PANGKAT = toPangkatLengkap(penyidikPangkatRawFinal);
+  finalPayload.PENYIDIK_PANGKAT = (toPangkatSingkat(penyidikPangkatRawFinal) || penyidikPangkatRawFinal).trim();
   finalPayload.penyidik_pangkat = finalPayload.PENYIDIK_PANGKAT;
 
   // JANGAN MEMUTASI PENYIDIK_1_PANGKAT MENJADI LENGKAP!
   // Personel 1 s.d. 5 di bagian daftar tugas "DIPERINTAHKAN Kepada" WAJIB pangkat singkat (AIPDA, BRIPKA, dll.)
   const penyidik1PangkatRawFinal = cleanInput.PENYIDIK_1_PANGKAT || cleanInput.penyidik_1_pangkat || activeCase?.penyidik_1_pangkat || penyidikPangkatRawFinal || '';
-  finalPayload.PENYIDIK_1_PANGKAT = toPangkatSingkat(penyidik1PangkatRawFinal);
+  finalPayload.PENYIDIK_1_PANGKAT = (toPangkatSingkat(penyidik1PangkatRawFinal) || penyidik1PangkatRawFinal).trim();
   finalPayload.penyidik_1_pangkat = finalPayload.PENYIDIK_1_PANGKAT;
 
   // Pemetaan seragam untuk Penandatangan Sisi Kiri (Yang Menerima Perintah / Kanit / P1)
@@ -1642,10 +1667,10 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   finalPayload.PENYIDIK_PANGKAT_LENGKAP = finalPayload.PENYIDIK_PANGKAT;
   finalPayload.penyidik_pangkat_lengkap = finalPayload.PENYIDIK_PANGKAT;
-  finalPayload.PENYIDIK_1_PANGKAT_LENGKAP = toPangkatLengkap(penyidik1PangkatRawFinal);
-  finalPayload.penyidik_1_pangkat_lengkap = finalPayload.PENYIDIK_1_PANGKAT_LENGKAP;
+  finalPayload.PENYIDIK_1_PANGKAT_LENGKAP = finalPayload.PENYIDIK_1_PANGKAT;
+  finalPayload.penyidik_1_pangkat_lengkap = finalPayload.PENYIDIK_1_PANGKAT;
 
-  // Format Pangkat / NRP untuk Penandatangan Tanda Tangan Bawah (LENGKAP)
+  // Format Pangkat / NRP untuk Penandatangan Tanda Tangan Bawah
   const finalPenyidikPktNrp = finalPayload.PENYIDIK_PANGKAT && (finalPayload.PENYIDIK_NRP || activeCase?.penyidik_1_nrp)
     ? `${finalPayload.PENYIDIK_PANGKAT} / ${finalPayload.PENYIDIK_NRP || activeCase?.penyidik_1_nrp}`
     : (finalPayload.PENYIDIK_PANGKAT || finalPayload.PENYIDIK_NRP || activeCase?.penyidik_1_nrp || '');
@@ -1665,6 +1690,13 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     : (finalPayload.PENYIDIK_1_PANGKAT || p1Nrp || '');
   finalPayload.PENYIDIK_1_PANGKAT_NRP = finalP1PktNrp;
   finalPayload.penyidik_1_pangkat_nrp = finalP1PktNrp;
+
+  // Format Pangkat / NRP untuk Kasat / Atasan
+  const finalAtasanPktNrp = finalPayload.ATASAN_PANGKAT && (finalPayload.ATASAN_NRP || activeCase?.kasat_nrp)
+    ? `${finalPayload.ATASAN_PANGKAT} / ${finalPayload.ATASAN_NRP || activeCase?.kasat_nrp}`
+    : (finalPayload.ATASAN_PANGKAT || finalPayload.ATASAN_NRP || activeCase?.kasat_nrp || '');
+  finalPayload.ATASAN_PANGKAT_NRP = finalAtasanPktNrp;
+  finalPayload.atasan_pangkat_nrp = finalAtasanPktNrp;
 
   // 4. Daftar Personel Tim di Batang Tubuh / Tabel Tugas (Loop Array) - Tetap Pangkat Singkat Sesuai Ketentuan Naskah Dinas
   const normalizeTimArray = (arr) => {
@@ -2234,8 +2266,28 @@ export async function convertDocxToPdf(docxBlob, options = {}) {
 
   let response;
 
-  // 1. If storagePath or fileUrl provided, send via direct path
-  if (options.storagePath || options.fileUrl) {
+  if (docxBlob) {
+    // Convert blob to Base64 to guarantee safe transport across dev server & production
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const res = reader.result;
+        resolve(typeof res === 'string' ? res.split(',')[1] : '');
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(docxBlob);
+    });
+
+    response = await fetch('/api/convert-docx-to-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        docxBase64: base64
+      })
+    });
+  } else {
     response = await fetch('/api/convert-docx-to-pdf', {
       method: 'POST',
       headers: {
@@ -2246,29 +2298,6 @@ export async function convertDocxToPdf(docxBlob, options = {}) {
         fileUrl: options.fileUrl
       })
     });
-  } else {
-    // 2. Send via FormData multipart binary
-    const formData = new FormData();
-    formData.append('file', docxBlob, 'document.docx');
-
-    response = await fetch('/api/convert-docx-to-pdf', {
-      method: 'POST',
-      body: formData
-    });
-
-    // 3. Fallback if hit 413 (Payload Too Large) and Supabase storagePath is available
-    if (response.status === 413 && options.fallbackStoragePath) {
-      console.warn('FormData payload terkena batas 413, beralih ke jalur Supabase Storage path:', options.fallbackStoragePath);
-      response = await fetch('/api/convert-docx-to-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          storagePath: options.fallbackStoragePath
-        })
-      });
-    }
   }
 
   if (!response.ok) {
@@ -2304,7 +2333,8 @@ export async function generatePdfBlob({
   activeVictim,
   victimsList,
   formValues = {},
-  personnelList = []
+  personnelList = [],
+  bypassCache = false
 }) {
   const currentCase = activeCase || caseData;
   const docxRes = await generateDocxBlob({
@@ -2330,28 +2360,32 @@ export async function generatePdfBlob({
     };
   }
 
-  // Check cache: key by template ID / path + JSON of variables
-  const cacheKey = `${template.id || template.file_path}_${JSON.stringify(docxRes.dataMap)}`;
-  let pdfBlob = pdfRenderCache.get(cacheKey);
+  // Check cache: key by template ID / path + JSON of variables & exact formValues
+  const sortedFormValues = Object.keys(formValues || {}).sort().reduce((acc, key) => {
+    acc[key] = formValues[key];
+    return acc;
+  }, {});
+  const cacheKey = `${template.id || template.file_path}_${JSON.stringify(docxRes.dataMap)}_${JSON.stringify(sortedFormValues)}`;
+  let pdfBlob = bypassCache ? null : pdfRenderCache.get(cacheKey);
   let isCached = false;
 
   if (pdfBlob) {
     isCached = true;
   } else {
-    // Perform true file-to-file conversion
-    pdfBlob = await convertDocxToPdf(docxRes.blob, {
-      fallbackStoragePath: template?.file_path
-    });
+    // Perform true file-to-file conversion of the injected docx buffer
+    pdfBlob = await convertDocxToPdf(docxRes.blob);
 
     // Save in cache (keep last 20 generated PDFs)
-    if (pdfRenderCache.size > 20) {
-      const firstKey = pdfRenderCache.keys().next().value;
-      pdfRenderCache.delete(firstKey);
+    if (pdfBlob && !bypassCache) {
+      if (pdfRenderCache.size > 20) {
+        const firstKey = pdfRenderCache.keys().next().value;
+        pdfRenderCache.delete(firstKey);
+      }
+      pdfRenderCache.set(cacheKey, pdfBlob);
     }
-    pdfRenderCache.set(cacheKey, pdfBlob);
   }
 
-  const pdfBlobUrl = URL.createObjectURL(pdfBlob);
+  const pdfBlobUrl = pdfBlob ? URL.createObjectURL(pdfBlob) : null;
 
   return {
     hasPhysicalFile: true,
