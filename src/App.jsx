@@ -253,36 +253,31 @@ export default function App() {
         } catch {}
 
         try {
-          const { data, error } = await supabase
-            .from('documents')
-            .select('*')
-            .order('created_at', { ascending: false });
+          const [resCaseGen, resDocs, resArsip] = await Promise.allSettled([
+            supabase.from('case_generated_documents').select('*').order('created_at', { ascending: false }),
+            supabase.from('documents').select('*').order('created_at', { ascending: false }),
+            supabase.from('arsip_dokumen').select('*').order('created_at', { ascending: false })
+          ]);
 
-          if (error) {
-            console.warn('[SUPABASE WARNING] Tabel documents belum ada atau tidak dapat diakses:', error.message);
-            // Fallback periksa jika tabel diberi nama arsip_dokumen
-            try {
-              const { data: arsipData, error: arsipError } = await supabase
-                .from('arsip_dokumen')
-                .select('*')
-                .order('created_at', { ascending: false });
+          const listCaseGen = (resCaseGen.status === 'fulfilled' && !resCaseGen.value.error && resCaseGen.value.data) ? resCaseGen.value.data : [];
+          const listDocs = (resDocs.status === 'fulfilled' && !resDocs.value.error && resDocs.value.data) ? resDocs.value.data : [];
+          const listArsip = (resArsip.status === 'fulfilled' && !resArsip.value.error && resArsip.value.data) ? resArsip.value.data : [];
 
-              if (arsipError) {
-                console.warn('[SUPABASE WARNING] Tabel arsip_dokumen belum ada atau tidak dapat diakses:', arsipError.message);
-                setDocuments([]);
-                return;
-              }
-              setDocuments(arsipData || []);
-            } catch (errArsip) {
-              console.error('[FETCH ERROR ARSIP]:', errArsip);
-              setDocuments([]);
+          // Gabungkan dan hilangkan duplikasi berdasarkan ID
+          const combinedMap = new Map();
+          [...listCaseGen, ...listDocs, ...listArsip].forEach(doc => {
+            if (doc && doc.id && !combinedMap.has(doc.id)) {
+              combinedMap.set(doc.id, doc);
             }
-            return;
-          }
-          setDocuments(data || []);
-        } catch (err) {
-          console.error('[FETCH ERROR]:', err);
-          setDocuments([]);
+          });
+
+          const finalDocs = Array.from(combinedMap.values()).sort(
+            (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+          );
+
+          setDocuments(finalDocs);
+        } catch (fetchErr) {
+          console.warn('[FETCH DOCUMENTS NOTICE]:', fetchErr);
         }
       } catch (e) {
         console.warn('Documents sync error:', e);
@@ -629,13 +624,14 @@ export default function App() {
   const handleSaveDocument = async (newDoc) => {
     const docToSave = {
       ...newDoc,
-      id: newDoc.id || `doc-${Date.now()}`,
+      id: (newDoc.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newDoc.id)) ? newDoc.id : crypto.randomUUID(),
     };
 
     setDocuments((prev) => [docToSave, ...prev]);
     showToast(`Dokumen ${newDoc.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
 
     try {
+      await supabase.from('case_generated_documents').insert([docToSave]).catch(() => {});
       const { error: insErr } = await supabase.from('documents').insert([docToSave]);
       if (insErr) {
         console.warn('Insert to documents failed, trying arsip_dokumen:', insErr.message);
@@ -679,11 +675,11 @@ export default function App() {
 
     // 2. Hapus baris dokumen dari tabel Supabase secara riil ke database!
     try {
-      const { error: delErr } = await supabase.from('documents').delete().eq('id', doc.id);
-      if (delErr) {
-        console.warn('Gagal hapus dari documents, mencoba arsip_dokumen:', delErr.message);
-        await supabase.from('arsip_dokumen').delete().eq('id', doc.id).catch(() => {});
-      }
+      await Promise.allSettled([
+        supabase.from('case_generated_documents').delete().eq('id', doc.id),
+        supabase.from('documents').delete().eq('id', doc.id),
+        supabase.from('arsip_dokumen').delete().eq('id', doc.id)
+      ]);
     } catch (dbErr) {
       console.warn('Delete document database row error:', dbErr);
     }
