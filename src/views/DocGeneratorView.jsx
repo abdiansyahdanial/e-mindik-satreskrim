@@ -1265,7 +1265,7 @@ export default function DocGeneratorView({
     fetchTemplates();
   }, []);
 
-  // Muat arsip dokumen dari Supabase (case_generated_documents & documents) untuk validasi prasyarat perkara aktif
+  // Muat arsip dokumen dari Supabase (case_generated_documents, documents, dan arsip_dokumen) untuk validasi prasyarat perkara aktif
   useEffect(() => {
     if (!currentCase?.id) {
       setCaseDocuments([]);
@@ -1273,15 +1273,27 @@ export default function DocGeneratorView({
     }
     const loadCaseDocs = async () => {
       try {
-        const [resGen, resDocs] = await Promise.allSettled([
+        const [resGen, resDocs, resArsip] = await Promise.allSettled([
           supabase.from('case_generated_documents').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false }),
-          supabase.from('documents').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false })
+          supabase.from('documents').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false }),
+          supabase.from('arsip_dokumen').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false })
         ]);
 
         const listGen = (resGen.status === 'fulfilled' && !resGen.value.error && resGen.value.data) ? resGen.value.data : [];
         const listDocs = (resDocs.status === 'fulfilled' && !resDocs.value.error && resDocs.value.data) ? resDocs.value.data : [];
+        const listArsip = (resArsip.status === 'fulfilled' && !resArsip.value.error && resArsip.value.data) ? resArsip.value.data : [];
 
-        setCaseDocuments([...listGen, ...listDocs]);
+        // Gabungkan dan deduplikasi dokumen berdasarkan id atau kombinasi (template_code + doc_number)
+        const combined = [...listGen, ...listDocs, ...listArsip];
+        const seen = new Set();
+        const uniqueDocs = combined.filter(d => {
+          const key = d.id || `${d.template_code || d.code}_${d.doc_number || d.nomor_surat}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        setCaseDocuments(uniqueDocs);
       } catch (err) {
         console.warn('Load case documents notice:', err);
       }
@@ -2788,15 +2800,17 @@ export default function DocGeneratorView({
       await saveReferenceNumbers(docNumber, docDate);
     }
 
+    const generatedId = crypto.randomUUID();
+
     const newDoc = {
-      id: `doc-${Date.now().toString().slice(-6)}`,
+      id: generatedId,
       case_id: currentCase.id,
-      template_id: currentTemplate.id,
-      template_code: currentTemplate.code,
-      doc_title: currentTemplate.title,
+      template_id: (currentTemplate?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentTemplate.id)) ? currentTemplate.id : null,
+      template_code: currentTemplate?.code || currentTemplate?.kode || 'MINDIK',
+      doc_title: currentTemplate?.title || currentTemplate?.nama || 'Dokumen Mindik',
       doc_number: docNumber || '-',
       meta_values: { ...formValues },
-      created_at: formValues.TANGGAL_SURAT || formValues.tanggal_surat || formValues.DOC_DATE || new Date().toISOString().split('T')[0],
+      created_at: new Date().toISOString()
     };
 
     if (onSaveDocument) {
@@ -2806,28 +2820,26 @@ export default function DocGeneratorView({
     setIsSaved(true);
 
     try {
-      await Promise.allSettled([
-        supabase.from('case_generated_documents').insert({
-          case_id: currentCase.id,
-          template_id: currentTemplate.id,
-          template_code: currentTemplate.code,
-          doc_title: currentTemplate.title,
-          doc_number: docNumber || '-',
-          meta_values: { ...formValues },
-          created_at: new Date().toISOString()
-        }),
-        supabase.from('documents').insert({
-          case_id: currentCase.id,
-          template_id: currentTemplate.id,
-          template_code: currentTemplate.code,
-          doc_title: currentTemplate.title,
-          doc_number: docNumber || '-',
-          meta_values: { ...formValues },
-          created_at: new Date().toISOString()
-        })
-      ]);
+      // Simpan ke case_generated_documents
+      const { error: genErr } = await supabase
+        .from('case_generated_documents')
+        .insert([newDoc]);
+        
+      if (genErr) {
+        console.warn('[Mindik Save] Gagal simpan ke case_generated_documents:', genErr.message);
+      }
+
+      // Simpan ke documents / arsip_dokumen sebagai backup arsip perkara
+      const { error: docErr } = await supabase
+        .from('documents')
+        .insert([newDoc]);
+
+      if (docErr) {
+        console.warn('[Mindik Save] Gagal simpan ke documents, mencoba arsip_dokumen:', docErr.message);
+        await supabase.from('arsip_dokumen').insert([newDoc]).catch(() => {});
+      }
     } catch (dbErr) {
-      console.warn('Record generated document notice:', dbErr);
+      console.error('[Mindik Save Error]:', dbErr);
     }
   };
 
