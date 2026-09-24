@@ -610,11 +610,18 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const isKapDoc = tplCode === 'BA_KAP' || tplCode === 'SPRIN_KAP_DAN_BA' || tplCode.includes('KAP');
   const isHanDoc = tplCode === 'SPRIN_HAN' || tplCode === 'BA_HAN' || tplCode === 'SPRIN_HAN_DAN_BA' || tplCode.includes('HAN');
 
-  const rawNomorSurat = cleanInput.NOMOR_SURAT || cleanInput.doc_no || cleanInput.DOC_NO || cleanInput.nomor_surat || cleanInput.nomor_sp_tap_tsk || cleanInput.no_sp_tap_tsk || cleanInput.nomor_sp_tap || '';
-  const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.DOC_DATE || cleanInput.tanggal_surat || cleanInput.doc_date || cleanInput.tanggal_sp_tap || cleanInput.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0];
+  const rawNomorSurat = cleanInput.NOMOR_SURAT 
+    || cleanInput.nomor_surat 
+    || cleanInput.NO_SURAT 
+    || cleanInput.no_surat 
+    || cleanInput.DOC_NO 
+    || cleanInput.doc_no 
+    || (isSpTap ? (cleanInput.nomor_sp_tap_tsk || cleanInput.no_sp_tap_tsk || cleanInput.nomor_sp_tap || '') : '')
+    || '';
+  const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.DOC_DATE || cleanInput.tanggal_surat || cleanInput.doc_date || (isSpTap ? (cleanInput.tanggal_sp_tap || cleanInput.tgl_sp_tap_tsk) : '') || new Date().toISOString().split('T')[0];
 
-  const suspectNomorSpTap = activeSuspect?.nomor_sp_tap || activeSuspect?.no_sp_tap_tsk || '';
-  const suspectTanggalSpTap = activeSuspect?.tanggal_sp_tap || activeSuspect?.tgl_sp_tap_tsk || '';
+  const suspectNomorSpTap = isSpTap ? (activeSuspect?.nomor_sp_tap || activeSuspect?.no_sp_tap_tsk || '') : '';
+  const suspectTanggalSpTap = isSpTap ? (activeSuspect?.tanggal_sp_tap || activeSuspect?.tgl_sp_tap_tsk || '') : '';
 
   // Kop Nomor Surat paling atas (Nomor : ...): gunakan murni exact string dari form input yang sedang aktif.
   // Khusus format SP_TAP_TSK: utamakan input mentah (raw exact string) dari pengguna di form, fallback ke suspectNomorSpTap
@@ -640,15 +647,36 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const tanggalLp = formatTanggalIndonesia(rawTanggalLp);
 
   // Universal Auto-Sync Dokumen Induk (Scalable & Modular)
-  const isSprinSidikDoc = tplCode === 'SPRIN_SIDIK' || (tplCode.includes('SIDIK') && !tplCode.includes('GAS') && !tplCode.includes('TUGAS'));
-  const isSprinGasSidikDoc = tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || tplCode.includes('GAS_SIDIK');
+  const isSprinSidikDoc = tplCode === 'SPRIN_SIDIK' || 
+    (tplCode.includes('SIDIK') && !tplCode.includes('GAS') && !tplCode.includes('TUGAS') && !tplCode.includes('TAMBAHAN') && !tplCode.includes('LANJUTAN'));
+  const isSprinGasSidikDoc = tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || 
+    (tplCode.includes('GAS_SIDIK') && !tplCode.includes('TAMBAHAN') && !tplCode.includes('LANJUTAN'));
+
+  const inputSprinSidik = cleanInput.NO_SPRIN_SIDIK !== undefined
+    ? cleanInput.NO_SPRIN_SIDIK
+    : (cleanInput.no_sprin_sidik !== undefined 
+        ? cleanInput.no_sprin_sidik 
+        : (cleanInput.NOMOR_SP_SIDIK !== undefined 
+            ? cleanInput.NOMOR_SP_SIDIK 
+            : (cleanInput.nomor_sp_sidik !== undefined 
+                ? cleanInput.nomor_sp_sidik 
+                : (cleanInput.NO_SP_SIDIK !== undefined 
+                    ? cleanInput.NO_SP_SIDIK 
+                    : (cleanInput.no_sp_sidik !== undefined ? cleanInput.no_sp_sidik : undefined)))));
 
   const noSprinSidik = (isSprinSidikDoc && effectiveNomorSurat)
-    ? (cleanInput.NO_SPRIN_SIDIK || cleanInput.no_sprin_sidik || effectiveNomorSurat)
-    : (cleanInput.NO_SPRIN_SIDIK || cleanInput.no_sprin_sidik || activeCase?.no_sprin_sidik || '');
+    ? (inputSprinSidik || effectiveNomorSurat)
+    : (inputSprinSidik !== undefined ? inputSprinSidik : (activeCase?.no_sprin_sidik || ''));
+
   const rawTglSprinSidik = (isSprinSidikDoc && effectiveTanggalSurat)
     ? (cleanInput.TGL_SPRIN_SIDIK || cleanInput.tgl_sprin_sidik || cleanInput.TANGGAL_SPRIN_SIDIK || cleanInput.tanggal_sprin_sidik || effectiveTanggalSurat)
-    : (cleanInput.TGL_SPRIN_SIDIK || cleanInput.tgl_sprin_sidik || cleanInput.TANGGAL_SPRIN_SIDIK || cleanInput.tanggal_sprin_sidik || activeCase?.tgl_sprin_sidik || activeCase?.sprin_date || '');
+    : (cleanInput.TGL_SPRIN_SIDIK !== undefined 
+        ? cleanInput.TGL_SPRIN_SIDIK 
+        : (cleanInput.tgl_sprin_sidik !== undefined 
+            ? cleanInput.tgl_sprin_sidik 
+            : (cleanInput.TANGGAL_SPRIN_SIDIK !== undefined 
+                ? cleanInput.TANGGAL_SPRIN_SIDIK 
+                : (cleanInput.tanggal_sprin_sidik !== undefined ? cleanInput.tanggal_sprin_sidik : (activeCase?.tgl_sprin_sidik || activeCase?.sprin_date || '')))));
   const tglSprinSidik = formatTanggalIndonesia(rawTglSprinSidik);
 
   const noSprinGasSidik = (isSprinGasSidikDoc && effectiveNomorSurat)
@@ -881,6 +909,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     // A. SURAT AKTIF (Resmi UPPERCASE)
     NOMOR_SURAT: effectiveNomorSurat || nomorSurat || '',
     nomor_surat: effectiveNomorSurat || nomorSurat || '',
+    NO_SURAT: effectiveNomorSurat || nomorSurat || '',
+    no_surat: effectiveNomorSurat || nomorSurat || '',
     TANGGAL_SURAT: tanggalSurat,
     tanggal_surat: tanggalSurat,
     NOMOR_SURAT_HEADER: formatNomorSuratHeader(effectiveNomorSurat || nomorSurat),
@@ -896,7 +926,13 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     NOMOR_LP: nomorLp,
     TANGGAL_LP: tanggalLp,
     NO_SPRIN_SIDIK: noSprinSidik,
+    no_sprin_sidik: noSprinSidik,
+    NOMOR_SP_SIDIK: noSprinSidik,
+    nomor_sp_sidik: noSprinSidik,
+    NO_SP_SIDIK: noSprinSidik,
+    no_sp_sidik: noSprinSidik,
     TGL_SPRIN_SIDIK: tglSprinSidik,
+    tgl_sprin_sidik: tglSprinSidik,
     NO_SPRIN_GAS_SIDIK: noSprinGasSidik,
     TGL_SPRIN_GAS_SIDIK: tglSprinGasSidik,
     TANGGAL_SPRIN_GAS_SIDIK: tglSprinGasSidik,
@@ -1588,6 +1624,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const finalNomorSurat = effectiveNomorSurat || finalPayload.NOMOR_SURAT || nomorSurat || '';
   finalPayload.NOMOR_SURAT = finalNomorSurat;
   finalPayload.nomor_surat = finalNomorSurat;
+  finalPayload.NO_SURAT = finalNomorSurat;
+  finalPayload.no_surat = finalNomorSurat;
   finalPayload.NOMOR_SURAT_HEADER = formatNomorSuratHeader(finalNomorSurat);
   finalPayload.nomor_surat_header = finalPayload.NOMOR_SURAT_HEADER;
 

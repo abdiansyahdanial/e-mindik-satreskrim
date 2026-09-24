@@ -71,9 +71,11 @@ export const MASTER_MINDIK_SIDIK = [
     code: 'SPRIN_SIDIK',
     title: 'SURAT PERINTAH PENYIDIKAN (SP.SIDIK)',
     type: 'Wajib 1 - Gerbang Utama',
+    badge: 'Gerbang Utama',
     isMandatory: true,
-    aliases: ['SP_SIDIK', 'SPRIN_SIDIK_MORE_5'],
-    keywords: ['PERINTAH PENYIDIKAN'],
+    aliases: ['SP_SIDIK', 'SP.SIDIK', 'SPRIN.SIDIK', 'SP-SIDIK', 'SPRIN-SIDIK', 'SPRIN_SIDIK_MORE_5', 'SURAT_PERINTAH_PENYIDIKAN', 'SP_PENYIDIKAN'],
+    keywords: ['PERINTAH PENYIDIKAN', 'SP.SIDIK', 'SPRIN.SIDIK', 'SP SIDIK'],
+    excludeKeywords: ['TAMBAHAN', 'LANJUTAN', 'TUGAS', 'PENAHANAN', 'PENGELUARAN', 'PENANGKAPAN'],
   },
   {
     cluster: 'A',
@@ -81,9 +83,11 @@ export const MASTER_MINDIK_SIDIK = [
     code: 'SPGAS_SIDIK',
     title: 'SURAT PERINTAH TUGAS PENYIDIKAN (SP.GAS.SIDIK)',
     type: 'Wajib 2 - Syarat: SP.SIDIK sudah terbit',
+    badge: 'Wajib 2',
     isMandatory: true,
-    aliases: ['SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'SPGAS_SIDIK_MORE_5', 'SPRIN_TUGAS_PENYIDIKAN'],
-    keywords: ['TUGAS PENYIDIKAN'],
+    aliases: ['SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'SPGAS_SIDIK_MORE_5', 'SPRIN_TUGAS_PENYIDIKAN', 'SP.GAS.SIDIK', 'SPGAS.SIDIK'],
+    keywords: ['TUGAS PENYIDIKAN', 'SP.GAS', 'SPGAS'],
+    excludeKeywords: ['TAMBAHAN', 'LANJUTAN', 'PENYELIDIKAN'],
   },
   {
     cluster: 'A',
@@ -92,8 +96,9 @@ export const MASTER_MINDIK_SIDIK = [
     title: 'SURAT PERINTAH PENYIDIKAN TAMBAHAN',
     type: 'Opsional - Syarat: SP.GAS.SIDIK sudah ada',
     isMandatory: false,
-    aliases: ['SP_SIDIK_TAMBAHAN'],
-    keywords: ['PENYIDIKAN TAMBAHAN'],
+    aliases: ['SP_SIDIK_TAMBAHAN', 'SP.SIDIK.TAMBAHAN', 'SP.SIDIK_TAMBAHAN'],
+    keywords: ['PENYIDIKAN TAMBAHAN', 'SIDIK TAMBAHAN'],
+    excludeKeywords: ['TUGAS'],
   },
   {
     cluster: 'A',
@@ -564,20 +569,38 @@ export const findUploadedTemplate = (masterItem, allTemplates = []) => {
   if (!masterItem || !Array.isArray(allTemplates)) return null;
 
   const mCode = (masterItem.code || '').toUpperCase().trim();
-  const aliases = (masterItem.aliases || []).map(a => a.toUpperCase().trim());
+  const normMCode = mCode.replace(/[\.\-\s]+/g, '_');
+  const rawAliases = (masterItem.aliases || []).map(a => a.toUpperCase().trim());
+  const normAliases = rawAliases.map(a => a.replace(/[\.\-\s]+/g, '_'));
   const keywords = (masterItem.keywords || []).map(k => k.toUpperCase().trim());
+  const excludeKeywords = (masterItem.excludeKeywords || []).map(k => k.toUpperCase().trim());
 
-  // 1. Cocokkan berdasarkan kesamaan kode unik atau aliases
+  // 1. Cocokkan berdasarkan kesamaan kode unik atau aliases (exact & normalized)
   const codeMatch = allTemplates.find(t => {
     const tCode = (t.code || '').toUpperCase().trim();
-    return tCode === mCode || aliases.includes(tCode);
+    const normTCode = tCode.replace(/[\.\-\s]+/g, '_');
+    const tTitle = (t.title || t.name || '').toUpperCase().trim();
+    if (excludeKeywords.some(ex => normTCode.includes(ex) || tTitle.includes(ex))) {
+      return false;
+    }
+    return (
+      tCode === mCode || 
+      normTCode === normMCode || 
+      rawAliases.includes(tCode) || 
+      normAliases.includes(normTCode)
+    );
   });
   if (codeMatch) return codeMatch;
 
-  // 2. Cocokkan berdasarkan kesamaan kata kunci judul resmi
+  // 2. Cocokkan berdasarkan kesamaan kata kunci judul resmi (dengan filter excludeKeywords)
   const titleMatch = allTemplates.find(t => {
     const tTitle = (t.title || t.name || '').toUpperCase().trim();
-    return keywords.some(k => tTitle.includes(k));
+    const tCode = (t.code || '').toUpperCase().trim();
+    const normTCode = tCode.replace(/[\.\-\s]+/g, '_');
+    if (excludeKeywords.some(ex => tTitle.includes(ex) || normTCode.includes(ex))) {
+      return false;
+    }
+    return keywords.some(k => tTitle.includes(k) || normTCode.includes(k.replace(/[\.\-\s]+/g, '_')));
   });
   if (titleMatch) return titleMatch;
 
@@ -716,39 +739,77 @@ export const getSidikCluster = (tpl) => {
   return 'A';
 };
 
+// Helper Validasi Nomor Dokumen (Aman dari null / undefined / non-string)
+export const isValidDocNumber = (val) => {
+  if (!val || typeof val !== 'string') return false;
+  const clean = val.trim().toLowerCase();
+  if (!clean || clean === '-' || clean === '--' || clean.startsWith('...') || clean.includes('belum') || clean === 'null' || clean === 'undefined') {
+    return false;
+  }
+  return true;
+};
+
 // Helper 3: Penegakan Urutan Wajib Mindik Sidik (Sequential Prerequisite Guard)
 export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [], activeSuspect = null) => {
-  if (!tpl) return { allowed: false, unlocked: false, reason: 'Pilih format template terlebih dahulu.' };
+  if (!tpl) return { allowed: false, unlocked: false, reason: 'Pilih format template terlebih dahulu.', badge: '', isLocked: true };
   
   // Dokumen pada Tahap Penyelidikan (LIDIK) selalu terbuka
   if (getTemplateStage(tpl) === 'LIDIK') {
-    return { allowed: true, unlocked: true, reason: '' };
+    return { allowed: true, unlocked: true, reason: '', badge: 'Lidik', isLocked: false };
+  }
+
+  const docCode = (tpl.code || tpl.template_code || tpl.kode || '').toUpperCase().trim();
+  const docTitle = (tpl.title || tpl.name || tpl.doc_title || '').toUpperCase().trim();
+  const docType = (tpl.type || '').toUpperCase().trim();
+  const docBadge = (tpl.badge || '').toUpperCase().trim();
+  const docDesc = (tpl.description || tpl.keterangan || '').toUpperCase().trim();
+  const normCode = docCode.replace(/[\.\-\s]+/g, '_');
+
+  // A. SP.SIDIK / SPRIN.SIDIK (Gerbang Utama Penyidikan - Bebas Dibuat sebagai Awal Tahapan Sidik Tanpa Prasyarat Dokumen Lain)
+  const isSpSidikDoc = (
+    !docCode.includes('TAMBAHAN') &&
+    !docCode.includes('LANJUTAN') &&
+    !docCode.includes('TUGAS') &&
+    !docCode.includes('GAS') &&
+    !docTitle.includes('TAMBAHAN') &&
+    !docTitle.includes('LANJUTAN') &&
+    !docTitle.includes('TUGAS') &&
+    (
+      normCode === 'SP_SIDIK' || 
+      normCode === 'SPRIN_SIDIK' || 
+      normCode === 'SPRIN_PENYIDIKAN' ||
+      normCode === 'SP_PENYIDIKAN' ||
+      normCode === 'SP_SIDIK_MORE_5' ||
+      normCode === 'SPRIN_SIDIK_MORE_5' ||
+      normCode.startsWith('SP_SIDIK') ||
+      normCode.startsWith('SPRIN_SIDIK') ||
+      docBadge.includes('GERBANG UTAMA') ||
+      docType.includes('GERBANG UTAMA') ||
+      docDesc.includes('GERBANG UTAMA') ||
+      tpl.is_gerbang_utama === true ||
+      tpl.isGerbangUtama === true ||
+      (
+        docTitle.includes('PERINTAH PENYIDIKAN') || 
+        docTitle.includes('SP.SIDIK') || 
+        docTitle.includes('SPRIN.SIDIK') || 
+        docTitle.includes('SP SIDIK') || 
+        docTitle.includes('SPRIN SIDIK')
+      )
+    )
+  );
+
+  if (isSpSidikDoc) {
+    return {
+      allowed: true,
+      unlocked: true,
+      reason: '',
+      badge: 'Gerbang Utama',
+      isLocked: false
+    };
   }
 
   const generatedDocs = caseDocs || [];
   const currentCase = targetCase;
-
-  // Cek riwayat dokumen perkara (dari case_generated_documents atau data case)
-  const hasSpSidik = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase();
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return (
-      c.includes('SP_SIDIK') || 
-      c.includes('SPRIN_SIDIK') || 
-      (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN'))
-    );
-  }) || Boolean(currentCase?.no_sprin_sidik || currentCase?.references?.no_sprin_sidik);
-
-  const hasSpGasSidik = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase();
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return (
-      c.includes('SP_GAS') || 
-      c.includes('SPGAS') || 
-      c.includes('SPRIN_GAS') || 
-      t.includes('TUGAS PENYIDIKAN')
-    );
-  }) || Boolean(currentCase?.no_sprin_gas_sidik || currentCase?.references?.no_sprin_gas_sidik);
 
   const isValidDocNumber = (val) => {
     if (!val || typeof val !== 'string') return false;
@@ -759,103 +820,82 @@ export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [],
     return true;
   };
 
-  const hasTapTsk = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase();
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return c.includes('TAP_TSK') || c.includes('S_TAP_TSK') || t.includes('PENETAPAN TERSANGKA');
-  }) || isValidDocNumber(currentCase?.no_sp_tap_tsk);
-
-  const hasPanggilan1 = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase();
+  // Cek riwayat dokumen perkara (apakah SP.SIDIK sudah terbit atau nomornya sudah ada)
+  const hasSpSidik = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
     const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
     return (
-      c.includes('PANGGILAN_TSK_1') || 
-      c.includes('SPGL_TSK_1') || 
-      c.includes('SPGL_1_TSK') || 
-      t.includes('PANGGILAN TERSANGKA KE-1') || 
-      t.includes('PANGGILAN TERSANGKA 1')
-    );
-  });
-
-  const hasPanggilan2 = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase();
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return (
-      c.includes('PANGGILAN_TSK_2') || 
-      c.includes('SPGL_TSK_2') || 
-      c.includes('SPGL_2_TSK') || 
-      t.includes('PANGGILAN TERSANGKA KE-2') || 
-      t.includes('PANGGILAN TERSANGKA 2')
-    );
-  });
-
-  const hasBawaTsk = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase();
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return (
-      c.includes('BAWA_TSK') || 
-      c.includes('SPRIN_BAWA_TSK') || 
-      t.includes('MEMBAWA TERSANGKA')
-    );
-  });
-
-  const hasSpKap = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase();
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return (
-      (c.includes('KAP') || t.includes('PENANGKAPAN')) && 
-      !c.includes('LEPAS') && 
-      !t.includes('PELEPASAN')
+      c === 'SP_SIDIK' ||
+      c === 'SPRIN_SIDIK' ||
+      c.includes('SP_SIDIK') || 
+      c.includes('SPRIN_SIDIK') || 
+      (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN')) ||
+      t.includes('SP.SIDIK') ||
+      t.includes('SPRIN.SIDIK')
     );
   }) || Boolean(
-    activeSuspect?.no_sprin_kap ||
-    currentCase?.no_sprin_kap ||
-    currentCase?.references?.no_sprin_kap ||
-    (Array.isArray(suspects) && suspects.some(s => s.no_sprin_kap))
+    isValidDocNumber(currentCase?.no_sprin_sidik) ||
+    isValidDocNumber(currentCase?.nomor_sprin_sidik) ||
+    isValidDocNumber(currentCase?.no_sp_sidik) ||
+    isValidDocNumber(currentCase?.nomor_sp_sidik) ||
+    isValidDocNumber(currentCase?.references?.no_sprin_sidik) ||
+    isValidDocNumber(currentCase?.references?.no_sp_sidik) ||
+    isValidDocNumber(currentCase?.references?.nomor_sp_sidik)
   );
 
-  const hasUpayaHadir = hasPanggilan1 || hasPanggilan2 || hasBawaTsk || hasSpKap;
-
-  const hasHan = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase();
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return (
-      c.includes('SP_HAN') || 
-      c.includes('SPRIN_HAN') || 
-      (t.includes('PERINTAH PENAHANAN') && !t.includes('PERPANJANGAN') && !t.includes('PENGELUARAN'))
-    );
-  }) || Boolean(
-    activeSuspect?.no_sprin_han ||
-    currentCase?.no_sprin_han ||
-    currentCase?.references?.no_sprin_han ||
-    (Array.isArray(suspects) && suspects.some(s => s.no_sprin_han))
+  // A. SP.GAS.SIDIK (Hanya mensyaratkan SP.SIDIK telah diterbitkan atau nomor SP.SIDIK telah terisi)
+  const isSpGasDoc = (
+    normCode === 'SP_GAS_SIDIK' || 
+    normCode === 'SPRIN_GAS_SIDIK' || 
+    normCode === 'SPGAS_SIDIK' || 
+    normCode === 'SPRIN_GAS' ||
+    normCode === 'SP_GAS' ||
+    normCode.startsWith('SPGAS_SIDIK') ||
+    normCode.startsWith('SP_GAS_SIDIK') ||
+    normCode.startsWith('SPRIN_GAS_SIDIK') ||
+    (
+      (
+        docTitle.includes('TUGAS PENYIDIKAN') || 
+        docTitle.includes('SP.GAS.SIDIK') || 
+        docTitle.includes('SPGAS.SIDIK') || 
+        docTitle.includes('SP GAS SIDIK') || 
+        docTitle.includes('SPRIN GAS')
+      ) && 
+      !docTitle.includes('PENYELIDIKAN') && 
+      !docTitle.includes('TAMBAHAN') && 
+      !docTitle.includes('LANJUTAN')
+    )
   );
 
-  const docCode = (tpl.code || '').toUpperCase().trim();
-  const docTitle = (tpl.title || tpl.name || '').toUpperCase().trim();
-
-  // A. SP.SIDIK (Gerbang Utama Penyidikan Selalu Terbuka)
-  if (
-    docCode === 'SP_SIDIK' || 
-    docCode === 'SPRIN_SIDIK' || 
-    (docTitle.includes('PERINTAH PENYIDIKAN') && !docTitle.includes('TUGAS') && !docTitle.includes('TAMBAHAN') && !docTitle.includes('LANJUTAN'))
-  ) {
-    return { unlocked: true, allowed: true, reason: '' };
-  }
-
-  // A. SP.GAS.SIDIK
-  if (
-    docCode === 'SP_GAS_SIDIK' || 
-    docCode === 'SPRIN_GAS_SIDIK' || 
-    docCode === 'SPGAS_SIDIK' || 
-    (docTitle.includes('TUGAS PENYIDIKAN') && !docTitle.includes('TAMBAHAN') && !docTitle.includes('LANJUTAN'))
-  ) {
+  if (isSpGasDoc) {
     return { 
-      unlocked: hasSpSidik, 
-      allowed: hasSpSidik, 
-      reason: hasSpSidik ? '' : 'Wajib membuat SP.SIDIK terlebih dahulu.' 
+      unlocked: Boolean(hasSpSidik), 
+      allowed: Boolean(hasSpSidik), 
+      reason: hasSpSidik ? '' : 'Wajib menerbitkan Surat Perintah Penyidikan (SP.SIDIK) terlebih dahulu.',
+      badge: 'Wajib 2',
+      isLocked: !hasSpSidik
     };
   }
+
+  const hasSpGasSidik = generatedDocs.some(d => {
+    const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    return (
+      c.includes('SP_GAS') || 
+      c.includes('SPGAS') || 
+      c.includes('SPRIN_GAS') || 
+      t.includes('TUGAS PENYIDIKAN') ||
+      t.includes('SP.GAS')
+    );
+  }) || Boolean(
+    isValidDocNumber(currentCase?.no_sprin_gas_sidik) ||
+    isValidDocNumber(currentCase?.nomor_sprin_gas_sidik) ||
+    isValidDocNumber(currentCase?.no_sp_gas_sidik) ||
+    isValidDocNumber(currentCase?.nomor_sp_gas_sidik) ||
+    isValidDocNumber(currentCase?.references?.no_sprin_gas_sidik) ||
+    isValidDocNumber(currentCase?.references?.no_sp_gas_sidik) ||
+    isValidDocNumber(currentCase?.references?.nomor_sp_gas_sidik)
+  );
 
   // A. SP.SIDIK / SP.GAS TAMBAHAN & LANJUTAN
   if (
@@ -1108,6 +1148,7 @@ export default function DocGeneratorView({
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [selectedClusterTab, setSelectedClusterTab] = useState('A');
   const [formValues, setFormValues] = useState({});
+  const [docNumber, setDocNumber] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatorNotice, setGeneratorNotice] = useState(null);
@@ -1345,10 +1386,10 @@ export default function DocGeneratorView({
   // Daftar template yang masuk ke tahapan aktif (LIDIK vs SIDIK)
   const currentStageTemplates = (allTemplates || []).filter(t => getTemplateStage(t) === tahapMindik);
 
-  // Strictly bind currentTemplate to selectedTemplateCode (null if none selected)
+  // Strictly bind currentTemplate to selectedTemplateCode (fallback ke template pertama yang tersedia jika null)
   const currentTemplate = selectedTemplateCode 
-    ? (allTemplates.find(t => t.code === selectedTemplateCode) || null)
-    : null;
+    ? (allTemplates.find(t => t.code === selectedTemplateCode) || allTemplates[0] || null)
+    : (allTemplates[0] || null);
 
   // Cek ketersediaan file fisik template dari Template Studio
   const isTemplateAvailableInStudio = Boolean(
@@ -1359,8 +1400,8 @@ export default function DocGeneratorView({
   // Data Korban dari perkara (mendukung array victims di root perkara atau references.victims)
   const registeredVictims = (() => {
     if (!currentCase) return [];
-    if (Array.isArray(currentCase.victims) && currentCase.victims.length > 0) return currentCase.victims;
-    if (Array.isArray(currentCase.references?.victims) && currentCase.references.victims.length > 0) return currentCase.references.victims;
+    if (Array.isArray(currentCase?.victims) && currentCase.victims.length > 0) return currentCase.victims;
+    if (Array.isArray(currentCase?.references?.victims) && currentCase.references.victims.length > 0) return currentCase.references.victims;
     return [];
   })();
 
@@ -1549,6 +1590,7 @@ export default function DocGeneratorView({
     const c = (currentTemplate?.code || '').toUpperCase().trim();
     const t = (currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
     if (isSprinGasSidik) return false;
+    if (c.includes('TAMBAHAN') || c.includes('LANJUTAN') || t.includes('TAMBAHAN') || t.includes('LANJUTAN')) return false;
     return c === 'SPRIN_SIDIK' || c === 'SP_SIDIK' || 
            (c.includes('SIDIK') && !c.includes('GAS')) || 
            (t.includes('PENYIDIKAN') && !t.includes('TUGAS'));
@@ -1679,6 +1721,26 @@ export default function DocGeneratorView({
   const activeCase = currentCase;
   const prevTemplateIdRef = useRef(currentTemplate?.id || selectedTemplateCode);
 
+  // Evaluasi arsip dokumen SP.SIDIK resmi pada perkara ini
+  const validArchiveSpSidikDoc = (caseDocuments || []).find(d => {
+    const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    const isSpSidikType = (
+      c === 'SP_SIDIK' || 
+      c === 'SPRIN_SIDIK' || 
+      (c.includes('SP_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
+      (c.includes('SPRIN_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
+      (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN')) ||
+      ((t.includes('SP.SIDIK') || t.includes('SPRIN.SIDIK')) && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN'))
+    );
+    if (!isSpSidikType) return false;
+    const num = d?.document_number || d?.doc_number || d?.nomor_surat || '';
+    return typeof num === 'string' && num.trim() !== '' && num.trim() !== '-' && !num.startsWith('...');
+  });
+
+  const hasValidSpSidikArchive = Boolean(validArchiveSpSidikDoc);
+  const spSidikBaseNo = (validArchiveSpSidikDoc?.doc_number || validArchiveSpSidikDoc?.nomor_surat || validArchiveSpSidikDoc?.document_number || currentCase?.no_sprin_sidik || '') || '';
+
   const currentPrereq = currentTemplate
     ? (tahapMindik === 'SIDIK'
         ? checkPrerequisite(currentTemplate, currentCase, caseDocuments, caseSuspects, selectedSuspect)
@@ -1705,6 +1767,7 @@ export default function DocGeneratorView({
   };
 
   const setNomorSurat = (val) => {
+    setDocNumber(val);
     setFormValues(prev => ({
       ...prev,
       NOMOR_SURAT: val,
@@ -1713,17 +1776,15 @@ export default function DocGeneratorView({
       no_surat: val,
       DOC_NO: val,
       doc_no: val,
-      nomor_sp_tap: val,
-      no_sp_tap_tsk: val,
-      nomor_sp_tap_tsk: val,
-      NOMOR_SP_TAP: val,
-      NO_SP_TAP_TSK: val,
-      NOMOR_SP_TAP_TSK: val,
+      ...(isSpTapDoc ? {
+        nomor_sp_tap: val,
+        no_sp_tap_tsk: val,
+        nomor_sp_tap_tsk: val,
+        NOMOR_SP_TAP: val,
+        NO_SP_TAP_TSK: val,
+        NOMOR_SP_TAP_TSK: val,
+      } : {})
     }));
-  };
-
-  const setDocNumber = (val) => {
-    setNomorSurat(val);
   };
 
   const setTanggalSurat = (val) => {
@@ -1787,21 +1848,36 @@ export default function DocGeneratorView({
   useEffect(() => {
     if (!currentTemplate) return;
 
-    // Ambil format mentah dari Template Studio
-    const templateFormatNomor = currentTemplate?.format_nomor 
+    // Dapatkan string format asli dari Template Studio
+    const templateRawFormat = currentTemplate?.format_nomor 
+      || currentTemplate?.nomor_format 
+      || currentTemplate?.doc_number 
       || currentTemplate?.default_doc_number 
-      || currentTemplate?.nomor_format
+      || currentTemplate?.default_number_format
+      || currentTemplate?.nomor_surat_format
       || currentTemplate?.meta_values?.NOMOR_SURAT
+      || currentTemplate?.meta_values?.NO_SURAT
+      || currentTemplate?.dynamic_fields?.find?.(f => {
+           const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+           return k === 'NOMOR_SURAT' || k === 'NO_SURAT';
+         })?.default_value
+      || currentTemplate?.dynamic_fields?.find?.(f => {
+           const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+           return k === 'NOMOR_SURAT' || k === 'NO_SURAT';
+         })?.placeholder
+      || getMindikPreset(currentTemplate?.code)?.find(f => (f.tag || '').toUpperCase() === 'NOMOR_SURAT')?.default
       || '';
 
-    // Terapkan ke state form input
+    // Terapkan LANGSUNG sebagai nilai (value) form, BUKAN placeholder!
     setFormValues(prev => ({
       ...prev,
-      NOMOR_SURAT: templateFormatNomor,
-      NO_SURAT: templateFormatNomor
+      NOMOR_SURAT: templateRawFormat,
+      NO_SURAT: templateRawFormat,
+      nomor_surat: templateRawFormat,
+      no_surat: templateRawFormat
     }));
 
-    setDocNumber(templateFormatNomor);
+    setDocNumber(templateRawFormat);
   }, [currentTemplate?.id, currentTemplate?.code]);
 
   // Sinkronisasi Profil Tersangka saat Tersangka Berubah
@@ -1929,8 +2005,12 @@ export default function DocGeneratorView({
     initial['TANGGAL_LP'] = currentCase?.tanggal_lp || currentCase?.sprin_date || '';
     initial['TGL_LP'] = initial['TANGGAL_LP'];
 
-    initial['NO_SPRIN_SIDIK'] = currentCase?.no_sprin_sidik || '';
-    initial['TGL_SPRIN_SIDIK'] = currentCase?.tgl_sprin_sidik || currentCase?.sprin_date || (isSprinSidik ? todayStr : '');
+    initial['NO_SPRIN_SIDIK'] = spSidikBaseNo;
+    initial['NOMOR_SP_SIDIK'] = spSidikBaseNo;
+    initial['no_sp_sidik'] = spSidikBaseNo;
+    initial['TGL_SPRIN_SIDIK'] = validArchiveSpSidikDoc 
+      ? (validArchiveSpSidikDoc.document_date || validArchiveSpSidikDoc.doc_date || currentCase?.tgl_sprin_sidik || '')
+      : (isSprinSidik ? todayStr : '');
     initial['TANGGAL_SPRIN_SIDIK'] = initial['TGL_SPRIN_SIDIK'];
 
     initial['NO_SPRIN_GAS_SIDIK'] = currentCase?.no_sprin_gas_sidik || '';
@@ -2089,20 +2169,34 @@ export default function DocGeneratorView({
         }
       } else if (upperKey === 'NOMOR_SURAT' || upperKey === 'DOC_NO' || upperKey === 'NO_SURAT') {
         const templateFormatNomor = currentTemplate?.format_nomor 
+          || currentTemplate?.nomor_format 
+          || currentTemplate?.doc_number 
           || currentTemplate?.default_doc_number 
-          || currentTemplate?.nomor_format
+          || currentTemplate?.default_number_format
+          || currentTemplate?.nomor_surat_format
           || currentTemplate?.meta_values?.NOMOR_SURAT
+          || currentTemplate?.meta_values?.NO_SURAT
+          || currentTemplate?.dynamic_fields?.find?.(f => {
+               const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+               return k === 'NOMOR_SURAT' || k === 'NO_SURAT';
+             })?.default_value
+          || currentTemplate?.dynamic_fields?.find?.(f => {
+               const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+               return k === 'NOMOR_SURAT' || k === 'NO_SURAT';
+             })?.placeholder
           || defVal
           || '';
         initial[cleanKey] = templateFormatNomor;
       } else if (upperKey === 'TGL_SPRIN_SIDIK' || upperKey === 'TANGGAL_SPRIN_SIDIK') {
-        initial[cleanKey] = currentCase?.tgl_sprin_sidik || currentCase?.sprin_date || (isSprinSidik ? todayStr : '');
+        initial[cleanKey] = validArchiveSpSidikDoc 
+          ? (validArchiveSpSidikDoc.document_date || validArchiveSpSidikDoc.doc_date || currentCase?.tgl_sprin_sidik || '')
+          : (isSprinSidik ? todayStr : '');
       } else if (upperKey === 'NO_SPRIN_GAS_SIDIK') {
         initial[cleanKey] = currentCase?.no_sprin_gas_sidik || '';
       } else if (upperKey === 'TGL_SPRIN_GAS_SIDIK' || upperKey === 'TANGGAL_SPRIN_GAS_SIDIK') {
         initial[cleanKey] = currentCase?.tgl_sprin_gas_sidik || (isSprinGasSidik ? todayStr : '');
-      } else if (upperKey === 'NO_SPRIN_SIDIK') {
-        initial[cleanKey] = currentCase?.no_sprin_sidik || '';
+      } else if (upperKey === 'NO_SPRIN_SIDIK' || upperKey === 'NOMOR_SP_SIDIK' || upperKey === 'NO_SP_SIDIK') {
+        initial[cleanKey] = spSidikBaseNo;
       } else if (upperKey === 'NOMOR_LP' || upperKey === 'NO_LP') {
         initial[cleanKey] = currentCase?.nomor_lp || currentCase?.no_lp || '';
       } else if (upperKey === 'TANGGAL_LP' || upperKey === 'TGL_LP') {
@@ -2188,9 +2282,21 @@ export default function DocGeneratorView({
       // Jika template berganti, pastikan NOMOR_SURAT selalu mengambil format mentah template
       if (isTemplateChanged) {
         const templateFormatNomor = currentTemplate?.format_nomor 
+          || currentTemplate?.nomor_format 
+          || currentTemplate?.doc_number 
           || currentTemplate?.default_doc_number 
-          || currentTemplate?.nomor_format
+          || currentTemplate?.default_number_format
+          || currentTemplate?.nomor_surat_format
           || currentTemplate?.meta_values?.NOMOR_SURAT
+          || currentTemplate?.meta_values?.NO_SURAT
+          || currentTemplate?.dynamic_fields?.find?.(f => {
+               const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+               return k === 'NOMOR_SURAT' || k === 'NO_SURAT';
+             })?.default_value
+          || currentTemplate?.dynamic_fields?.find?.(f => {
+               const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+               return k === 'NOMOR_SURAT' || k === 'NO_SURAT';
+             })?.placeholder
           || '';
         merged['NOMOR_SURAT'] = templateFormatNomor;
         merged['NO_SURAT'] = templateFormatNomor;
@@ -2226,7 +2332,7 @@ export default function DocGeneratorView({
       return merged;
     });
     setIsSaved(false);
-  }, [selectedCaseId, selectedTemplateCode, currentTemplate, selectedSuspectId, selectedSuspect, isSidikDoc]);
+  }, [selectedCaseId, selectedTemplateCode, currentTemplate, selectedSuspectId, selectedSuspect, isSidikDoc, hasValidSpSidikArchive, spSidikBaseNo]);
 
   const handleInputChange = (key, value) => {
     setFormValues(prev => {
@@ -2635,28 +2741,20 @@ export default function DocGeneratorView({
       || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
 
     const docNumber = formValues.NOMOR_SURAT 
+      || formValues.NO_SURAT 
       || formValues.nomor_surat 
+      || formValues.no_surat 
       || formValues.DOC_NO 
       || formValues.doc_no 
-      || formValues.NO_SP_TAP_TSK 
-      || formValues.no_sp_tap_tsk 
-      || formValues.NOMOR_SP_TAP 
-      || formValues.nomor_sp_tap 
-      || selectedSuspect?.no_sp_tap_tsk 
-      || selectedSuspect?.nomor_sp_tap 
+      || (isTapTsk ? (formValues.NO_SP_TAP_TSK || formValues.no_sp_tap_tsk || selectedSuspect?.no_sp_tap_tsk || selectedSuspect?.nomor_sp_tap) : '')
       || '';
 
     const docDate = formValues.TANGGAL_SURAT 
       || formValues.tanggal_surat 
       || formValues.DOC_DATE 
       || formValues.doc_date 
-      || formValues.TGL_SP_TAP_TSK 
-      || formValues.tgl_sp_tap_tsk 
-      || formValues.TANGGAL_SP_TAP 
-      || formValues.tanggal_sp_tap 
+      || (isTapTsk ? (formValues.TGL_SP_TAP_TSK || formValues.tgl_sp_tap_tsk || formValues.TANGGAL_SP_TAP || formValues.tanggal_sp_tap || selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk) : '')
       || formValues.TGL_SPRIN_SIDIK 
-      || selectedSuspect?.tanggal_sp_tap 
-      || selectedSuspect?.tgl_sp_tap_tsk 
       || '';
 
     const romanLabel = `Tersangka ${getRomanUrutan(urutanTersangka)}`;
@@ -2683,22 +2781,30 @@ export default function DocGeneratorView({
 
       const enrichedFormValues = {
         ...formValues,
+        NOMOR_SURAT: docNumber,
+        nomor_surat: docNumber,
+        NO_SURAT: docNumber,
+        no_surat: docNumber,
+        DOC_NO: docNumber,
+        doc_no: docNumber,
         URUTAN_TERSANGKA: urutanTersangka,
         urutan_tersangka: urutanTersangka,
         STATUS_LABEL: romanLabel,
         status_label: romanLabel,
         STATUS_TERSANGKA_LABEL: romanLabel,
         status_tersangka_label: romanLabel,
-        NOMOR_SP_TAP_TSK: docNumber,
-        nomor_sp_tap_tsk: docNumber,
-        NO_SP_TAP_TSK: docNumber,
-        no_sp_tap_tsk: docNumber,
-        NOMOR_SP_TAP: docNumber,
-        nomor_sp_tap: docNumber,
-        TGL_SP_TAP_TSK: formattedDocDate,
-        tgl_sp_tap_tsk: formattedDocDate,
-        TANGGAL_SP_TAP: formattedDocDate,
-        tanggal_sp_tap: formattedDocDate,
+        ...(isTapTsk ? {
+          NOMOR_SP_TAP_TSK: docNumber,
+          nomor_sp_tap_tsk: docNumber,
+          NO_SP_TAP_TSK: docNumber,
+          no_sp_tap_tsk: docNumber,
+          NOMOR_SP_TAP: docNumber,
+          nomor_sp_tap: docNumber,
+          TGL_SP_TAP_TSK: formattedDocDate,
+          tgl_sp_tap_tsk: formattedDocDate,
+          TANGGAL_SP_TAP: formattedDocDate,
+          tanggal_sp_tap: formattedDocDate,
+        } : {}),
         NAMA_TERSANGKA: selectedSuspect?.nama || '',
         nama_tersangka: selectedSuspect?.nama || '',
       };
@@ -2714,10 +2820,10 @@ export default function DocGeneratorView({
           urutan_tersangka: urutanTersangka,
           status_label: romanLabel,
           status_tersangka_label: romanLabel,
-          no_sp_tap_tsk: docNumber || selectedSuspect.no_sp_tap_tsk,
-          nomor_sp_tap: docNumber || selectedSuspect.nomor_sp_tap,
-          tanggal_sp_tap: docDate || selectedSuspect.tanggal_sp_tap,
-          tgl_sp_tap_tsk: docDate || selectedSuspect.tgl_sp_tap_tsk,
+          no_sp_tap_tsk: isTapTsk ? (docNumber || selectedSuspect.no_sp_tap_tsk) : (selectedSuspect.no_sp_tap_tsk || ''),
+          nomor_sp_tap: isTapTsk ? (docNumber || selectedSuspect.nomor_sp_tap) : (selectedSuspect.nomor_sp_tap || ''),
+          tanggal_sp_tap: isTapTsk ? (docDate || selectedSuspect.tanggal_sp_tap) : (selectedSuspect.tanggal_sp_tap || ''),
+          tgl_sp_tap_tsk: isTapTsk ? (docDate || selectedSuspect.tgl_sp_tap_tsk) : (selectedSuspect.tgl_sp_tap_tsk || ''),
         } : null,
         suspectsList: caseSuspects,
         activeVictim: selectedVictim,
@@ -2751,28 +2857,20 @@ export default function DocGeneratorView({
       || (currentTemplate?.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
 
     const docNumber = formValues.NOMOR_SURAT 
+      || formValues.NO_SURAT 
       || formValues.nomor_surat 
+      || formValues.no_surat 
       || formValues.DOC_NO 
       || formValues.doc_no 
-      || formValues.NO_SP_TAP_TSK 
-      || formValues.no_sp_tap_tsk 
-      || formValues.NOMOR_SP_TAP 
-      || formValues.nomor_sp_tap 
-      || selectedSuspect?.no_sp_tap_tsk 
-      || selectedSuspect?.nomor_sp_tap 
+      || (isTapTsk ? (formValues.NO_SP_TAP_TSK || formValues.no_sp_tap_tsk || selectedSuspect?.no_sp_tap_tsk || selectedSuspect?.nomor_sp_tap) : '')
       || '';
 
     const docDate = formValues.TANGGAL_SURAT 
       || formValues.tanggal_surat 
       || formValues.DOC_DATE 
       || formValues.doc_date 
-      || formValues.TGL_SP_TAP_TSK 
-      || formValues.tgl_sp_tap_tsk 
-      || formValues.TANGGAL_SP_TAP 
-      || formValues.tanggal_sp_tap 
+      || (isTapTsk ? (formValues.TGL_SP_TAP_TSK || formValues.tgl_sp_tap_tsk || formValues.TANGGAL_SP_TAP || formValues.tanggal_sp_tap || selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk) : '')
       || formValues.TGL_SPRIN_SIDIK 
-      || selectedSuspect?.tanggal_sp_tap 
-      || selectedSuspect?.tgl_sp_tap_tsk 
       || '';
 
     const romanLabel = `Tersangka ${getRomanUrutan(urutanTersangka)}`;
@@ -3066,6 +3164,14 @@ export default function DocGeneratorView({
       setIsProcessingTemplate(false);
     }
   };
+
+  if (!currentCase) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>
+        Pilih berkas perkara terlebih dahulu dari daftar perkara.
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -4406,6 +4512,73 @@ export default function DocGeneratorView({
                           className="form-textarea"
                           placeholder={placeholder}
                         />
+                      ) : (upperFieldKey === 'NOMOR_SURAT' || upperFieldKey === 'NO_SURAT') ? (
+                        <input
+                          type="text"
+                          value={formValues.NOMOR_SURAT || formValues.NO_SURAT || docNumber || ''}
+                          required={Boolean(isRequired)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDocNumber(val);
+                            setFormValues(prev => ({
+                              ...prev,
+                              NOMOR_SURAT: val,
+                              NO_SURAT: val,
+                              nomor_surat: val,
+                              no_surat: val
+                            }));
+                          }}
+                          className="form-input mono"
+                          style={{
+                            backgroundColor: '#0f172a',
+                            borderColor: 'var(--accent-amber, #f59e0b)',
+                            color: '#ffffff',
+                            fontWeight: 600,
+                            fontSize: '12px'
+                          }}
+                          placeholder={placeholder}
+                        />
+                      ) : (upperFieldKey === 'NO_SPRIN_SIDIK' || upperFieldKey === 'NOMOR_SP_SIDIK' || upperFieldKey === 'NO_SP_SIDIK') ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={currentVal !== undefined ? currentVal : ''}
+                              required={Boolean(isRequired)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleInputChange(fieldKey, val);
+                                handleInputChange('NO_SPRIN_SIDIK', val);
+                                handleInputChange('NOMOR_SP_SIDIK', val);
+                                handleInputChange('no_sp_sidik', val);
+                              }}
+                              className="form-input mono"
+                              placeholder={placeholder || "SP.Sidik/.../.../RES.1.11./... atau kosong"}
+                              style={{ flex: 1 }}
+                            />
+                            {currentVal ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleInputChange(fieldKey, '');
+                                  handleInputChange('NO_SPRIN_SIDIK', '');
+                                  handleInputChange('NOMOR_SP_SIDIK', '');
+                                  handleInputChange('no_sp_sidik', '');
+                                }}
+                                className="btn btn-secondary btn-xs"
+                                title="Kosongkan nomor rujukan SP.Sidik dasar perkara"
+                                style={{ padding: '6px 10px', fontSize: '11px', whiteSpace: 'nowrap', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#FCA5A5' }}
+                              >
+                                Kosongkan
+                              </button>
+                            ) : null}
+                          </div>
+                          {!hasValidSpSidikArchive && (
+                            <span style={{ fontSize: '10px', color: '#94A3B8' }}>
+                              ℹ️ Arsip SP.Sidik kosong/dihapus. Rujukan dasar perkara otomatis dikosongkan.
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <input
                           type="text"
@@ -4789,17 +4962,28 @@ export default function DocGeneratorView({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                       {clusterWithUploads.map(({ item, uploadedTpl }) => {
                         const isUploaded = Boolean(uploadedTpl);
+                        const isSpSidik = (
+                          item.code === 'SPRIN_SIDIK' || 
+                          item.code === 'SP_SIDIK' ||
+                          (uploadedTpl && (
+                            uploadedTpl.code === 'SPRIN_SIDIK' || 
+                            uploadedTpl.code === 'SP_SIDIK' ||
+                            (uploadedTpl.title || '').toUpperCase().includes('PERINTAH PENYIDIKAN')
+                          ) && !(uploadedTpl.title || '').toUpperCase().includes('TAMBAHAN') && !(uploadedTpl.title || '').toUpperCase().includes('TUGAS'))
+                        );
                         const prereq = isUploaded 
                           ? checkPrerequisite(uploadedTpl, currentCase, caseDocuments, caseSuspects, selectedSuspect)
-                          : { allowed: false, reason: 'Template belum diunggah di Template Studio.' };
-                        const isUnlocked = isUploaded && prereq.allowed;
+                          : (isSpSidik 
+                              ? { allowed: true, unlocked: true, reason: '', badge: 'Gerbang Utama', isLocked: false } 
+                              : { allowed: false, reason: 'Template belum diunggah di Template Studio.' });
+                        const isUnlocked = isSpSidik ? true : (isUploaded && prereq.allowed);
                         const isSelected = isUploaded && selectedTemplateCode === uploadedTpl.code;
 
                         return (
                           <div
                             key={item.code}
                             onClick={() => {
-                              if (isUnlocked) {
+                              if (uploadedTpl && (isUnlocked || isSpSidik)) {
                                 setSelectedTemplateCode(uploadedTpl.code);
                                 setIsDocModalOpen(false);
                               }
@@ -4881,19 +5065,19 @@ export default function DocGeneratorView({
                             </div>
 
                             {/* Warning Tooltip Baris jika Terkunci */}
-                            {isUploaded && !prereq.allowed && (
-                              <div style={{
-                                fontSize: '11px',
-                                color: '#FCA5A5',
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                borderLeft: '3px solid var(--accent-red)',
-                                marginTop: '2px'
-                              }}>
-                                🔒 Wajib membuat {prereq.reason}
-                              </div>
-                            )}
+                              {isUploaded && !prereq.allowed && (
+                                <div style={{
+                                  fontSize: '11px',
+                                  color: '#FCA5A5',
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  borderLeft: '3px solid var(--accent-red)',
+                                  marginTop: '2px'
+                                }}>
+                                  🔒 {prereq?.reason ? (String(prereq.reason).toLowerCase().startsWith('wajib') ? prereq.reason : `Wajib membuat ${prereq.reason}`) : 'Prasyarat belum terpenuhi.'}
+                                </div>
+                              )}
                           </div>
                         );
                       })}
@@ -4960,7 +5144,7 @@ export default function DocGeneratorView({
                                 borderLeft: '3px solid var(--accent-red)',
                                 marginTop: '2px'
                               }}>
-                                🔒 Wajib membuat {prereq.reason}
+                                🔒 {prereq?.reason ? (String(prereq.reason).toLowerCase().startsWith('wajib') ? prereq.reason : `Wajib membuat ${prereq.reason}`) : 'Prasyarat belum terpenuhi.'}
                               </div>
                             )}
                           </div>

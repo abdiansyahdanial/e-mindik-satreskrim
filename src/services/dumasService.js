@@ -223,131 +223,9 @@ export async function generateNomorDumasResmi() {
 
 
 /**
- * Data awal (seed demo) sesuai spesifikasi Map Berkas Kedinasan
+ * Data awal dumas (kosong murni, tidak menggunakan mock/dummy)
  */
-export const initialDumasRecords = [
-  {
-    id: 'dum-2026-001',
-    nomor_lp: 'DUMAS/B/01/IX/2026/SPKT/Polres Kolaka Timur/Polda Sultra',
-    tanggal_lapor: '2026-09-12T14:00:00.000Z',
-    penyidik_id: 'penyidik-01',
-    penyidik_nama: 'Bripka Andi Pratama, S.H.',
-    penyidik_nrp: '89040112',
-    status_berkas: 'Tahap Penyelidikan (Sp.Lidik)',
-    tindak_pidana: 'Penipuan & Penggelapan Dana Anggaran',
-    pasal_disangkakan: 'Pasal 378 KUHP dan/atau Pasal 372 KUHP',
-    tempus_delicti: '12 September 2026, Sekitar 14:00 WITA',
-    locus_delicti: 'Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
-    uraian_kejadian: 'Telah terjadi dugaan tindak pidana penggelapan dana kas operasional unit usaha desa sebesar Rp 45.000.000,- (Empat Puluh Lima Juta Rupiah) yang diduga dilakukan oleh Terlapor Sdr. SAMSUL BAHRI. Korban Sdr. AHMAD SUBARI selaku pengawas menyerahkan dana operasional pengadaan bibit pertanian melalui transfer dan tunai dengan kwitansi tertanggal 10 Agustus 2026. Hingga batas waktu 10 September 2026, terlapor tidak menyerahkan barang pengadaan dan tidak dapat mempertanggungjawabkan keberadaan saldo kas tersebut.',
-    
-    // Identitas Pelapor / Korban
-    pelapor_nama: 'AHMAD SUBARI',
-    pelapor_nik: '7411081905890001',
-    pelapor_ttl: 'Kolaka, 19 Mei 1989',
-    pelapor_pekerjaan: 'Wiraswasta / Pengawas BUMDes',
-    pelapor_agama: 'Islam',
-    pelapor_kontak: '0812-4455-6677',
-    pelapor_alamat: 'Desa Loea, Kec. Loea, Kab. Kolaka Timur, Sulawesi Tenggara',
-    pelapor_status_label: 'Pelapor Sah & Beritikad Baik',
-
-    // Saksi-Saksi (Array Dinamis)
-    saksi_list: [
-      {
-        id: 'saksi-1',
-        nama: 'HARIS MUNANDAR, S.P.',
-        nik: '7411081503850002',
-        ttl: 'Tirawuta, 15 Maret 1985',
-        pekerjaan: 'Perangkat Desa / Bendahara BUMDes',
-        agama: 'Islam',
-        alamat: 'Kel. Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
-        kontak: '0821-9876-5432',
-        role_label: 'Saksi Fakta',
-      },
-      {
-        id: 'saksi-2',
-        nama: 'NURHAYATI',
-        nik: '7411084209900003',
-        ttl: 'Kolaka, 22 September 1990',
-        pekerjaan: 'Staf Administrasi',
-        agama: 'Islam',
-        alamat: 'Desa Loea, Kec. Loea, Kab. Kolaka Timur',
-        kontak: '0852-1122-3344',
-        role_label: 'Saksi Terkait',
-      }
-    ],
-
-    // Terlapor (Array Dinamis)
-    terlapor_list: [
-      {
-        id: 'terlapor-1',
-        nama: 'SAMSUL BAHRI',
-        nik: '7411080407880004',
-        ttl: 'Rate-Rate, 4 Juli 1988',
-        pekerjaan: 'Wiraswasta / Mantan Direktur BUMDes',
-        agama: 'Islam',
-        alamat: 'Kelurahan Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
-        kontak: '0852-9898-7711',
-        role_label: 'Terlapor Utama',
-        status_subjek: 'Saksi Terlapor',
-        catatan_atensi: 'Belum ada catatan kriminal sebelumnya (Nihil SKCK Hitam / Bukan DPO)',
-      }
-    ],
-
-    // Terlapor Utama Snapshot
-    terlapor_nama: 'SAMSUL BAHRI',
-    terlapor_nik: '7411080407880004',
-    terlapor_ttl: 'Rate-Rate, 4 Juli 1988',
-    terlapor_pekerjaan: 'Wiraswasta / Mantan Direktur BUMDes',
-    terlapor_agama: 'Islam',
-    terlapor_kontak: '0852-9898-7711',
-    terlapor_domisili: 'Kelurahan Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
-    terlapor_status: 'Terlapor Utama',
-
-    // Lampiran Bukti Digital
-    lampiran_barang_bukti: [
-      {
-        id: 'bb-01',
-        kategori_bukti: 'DOKUMEN_PDF',
-        nama_file: 'Kwitansi_Penyerahan_Uang_Bumdes.pdf',
-        file_path: '/dummy/Kwitansi_Penyerahan_Uang_Bumdes.pdf',
-        file_size_bytes: 286720,
-        file_size_formatted: '280 KB',
-        mime_type: 'application/pdf',
-        hash_sha256: 'a3f9e2b1c8d4e7f6a5b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4',
-        diunggah_pada: '2026-09-12T14:15:00.000Z',
-        keterangan: 'Kuitansi bermeterai tanda terima dana kas dari pelapor kepada terlapor',
-      },
-      {
-        id: 'bb-02',
-        kategori_bukti: 'OBJEK_FISIK_JPG',
-        nama_file: 'Sepeda_Motor_NMAX_DT4521AT.jpg',
-        file_path: '/dummy/Sepeda_Motor_NMAX_DT4521AT.jpg',
-        file_size_bytes: 1258291,
-        file_size_formatted: '1.2 MB',
-        mime_type: 'image/jpeg',
-        hash_sha256: '9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a3f9e2b1c8d4e7f6',
-        diunggah_pada: '2026-09-12T14:18:00.000Z',
-        lokasi_simpan: 'Gudang BB Satreskrim Koltim',
-        label_status: 'Penyitaan Sementara',
-        keterangan: 'Barang bukti kendaraan operasional terlapor Yamaha NMAX Hitam DT 4521 AT',
-      },
-      {
-        id: 'bb-03',
-        kategori_bukti: 'DOKUMEN_PDF',
-        nama_file: 'Surat_Perjanjian_Bumdes.pdf',
-        file_path: '/dummy/Surat_Perjanjian_Bumdes.pdf',
-        file_size_bytes: 860160,
-        file_size_formatted: '840 KB',
-        mime_type: 'application/pdf',
-        hash_sha256: '5d6e7f8a9b0c1d2e3f4a3f9e2b1c8d4e7f6a5b2c3d4e5f6a7b8c9d0e1f2a3b4c',
-        diunggah_pada: '2026-09-12T14:22:00.000Z',
-        nomor_surat: '04/SPK/BUMD/VIII/26',
-        keterangan: 'Surat perjanjian kerjasama operasional pengadaan bibit Bumdes',
-      }
-    ],
-    created_at: '2026-09-12T14:00:00.000Z',
-  }
-];
+export const initialDumasRecords = [];
 
 /**
  * Mengambil daftar Dumas (Single Source of Truth: Supabase dengan fallback localStorage)
@@ -360,7 +238,16 @@ export async function fetchDumasRecords() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && Array.isArray(dbRecords) && dbRecords.length > 0) {
+    // Jika pemanggilan ke Supabase berhasil
+    if (!error && Array.isArray(dbRecords)) {
+      // JIKA TABEL SUPABASE KOSONG []: biarkan data kosong [], jangan pernah isi ulang dengan dummy!
+      if (dbRecords.length === 0) {
+        try {
+          localStorage.removeItem(DUMAS_LOCAL_STORAGE_KEY);
+        } catch {}
+        return { success: true, data: [] };
+      }
+
       // Ambil lampiran barang bukti untuk tiap record secara asinkron
       const enriched = await Promise.all(
         dbRecords.map(async (d) => {
@@ -398,13 +285,14 @@ export async function fetchDumasRecords() {
     console.warn('Gagal fetch dari Supabase, beralih ke cache lokal:', err);
   }
 
-  // 2. Fallback: baca dari local storage jika offline/network error
+  // 2. Fallback: HANYA baca dari local storage jika offline/network error (bukan jika database kosong)
   try {
     const raw = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return { success: true, data: parsed };
+        const clean = parsed.filter(item => item && item.id !== 'dum-2026-001' && !String(item.id).startsWith('dum-mock-'));
+        return { success: true, data: clean };
       }
     }
   } catch {}

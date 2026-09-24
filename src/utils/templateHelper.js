@@ -185,8 +185,8 @@ export const getParentDocConfig = (template) => {
   if (!template) return null;
   const rawCode = (typeof template === 'string' ? template : (template.code || '')).toUpperCase().trim();
   if (PARENT_CASE_DOCS[rawCode]) return PARENT_CASE_DOCS[rawCode];
-  if (rawCode === 'SPRIN_TUGAS_PENYIDIKAN' || rawCode.includes('GAS_SIDIK')) return PARENT_CASE_DOCS['SPRIN_GAS_SIDIK'];
-  if (rawCode.includes('SIDIK') && !rawCode.includes('GAS') && !rawCode.includes('TUGAS')) return PARENT_CASE_DOCS['SPRIN_SIDIK'];
+  if ((rawCode === 'SPRIN_TUGAS_PENYIDIKAN' || rawCode.includes('GAS_SIDIK')) && !rawCode.includes('TAMBAHAN') && !rawCode.includes('LANJUTAN')) return PARENT_CASE_DOCS['SPRIN_GAS_SIDIK'];
+  if (rawCode.includes('SIDIK') && !rawCode.includes('GAS') && !rawCode.includes('TUGAS') && !rawCode.includes('TAMBAHAN') && !rawCode.includes('LANJUTAN')) return PARENT_CASE_DOCS['SPRIN_SIDIK'];
   return null;
 };
 

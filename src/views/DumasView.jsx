@@ -23,9 +23,14 @@ export default function DumasView({
   const [subView, setSubView] = useState(() => {
     try {
       if (typeof window !== 'undefined') {
-        // Bersihkan storage hantu dari skema legacy agar tidak memicu layout lama
+        // Bersihkan storage hantu dari skema legacy agar tidak memicu layout lama & hilangkan mock dummy data
         localStorage.removeItem('emindik_active_dumas_form_draft');
         localStorage.removeItem('emindik_draft_form_perkara_v1');
+
+        const cachedDumas = localStorage.getItem('emindik_dumas_records_v1');
+        if (cachedDumas && (cachedDumas.includes('dum-2026-001') || cachedDumas.includes('SAMSUL BAHRI') || cachedDumas.includes('AHMAD SUBARI'))) {
+          localStorage.removeItem('emindik_dumas_records_v1');
+        }
 
         const savedSubView = sessionStorage.getItem('emindik_dumas_subview');
         if (savedSubView && ['list', 'form', 'detail'].includes(savedSubView)) {
