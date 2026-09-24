@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   FileSignature, 
   ChevronRight, 
@@ -570,53 +570,34 @@ export const findUploadedTemplate = (catalogItem, templatesList = []) => {
 
   const targetCode = (catalogItem.code || '').toUpperCase().trim();
   const targetTitle = (catalogItem.title || '').toUpperCase().trim();
-  const rawAliases = (catalogItem.aliases || []).map(a => a.toUpperCase().trim());
+  const rawAliases = (catalogItem.aliases || []).map(a => (a || '').toUpperCase().trim());
   const normAliases = rawAliases.map(a => a.replace(/[\.\-\s]+/g, '_'));
   const normTargetCode = targetCode.replace(/[\.\-\s]+/g, '_');
-  const keywords = (catalogItem.keywords || []).map(k => k.toUpperCase().trim());
-  const excludeKeywords = (catalogItem.excludeKeywords || []).map(k => k.toUpperCase().trim());
 
   return templatesList.find(t => {
+    if (!t) return false;
     const tCode = (t.code || t.template_code || '').toUpperCase().trim();
     const normTCode = tCode.replace(/[\.\-\s]+/g, '_');
-    // 1. Cocok kode persis atau masuk dalam aliases atau variasi SIDIK
-    const isMatch = (tCode === targetCode) || 
-      (normTCode === normTargetCode) ||
-      rawAliases.includes(tCode) || 
-      normAliases.includes(normTCode) ||
-      ((targetCode.includes('SIDIK') && !targetCode.includes('GAS')) && (tCode.includes('SIDIK') && !tCode.includes('GAS') && !tCode.includes('TAMBAHAN') && !tCode.includes('LANJUTAN')));
+    const tTitle = (t.title || t.name || '').toUpperCase().trim();
 
-    if (isMatch) return true;
-
-    // 2. Khusus SP.SIDIK: Cocokkan variasi SPRIN_SIDIK dan SP_SIDIK
+    // 1. Cocok kode persis atau variasi alias
     if (
-      (targetCode === 'SP_SIDIK' || targetCode === 'SPRIN_SIDIK' || targetTitle.includes('PERINTAH PENYIDIKAN')) &&
-      (tCode === 'SPRIN_SIDIK' || tCode === 'SP_SIDIK' || tCode.startsWith('SPRIN_SIDIK') || tCode.startsWith('SP_SIDIK'))
-    ) {
-      if (!tCode.includes('TAMBAHAN') && !tCode.includes('LANJUTAN') && !tCode.includes('GAS')) {
-        return true;
-      }
-    }
-
-    // 3. Cocok judul SP.SIDIK
-    if (
-      (targetCode === 'SP_SIDIK' || targetCode === 'SPRIN_SIDIK' || targetTitle.includes('PERINTAH PENYIDIKAN')) &&
-      tTitle.includes('PERINTAH PENYIDIKAN') && 
-      !tTitle.includes('TUGAS') && 
-      !tTitle.includes('TAMBAHAN') && 
-      !tTitle.includes('LANJUTAN')
+      tCode === targetCode ||
+      normTCode === normTargetCode ||
+      rawAliases.includes(tCode) ||
+      normAliases.includes(normTCode)
     ) {
       return true;
     }
 
-    // 4. Pencocokan dokumen lainnya berdasarkan keywords & excludeKeywords
-    if (targetCode !== 'SP_SIDIK' && targetCode !== 'SPRIN_SIDIK') {
-      if (excludeKeywords.some(ex => normTCode.includes(ex) || tTitle.includes(ex))) {
-        return false;
-      }
-      if (keywords.length > 0 && keywords.some(k => tTitle.includes(k) || normTCode.includes(k.replace(/[\.\-\s]+/g, '_')))) {
-        return true;
-      }
+    // 2. Penanganan khusus relasi SP.SIDIK dan SPRIN_SIDIK
+    const isCatalogSpSidik = targetCode === 'SP_SIDIK' || targetCode === 'SPRIN_SIDIK' || targetTitle.includes('PERINTAH PENYIDIKAN');
+    const isDbSpSidik = tCode === 'SPRIN_SIDIK' || tCode === 'SP_SIDIK' || tTitle.includes('PERINTAH PENYIDIKAN');
+
+    if (isCatalogSpSidik && isDbSpSidik) {
+      const isExtra = tCode.includes('TAMBAHAN') || tCode.includes('LANJUTAN') || tCode.includes('GAS') ||
+                      tTitle.includes('TAMBAHAN') || tTitle.includes('LANJUTAN') || tTitle.includes('TUGAS');
+      if (!isExtra) return true;
     }
 
     return false;
@@ -836,20 +817,24 @@ export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [],
     return true;
   };
 
-  // Cek riwayat dokumen perkara (apakah SP.SIDIK sudah terbit atau nomornya sudah ada)
-  const hasSpSidik = generatedDocs.some(d => {
+  // Evaluasi arsip dokumen SP.SIDIK resmi pada perkara ini
+  const validArchiveSpSidikDoc = (generatedDocs || []).find(d => {
     const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
     const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return (
-      c === 'SP_SIDIK' ||
-      c === 'SPRIN_SIDIK' ||
-      c.includes('SP_SIDIK') || 
-      c.includes('SPRIN_SIDIK') || 
+    const isSpSidikType = (
+      c === 'SP_SIDIK' || 
+      c === 'SPRIN_SIDIK' || 
+      (c.includes('SP_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
+      (c.includes('SPRIN_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
       (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN')) ||
-      t.includes('SP.SIDIK') ||
-      t.includes('SPRIN.SIDIK')
+      ((t.includes('SP.SIDIK') || t.includes('SPRIN.SIDIK')) && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN'))
     );
-  }) || Boolean(
+    if (!isSpSidikType) return false;
+    const num = d?.document_number || d?.doc_number || d?.nomor_surat || '';
+    return typeof num === 'string' && num.trim() !== '' && num.trim() !== '-' && !num.startsWith('...');
+  });
+
+  const hasValidSpSidikArchive = Boolean(validArchiveSpSidikDoc) || Boolean(
     isValidDocNumber(currentCase?.no_sprin_sidik) ||
     isValidDocNumber(currentCase?.nomor_sprin_sidik) ||
     isValidDocNumber(currentCase?.no_sp_sidik) ||
@@ -858,6 +843,8 @@ export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [],
     isValidDocNumber(currentCase?.references?.no_sp_sidik) ||
     isValidDocNumber(currentCase?.references?.nomor_sp_sidik)
   );
+
+  const hasSpSidik = hasValidSpSidikArchive;
 
   // A. SP.GAS.SIDIK (Hanya mensyaratkan SP.SIDIK telah diterbitkan atau nomor SP.SIDIK telah terisi)
   const isSpGasDoc = (
@@ -1041,6 +1028,9 @@ export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [],
     docTitle.includes('SPDP TERSANGKA') ||
     docTitle.includes('LEBIH DARI 1 TERSANGKA')
   ) {
+    if (!validArchiveSpSidikDoc && !hasValidSpSidikArchive) {
+      return { allowed: false, unlocked: false, reason: 'SP.Sidik belum diterbitkan. Terbitkan dan simpan SP.Sidik terlebih dahulu.' };
+    }
     return {
       unlocked: Boolean(hasTapTsk),
       allowed: Boolean(hasTapTsk),
@@ -1050,12 +1040,16 @@ export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [],
 
   // 3. SPDP TERLAPOR / TANPA NAMA (Wajib 3)
   if (
+    docCode === 'SPDP' ||
     docCode === 'SPDP_TERLAPOR' ||
     docCode === 'SPDP_LEBIH_1_TERLAPOR' ||
     docCode === 'SPDP_TANPA_NAMA' ||
     docCode.startsWith('SPDP') ||
     docTitle.includes('DIMULAINYA PENYIDIKAN')
   ) {
+    if (!validArchiveSpSidikDoc && !hasValidSpSidikArchive) {
+      return { allowed: false, unlocked: false, reason: 'SP.Sidik belum diterbitkan. Terbitkan dan simpan SP.Sidik terlebih dahulu.' };
+    }
     return {
       unlocked: Boolean(hasSpGasSidik),
       allowed: Boolean(hasSpGasSidik),
@@ -1473,6 +1467,41 @@ export default function DocGeneratorView({
     loadCaseDocs();
   }, [currentCase?.id]);
 
+  // Evaluasi arsip dokumen SP.SIDIK resmi pada perkara ini
+  const validArchiveSpSidikDoc = (caseDocuments || []).find(d => {
+    const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
+    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    const isSpSidikType = (
+      c === 'SP_SIDIK' || 
+      c === 'SPRIN_SIDIK' || 
+      (c.includes('SP_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
+      (c.includes('SPRIN_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
+      (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN')) ||
+      ((t.includes('SP.SIDIK') || t.includes('SPRIN.SIDIK')) && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN'))
+    );
+    if (!isSpSidikType) return false;
+    const num = d?.document_number || d?.doc_number || d?.nomor_surat || '';
+    return typeof num === 'string' && num.trim() !== '' && num.trim() !== '-' && !num.startsWith('...');
+  });
+
+  const hasValidSpSidikArchive = Boolean(validArchiveSpSidikDoc);
+  const spSidikBaseNo = (validArchiveSpSidikDoc?.doc_number || validArchiveSpSidikDoc?.nomor_surat || validArchiveSpSidikDoc?.document_number || currentCase?.no_sprin_sidik || '') || '';
+
+  // Sinkronkan selectedTemplateCode segera setelah allTemplates berhasil di-fetch
+  useEffect(() => {
+    if (tahapMindik === 'SIDIK') {
+      // Cari template fisik SP.SIDIK di allTemplates
+      const spSidikTpl = allTemplates.find(t => {
+        const c = (t.code || t.template_code || '').toUpperCase().trim();
+        return c === 'SPRIN_SIDIK' || c === 'SP_SIDIK';
+      });
+      // Jika belum ada arsip SP.Sidik dan belum ada manual select, wajibkan SP.SIDIK
+      if (!hasValidSpSidikArchive && (!selectedTemplateCode || selectedTemplateCode.includes('SPDP'))) {
+        setSelectedTemplateCode(spSidikTpl?.code || 'SPRIN_SIDIK');
+      }
+    }
+  }, [allTemplates, tahapMindik, hasValidSpSidikArchive]);
+
   // Otomatis tentukan template awal jika belum terpilih dan ada template yang terbuka
   useEffect(() => {
     if (allTemplates.length === 0) return;
@@ -1486,9 +1515,9 @@ export default function DocGeneratorView({
       // Khusus tahap SIDIK: PRIORITASKAN SP.SIDIK (SPRIN_SIDIK) sebagai Gerbang Utama, BUKAN SPDP!
       if (tahapMindik === 'SIDIK') {
         const spSidikMaster = MASTER_MINDIK_SIDIK[0];
-        const spSidikTpl = findUploadedTemplate(spSidikMaster, pool);
-        if (spSidikTpl) {
-          setSelectedTemplateCode(spSidikTpl.code || spSidikTpl.template_code);
+        const spSidikTpl = findUploadedTemplate(spSidikMaster, allTemplates);
+        if (!hasValidSpSidikArchive) {
+          setSelectedTemplateCode(spSidikTpl?.code || 'SPRIN_SIDIK');
           return;
         }
       }
@@ -1513,41 +1542,40 @@ export default function DocGeneratorView({
         setSelectedTemplateCode(firstUnlocked.code || firstUnlocked.template_code);
       }
     }
-  }, [allTemplates, tahapMindik, caseDocuments.length, currentCase?.id]);
+  }, [allTemplates, tahapMindik, caseDocuments.length, currentCase?.id, hasValidSpSidikArchive]);
 
   // Daftar template yang masuk ke tahapan aktif (LIDIK vs SIDIK)
   const currentStageTemplates = (allTemplates || []).filter(t => getTemplateStage(t) === tahapMindik);
 
-  // Strictly bind currentTemplate to manualSelectedTemplate or selectedTemplateCode
-  const currentTemplate = manualSelectedTemplate || (selectedTemplateCode 
-    ? (
-        activeTemplatesList.find(t => {
-          const c = (t.code || t.template_code || '').toUpperCase().trim();
-          const target = selectedTemplateCode.toUpperCase().trim();
-          if (c === target) return true;
-          if (
-            (target === 'SP_SIDIK' || target === 'SPRIN_SIDIK') &&
-            (c === 'SPRIN_SIDIK' || c === 'SP_SIDIK' || c.startsWith('SPRIN_SIDIK') || c.startsWith('SP_SIDIK')) &&
-            !c.includes('TAMBAHAN') && !c.includes('LANJUTAN') && !c.includes('GAS')
-          ) {
-            return true;
-          }
-          return false;
-        }) || activeTemplatesList[0] || null
-      )
-    : (
-        activeTemplatesList.find(t => {
-          const c = (t.code || t.template_code || '').toUpperCase().trim();
-          return (
-            c === 'SPRIN_SIDIK' || 
-            c === 'SP_SIDIK' || 
-            (c.startsWith('SPRIN_SIDIK') && !c.includes('GAS') && !c.includes('TAMBAHAN'))
-          );
-        }) || activeTemplatesList[0] || null
-      ));
+  // 1. Temukan item katalog resmi (lengkap dengan title & aliases) berdasarkan kode yang sedang aktif
+  const activeCatalogItem = useMemo(() => {
+    return MASTER_MINDIK_SIDIK.find(m => {
+      const c = (m.code || '').toUpperCase().trim();
+      const target = (selectedTemplateCode || 'SPRIN_SIDIK').toUpperCase().trim();
+      const aliases = (m.aliases || []).map(a => (a || '').toUpperCase().trim());
+      return c === target || aliases.includes(target);
+    }) || MASTER_MINDIK_SIDIK[0];
+  }, [selectedTemplateCode]);
 
-  // Cek ketersediaan file fisik template dari Template Studio
+  // 2. Cocokkan item katalog resmi ke daftar template Supabase (allTemplates)
+  const currentUploadedTemplate = useMemo(() => {
+    return findUploadedTemplate(
+      activeCatalogItem,
+      allTemplates
+    );
+  }, [activeCatalogItem, allTemplates]);
+
+  // 3. Tentukan currentTemplate dengan memprioritaskan data fisik dari Supabase
+  const currentTemplate = useMemo(() => {
+    if (currentUploadedTemplate) {
+      return { ...activeCatalogItem, ...currentUploadedTemplate };
+    }
+    return manualSelectedTemplate ? { ...activeCatalogItem, ...manualSelectedTemplate } : activeCatalogItem;
+  }, [currentUploadedTemplate, manualSelectedTemplate, activeCatalogItem]);
+
+  // 4. Evaluasi ketersediaan file fisik di Template Studio Supabase
   const isTemplateAvailableInStudio = Boolean(
+    currentUploadedTemplate ||
     (currentTemplate?.file_path && String(currentTemplate.file_path).trim()) || 
     (currentTemplate?.file_url && String(currentTemplate.file_url).trim()) ||
     (currentTemplate?.storage_path && String(currentTemplate.storage_path).trim()) ||
@@ -1878,25 +1906,7 @@ export default function DocGeneratorView({
   const activeCase = currentCase;
   const prevTemplateIdRef = useRef(currentTemplate?.id || selectedTemplateCode);
 
-  // Evaluasi arsip dokumen SP.SIDIK resmi pada perkara ini
-  const validArchiveSpSidikDoc = (caseDocuments || []).find(d => {
-    const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    const isSpSidikType = (
-      c === 'SP_SIDIK' || 
-      c === 'SPRIN_SIDIK' || 
-      (c.includes('SP_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
-      (c.includes('SPRIN_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
-      (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN')) ||
-      ((t.includes('SP.SIDIK') || t.includes('SPRIN.SIDIK')) && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN'))
-    );
-    if (!isSpSidikType) return false;
-    const num = d?.document_number || d?.doc_number || d?.nomor_surat || '';
-    return typeof num === 'string' && num.trim() !== '' && num.trim() !== '-' && !num.startsWith('...');
-  });
 
-  const hasValidSpSidikArchive = Boolean(validArchiveSpSidikDoc);
-  const spSidikBaseNo = (validArchiveSpSidikDoc?.doc_number || validArchiveSpSidikDoc?.nomor_surat || validArchiveSpSidikDoc?.document_number || currentCase?.no_sprin_sidik || '') || '';
 
   const currentPrereq = currentTemplate
     ? (tahapMindik === 'SIDIK'
@@ -2503,7 +2513,7 @@ export default function DocGeneratorView({
       return merged;
     });
     setIsSaved(false);
-  }, [selectedCaseId, selectedTemplateCode, currentTemplate, selectedSuspectId, selectedSuspect, isSidikDoc, hasValidSpSidikArchive, spSidikBaseNo]);
+  }, [selectedCaseId, selectedTemplateCode, currentTemplate?.id, currentTemplate?.code, selectedSuspectId, selectedSuspect, isSidikDoc, hasValidSpSidikArchive, spSidikBaseNo]);
 
   const handleInputChange = (key, value) => {
     setFormValues(prev => {
