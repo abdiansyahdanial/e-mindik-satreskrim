@@ -1265,37 +1265,47 @@ export default function DocGeneratorView({
     fetchTemplates();
   }, []);
 
-  // Muat arsip dokumen dari Supabase (case_generated_documents, documents, dan arsip_dokumen) untuk validasi prasyarat perkara aktif
+  // Muat arsip dokumen dari Supabase untuk validasi prasyarat perkara aktif
   useEffect(() => {
     if (!currentCase?.id) {
       setCaseDocuments([]);
       return;
     }
+
+    const validCaseId = (currentCase?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentCase.id))
+      ? currentCase.id 
+      : null;
+
     const loadCaseDocs = async () => {
       try {
-        const [resGen, resDocs, resArsip] = await Promise.allSettled([
-          supabase.from('case_generated_documents').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false }),
-          supabase.from('documents').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false }),
-          supabase.from('arsip_dokumen').select('*').eq('case_id', currentCase.id).order('created_at', { ascending: false })
+        let queryGen = supabase.from('case_generated_documents').select('*');
+        let queryArsip = supabase.from('arsip_dokumen').select('*');
+        let queryDocs = supabase.from('documents').select('*');
+
+        if (validCaseId) {
+          queryGen = queryGen.eq('case_id', validCaseId);
+          queryArsip = queryArsip.eq('case_id', validCaseId);
+          queryDocs = queryDocs.eq('case_id', validCaseId);
+        }
+
+        const [resGen, resArsip, resDocs] = await Promise.allSettled([
+          queryGen.order('created_at', { ascending: false }),
+          queryArsip.order('created_at', { ascending: false }),
+          queryDocs.order('created_at', { ascending: false })
         ]);
 
-        const listGen = (resGen.status === 'fulfilled' && !resGen.value.error && resGen.value.data) ? resGen.value.data : [];
-        const listDocs = (resDocs.status === 'fulfilled' && !resDocs.value.error && resDocs.value.data) ? resDocs.value.data : [];
-        const listArsip = (resArsip.status === 'fulfilled' && !resArsip.value.error && resArsip.value.data) ? resArsip.value.data : [];
+        const listGen = (resGen.status === 'fulfilled' && resGen.value.data) ? resGen.value.data : [];
+        const listArsip = (resArsip.status === 'fulfilled' && resArsip.value.data) ? resArsip.value.data : [];
+        const listDocs = (resDocs.status === 'fulfilled' && resDocs.value.data) ? resDocs.value.data : [];
 
-        // Gabungkan dan deduplikasi dokumen berdasarkan id atau kombinasi (template_code + doc_number)
-        const combined = [...listGen, ...listDocs, ...listArsip];
-        const seen = new Set();
-        const uniqueDocs = combined.filter(d => {
-          const key = d.id || `${d.template_code || d.code}_${d.doc_number || d.nomor_surat}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
+        const map = new Map();
+        [...listGen, ...listArsip, ...listDocs].forEach(d => {
+          if (d && d.id) map.set(d.id, d);
         });
 
-        setCaseDocuments(uniqueDocs);
+        setCaseDocuments(Array.from(map.values()));
       } catch (err) {
-        console.warn('Load case documents notice:', err);
+        console.error('Error load case documents:', err);
       }
     };
     loadCaseDocs();
@@ -2800,16 +2810,24 @@ export default function DocGeneratorView({
       await saveReferenceNumbers(docNumber, docDate);
     }
 
-    const generatedId = crypto.randomUUID();
+    const docUuid = crypto.randomUUID();
+    const validCaseId = (currentCase?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentCase.id))
+      ? currentCase.id 
+      : null;
 
     const newDoc = {
-      id: generatedId,
-      case_id: currentCase.id,
-      template_id: (currentTemplate?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentTemplate.id)) ? currentTemplate.id : null,
-      template_code: currentTemplate?.code || currentTemplate?.kode || 'MINDIK',
-      doc_title: currentTemplate?.title || currentTemplate?.nama || 'Dokumen Mindik',
+      id: docUuid,
+      case_id: validCaseId,
+      // Kompatibilitas multi-kolom arsip:
+      doc_title: currentTemplate?.title || 'Dokumen Mindik',
+      title: currentTemplate?.title || 'Dokumen Mindik',
+      nama_dokumen: currentTemplate?.title || 'Dokumen Mindik',
       doc_number: docNumber || '-',
+      nomor_surat: docNumber || '-',
+      template_code: currentTemplate?.code || 'MINDIK',
+      template_id: (currentTemplate?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentTemplate.id)) ? currentTemplate.id : null,
       meta_values: { ...formValues },
+      metadata: { ...formValues },
       created_at: new Date().toISOString()
     };
 
@@ -2820,26 +2838,16 @@ export default function DocGeneratorView({
     setIsSaved(true);
 
     try {
-      // Simpan ke case_generated_documents
-      const { error: genErr } = await supabase
-        .from('case_generated_documents')
-        .insert([newDoc]);
-        
-      if (genErr) {
-        console.warn('[Mindik Save] Gagal simpan ke case_generated_documents:', genErr.message);
-      }
+      const { error: errGen } = await supabase.from('case_generated_documents').insert([newDoc]);
+      if (errGen) console.warn('[Supabase] Gagal simpan ke case_generated_documents:', errGen.message);
 
-      // Simpan ke documents / arsip_dokumen sebagai backup arsip perkara
-      const { error: docErr } = await supabase
-        .from('documents')
-        .insert([newDoc]);
+      const { error: errArsip } = await supabase.from('arsip_dokumen').insert([newDoc]);
+      if (errArsip) console.warn('[Supabase] Gagal simpan ke arsip_dokumen:', errArsip.message);
 
-      if (docErr) {
-        console.warn('[Mindik Save] Gagal simpan ke documents, mencoba arsip_dokumen:', docErr.message);
-        await supabase.from('arsip_dokumen').insert([newDoc]).catch(() => {});
-      }
-    } catch (dbErr) {
-      console.error('[Mindik Save Error]:', dbErr);
+      const { error: errDoc } = await supabase.from('documents').insert([newDoc]);
+      if (errDoc) console.warn('[Supabase] Gagal simpan ke documents:', errDoc.message);
+    } catch (saveErr) {
+      console.error('[Supabase Save Error]:', saveErr);
     }
   };
 

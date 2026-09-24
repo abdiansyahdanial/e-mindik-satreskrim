@@ -622,23 +622,44 @@ export default function App() {
   };
 
   const handleSaveDocument = async (newDoc) => {
+    const docUuid = (newDoc?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newDoc.id))
+      ? newDoc.id 
+      : crypto.randomUUID();
+
+    const validCaseId = (newDoc?.case_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newDoc.case_id))
+      ? newDoc.case_id 
+      : null;
+
     const docToSave = {
       ...newDoc,
-      id: (newDoc.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newDoc.id)) ? newDoc.id : crypto.randomUUID(),
+      id: docUuid,
+      case_id: validCaseId,
+      doc_title: newDoc.doc_title || newDoc.title || 'Dokumen Mindik',
+      title: newDoc.title || newDoc.doc_title || 'Dokumen Mindik',
+      nama_dokumen: newDoc.nama_dokumen || newDoc.doc_title || 'Dokumen Mindik',
+      doc_number: newDoc.doc_number || newDoc.nomor_surat || '-',
+      nomor_surat: newDoc.nomor_surat || newDoc.doc_number || '-',
+      template_code: newDoc.template_code || 'MINDIK',
+      template_id: (newDoc?.template_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newDoc.template_id)) ? newDoc.template_id : null,
+      meta_values: newDoc.meta_values || newDoc.metadata || {},
+      metadata: newDoc.metadata || newDoc.meta_values || {},
+      created_at: newDoc.created_at || new Date().toISOString()
     };
 
     setDocuments((prev) => [docToSave, ...prev]);
-    showToast(`Dokumen ${newDoc.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
+    showToast(`Dokumen ${docToSave.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
 
     try {
-      await supabase.from('case_generated_documents').insert([docToSave]).catch(() => {});
-      const { error: insErr } = await supabase.from('documents').insert([docToSave]);
-      if (insErr) {
-        console.warn('Insert to documents failed, trying arsip_dokumen:', insErr.message);
-        await supabase.from('arsip_dokumen').insert([docToSave]).catch(() => {});
-      }
+      const { error: genErr } = await supabase.from('case_generated_documents').insert([docToSave]);
+      if (genErr) console.warn('[App Mindik Save] Gagal simpan ke case_generated_documents:', genErr.message);
+
+      const { error: arsipErr } = await supabase.from('arsip_dokumen').insert([docToSave]);
+      if (arsipErr) console.warn('[App Mindik Save] Gagal simpan ke arsip_dokumen:', arsipErr.message);
+
+      const { error: docErr } = await supabase.from('documents').insert([docToSave]);
+      if (docErr) console.warn('[App Mindik Save] Gagal simpan ke documents:', docErr.message);
     } catch (err) {
-      console.warn('Insert document notice:', err);
+      console.error('[App Mindik Save Error]:', err);
     }
   };
 
