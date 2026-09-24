@@ -730,12 +730,16 @@ export default function App() {
             ...s,
             nomor_sp_tap: null,
             no_sp_tap_tsk: null,
+            tanggal_sp_tap: null,
+            tgl_sp_tap: null,
             status: 'terlapor'
           }));
           const updatedTerlapor = (c.terlapor_list || []).map(s => ({
             ...s,
             nomor_sp_tap: null,
             no_sp_tap_tsk: null,
+            tanggal_sp_tap: null,
+            tgl_sp_tap: null,
             status: 'terlapor'
           }));
           return {
@@ -745,12 +749,41 @@ export default function App() {
             references: {
               ...(c.references || {}),
               no_sp_tap_tsk: null,
-              nomor_sp_tap: null
+              nomor_sp_tap: null,
+              tanggal_sp_tap: null,
+              tgl_sp_tap: null
             }
           };
         }
         return c;
       }));
+
+      setSelectedCaseForDetail(prev => {
+        if (!prev || String(prev.id) !== String(doc.case_id)) return prev;
+        return {
+          ...prev,
+          suspects: (prev.suspects || []).map(s => ({ ...s, nomor_sp_tap: null, no_sp_tap_tsk: null, tanggal_sp_tap: null, tgl_sp_tap: null, status: 'terlapor' })),
+          terlapor_list: (prev.terlapor_list || []).map(s => ({ ...s, nomor_sp_tap: null, no_sp_tap_tsk: null, tanggal_sp_tap: null, tgl_sp_tap: null, status: 'terlapor' })),
+          references: { ...(prev.references || {}), no_sp_tap_tsk: null, nomor_sp_tap: null, tanggal_sp_tap: null, tgl_sp_tap: null }
+        };
+      });
+
+      setCaseForGenerator(prev => {
+        if (!prev || String(prev.id) !== String(doc.case_id)) return prev;
+        return {
+          ...prev,
+          suspects: (prev.suspects || []).map(s => ({ ...s, nomor_sp_tap: null, no_sp_tap_tsk: null, tanggal_sp_tap: null, tgl_sp_tap: null, status: 'terlapor' })),
+          terlapor_list: (prev.terlapor_list || []).map(s => ({ ...s, nomor_sp_tap: null, no_sp_tap_tsk: null, tanggal_sp_tap: null, tgl_sp_tap: null, status: 'terlapor' })),
+          references: { ...(prev.references || {}), no_sp_tap_tsk: null, nomor_sp_tap: null, tanggal_sp_tap: null, tgl_sp_tap: null }
+        };
+      });
+
+      setSuspectForGenerator(prev => {
+        if (!prev) return prev;
+        return typeof prev === 'object' 
+          ? { ...prev, nomor_sp_tap: null, no_sp_tap_tsk: null, tanggal_sp_tap: null, tgl_sp_tap: null, status: 'terlapor' }
+          : prev;
+      });
     }
 
     // C. JIKA YANG DIHAPUS ADALAH SP.SIDIK / SPRIN.SIDIK:
@@ -768,15 +801,42 @@ export default function App() {
             no_sprin_sidik: null,
             no_sp_sidik: null,
             sprin_date: null,
+            tgl_sprin_sidik: null,
             references: {
               ...(c.references || {}),
               no_sprin_sidik: null,
-              no_sp_sidik: null
+              no_sp_sidik: null,
+              sprin_date: null,
+              tgl_sprin_sidik: null
             }
           };
         }
         return c;
       }));
+
+      setSelectedCaseForDetail(prev => {
+        if (!prev || String(prev.id) !== String(doc.case_id)) return prev;
+        return {
+          ...prev,
+          no_sprin_sidik: null,
+          no_sp_sidik: null,
+          sprin_date: null,
+          tgl_sprin_sidik: null,
+          references: { ...(prev.references || {}), no_sprin_sidik: null, no_sp_sidik: null, sprin_date: null, tgl_sprin_sidik: null }
+        };
+      });
+
+      setCaseForGenerator(prev => {
+        if (!prev || String(prev.id) !== String(doc.case_id)) return prev;
+        return {
+          ...prev,
+          no_sprin_sidik: null,
+          no_sp_sidik: null,
+          sprin_date: null,
+          tgl_sprin_sidik: null,
+          references: { ...(prev.references || {}), no_sprin_sidik: null, no_sp_sidik: null, sprin_date: null, tgl_sprin_sidik: null }
+        };
+      });
     }
 
     // D. Update state dokumen lokal & bersihkan cache
