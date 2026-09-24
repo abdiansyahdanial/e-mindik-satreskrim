@@ -263,9 +263,16 @@ export default function App() {
           const listDocs = (resDocs.status === 'fulfilled' && !resDocs.value.error && resDocs.value.data) ? resDocs.value.data : [];
           const listArsip = (resArsip.status === 'fulfilled' && !resArsip.value.error && resArsip.value.data) ? resArsip.value.data : [];
 
+          // Ambil juga cache offline dari localStorage jika ada
+          let listLocal = [];
+          try {
+            const cached = JSON.parse(localStorage.getItem('emindik_archive_documents') || '[]');
+            if (Array.isArray(cached)) listLocal = cached;
+          } catch {}
+
           // Gabungkan dan hilangkan duplikasi berdasarkan ID
           const combinedMap = new Map();
-          [...listCaseGen, ...listDocs, ...listArsip].forEach(doc => {
+          [...listLocal, ...listCaseGen, ...listDocs, ...listArsip].forEach(doc => {
             if (doc && doc.id && !combinedMap.has(doc.id)) {
               combinedMap.set(doc.id, doc);
             }
@@ -622,45 +629,45 @@ export default function App() {
   };
 
   const handleSaveDocument = async (newDoc) => {
-    const docUuid = (newDoc?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newDoc.id))
-      ? newDoc.id 
-      : crypto.randomUUID();
+    const docToSave = newDoc || {};
 
-    const validCaseId = (newDoc?.case_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newDoc.case_id))
-      ? newDoc.case_id 
-      : null;
-
-    const docToSave = {
-      ...newDoc,
-      id: docUuid,
-      case_id: newDoc?.case_id ? String(newDoc.case_id) : null,
-      nomor_lp: newDoc.nomor_lp || newDoc.no_lp || '-',
-      no_lp: newDoc.no_lp || newDoc.nomor_lp || '-',
-      doc_title: newDoc.doc_title || newDoc.title || 'Dokumen Mindik',
-      title: newDoc.title || newDoc.doc_title || 'Dokumen Mindik',
-      nama_dokumen: newDoc.nama_dokumen || newDoc.doc_title || 'Dokumen Mindik',
-      doc_number: newDoc.doc_number || newDoc.nomor_surat || '-',
-      nomor_surat: newDoc.nomor_surat || newDoc.doc_number || '-',
-      template_code: newDoc.template_code || 'MINDIK',
-      meta_values: newDoc.meta_values || newDoc.metadata || {},
-      metadata: newDoc.metadata || newDoc.meta_values || {},
-      created_at: newDoc.created_at || new Date().toISOString()
+    const cleanPayload = {
+      id: docToSave.id || crypto.randomUUID(),
+      case_id: docToSave.case_id ? String(docToSave.case_id) : null,
+      nomor_lp: docToSave.nomor_lp || docToSave.no_lp || '-',
+      no_lp: docToSave.no_lp || docToSave.nomor_lp || '-',
+      template_id: (docToSave.template_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docToSave.template_id)) ? docToSave.template_id : null,
+      template_code: docToSave.template_code || 'MINDIK',
+      doc_title: docToSave.doc_title || docToSave.title || 'Dokumen Mindik',
+      title: docToSave.title || docToSave.doc_title || 'Dokumen Mindik',
+      doc_number: docToSave.doc_number || docToSave.nomor_surat || '-',
+      nomor_surat: docToSave.nomor_surat || docToSave.doc_number || '-',
+      meta_values: docToSave.meta_values || docToSave.metadata || {},
+      created_at: docToSave.created_at || new Date().toISOString()
     };
 
-    setDocuments((prev) => [docToSave, ...prev]);
-    showToast(`Dokumen ${docToSave.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
+    setDocuments((prev) => [cleanPayload, ...prev.filter(d => d.id !== cleanPayload.id)]);
+    showToast(`Dokumen ${cleanPayload.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
 
+    // Pastikan localStorage juga menyimpan salinan dokumen sementara sebagai fallback luring (offline fallback) jika koneksi Supabase bermasalah
     try {
-      const { error: genErr } = await supabase.from('case_generated_documents').insert([docToSave]);
-      if (genErr) console.warn('[App Mindik Save] Gagal simpan ke case_generated_documents:', genErr.message);
+      const currentLocal = JSON.parse(localStorage.getItem('emindik_archive_documents') || '[]');
+      localStorage.setItem('emindik_archive_documents', JSON.stringify([cleanPayload, ...currentLocal.filter(x => x.id !== cleanPayload.id)]));
+    } catch (e) {}
 
-      const { error: arsipErr } = await supabase.from('arsip_dokumen').insert([docToSave]);
-      if (arsipErr) console.warn('[App Mindik Save] Gagal simpan ke arsip_dokumen:', arsipErr.message);
+    // Simpan ke database Supabase (coba case_generated_documents lalu fallback ke arsip_dokumen)
+    try {
+      const { error: err1 } = await supabase.from('case_generated_documents').insert([cleanPayload]);
+      if (err1) {
+        console.error('[CRITICAL SUPABASE ERROR] Gagal insert case_generated_documents:', err1.message);
+      } else {
+        console.log('[SUPABASE SUCCESS] Berhasil simpan dokumen ke case_generated_documents!');
+      }
 
-      const { error: docErr } = await supabase.from('documents').insert([docToSave]);
-      if (docErr) console.warn('[App Mindik Save] Gagal simpan ke documents:', docErr.message);
-    } catch (err) {
-      console.error('[App Mindik Save Error]:', err);
+      // Simpan juga ke arsip_dokumen sebagai redundansi
+      await supabase.from('arsip_dokumen').insert([cleanPayload]).catch(e => console.warn('Backup arsip notice:', e));
+    } catch (dbErr) {
+      console.error('[CRITICAL DB INSERT ERROR]:', dbErr);
     }
   };
 
@@ -709,7 +716,8 @@ export default function App() {
     // 3. Update state dokumen lokal & bersihkan cache localStorage
     setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
     try {
-      localStorage.removeItem('emindik_archive_documents');
+      const currentLocal = JSON.parse(localStorage.getItem('emindik_archive_documents') || '[]');
+      localStorage.setItem('emindik_archive_documents', JSON.stringify(currentLocal.filter(x => x.id !== doc.id)));
     } catch {}
 
     showToast(`Dokumen '${doc.doc_title || doc.title || 'Mindik'}' berhasil dihapus dari arsip!`);
