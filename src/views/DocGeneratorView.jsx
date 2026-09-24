@@ -897,6 +897,91 @@ export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [],
     isValidDocNumber(currentCase?.references?.nomor_sp_gas_sidik)
   );
 
+  // Evaluasi Status Penetapan Tersangka (S.TAP.TSK)
+  const hasTapTsk = Boolean(
+    generatedDocs.some(d => {
+      const c = (d.template_code || d.code || '').toUpperCase();
+      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+      return c.includes('TAP_TSK') || t.includes('PENETAPAN TERSANGKA') || t.includes('S.TAP.TSK');
+    }) ||
+    (suspects || []).some(s => s.nomor_sp_tap || s.no_sp_tap_tsk || s.status === 'tersangka') ||
+    (currentCase?.suspects || []).some(s => s.nomor_sp_tap || s.status === 'tersangka') ||
+    (currentCase?.terlapor_list || []).some(s => s.nomor_sp_tap || s.no_sp_tap_tsk || s.status === 'tersangka') ||
+    isValidDocNumber(currentCase?.references?.no_sp_tap_tsk) ||
+    isValidDocNumber(currentCase?.references?.nomor_sp_tap)
+  );
+
+  // Evaluasi Panggilan Tersangka Ke-1
+  const hasPanggilan1 = Boolean(
+    generatedDocs.some(d => {
+      const c = (d.template_code || d.code || '').toUpperCase();
+      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+      return (
+        c.includes('PANGGILAN_TSK_1') || 
+        c.includes('SPGL_TSK_1') || 
+        t.includes('PANGGILAN TERSANGKA KE-1') || 
+        t.includes('PANGGILAN TERSANGKA 1')
+      );
+    }) ||
+    isValidDocNumber(currentCase?.no_spgl_tsk_1) ||
+    isValidDocNumber(currentCase?.references?.no_spgl_tsk_1)
+  );
+
+  // Evaluasi Panggilan Tersangka Ke-2
+  const hasPanggilan2 = Boolean(
+    generatedDocs.some(d => {
+      const c = (d.template_code || d.code || '').toUpperCase();
+      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+      return (
+        c.includes('PANGGILAN_TSK_2') || 
+        c.includes('SPGL_TSK_2') || 
+        t.includes('PANGGILAN TERSANGKA KE-2') || 
+        t.includes('PANGGILAN TERSANGKA 2')
+      );
+    }) ||
+    isValidDocNumber(currentCase?.no_spgl_tsk_2) ||
+    isValidDocNumber(currentCase?.references?.no_spgl_tsk_2)
+  );
+
+  // Evaluasi Upaya Paksa Kehadiran (Panggilan / Perintah Membawa / Penangkapan)
+  const hasUpayaHadir = Boolean(
+    hasPanggilan1 ||
+    hasPanggilan2 ||
+    generatedDocs.some(d => {
+      const c = (d.template_code || d.code || '').toUpperCase();
+      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+      return (
+        c.includes('SP_KAP') || 
+        c.includes('SPRIN_KAP') || 
+        c.includes('BAWA_TSK') || 
+        t.includes('PENANGKAPAN') || 
+        t.includes('MEMBAWA TERSANGKA')
+      );
+    }) ||
+    isValidDocNumber(currentCase?.no_sprin_kap) ||
+    isValidDocNumber(currentCase?.references?.no_sprin_kap) ||
+    isValidDocNumber(currentCase?.no_sprin_bawa) ||
+    isValidDocNumber(currentCase?.references?.no_sprin_bawa)
+  );
+
+  // Evaluasi Surat Perintah Penahanan (SP.HAN)
+  const hasHan = Boolean(
+    generatedDocs.some(d => {
+      const c = (d.template_code || d.code || '').toUpperCase();
+      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+      return (
+        (c === 'SP_HAN' || c === 'SPRIN_HAN' || c.includes('SPRIN_HAN') || c.includes('SP_HAN')) &&
+        !c.includes('PANJANG') && !c.includes('KELUAR') &&
+        (t.includes('PERINTAH PENAHANAN') || t.includes('SP.HAN') || t.includes('SPRIN.HAN')) &&
+        !t.includes('PERPANJANGAN') && !t.includes('PENGELUARAN')
+      );
+    }) ||
+    isValidDocNumber(currentCase?.no_sprin_han) ||
+    isValidDocNumber(currentCase?.references?.no_sprin_han) ||
+    isValidDocNumber(currentCase?.no_sp_han) ||
+    isValidDocNumber(currentCase?.references?.no_sp_han)
+  );
+
   // A. SP.SIDIK / SP.GAS TAMBAHAN & LANJUTAN
   if (
     docCode.includes('TAMBAHAN') || 
