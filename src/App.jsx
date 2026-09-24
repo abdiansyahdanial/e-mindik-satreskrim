@@ -676,6 +676,9 @@ export default function App() {
   const handleDeleteDocument = async (doc) => {
     if (!doc || !doc.id) return;
 
+    const docCode = (doc.template_code || doc.code || '').toUpperCase();
+    const docTitle = (doc.doc_title || doc.title || '').toUpperCase();
+
     // 1. Hapus file fisik dari Supabase Storage jika ada
     const fileUrl = doc.file_url || doc.storage_path || doc.url || '';
     if (fileUrl) {
@@ -704,25 +707,82 @@ export default function App() {
       }
     }
 
-    // 2. Hapus baris dokumen dari tabel Supabase secara riil ke database!
-    try {
-      await Promise.allSettled([
-        supabase.from('case_generated_documents').delete().eq('id', doc.id),
-        supabase.from('documents').delete().eq('id', doc.id),
-        supabase.from('arsip_dokumen').delete().eq('id', doc.id)
-      ]);
-    } catch (dbErr) {
-      console.warn('Delete document database row error:', dbErr);
+    // A. Hapus dari database tabel arsip
+    await Promise.allSettled([
+      supabase.from('case_generated_documents').delete().eq('id', doc.id),
+      supabase.from('documents').delete().eq('id', doc.id),
+      supabase.from('arsip_dokumen').delete().eq('id', doc.id)
+    ]);
+
+    // B. JIKA YANG DIHAPUS ADALAH SP.TAP TSK / PENETAPAN TERSANGKA:
+    if (docCode.includes('TAP_TSK') || docTitle.includes('PENETAPAN TERSANGKA')) {
+      if (doc.case_id) {
+        // Reset di database case_suspects
+        await supabase.from('case_suspects')
+          .update({ nomor_sp_tap: null, no_sp_tap_tsk: null, tanggal_sp_tap: null, tgl_sp_tap: null, status: 'terlapor' })
+          .eq('case_id', doc.case_id);
+      }
+
+      // Update state di memori React
+      setCases(prev => prev.map(c => {
+        if (String(c.id) === String(doc.case_id)) {
+          const updatedSuspects = (c.suspects || []).map(s => ({
+            ...s,
+            nomor_sp_tap: null,
+            no_sp_tap_tsk: null,
+            status: 'terlapor'
+          }));
+          const updatedTerlapor = (c.terlapor_list || []).map(s => ({
+            ...s,
+            nomor_sp_tap: null,
+            no_sp_tap_tsk: null,
+            status: 'terlapor'
+          }));
+          return {
+            ...c,
+            suspects: updatedSuspects,
+            terlapor_list: updatedTerlapor,
+            references: {
+              ...(c.references || {}),
+              no_sp_tap_tsk: null,
+              nomor_sp_tap: null
+            }
+          };
+        }
+        return c;
+      }));
     }
 
-    // 3. Update state dokumen lokal & bersihkan cache localStorage
-    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-    try {
-      const currentLocal = JSON.parse(localStorage.getItem('emindik_archive_documents') || '[]');
-      localStorage.setItem('emindik_archive_documents', JSON.stringify(currentLocal.filter(x => x.id !== doc.id)));
-    } catch {}
+    // C. JIKA YANG DIHAPUS ADALAH SP.SIDIK / SPRIN.SIDIK:
+    if (docCode.includes('SIDIK') && !docCode.includes('GAS') && !docCode.includes('TAMBAHAN')) {
+      if (doc.case_id) {
+        await supabase.from('cases')
+          .update({ no_sprin_sidik: null, no_sp_sidik: null, tgl_sprin_sidik: null, sprin_date: null })
+          .eq('id', doc.case_id);
+      }
+        
+      setCases(prev => prev.map(c => {
+        if (String(c.id) === String(doc.case_id)) {
+          return {
+            ...c,
+            no_sprin_sidik: null,
+            no_sp_sidik: null,
+            sprin_date: null,
+            references: {
+              ...(c.references || {}),
+              no_sprin_sidik: null,
+              no_sp_sidik: null
+            }
+          };
+        }
+        return c;
+      }));
+    }
 
-    showToast(`Dokumen '${doc.doc_title || doc.title || 'Mindik'}' berhasil dihapus dari arsip!`);
+    // D. Update state dokumen lokal & bersihkan cache
+    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+    try { localStorage.removeItem('emindik_archive_documents'); } catch {}
+    showToast(`Dokumen '${doc.doc_title || doc.title || 'Mindik'}' berhasil dihapus permanen!`);
   };
 
   const handleOpenGeneratorForCase = (caseItem, templateCode = null, suspectId = null) => {
