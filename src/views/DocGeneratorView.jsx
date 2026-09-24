@@ -565,46 +565,71 @@ export const MASTER_MINDIK_SIDIK = [
 ];
 
 // Helper: Mencari file template Supabase yang diunggah di Template Studio
-export const findUploadedTemplate = (masterItem, allTemplates = []) => {
-  if (!masterItem || !Array.isArray(allTemplates)) return null;
+export const findUploadedTemplate = (catalogItem, templatesList = []) => {
+  if (!catalogItem || !Array.isArray(templatesList)) return null;
 
-  const mCode = (masterItem.code || '').toUpperCase().trim();
-  const normMCode = mCode.replace(/[\.\-\s]+/g, '_');
-  const rawAliases = (masterItem.aliases || []).map(a => a.toUpperCase().trim());
+  const targetCode = (catalogItem.code || '').toUpperCase().trim();
+  const targetTitle = (catalogItem.title || '').toUpperCase().trim();
+  const rawAliases = (catalogItem.aliases || []).map(a => a.toUpperCase().trim());
   const normAliases = rawAliases.map(a => a.replace(/[\.\-\s]+/g, '_'));
-  const keywords = (masterItem.keywords || []).map(k => k.toUpperCase().trim());
-  const excludeKeywords = (masterItem.excludeKeywords || []).map(k => k.toUpperCase().trim());
+  const normTargetCode = targetCode.replace(/[\.\-\s]+/g, '_');
+  const keywords = (catalogItem.keywords || []).map(k => k.toUpperCase().trim());
+  const excludeKeywords = (catalogItem.excludeKeywords || []).map(k => k.toUpperCase().trim());
 
-  // 1. Cocokkan berdasarkan kesamaan kode unik atau aliases (exact & normalized)
-  const codeMatch = allTemplates.find(t => {
-    const tCode = (t.code || '').toUpperCase().trim();
+  return templatesList.find(t => {
+    const tCode = (t.code || t.template_code || '').toUpperCase().trim();
     const normTCode = tCode.replace(/[\.\-\s]+/g, '_');
     const tTitle = (t.title || t.name || '').toUpperCase().trim();
-    if (excludeKeywords.some(ex => normTCode.includes(ex) || tTitle.includes(ex))) {
-      return false;
-    }
-    return (
-      tCode === mCode || 
-      normTCode === normMCode || 
+
+    // 1. Cocok kode persis atau masuk dalam aliases
+    if (
+      tCode === targetCode || 
+      normTCode === normTargetCode || 
       rawAliases.includes(tCode) || 
       normAliases.includes(normTCode)
-    );
-  });
-  if (codeMatch) return codeMatch;
-
-  // 2. Cocokkan berdasarkan kesamaan kata kunci judul resmi (dengan filter excludeKeywords)
-  const titleMatch = allTemplates.find(t => {
-    const tTitle = (t.title || t.name || '').toUpperCase().trim();
-    const tCode = (t.code || '').toUpperCase().trim();
-    const normTCode = tCode.replace(/[\.\-\s]+/g, '_');
-    if (excludeKeywords.some(ex => tTitle.includes(ex) || normTCode.includes(ex))) {
-      return false;
+    ) {
+      if (targetCode === 'SP_SIDIK' || targetCode === 'SPRIN_SIDIK') {
+        if (!tCode.includes('TAMBAHAN') && !tCode.includes('LANJUTAN') && !tCode.includes('GAS')) {
+          return true;
+        }
+      } else {
+        return true;
+      }
     }
-    return keywords.some(k => tTitle.includes(k) || normTCode.includes(k.replace(/[\.\-\s]+/g, '_')));
-  });
-  if (titleMatch) return titleMatch;
 
-  return null;
+    // 2. Khusus SP.SIDIK: Cocokkan variasi SPRIN_SIDIK dan SP_SIDIK
+    if (
+      (targetCode === 'SP_SIDIK' || targetCode === 'SPRIN_SIDIK' || targetTitle.includes('PERINTAH PENYIDIKAN')) &&
+      (tCode === 'SPRIN_SIDIK' || tCode === 'SP_SIDIK' || tCode.startsWith('SPRIN_SIDIK') || tCode.startsWith('SP_SIDIK'))
+    ) {
+      if (!tCode.includes('TAMBAHAN') && !tCode.includes('LANJUTAN') && !tCode.includes('GAS')) {
+        return true;
+      }
+    }
+
+    // 3. Cocok judul SP.SIDIK
+    if (
+      (targetCode === 'SP_SIDIK' || targetCode === 'SPRIN_SIDIK' || targetTitle.includes('PERINTAH PENYIDIKAN')) &&
+      tTitle.includes('PERINTAH PENYIDIKAN') && 
+      !tTitle.includes('TUGAS') && 
+      !tTitle.includes('TAMBAHAN') && 
+      !tTitle.includes('LANJUTAN')
+    ) {
+      return true;
+    }
+
+    // 4. Pencocokan dokumen lainnya berdasarkan keywords & excludeKeywords
+    if (targetCode !== 'SP_SIDIK' && targetCode !== 'SPRIN_SIDIK') {
+      if (excludeKeywords.some(ex => normTCode.includes(ex) || tTitle.includes(ex))) {
+        return false;
+      }
+      if (keywords.length > 0 && keywords.some(k => tTitle.includes(k) || normTCode.includes(k.replace(/[\.\-\s]+/g, '_')))) {
+        return true;
+      }
+    }
+
+    return false;
+  }) || null;
 };
 
 // Helper 1: Klasifikasi Tahapan Dokumen (LIDIK vs SIDIK)
@@ -1336,7 +1361,8 @@ export default function DocGeneratorView({
         })
         .map(t => ({
           ...t,
-          title: (t.title || t.name || t.code || '').toUpperCase(),
+          code: t.code || t.template_code || '',
+          title: (t.title || t.name || t.code || t.template_code || '').toUpperCase(),
         }));
 
       setAllTemplates(validTemplates);
@@ -1344,8 +1370,8 @@ export default function DocGeneratorView({
       // Helper: urutkan template sesuai susunan master baku KUHAP (SP.SIDIK -> SP.GAS.SIDIK -> dst)
       const sortTemplatesByMasterOrder = (tplList = []) => {
         return [...tplList].sort((a, b) => {
-          const aCode = (a.code || '').toUpperCase().trim();
-          const bCode = (b.code || '').toUpperCase().trim();
+          const aCode = (a.code || a.template_code || '').toUpperCase().trim();
+          const bCode = (b.code || b.template_code || '').toUpperCase().trim();
           const idxA = MASTER_MINDIK_SIDIK.findIndex(m => m.code === aCode || (m.aliases || []).includes(aCode));
           const idxB = MASTER_MINDIK_SIDIK.findIndex(m => m.code === bCode || (m.aliases || []).includes(bCode));
           const rankA = idxA !== -1 ? idxA : 999;
@@ -1356,10 +1382,11 @@ export default function DocGeneratorView({
 
       // Nilai awal (initial state) selectedTemplateCode:
       // Prioritaskan memilih template pertama yang SUDAH diunggah di Template Studio dan UNLOCKED.
+      // Khusus tahap SIDIK: PRIORITASKAN SP.SIDIK (SPRIN_SIDIK) sebagai Gerbang Utama, BUKAN SPDP!
       setSelectedTemplateCode(prev => {
         if (validTemplates.length === 0) return null;
         if (prev) {
-          const existing = validTemplates.find(t => t.code === prev);
+          const existing = validTemplates.find(t => (t.code || t.template_code) === prev);
           if (existing && Boolean((existing.file_path && String(existing.file_path).trim()) || (existing.file_url && String(existing.file_url).trim()))) {
             const p = checkPrerequisite(existing, currentCase, caseDocuments, caseSuspects, null);
             if (p.unlocked || p.allowed) return prev;
@@ -1372,12 +1399,22 @@ export default function DocGeneratorView({
         const pool = availableInStage.length > 0 ? availableInStage : validTemplates.filter(t => 
           Boolean((t.file_path && String(t.file_path).trim()) || (t.file_url && String(t.file_url).trim()))
         );
+
+        // Khusus tahap SIDIK: PRIORITASKAN SP.SIDIK (SPRIN_SIDIK) sebagai Gerbang Utama, BUKAN SPDP!
+        if (tahapMindik === 'SIDIK') {
+          const spSidikMaster = MASTER_MINDIK_SIDIK[0];
+          const spSidikTpl = findUploadedTemplate(spSidikMaster, pool);
+          if (spSidikTpl) {
+            return spSidikTpl.code || spSidikTpl.template_code;
+          }
+        }
+
         const orderedPool = sortTemplatesByMasterOrder(pool);
         const firstUnlocked = orderedPool.find(t => {
           const p = checkPrerequisite(t, currentCase, caseDocuments, caseSuspects, null);
           return p.unlocked || p.allowed;
         });
-        return firstUnlocked ? firstUnlocked.code : null;
+        return firstUnlocked ? (firstUnlocked.code || firstUnlocked.template_code) : null;
       });
     } catch (err) {
       console.warn('Could not fetch supabase templates:', err);
@@ -1446,10 +1483,21 @@ export default function DocGeneratorView({
       );
       const inStage = availableTemplates.filter(t => getTemplateStage(t) === tahapMindik);
       const pool = inStage.length > 0 ? inStage : availableTemplates;
+
+      // Khusus tahap SIDIK: PRIORITASKAN SP.SIDIK (SPRIN_SIDIK) sebagai Gerbang Utama, BUKAN SPDP!
+      if (tahapMindik === 'SIDIK') {
+        const spSidikMaster = MASTER_MINDIK_SIDIK[0];
+        const spSidikTpl = findUploadedTemplate(spSidikMaster, pool);
+        if (spSidikTpl) {
+          setSelectedTemplateCode(spSidikTpl.code || spSidikTpl.template_code);
+          return;
+        }
+      }
+
       const sortTemplatesByMasterOrder = (tplList = []) => {
         return [...tplList].sort((a, b) => {
-          const aCode = (a.code || '').toUpperCase().trim();
-          const bCode = (b.code || '').toUpperCase().trim();
+          const aCode = (a.code || a.template_code || '').toUpperCase().trim();
+          const bCode = (b.code || b.template_code || '').toUpperCase().trim();
           const idxA = MASTER_MINDIK_SIDIK.findIndex(m => m.code === aCode || (m.aliases || []).includes(aCode));
           const idxB = MASTER_MINDIK_SIDIK.findIndex(m => m.code === bCode || (m.aliases || []).includes(bCode));
           const rankA = idxA !== -1 ? idxA : 999;
@@ -1463,7 +1511,7 @@ export default function DocGeneratorView({
         return p.unlocked || p.allowed;
       });
       if (firstUnlocked) {
-        setSelectedTemplateCode(firstUnlocked.code);
+        setSelectedTemplateCode(firstUnlocked.code || firstUnlocked.template_code);
       }
     }
   }, [allTemplates, tahapMindik, caseDocuments.length, currentCase?.id]);
@@ -1473,7 +1521,21 @@ export default function DocGeneratorView({
 
   // Strictly bind currentTemplate to selectedTemplateCode (fallback ke template pertama yang tersedia jika null)
   const currentTemplate = selectedTemplateCode 
-    ? (allTemplates.find(t => t.code === selectedTemplateCode) || allTemplates[0] || null)
+    ? (
+        allTemplates.find(t => {
+          const c = (t.code || t.template_code || '').toUpperCase().trim();
+          const target = selectedTemplateCode.toUpperCase().trim();
+          if (c === target) return true;
+          if (
+            (target === 'SP_SIDIK' || target === 'SPRIN_SIDIK') &&
+            (c === 'SPRIN_SIDIK' || c === 'SP_SIDIK' || c.startsWith('SPRIN_SIDIK') || c.startsWith('SP_SIDIK')) &&
+            !c.includes('TAMBAHAN') && !c.includes('LANJUTAN') && !c.includes('GAS')
+          ) {
+            return true;
+          }
+          return false;
+        }) || allTemplates[0] || null
+      )
     : (allTemplates[0] || null);
 
   // Cek ketersediaan file fisik template dari Template Studio
@@ -1838,13 +1900,27 @@ export default function DocGeneratorView({
 
     const stageTpls = allTemplates.filter(t => getTemplateStage(t) === stage);
     if (stageTpls.length > 0) {
-      if (!stageTpls.some(t => t.code === selectedTemplateCode)) {
+      const isCurrentInStage = stageTpls.some(t => {
+        const c = (t.code || t.template_code || '').toUpperCase().trim();
+        const target = (selectedTemplateCode || '').toUpperCase().trim();
+        return c === target;
+      });
+
+      if (!isCurrentInStage) {
+        if (stage === 'SIDIK') {
+          const spSidikMaster = MASTER_MINDIK_SIDIK[0];
+          const spSidikTpl = findUploadedTemplate(spSidikMaster, stageTpls);
+          if (spSidikTpl) {
+            setSelectedTemplateCode(spSidikTpl.code || spSidikTpl.template_code);
+            return;
+          }
+        }
         // Cari template pertama yang memenuhi prasyarat di tahapan ini
         const firstAllowed = stageTpls.find(t => {
           const p = checkPrerequisite(t, currentCase, caseDocuments, caseSuspects, selectedSuspect);
           return p.allowed;
         }) || stageTpls[0];
-        setSelectedTemplateCode(firstAllowed.code);
+        setSelectedTemplateCode(firstAllowed.code || firstAllowed.template_code);
       }
     } else {
       setSelectedTemplateCode('');
@@ -5046,30 +5122,32 @@ export default function DocGeneratorView({
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
                       {clusterWithUploads.map(({ item, uploadedTpl }) => {
-                        const isUploaded = Boolean(uploadedTpl);
+                        const matchedTpl = uploadedTpl || findUploadedTemplate(item, allTemplates);
+                        const isUploaded = Boolean(matchedTpl);
                         const isSpSidik = (
                           item.code === 'SPRIN_SIDIK' || 
                           item.code === 'SP_SIDIK' ||
-                          (uploadedTpl && (
-                            uploadedTpl.code === 'SPRIN_SIDIK' || 
-                            uploadedTpl.code === 'SP_SIDIK' ||
-                            (uploadedTpl.title || '').toUpperCase().includes('PERINTAH PENYIDIKAN')
-                          ) && !(uploadedTpl.title || '').toUpperCase().includes('TAMBAHAN') && !(uploadedTpl.title || '').toUpperCase().includes('TUGAS'))
+                          (matchedTpl && (
+                            matchedTpl.code === 'SPRIN_SIDIK' || 
+                            matchedTpl.code === 'SP_SIDIK' ||
+                            (matchedTpl.title || '').toUpperCase().includes('PERINTAH PENYIDIKAN')
+                          ) && !(matchedTpl.title || '').toUpperCase().includes('TAMBAHAN') && !(matchedTpl.title || '').toUpperCase().includes('TUGAS'))
                         );
                         const prereq = isUploaded 
-                          ? checkPrerequisite(uploadedTpl, currentCase, caseDocuments, caseSuspects, selectedSuspect)
+                          ? checkPrerequisite(matchedTpl, currentCase, caseDocuments, caseSuspects, selectedSuspect)
                           : (isSpSidik 
                               ? { allowed: true, unlocked: true, reason: '', badge: 'Gerbang Utama', isLocked: false } 
                               : { allowed: false, reason: 'Template belum diunggah di Template Studio.' });
                         const isUnlocked = isSpSidik ? true : (isUploaded && prereq.allowed);
-                        const isSelected = isUploaded && selectedTemplateCode === uploadedTpl.code;
+                        const isSelected = isUploaded && selectedTemplateCode === (matchedTpl?.code || matchedTpl?.template_code);
 
                         return (
                           <div
                             key={item.code}
                             onClick={() => {
-                              if (uploadedTpl && (isUnlocked || isSpSidik)) {
-                                setSelectedTemplateCode(uploadedTpl.code);
+                              const tpl = matchedTpl || findUploadedTemplate(item, allTemplates);
+                              if (tpl && (isUnlocked || isSpSidik)) {
+                                setSelectedTemplateCode(tpl.code || tpl.template_code);
                                 setIsDocModalOpen(false);
                               }
                             }}
@@ -5078,16 +5156,16 @@ export default function DocGeneratorView({
                               borderRadius: '10px',
                               backgroundColor: isSelected
                                 ? 'rgba(255, 53, 45, 0.15)'
-                                : isUnlocked
+                                : (isUploaded && isUnlocked)
                                   ? '#111827'
                                   : 'rgba(17, 24, 39, 0.6)',
                               border: isSelected
                                 ? '1.5px solid #ff352d'
-                                : isUnlocked
+                                : (isUploaded && isUnlocked)
                                   ? '1px solid rgba(255, 255, 255, 0.12)'
                                   : '1px solid rgba(255, 255, 255, 0.05)',
-                              cursor: isUnlocked ? 'pointer' : 'not-allowed',
-                              opacity: isUnlocked ? 1 : 0.65,
+                              cursor: (isUploaded && (isUnlocked || isSpSidik)) ? 'pointer' : 'not-allowed',
+                              opacity: (isUploaded && (isUnlocked || isSpSidik)) ? 1 : 0.65,
                               transition: 'all 150ms ease',
                               display: 'flex',
                               flexDirection: 'column',
@@ -5102,13 +5180,13 @@ export default function DocGeneratorView({
                                   fontWeight: 800,
                                   color: '#64748B',
                                   minWidth: '22px'
-                                }}>
+                                  }}>
                                   #{item.itemNumber}
                                 </span>
                                 <span style={{
                                   fontSize: '13px',
                                   fontWeight: 800,
-                                  color: isUnlocked ? '#FFFFFF' : '#94A3B8',
+                                  color: (isUploaded && isUnlocked) ? '#FFFFFF' : '#94A3B8',
                                   textTransform: 'uppercase'
                                 }}>
                                   {item.title}
@@ -5138,7 +5216,7 @@ export default function DocGeneratorView({
                                   </span>
                                 ) : isUnlocked ? (
                                   <span className="badge badge-green" style={{ fontSize: '9px', padding: '2px 7px', fontWeight: 700 }}>
-                                    TERSEDIA
+                                    TERSEDIA DI STUDIO
                                   </span>
                                 ) : (
                                   <span className="badge badge-red" style={{ fontSize: '9px', padding: '2px 7px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px' }}>
