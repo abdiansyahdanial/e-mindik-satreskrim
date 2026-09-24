@@ -2810,22 +2810,24 @@ export default function DocGeneratorView({
       await saveReferenceNumbers(docNumber, docDate);
     }
 
-    const docUuid = crypto.randomUUID();
-    const validCaseId = (currentCase?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentCase.id))
-      ? currentCase.id 
-      : null;
+    const lpNumber = currentCase?.nomor_lp 
+      || currentCase?.no_lp 
+      || currentCase?.nomor_kasus 
+      || formValues.NOMOR_LP 
+      || formValues.nomor_lp 
+      || '-';
 
     const newDoc = {
-      id: docUuid,
-      case_id: validCaseId,
-      // Kompatibilitas multi-kolom arsip:
+      id: crypto.randomUUID(),
+      case_id: currentCase?.id ? String(currentCase.id) : null,
+      nomor_lp: lpNumber,
+      no_lp: lpNumber,
       doc_title: currentTemplate?.title || 'Dokumen Mindik',
       title: currentTemplate?.title || 'Dokumen Mindik',
       nama_dokumen: currentTemplate?.title || 'Dokumen Mindik',
       doc_number: docNumber || '-',
       nomor_surat: docNumber || '-',
       template_code: currentTemplate?.code || 'MINDIK',
-      template_id: (currentTemplate?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentTemplate.id)) ? currentTemplate.id : null,
       meta_values: { ...formValues },
       metadata: { ...formValues },
       created_at: new Date().toISOString()
