@@ -633,14 +633,15 @@ export default function App() {
     const docToSave = {
       ...newDoc,
       id: docUuid,
-      case_id: validCaseId,
+      case_id: newDoc?.case_id ? String(newDoc.case_id) : null,
+      nomor_lp: newDoc.nomor_lp || newDoc.no_lp || '-',
+      no_lp: newDoc.no_lp || newDoc.nomor_lp || '-',
       doc_title: newDoc.doc_title || newDoc.title || 'Dokumen Mindik',
       title: newDoc.title || newDoc.doc_title || 'Dokumen Mindik',
       nama_dokumen: newDoc.nama_dokumen || newDoc.doc_title || 'Dokumen Mindik',
       doc_number: newDoc.doc_number || newDoc.nomor_surat || '-',
       nomor_surat: newDoc.nomor_surat || newDoc.doc_number || '-',
       template_code: newDoc.template_code || 'MINDIK',
-      template_id: (newDoc?.template_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newDoc.template_id)) ? newDoc.template_id : null,
       meta_values: newDoc.meta_values || newDoc.metadata || {},
       metadata: newDoc.metadata || newDoc.meta_values || {},
       created_at: newDoc.created_at || new Date().toISOString()

@@ -26,11 +26,12 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
       const template = mockTemplates.find(
         (t) => t.id === doc.template_id || t.code === (doc.template_code || doc.code)
       );
-      const relatedCase = safeCases.find((c) => c.id === doc.case_id);
+      const relatedCase = safeCases.find((c) => String(c.id) === String(doc?.case_id))
+        || safeCases.find((c) => (c.nomor_lp && (c.nomor_lp === doc?.nomor_lp || c.nomor_lp === doc?.no_lp)) || (c.no_lp && (c.no_lp === doc?.nomor_lp || c.no_lp === doc?.no_lp)));
 
       const docTitle = String(doc.doc_title || doc.title || '').toLowerCase();
       const docNumber = String(doc.doc_number || doc.nomor_surat || '').toLowerCase();
-      const caseNo = String(relatedCase?.nomor_lp || relatedCase?.no_lp || '').toLowerCase();
+      const caseNo = String(relatedCase?.nomor_lp || relatedCase?.no_lp || doc?.nomor_lp || doc?.no_lp || '').toLowerCase();
       const caseTsk = String(
         relatedCase?.nama_terlapor || 
         relatedCase?.terlapor_name || 
@@ -166,6 +167,12 @@ export default function ArchivesView({ documents = [], cases = [], onPreviewDoc,
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                             {relatedCase.tindak_pidana || '-'} ({relatedCase.nama_terlapor || relatedCase.terlapor_name || relatedCase.person?.nama || '-'})
+                          </div>
+                        </div>
+                      ) : ((doc?.nomor_lp && doc.nomor_lp !== '-') || (doc?.no_lp && doc.no_lp !== '-')) ? (
+                        <div>
+                          <div className="mono" style={{ fontSize: '11px', color: 'var(--text-primary)' }}>
+                            {doc.nomor_lp || doc.no_lp}
                           </div>
                         </div>
                       ) : (
