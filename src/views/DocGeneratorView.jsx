@@ -1448,21 +1448,18 @@ export default function DocGeneratorView({
       no_panjang_han_kn: suspect.no_panjang_han_kn || '',
     };
 
-    // Khusus SP_TAP_TSK, sinkronkan nomor dan tanggal surat dari selectedSuspect
-    // Jika belum ada, berikan format standar baku S.Tap.Tsk/...
+    // Khusus SP_TAP_TSK, sinkronkan tanggal dan nomor rujukan penetapan tersangka dari selectedSuspect
     if (isSpTap) {
-      const defaultSpTap = spTapNum || 'S.Tap.Tsk/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra';
-      const defaultSpTapDate = spTapDate || new Date().toISOString().split('T')[0];
-      values.NOMOR_SURAT = defaultSpTap;
-      values.nomor_surat = defaultSpTap;
-      values.DOC_NO = defaultSpTap;
-      values.doc_no = defaultSpTap;
-      values.nomor_sp_tap = defaultSpTap;
-      values.no_sp_tap_tsk = defaultSpTap;
-      values.nomor_sp_tap_tsk = defaultSpTap;
-      values.NOMOR_SP_TAP = defaultSpTap;
-      values.NO_SP_TAP_TSK = defaultSpTap;
-      values.NOMOR_SP_TAP_TSK = defaultSpTap;
+      const defaultSpTap = spTapNum || '';
+      const defaultSpTapDate = spTapDate || '';
+      if (defaultSpTap) {
+        values.nomor_sp_tap = defaultSpTap;
+        values.no_sp_tap_tsk = defaultSpTap;
+        values.nomor_sp_tap_tsk = defaultSpTap;
+        values.NOMOR_SP_TAP = defaultSpTap;
+        values.NO_SP_TAP_TSK = defaultSpTap;
+        values.NOMOR_SP_TAP_TSK = defaultSpTap;
+      }
       values.TANGGAL_SURAT = defaultSpTapDate;
       values.tanggal_surat = defaultSpTapDate;
       values.DOC_DATE = defaultSpTapDate;
@@ -1712,6 +1709,8 @@ export default function DocGeneratorView({
       ...prev,
       NOMOR_SURAT: val,
       nomor_surat: val,
+      NO_SURAT: val,
+      no_surat: val,
       DOC_NO: val,
       doc_no: val,
       nomor_sp_tap: val,
@@ -1721,6 +1720,10 @@ export default function DocGeneratorView({
       NO_SP_TAP_TSK: val,
       NOMOR_SP_TAP_TSK: val,
     }));
+  };
+
+  const setDocNumber = (val) => {
+    setNomorSurat(val);
   };
 
   const setTanggalSurat = (val) => {
@@ -1781,44 +1784,25 @@ export default function DocGeneratorView({
   }, [isIndividualDoc, caseSuspects, selectedSuspectId]);
 
   // 1. Reset / Muat Ulang Format Nomor Sesuai Template Aktif:
-  // Pastikan saat terjadi pergantian dokumen (selectedTemplate berubah), sistem membaca format nomor spesifik template tersebut atau mengosongkannya jika bukan SP_TAP_TSK
   useEffect(() => {
-    if (!selectedTemplate) return;
+    if (!currentTemplate) return;
 
-    const code = (selectedTemplate.code || '').toUpperCase().trim();
-    const isSpTap = code === 'SP_TAP_TSK' || (selectedTemplate.name || '').toUpperCase().includes('TAP') || (selectedTemplate.title || '').toUpperCase().includes('PENETAPAN TERSANGKA');
+    // Ambil format mentah dari Template Studio
+    const templateFormatNomor = currentTemplate?.format_nomor 
+      || currentTemplate?.default_doc_number 
+      || currentTemplate?.nomor_format
+      || currentTemplate?.meta_values?.NOMOR_SURAT
+      || '';
 
-    if (isSpTap) {
-      // Khusus SP TAP TSK: sinkronkan dari data penetapan tersangka jika tersedia atau berikan format standar baku
-      const existingNo = selectedSuspect?.nomor_sp_tap || selectedSuspect?.no_sp_tap_tsk;
-      const existingDate = selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk;
-      setNomorSurat(existingNo || 'S.Tap.Tsk/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra');
-      setTanggalSurat(existingDate || new Date().toISOString().split('T')[0]);
-    } else {
-      // DOKUMEN LAIN (SPDP, SPRINT, BA, dll.):
-      // Ambil format/nomor default dari master template aktif atau preset Mindik
-      const templateDefaultNo = selectedTemplate.default_number_format || selectedTemplate.nomor_surat_format || '';
-      const presetFields = getMindikPreset(code);
-      const presetNomorSurat = presetFields?.find(f => (f.tag || '').toUpperCase() === 'NOMOR_SURAT')?.default;
-      const presetTanggalSurat = presetFields?.find(f => (f.tag || '').toUpperCase() === 'TANGGAL_SURAT')?.default;
-      
-      if (templateDefaultNo) {
-        setNomorSurat(templateDefaultNo);
-      } else if (presetNomorSurat) {
-        setNomorSurat(presetNomorSurat);
-      } else if (code === 'SPRIN_GAS_SIDIK' || code === 'SPGAS_SIDIK' || code === 'SPRIN_TUGAS_PENYIDIKAN' || code.includes('GAS_SIDIK') || (selectedTemplate.title || '').toUpperCase().includes('TUGAS PENYIDIKAN')) {
-        setNomorSurat('SP.Gas.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra');
-      } else if (code.includes('SPDP')) {
-        // Gunakan format SPDP perkara jika ada, atau kembalikan ke default input penomoran SPDP
-        setNomorSurat(activeCase?.no_spdp || 'B/SPDP/….../I/RES.0.0./2026/Satreskrim');
-      } else {
-        setNomorSurat('');
-      }
-      
-      // Kembalikan tanggal surat ke tanggal preset atau hari ini
-      setTanggalSurat(presetTanggalSurat || new Date().toISOString().split('T')[0]);
-    }
-  }, [selectedTemplate?.id, selectedTemplate?.code]); // Trigger saat ID atau kode template berganti
+    // Terapkan ke state form input
+    setFormValues(prev => ({
+      ...prev,
+      NOMOR_SURAT: templateFormatNomor,
+      NO_SURAT: templateFormatNomor
+    }));
+
+    setDocNumber(templateFormatNomor);
+  }, [currentTemplate?.id, currentTemplate?.code]);
 
   // Sinkronisasi Profil Tersangka saat Tersangka Berubah
   useEffect(() => {
@@ -1879,18 +1863,16 @@ export default function DocGeneratorView({
         };
 
         if (isSpTapDoc) {
-          const sNo = found.nomor_sp_tap || found.no_sp_tap_tsk || 'S.Tap.Tsk/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra';
+          const sNo = found.nomor_sp_tap || found.no_sp_tap_tsk || '';
           const sDate = found.tanggal_sp_tap || found.tgl_sp_tap_tsk || new Date().toISOString().split('T')[0];
-          next.NOMOR_SURAT = sNo;
-          next.nomor_surat = sNo;
-          next.DOC_NO = sNo;
-          next.doc_no = sNo;
-          next.nomor_sp_tap = sNo;
-          next.no_sp_tap_tsk = sNo;
-          next.nomor_sp_tap_tsk = sNo;
-          next.NOMOR_SP_TAP = sNo;
-          next.NO_SP_TAP_TSK = sNo;
-          next.NOMOR_SP_TAP_TSK = sNo;
+          if (sNo) {
+            next.nomor_sp_tap = sNo;
+            next.no_sp_tap_tsk = sNo;
+            next.nomor_sp_tap_tsk = sNo;
+            next.NOMOR_SP_TAP = sNo;
+            next.NO_SP_TAP_TSK = sNo;
+            next.NOMOR_SP_TAP_TSK = sNo;
+          }
           next.TANGGAL_SURAT = sDate;
           next.tanggal_surat = sDate;
           next.DOC_DATE = sDate;
@@ -2105,24 +2087,14 @@ export default function DocGeneratorView({
         } else {
           initial[cleanKey] = defVal || todayStr;
         }
-      } else if (upperKey === 'NOMOR_SURAT' || upperKey === 'DOC_NO') {
-        const tplCode = (currentTemplate?.code || '').toUpperCase().trim();
-        const templateDefaultNo = currentTemplate?.default_number_format || currentTemplate?.nomor_surat_format || '';
-        if (isTapTskDoc && (selectedSuspect?.nomor_sp_tap || selectedSuspect?.no_sp_tap_tsk)) {
-          initial[cleanKey] = selectedSuspect?.nomor_sp_tap || selectedSuspect?.no_sp_tap_tsk;
-        } else if (isCurrentParentDoc && activeParentConfig && currentCase?.[activeParentConfig.targetNoCol]) {
-          initial[cleanKey] = currentCase[activeParentConfig.targetNoCol];
-        } else if (templateDefaultNo) {
-          initial[cleanKey] = templateDefaultNo;
-        } else if (defVal) {
-          initial[cleanKey] = defVal;
-        } else if (isSprinGasSidik || tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPGAS_SIDIK' || tplCode.includes('GAS_SIDIK')) {
-          initial[cleanKey] = 'SP.Gas.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra';
-        } else if (tplCode.includes('SPDP')) {
-          initial[cleanKey] = currentCase?.no_spdp || 'B/SPDP/….../I/RES.0.0./2026/Satreskrim';
-        } else {
-          initial[cleanKey] = '';
-        }
+      } else if (upperKey === 'NOMOR_SURAT' || upperKey === 'DOC_NO' || upperKey === 'NO_SURAT') {
+        const templateFormatNomor = currentTemplate?.format_nomor 
+          || currentTemplate?.default_doc_number 
+          || currentTemplate?.nomor_format
+          || currentTemplate?.meta_values?.NOMOR_SURAT
+          || defVal
+          || '';
+        initial[cleanKey] = templateFormatNomor;
       } else if (upperKey === 'TGL_SPRIN_SIDIK' || upperKey === 'TANGGAL_SPRIN_SIDIK') {
         initial[cleanKey] = currentCase?.tgl_sprin_sidik || currentCase?.sprin_date || (isSprinSidik ? todayStr : '');
       } else if (upperKey === 'NO_SPRIN_GAS_SIDIK') {
@@ -2201,7 +2173,7 @@ export default function DocGeneratorView({
       Object.keys(prev || {}).forEach(k => {
         const cleanK = k.replace(/[{}]/g, '').trim();
         const upperK = cleanK.toUpperCase();
-        const isDocNumberOrDateField = ['NOMOR_SURAT', 'DOC_NO', 'TANGGAL_SURAT', 'DOC_DATE'].includes(upperK);
+        const isDocNumberOrDateField = ['NOMOR_SURAT', 'NO_SURAT', 'DOC_NO', 'TANGGAL_SURAT', 'DOC_DATE'].includes(upperK);
 
         // Jika template berganti, jangan biarkan nomor surat atau tanggal surat dari template sebelumnya terbawa!
         if (isTemplateChanged && isDocNumberOrDateField) {
@@ -2213,15 +2185,26 @@ export default function DocGeneratorView({
         }
       });
 
-      // Jika dokumen adalah SP TAP TSK dan tersangka memiliki nomor/tanggal SP TAP, utamakan data tersangka
+      // Jika template berganti, pastikan NOMOR_SURAT selalu mengambil format mentah template
+      if (isTemplateChanged) {
+        const templateFormatNomor = currentTemplate?.format_nomor 
+          || currentTemplate?.default_doc_number 
+          || currentTemplate?.nomor_format
+          || currentTemplate?.meta_values?.NOMOR_SURAT
+          || '';
+        merged['NOMOR_SURAT'] = templateFormatNomor;
+        merged['NO_SURAT'] = templateFormatNomor;
+        merged['nomor_surat'] = templateFormatNomor;
+        merged['no_surat'] = templateFormatNomor;
+        merged['DOC_NO'] = templateFormatNomor;
+        merged['doc_no'] = templateFormatNomor;
+      }
+
+      // Jika dokumen adalah SP TAP TSK dan tersangka memiliki nomor/tanggal SP TAP, sinkronkan rujukan tersangka
       if (isTapTskDoc && selectedSuspect) {
         const spTapNum = selectedSuspect.nomor_sp_tap || selectedSuspect.no_sp_tap_tsk;
         const spTapDate = selectedSuspect.tanggal_sp_tap || selectedSuspect.tgl_sp_tap_tsk;
         if (spTapNum) {
-          merged['NOMOR_SURAT'] = spTapNum;
-          merged['nomor_surat'] = spTapNum;
-          merged['DOC_NO'] = spTapNum;
-          merged['doc_no'] = spTapNum;
           merged['nomor_sp_tap'] = spTapNum;
           merged['no_sp_tap_tsk'] = spTapNum;
           merged['nomor_sp_tap_tsk'] = spTapNum;
