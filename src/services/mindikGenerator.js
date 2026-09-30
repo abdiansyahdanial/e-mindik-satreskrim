@@ -5,6 +5,9 @@ const saveAs = fileSaver.saveAs || fileSaver;
 import mammoth from 'mammoth';
 import { supabase } from '../supabaseClient.js';
 
+// In-memory cache biner template untuk download instan (0 ms)
+const templateArrayBufferCache = new Map();
+
 /**
  * Format date into Indonesian locale string: '08 September 2026'
  */
@@ -419,29 +422,30 @@ export const getPenyidikPenangan = (activeCase = {}) => {
   return null;
 };
 
-// In-memory cache for master .docx buffers from Supabase Storage
-const templateBufferCache = new Map();
+// Alias kompatibilitas
+const templateBufferCache = templateArrayBufferCache;
 
 /**
  * Clear in-memory template buffer cache if templates are modified in Template Studio
  */
 export function clearTemplateBufferCache() {
-  templateBufferCache.clear();
+  templateArrayBufferCache.clear();
 }
 
 /**
  * Fetch physical .docx file from Supabase Storage.
- * Supports memory cache, 'templates' and 'docx-templates' buckets, as well as subfolders.
+ * Supports memory cache (templateArrayBufferCache), 'templates' and 'docx-templates' buckets, as well as subfolders.
  */
 export async function fetchDocxArrayBuffer(filePath) {
   if (!filePath) {
     throw new Error('Path template file di Supabase Storage tidak valid.');
   }
 
-  // 1. Check in-memory cache first (Instant < 1ms response)
-  if (templateBufferCache.has(filePath)) {
-    const cached = templateBufferCache.get(filePath);
-    return cached.slice(0); // cloned buffer
+  const key = String(filePath).trim();
+
+  // 1. Check in-memory cache first (Instant 0 ms response tanpa request jaringan)
+  if (templateArrayBufferCache.has(key)) {
+    return templateArrayBufferCache.get(key).slice(0);
   }
 
   // If filePath is a direct HTTP/HTTPS URL
@@ -450,7 +454,7 @@ export async function fetchDocxArrayBuffer(filePath) {
       const res = await fetch(filePath);
       if (res.ok) {
         const ab = await res.arrayBuffer();
-        templateBufferCache.set(filePath, ab);
+        templateArrayBufferCache.set(key, ab);
         return ab.slice(0);
       }
     } catch (e) {
@@ -474,7 +478,7 @@ export async function fetchDocxArrayBuffer(filePath) {
         const { data, error } = await supabase.storage.from(bucket).download(testPath);
         if (!error && data) {
           const ab = await data.arrayBuffer();
-          templateBufferCache.set(filePath, ab);
+          templateArrayBufferCache.set(key, ab);
           return ab.slice(0);
         }
       } catch (e) {
@@ -492,7 +496,7 @@ export async function fetchDocxArrayBuffer(filePath) {
           const res = await fetch(data.publicUrl);
           if (res.ok) {
             const ab = await res.arrayBuffer();
-            templateBufferCache.set(filePath, ab);
+            templateArrayBufferCache.set(key, ab);
             return ab.slice(0);
           }
         }
@@ -507,7 +511,7 @@ export async function fetchDocxArrayBuffer(filePath) {
     const res = await fetch(filePath);
     if (res.ok) {
       const ab = await res.arrayBuffer();
-      templateBufferCache.set(filePath, ab);
+      templateArrayBufferCache.set(key, ab);
       return ab.slice(0);
     }
   }
@@ -2299,51 +2303,40 @@ export async function generateDocxBlob({
  */
 export async function convertDocxToPdf(docxBlob, options = {}) {
   if (!docxBlob && !options.storagePath && !options.fileUrl) {
-    throw new Error('Blob .docx atau storagePath tidak valid.');
+    return null;
   }
 
-  let response;
-
-  if (docxBlob) {
-    // Convert blob to Base64 to guarantee safe transport across dev server & production
+  try {
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const res = reader.result;
         resolve(typeof res === 'string' ? res.split(',')[1] : '');
       };
-      reader.onerror = reject;
+      reader.onerror = () => resolve(null);
       reader.readAsDataURL(docxBlob);
     });
 
-    response = await fetch('/api/convert-docx-to-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        docxBase64: base64
-      })
-    });
-  } else {
-    response = await fetch('/api/convert-docx-to-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        storagePath: options.storagePath,
-        fileUrl: options.fileUrl
-      })
-    });
-  }
+    if (!base64) return null;
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || errorData.message || `Gagal mengonversi ke PDF (status: ${response.status})`);
-  }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 detik timeout
 
-  return await response.blob();
+    const response = await fetch('/api/convert-docx-to-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ docxBase64: base64 }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) return null;
+    return await response.blob();
+  } catch (err) {
+    console.warn('Backend konversi PDF lokal tidak tersedia, fallback aktif:', err.message);
+    return null;
+  }
 }
 
 /**

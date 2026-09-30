@@ -746,467 +746,105 @@ export const isValidDocNumber = (val) => {
   return true;
 };
 
+// Helper: Pengecekan penetapan tersangka 2 arah (field tersangka & arsip dokumen perkara)
+export const checkHasSpTap = (suspectList = [], docsList = []) => {
+  // 1. Cek dari field suspect
+  const hasInSuspect = (suspectList || []).some(s => 
+    Boolean(s.has_sp_tap || s.sp_tap_number || s.no_sp_tap_tsk || s.nomor_sp_tap || s.tanggal_sp_tap || s.tgl_sp_tap_tsk || s.status === 'tersangka')
+  );
+  if (hasInSuspect) return true;
+
+  // 2. Dual-check: Cek dari arsip dokumen perkara (caseDocuments / docsList)
+  const hasInDocs = (docsList || []).some(d => {
+    const code = (d.template_code || d.code || d.document_type || d.type || '').toUpperCase();
+    const title = (d.document_name || d.document_title || d.title || d.name || '').toUpperCase();
+    return (
+      code.includes('TAP_TSK') || 
+      code.includes('SP_TAP') || 
+      title.includes('PENETAPAN TERSANGKA') ||
+      title.includes('SP.TAP')
+    );
+  });
+
+  return hasInDocs;
+};
+
 // Helper 3: Penegakan Urutan Wajib Mindik Sidik (Sequential Prerequisite Guard)
 export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [], activeSuspect = null) => {
   if (!tpl) return { allowed: false, unlocked: false, reason: 'Pilih format template terlebih dahulu.', badge: '', isLocked: true };
-  
-  // Dokumen pada Tahap Penyelidikan (LIDIK) selalu terbuka
-  if (getTemplateStage(tpl) === 'LIDIK') {
+
+  const targetCode = (tpl.code || tpl.template_code || '').toUpperCase().trim();
+  const targetTitle = (tpl.title || tpl.name || '').toUpperCase().trim();
+
+  // Dokumen LIDIK selalu terbuka
+  if (getTemplateStage(tpl) === 'LIDIK' || targetCode.startsWith('LIDIK')) {
     return { allowed: true, unlocked: true, reason: '', badge: 'Lidik', isLocked: false };
   }
 
-  const docCode = (tpl.code || tpl.template_code || tpl.kode || '').toUpperCase().trim();
-  const docTitle = (tpl.title || tpl.name || tpl.doc_title || '').toUpperCase().trim();
-  const docType = (tpl.type || '').toUpperCase().trim();
-  const docBadge = (tpl.badge || '').toUpperCase().trim();
-  const docDesc = (tpl.description || tpl.keterangan || '').toUpperCase().trim();
-  const normCode = docCode.replace(/[\.\-\s]+/g, '_');
+  // SP.SIDIK selalu terbuka sebagai gerbang utama
+  if (targetCode === 'SPRIN_SIDIK' || targetCode === 'SP_SIDIK') {
+    return { allowed: true, unlocked: true, reason: '', badge: 'Gerbang Utama', isLocked: false };
+  }
 
-  // A. SP.SIDIK / SPRIN.SIDIK (Gerbang Utama Penyidikan - Bebas Dibuat sebagai Awal Tahapan Sidik Tanpa Prasyarat Dokumen Lain)
-  const isSpSidikDoc = (
-    !docCode.includes('TAMBAHAN') &&
-    !docCode.includes('LANJUTAN') &&
-    !docCode.includes('TUGAS') &&
-    !docCode.includes('GAS') &&
-    !docTitle.includes('TAMBAHAN') &&
-    !docTitle.includes('LANJUTAN') &&
-    !docTitle.includes('TUGAS') &&
-    (
-      normCode === 'SP_SIDIK' || 
-      normCode === 'SPRIN_SIDIK' || 
-      normCode === 'SPRIN_PENYIDIKAN' ||
-      normCode === 'SP_PENYIDIKAN' ||
-      normCode === 'SP_SIDIK_MORE_5' ||
-      normCode === 'SPRIN_SIDIK_MORE_5' ||
-      normCode.startsWith('SP_SIDIK') ||
-      normCode.startsWith('SPRIN_SIDIK') ||
-      docBadge.includes('GERBANG UTAMA') ||
-      docType.includes('GERBANG UTAMA') ||
-      docDesc.includes('GERBANG UTAMA') ||
-      tpl.is_gerbang_utama === true ||
-      tpl.isGerbangUtama === true ||
-      (
-        docTitle.includes('PERINTAH PENYIDIKAN') || 
-        docTitle.includes('SP.SIDIK') || 
-        docTitle.includes('SPRIN.SIDIK') || 
-        docTitle.includes('SP SIDIK') || 
-        docTitle.includes('SPRIN SIDIK')
-      )
-    )
-  );
+  // 1. Cek apakah SP.SIDIK sudah ada di arsip perkara atau nomor induk perkara
+  const hasSpSidik = (caseDocs || []).some(d => {
+    const c = (d.template_code || d.code || d.document_type || d.type || '').toUpperCase();
+    const t = (d.document_name || d.title || d.name || '').toUpperCase();
+    return c === 'SPRIN_SIDIK' || c === 'SP_SIDIK' || (c.includes('SIDIK') && !c.includes('GAS'));
+  }) || Boolean(targetCase?.no_sprin_sidik);
 
-  if (isSpSidikDoc) {
+  // 2. Cek apakah SP.GAS.SIDIK sudah ada di arsip perkara
+  const hasSpGas = (caseDocs || []).some(d => {
+    const c = (d.template_code || d.code || d.document_type || d.type || '').toUpperCase();
+    const t = (d.document_name || d.title || d.name || '').toUpperCase();
+    return c === 'SPGAS_SIDIK' || c === 'SP_GAS_SIDIK' || c.includes('GAS') || t.includes('TUGAS PENYIDIKAN');
+  }) || Boolean(targetCase?.no_sp_gas_sidik);
+
+  // Jika SP.SIDIK belum ada, kunci semua dokumen turunan
+  if (!hasSpSidik) {
     return {
-      allowed: true,
-      unlocked: true,
-      reason: '',
-      badge: 'Gerbang Utama',
-      isLocked: false
+      allowed: false,
+      unlocked: false,
+      reason: 'SP.Sidik belum diterbitkan. Terbitkan dan simpan SP.Sidik terlebih dahulu.',
+      badge: 'Perlu SP.Sidik',
+      isLocked: true
     };
   }
 
-  const generatedDocs = caseDocs || [];
-  const currentCase = targetCase;
-
-  const isValidDocNumber = (val) => {
-    if (!val || typeof val !== 'string') return false;
-    const clean = val.trim().toLowerCase();
-    if (!clean || clean === '-' || clean === '--' || clean.startsWith('...') || clean.includes('belum') || clean === 'null' || clean === 'undefined') {
-      return false;
-    }
-    return true;
-  };
-
-  // Evaluasi arsip dokumen SP.SIDIK resmi pada perkara ini
-  const validArchiveSpSidikDoc = (generatedDocs || []).find(d => {
-    const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    const isSpSidikType = (
-      c === 'SP_SIDIK' || 
-      c === 'SPRIN_SIDIK' || 
-      (c.includes('SP_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
-      (c.includes('SPRIN_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
-      (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN')) ||
-      ((t.includes('SP.SIDIK') || t.includes('SPRIN.SIDIK')) && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN'))
-    );
-    if (!isSpSidikType) return false;
-    const num = d?.document_number || d?.doc_number || d?.nomor_surat || '';
-    return typeof num === 'string' && num.trim() !== '' && num.trim() !== '-' && !num.startsWith('...');
-  });
-
-  const hasValidSpSidikArchive = Boolean(validArchiveSpSidikDoc) || Boolean(
-    isValidDocNumber(currentCase?.no_sprin_sidik) ||
-    isValidDocNumber(currentCase?.nomor_sprin_sidik) ||
-    isValidDocNumber(currentCase?.no_sp_sidik) ||
-    isValidDocNumber(currentCase?.nomor_sp_sidik) ||
-    isValidDocNumber(currentCase?.references?.no_sprin_sidik) ||
-    isValidDocNumber(currentCase?.references?.no_sp_sidik) ||
-    isValidDocNumber(currentCase?.references?.nomor_sp_sidik)
-  );
-
-  const hasSpSidik = hasValidSpSidikArchive;
-
-  // A. SP.GAS.SIDIK (Hanya mensyaratkan SP.SIDIK telah diterbitkan atau nomor SP.SIDIK telah terisi)
-  const isSpGasDoc = (
-    normCode === 'SP_GAS_SIDIK' || 
-    normCode === 'SPRIN_GAS_SIDIK' || 
-    normCode === 'SPGAS_SIDIK' || 
-    normCode === 'SPRIN_GAS' ||
-    normCode === 'SP_GAS' ||
-    normCode.startsWith('SPGAS_SIDIK') ||
-    normCode.startsWith('SP_GAS_SIDIK') ||
-    normCode.startsWith('SPRIN_GAS_SIDIK') ||
-    (
-      (
-        docTitle.includes('TUGAS PENYIDIKAN') || 
-        docTitle.includes('SP.GAS.SIDIK') || 
-        docTitle.includes('SPGAS.SIDIK') || 
-        docTitle.includes('SP GAS SIDIK') || 
-        docTitle.includes('SPRIN GAS')
-      ) && 
-      !docTitle.includes('PENYELIDIKAN') && 
-      !docTitle.includes('TAMBAHAN') && 
-      !docTitle.includes('LANJUTAN')
-    )
-  );
-
-  if (isSpGasDoc) {
-    return { 
-      unlocked: Boolean(hasSpSidik), 
-      allowed: Boolean(hasSpSidik), 
-      reason: hasSpSidik ? '' : 'Wajib menerbitkan Surat Perintah Penyidikan (SP.SIDIK) terlebih dahulu.',
-      badge: 'Wajib 2',
-      isLocked: !hasSpSidik
-    };
+  // Dokumen SP.GAS.SIDIK hanya mensyaratkan SP.SIDIK
+  if (targetCode === 'SPGAS_SIDIK' || targetCode === 'SP_GAS_SIDIK') {
+    return { allowed: true, unlocked: true, reason: '', badge: 'Siap Dibuat', isLocked: false };
   }
 
-  const hasSpGasSidik = generatedDocs.some(d => {
-    const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-    return (
-      c.includes('SP_GAS') || 
-      c.includes('SPGAS') || 
-      c.includes('SPRIN_GAS') || 
-      t.includes('TUGAS PENYIDIKAN') ||
-      t.includes('SP.GAS')
-    );
-  }) || Boolean(
-    isValidDocNumber(currentCase?.no_sprin_gas_sidik) ||
-    isValidDocNumber(currentCase?.nomor_sprin_gas_sidik) ||
-    isValidDocNumber(currentCase?.no_sp_gas_sidik) ||
-    isValidDocNumber(currentCase?.nomor_sp_gas_sidik) ||
-    isValidDocNumber(currentCase?.references?.no_sprin_gas_sidik) ||
-    isValidDocNumber(currentCase?.references?.no_sp_gas_sidik) ||
-    isValidDocNumber(currentCase?.references?.nomor_sp_gas_sidik)
-  );
-
-  // Evaluasi Status Penetapan Tersangka (S.TAP.TSK)
-  const hasTapTsk = Boolean(
-    generatedDocs.some(d => {
-      const c = (d.template_code || d.code || '').toUpperCase();
-      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-      return c.includes('TAP_TSK') || t.includes('PENETAPAN TERSANGKA') || t.includes('S.TAP.TSK');
-    }) ||
-    (suspects || []).some(s => s.nomor_sp_tap || s.no_sp_tap_tsk || s.status === 'tersangka') ||
-    (currentCase?.suspects || []).some(s => s.nomor_sp_tap || s.status === 'tersangka') ||
-    (currentCase?.terlapor_list || []).some(s => s.nomor_sp_tap || s.no_sp_tap_tsk || s.status === 'tersangka') ||
-    isValidDocNumber(currentCase?.references?.no_sp_tap_tsk) ||
-    isValidDocNumber(currentCase?.references?.nomor_sp_tap)
-  );
-
-  // Evaluasi Panggilan Tersangka Ke-1
-  const hasPanggilan1 = Boolean(
-    generatedDocs.some(d => {
-      const c = (d.template_code || d.code || '').toUpperCase();
-      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-      return (
-        c.includes('PANGGILAN_TSK_1') || 
-        c.includes('SPGL_TSK_1') || 
-        t.includes('PANGGILAN TERSANGKA KE-1') || 
-        t.includes('PANGGILAN TERSANGKA 1')
-      );
-    }) ||
-    isValidDocNumber(currentCase?.no_spgl_tsk_1) ||
-    isValidDocNumber(currentCase?.references?.no_spgl_tsk_1)
-  );
-
-  // Evaluasi Panggilan Tersangka Ke-2
-  const hasPanggilan2 = Boolean(
-    generatedDocs.some(d => {
-      const c = (d.template_code || d.code || '').toUpperCase();
-      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-      return (
-        c.includes('PANGGILAN_TSK_2') || 
-        c.includes('SPGL_TSK_2') || 
-        t.includes('PANGGILAN TERSANGKA KE-2') || 
-        t.includes('PANGGILAN TERSANGKA 2')
-      );
-    }) ||
-    isValidDocNumber(currentCase?.no_spgl_tsk_2) ||
-    isValidDocNumber(currentCase?.references?.no_spgl_tsk_2)
-  );
-
-  // Evaluasi Upaya Paksa Kehadiran (Panggilan / Perintah Membawa / Penangkapan)
-  const hasUpayaHadir = Boolean(
-    hasPanggilan1 ||
-    hasPanggilan2 ||
-    generatedDocs.some(d => {
-      const c = (d.template_code || d.code || '').toUpperCase();
-      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-      return (
-        c.includes('SP_KAP') || 
-        c.includes('SPRIN_KAP') || 
-        c.includes('BAWA_TSK') || 
-        t.includes('PENANGKAPAN') || 
-        t.includes('MEMBAWA TERSANGKA')
-      );
-    }) ||
-    isValidDocNumber(currentCase?.no_sprin_kap) ||
-    isValidDocNumber(currentCase?.references?.no_sprin_kap) ||
-    isValidDocNumber(currentCase?.no_sprin_bawa) ||
-    isValidDocNumber(currentCase?.references?.no_sprin_bawa)
-  );
-
-  // Evaluasi Surat Perintah Penahanan (SP.HAN)
-  const hasHan = Boolean(
-    generatedDocs.some(d => {
-      const c = (d.template_code || d.code || '').toUpperCase();
-      const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
-      return (
-        (c === 'SP_HAN' || c === 'SPRIN_HAN' || c.includes('SPRIN_HAN') || c.includes('SP_HAN')) &&
-        !c.includes('PANJANG') && !c.includes('KELUAR') &&
-        (t.includes('PERINTAH PENAHANAN') || t.includes('SP.HAN') || t.includes('SPRIN.HAN')) &&
-        !t.includes('PERPANJANGAN') && !t.includes('PENGELUARAN')
-      );
-    }) ||
-    isValidDocNumber(currentCase?.no_sprin_han) ||
-    isValidDocNumber(currentCase?.references?.no_sprin_han) ||
-    isValidDocNumber(currentCase?.no_sp_han) ||
-    isValidDocNumber(currentCase?.references?.no_sp_han)
-  );
-
-  // A. SP.SIDIK / SP.GAS TAMBAHAN & LANJUTAN
-  if (
-    docCode.includes('TAMBAHAN') || 
-    docCode.includes('LANJUTAN') || 
-    docTitle.includes('TAMBAHAN') || 
-    docTitle.includes('LANJUTAN')
-  ) {
-    if (getSidikCluster(tpl) === 'A') {
-      return { 
-        unlocked: hasSpGasSidik, 
-        allowed: hasSpGasSidik, 
-        reason: hasSpGasSidik ? '' : 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.' 
+  // Dokumen S.TAP.TSK mensyaratkan SP.SIDIK & SP.GAS.SIDIK
+  if (targetCode.includes('TAP_TSK') || targetCode.includes('SP_TAP') || targetTitle.includes('PENETAPAN TERSANGKA')) {
+    if (!hasSpGas) {
+      return {
+        allowed: false,
+        unlocked: false,
+        reason: 'Wajib membuat SP.GAS.SIDIK terlebih dahulu.',
+        badge: 'Perlu SP.Gas.Sidik',
+        isLocked: true
       };
     }
+    return { allowed: true, unlocked: true, reason: '', badge: 'Siap Diterbitkan', isLocked: false };
   }
 
-  // 1. S.TAP.TSK (SURAT KETETAPAN PENETAPAN TERSANGKA)
-  // Cukup syarat dasar SP.SIDIK & SP.GAS.SIDIK terpenuhi! Tidak boleh bergantung pada SPDP Tersangka!
-  if (
-    docCode === 'SP_TAP_TSK' ||
-    docCode === 'TAP_TSK' ||
-    docCode === 'S_TAP_TSK' ||
-    docTitle.includes('PENETAPAN TERSANGKA') ||
-    docTitle.includes('S.TAP.TSK')
-  ) {
-    return {
-      unlocked: Boolean(hasSpGasSidik),
-      allowed: Boolean(hasSpGasSidik),
-      reason: hasSpGasSidik ? '' : 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.'
-    };
-  }
-
-  // 2. SPDP TERSANGKA (Wajib 5)
-  // MUTLAK WAJIB ADA S.TAP.TSK TERLEBIH DAHULU!
-  if (
-    docCode === 'SPDP_TSK' ||
-    docCode === 'SPDP_TERSANGKA' ||
-    docCode === 'SPDP_LEBIH_1_TSK' ||
-    docCode === 'SPDP_MORE_1_TSK' ||
-    docTitle.includes('SPDP DENGAN TERSANGKA') ||
-    docTitle.includes('SPDP TERSANGKA') ||
-    docTitle.includes('LEBIH DARI 1 TERSANGKA')
-  ) {
-    if (!validArchiveSpSidikDoc && !hasValidSpSidikArchive) {
-      return { allowed: false, unlocked: false, reason: 'SP.Sidik belum diterbitkan. Terbitkan dan simpan SP.Sidik terlebih dahulu.' };
-    }
-    return {
-      unlocked: Boolean(hasTapTsk),
-      allowed: Boolean(hasTapTsk),
-      reason: hasTapTsk ? '' : 'Wajib menerbitkan SURAT KETETAPAN PENETAPAN TERSANGKA (S.TAP.TSK) terlebih dahulu.'
-    };
-  }
-
-  // 3. SPDP TERLAPOR / TANPA NAMA (Wajib 3)
-  if (
-    docCode === 'SPDP' ||
-    docCode === 'SPDP_TERLAPOR' ||
-    docCode === 'SPDP_LEBIH_1_TERLAPOR' ||
-    docCode === 'SPDP_TANPA_NAMA' ||
-    docCode.startsWith('SPDP') ||
-    docTitle.includes('DIMULAINYA PENYIDIKAN')
-  ) {
-    if (!validArchiveSpSidikDoc && !hasValidSpSidikArchive) {
-      return { allowed: false, unlocked: false, reason: 'SP.Sidik belum diterbitkan. Terbitkan dan simpan SP.Sidik terlebih dahulu.' };
-    }
-    return {
-      unlocked: Boolean(hasSpGasSidik),
-      allowed: Boolean(hasSpGasSidik),
-      reason: hasSpGasSidik ? '' : 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.'
-    };
-  }
-
-  // C. TINDAKAN TERHADAP TERSANGKA (Wajib 6)
-  if (
-    docCode === 'PANGGILAN_TSK_1' || 
-    docCode === 'SPGL_TSK_1' || 
-    docCode === 'SP_KAP' || 
-    docCode === 'SPRIN_KAP' || 
-    (docTitle.includes('PENANGKAPAN') && !docTitle.includes('PELEPASAN')) || 
-    docTitle.includes('PANGGILAN TERSANGKA KE-1') || 
-    docTitle.includes('PANGGILAN TERSANGKA 1')
-  ) {
-    return { 
-      unlocked: hasTapTsk, 
-      allowed: hasTapTsk, 
-      reason: hasTapTsk ? '' : 'Wajib menerbitkan Penetapan Tersangka (S.TAP.TSK) terlebih dahulu.' 
-    };
-  }
-
-  if (
-    docCode === 'PANGGILAN_TSK_2' || 
-    docCode === 'SPGL_TSK_2' || 
-    docTitle.includes('PANGGILAN TERSANGKA KE-2') || 
-    docTitle.includes('PANGGILAN TERSANGKA 2')
-  ) {
-    return { 
-      unlocked: hasPanggilan1, 
-      allowed: hasPanggilan1, 
-      reason: hasPanggilan1 ? '' : 'Wajib menerbitkan Surat Panggilan Tersangka Ke-1 terlebih dahulu.' 
-    };
-  }
-
-  if (
-    docCode === 'SP_BAWA_TSK' || 
-    docCode === 'SPRIN_BAWA_TSK' || 
-    docCode === 'BAWA_TSK' || 
-    docTitle.includes('MEMBAWA TERSANGKA')
-  ) {
-    return { 
-      unlocked: hasPanggilan2, 
-      allowed: hasPanggilan2, 
-      reason: hasPanggilan2 ? '' : 'Wajib menerbitkan Surat Panggilan Tersangka Ke-2 terlebih dahulu.' 
-    };
-  }
-
-  if (docCode.includes('DPO') || docTitle.includes('PENCARIAN ORANG')) {
-    return { 
-      unlocked: hasTapTsk, 
-      allowed: hasTapTsk, 
-      reason: hasTapTsk ? '' : 'Wajib menerbitkan Penetapan Tersangka (S.TAP.TSK) terlebih dahulu.' 
-    };
-  }
-
-  // F. PENAHANAN (BERJENJANG)
-  if (
-    docCode === 'SP_HAN' || 
-    docCode === 'SPRIN_HAN' || 
-    (docTitle.includes('PERINTAH PENAHANAN') && !docTitle.includes('PERPANJANGAN') && !docTitle.includes('PENGELUARAN'))
-  ) {
-    return { 
-      unlocked: hasUpayaHadir, 
-      allowed: hasUpayaHadir, 
-      reason: hasUpayaHadir ? '' : 'Wajib ada Surat Panggilan / Surat Perintah Membawa / Surat Perintah Penangkapan terlebih dahulu.' 
-    };
-  }
-
-  if (docCode.includes('MINTA_PANJANG_HAN_40') || docTitle.includes('PERMINTAAN PERPANJANGAN PENAHANAN 40 HARI')) {
-    return { 
-      unlocked: hasHan, 
-      allowed: hasHan, 
-      reason: hasHan ? '' : 'Wajib menerbitkan SURAT PERINTAH PENAHANAN (SP.HAN) terlebih dahulu.' 
-    };
-  }
-
-  if (docCode.includes('SPRIN_PANJANG_HAN_40') || docTitle.includes('PERPANJANGAN PENAHANAN 40 HARI KEPALA KEJAKSAAN NEGERI')) {
-    const hasMintaKn = generatedDocs.some(d => (d.template_code || '').includes('MINTA_PANJANG_HAN_40') || (d.title || d.document_title || '').includes('PERMINTAAN PERPANJANGAN PENAHANAN 40 HARI'));
-    return { 
-      unlocked: hasMintaKn, 
-      allowed: hasMintaKn, 
-      reason: hasMintaKn ? '' : 'Wajib mengajukan SURAT PERMINTAAN PERPANJANGAN PENAHANAN 40 HARI KE KN terlebih dahulu.' 
-    };
-  }
-
-  if (docCode.includes('MINTA_PANJANG_HAN_30_PN_1') || docTitle.includes('PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP I')) {
-    const hasPanjangKn = Boolean(currentCase?.no_panjang_han_kn || currentCase?.references?.no_panjang_han_kn || generatedDocs.some(d => (d.template_code || '').includes('SPRIN_PANJANG_HAN_40') || (d.title || d.document_title || '').includes('PERPANJANGAN PENAHANAN 40 HARI KEPALA KEJAKSAAN NEGERI')));
-    return { 
-      unlocked: hasPanjangKn, 
-      allowed: hasPanjangKn, 
-      reason: hasPanjangKn ? '' : 'Wajib menyelesaikan perpanjangan penahanan 40 hari Kejari terlebih dahulu.' 
-    };
-  }
-
-  if (docCode.includes('SPRIN_PANJANG_HAN_30_PN_1') || docTitle.includes('PERPANJANGAN PENAHANAN 30 HARI TAHAP I KETUA PENGADILAN NEGERI')) {
-    const hasMintaPn1 = generatedDocs.some(d => (d.template_code || '').includes('MINTA_PANJANG_HAN_30_PN_1') || (d.title || d.document_title || '').includes('PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP I'));
-    return { 
-      unlocked: hasMintaPn1, 
-      allowed: hasMintaPn1, 
-      reason: hasMintaPn1 ? '' : 'Wajib mengajukan SURAT PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP I KE KPN terlebih dahulu.' 
-    };
-  }
-
-  if (docCode.includes('MINTA_PANJANG_HAN_30_PN_2') || docTitle.includes('PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP II')) {
-    const hasPanjangPn1 = Boolean(currentCase?.no_tap_han_pn_1 || currentCase?.references?.no_tap_han_pn1 || generatedDocs.some(d => (d.template_code || '').includes('SPRIN_PANJANG_HAN_30_PN_1') || (d.title || d.document_title || '').includes('PERPANJANGAN PENAHANAN 30 HARI TAHAP I KETUA PENGADILAN NEGERI')));
-    return { 
-      unlocked: hasPanjangPn1, 
-      allowed: hasPanjangPn1, 
-      reason: hasPanjangPn1 ? '' : 'Wajib menyelesaikan perpanjangan penahanan 30 hari Tahap I PN terlebih dahulu.' 
-    };
-  }
-
-  if (docCode.includes('SPRIN_PANJANG_HAN_30_PN_2') || docTitle.includes('PERPANJANGAN PENAHANAN 30 HARI TAHAP II KETUA PENGADILAN NEGERI')) {
-    const hasMintaPn2 = generatedDocs.some(d => (d.template_code || '').includes('MINTA_PANJANG_HAN_30_PN_2') || (d.title || d.document_title || '').includes('PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP II'));
-    return { 
-      unlocked: hasMintaPn2, 
-      allowed: hasMintaPn2, 
-      reason: hasMintaPn2 ? '' : 'Wajib mengajukan SURAT PERMINTAAN PERPANJANGAN PENAHANAN 30 HARI TAHAP II KE KPN terlebih dahulu.' 
-    };
-  }
-
-  if (docCode.includes('KELUAR_HAN') || docTitle.includes('PENGELUARAN TAHANAN')) {
-    return { 
-      unlocked: hasHan, 
-      allowed: hasHan, 
-      reason: hasHan ? '' : 'Wajib ada SURAT PERINTAH PENAHANAN (SP.HAN) terlebih dahulu.' 
-    };
-  }
-
-  // G. BERKAS PERKARA (TAHAP I & II)
-  if (getSidikCluster(tpl) === 'G') {
-    if (!hasSpGasSidik) {
-      return { 
-        unlocked: false, 
-        allowed: false, 
-        reason: 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.' 
+  // SPDP mensyaratkan SP.SIDIK & SP.GAS.SIDIK
+  if (targetCode.startsWith('SPDP')) {
+    if (!hasSpGas) {
+      return {
+        allowed: false,
+        unlocked: false,
+        reason: 'Wajib membuat SP.GAS.SIDIK terlebih dahulu sebelum mengirim SPDP.',
+        badge: 'Perlu SP.Gas.Sidik',
+        isLocked: true
       };
     }
-    if (!hasTapTsk) {
-      return { 
-        unlocked: false, 
-        allowed: false, 
-        reason: 'Wajib menerbitkan SURAT KETETAPAN PENETAPAN TERSANGKA (S.TAP.TSK) terlebih dahulu.' 
-      };
-    }
-    return { unlocked: true, allowed: true, reason: '' };
+    return { allowed: true, unlocked: true, reason: '', badge: 'Siap Dikirim', isLocked: false };
   }
 
-  // D & E. SITA, GELEDAH, SAKSI (OPSIONAL)
-  return { 
-    unlocked: hasSpGasSidik, 
-    allowed: hasSpGasSidik, 
-    reason: hasSpGasSidik ? '' : 'Wajib membuat SP.SIDIK & SP.GAS.SIDIK terlebih dahulu.' 
-  };
+  return { allowed: true, unlocked: true, reason: '', badge: '', isLocked: false };
 };
 
 export default function DocGeneratorView({ 
@@ -1337,81 +975,12 @@ export default function DocGeneratorView({
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.warn('Could not fetch supabase templates:', error);
-        setAllTemplates([]);
-        return;
+      if (error) throw error;
+      if (data) {
+        setAllTemplates(data);
       }
-
-      const supabaseData = data || [];
-      const deleted = getDeletedTemplateCodes();
-
-      // Seluruh template yang tersimpan di Template Studio Supabase (tidak dihapus)
-      const validTemplates = supabaseData
-        .filter(t => {
-          const isNotDeleted = !deleted.includes(t.code) && !deleted.includes(String(t.id));
-          return isNotDeleted;
-        })
-        .map(t => ({
-          ...t,
-          code: t.code || t.template_code || '',
-          title: (t.title || t.name || t.code || t.template_code || '').toUpperCase(),
-        }));
-
-      setAllTemplates(validTemplates);
-
-      // Helper: urutkan template sesuai susunan master baku KUHAP (SP.SIDIK -> SP.GAS.SIDIK -> dst)
-      const sortTemplatesByMasterOrder = (tplList = []) => {
-        return [...tplList].sort((a, b) => {
-          const aCode = (a.code || a.template_code || '').toUpperCase().trim();
-          const bCode = (b.code || b.template_code || '').toUpperCase().trim();
-          const idxA = MASTER_MINDIK_SIDIK.findIndex(m => m.code === aCode || (m.aliases || []).includes(aCode));
-          const idxB = MASTER_MINDIK_SIDIK.findIndex(m => m.code === bCode || (m.aliases || []).includes(bCode));
-          const rankA = idxA !== -1 ? idxA : 999;
-          const rankB = idxB !== -1 ? idxB : 999;
-          return rankA - rankB;
-        });
-      };
-
-      // Nilai awal (initial state) selectedTemplateCode:
-      // Prioritaskan memilih template pertama yang SUDAH diunggah di Template Studio dan UNLOCKED.
-      // Khusus tahap SIDIK: PRIORITASKAN SP.SIDIK (SPRIN_SIDIK) sebagai Gerbang Utama, BUKAN SPDP!
-      setSelectedTemplateCode(prev => {
-        if (validTemplates.length === 0) return null;
-        if (prev) {
-          const existing = validTemplates.find(t => (t.code || t.template_code) === prev);
-          if (existing && Boolean((existing.file_path && String(existing.file_path).trim()) || (existing.file_url && String(existing.file_url).trim()))) {
-            const p = checkPrerequisite(existing, currentCase, caseDocuments, caseSuspects, null);
-            if (p.unlocked || p.allowed) return prev;
-          }
-        }
-        const availableInStage = validTemplates.filter(t => 
-          getTemplateStage(t) === tahapMindik && 
-          Boolean((t.file_path && String(t.file_path).trim()) || (t.file_url && String(t.file_url).trim()))
-        );
-        const pool = availableInStage.length > 0 ? availableInStage : validTemplates.filter(t => 
-          Boolean((t.file_path && String(t.file_path).trim()) || (t.file_url && String(t.file_url).trim()))
-        );
-
-        // Khusus tahap SIDIK: PRIORITASKAN SP.SIDIK (SPRIN_SIDIK) sebagai Gerbang Utama, BUKAN SPDP!
-        if (tahapMindik === 'SIDIK') {
-          const spSidikMaster = MASTER_MINDIK_SIDIK[0];
-          const spSidikTpl = findUploadedTemplate(spSidikMaster, pool);
-          if (spSidikTpl) {
-            return spSidikTpl.code || spSidikTpl.template_code;
-          }
-        }
-
-        const orderedPool = sortTemplatesByMasterOrder(pool);
-        const firstUnlocked = orderedPool.find(t => {
-          const p = checkPrerequisite(t, currentCase, caseDocuments, caseSuspects, null);
-          return p.unlocked || p.allowed;
-        });
-        return firstUnlocked ? (firstUnlocked.code || firstUnlocked.template_code) : null;
-      });
     } catch (err) {
-      console.warn('Could not fetch supabase templates:', err);
-      setAllTemplates([]);
+      console.error('Fetch templates error:', err);
     } finally {
       setIsLoadingTemplates(false);
     }
@@ -1421,128 +990,154 @@ export default function DocGeneratorView({
     fetchTemplates();
   }, []);
 
-  // Muat arsip dokumen dari Supabase untuk validasi prasyarat perkara aktif
+  // 1. State Reset Total saat LP Berpindah (Isolasi Berbasis LP)
+  useEffect(() => {
+    // Kosongkan caseDocuments sementara sebelum fetch baru selesai
+    setCaseDocuments([]);
+    // Reset manualSelectedTemplate menjadi null
+    setManualSelectedTemplate(null);
+    // Reset formValues ke state kosong/default awal tanggal hari ini (format YYYY-MM-DD)
+    const todayStr = new Date().toISOString().split('T')[0];
+    setFormValues({
+      TANGGAL_SURAT: todayStr,
+      tanggal_surat: todayStr,
+      DOC_DATE: todayStr,
+      doc_date: todayStr
+    });
+    setDocNumber('');
+    setIsSaved(false);
+
+    // Kunci pilihan format ke format dasar urutan pertama tahap tersebut
+    // (misal untuk SIDIK: SPRIN_SIDIK). JANGAN izinkan fallback otomatis menebak dokumen lanjutan!
+    if (tahapMindik === 'SIDIK') {
+      setSelectedTemplateCode('SPRIN_SIDIK');
+    } else if (tahapMindik === 'LIDIK') {
+      setSelectedTemplateCode('SPRIN_LIDIK');
+    }
+  }, [selectedCaseId]);
+
+  // 2. Sinkronisasi Data Arsip Kasus: Query murni case_documents dari Supabase
   useEffect(() => {
     if (!currentCase?.id) {
       setCaseDocuments([]);
       return;
     }
 
-    const validCaseId = (currentCase?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentCase.id))
-      ? currentCase.id 
-      : null;
+    const targetCaseId = currentCase.id;
 
     const loadCaseDocs = async () => {
       try {
-        let queryGen = supabase.from('case_generated_documents').select('*');
-        let queryArsip = supabase.from('arsip_dokumen').select('*');
-        let queryDocs = supabase.from('documents').select('*');
+        const caseId = currentCase?.id;
+        const noLp = currentCase?.nomor_lp || currentCase?.no_lp;
 
-        if (validCaseId) {
-          queryGen = queryGen.eq('case_id', validCaseId);
-          queryArsip = queryArsip.eq('case_id', validCaseId);
-          queryDocs = queryDocs.eq('case_id', validCaseId);
+        // Ambil dokumen berdasarkan case_id maupun no_lp
+        let query = supabase.from('case_documents').select('*');
+        if (caseId && noLp) {
+          query = query.or(`case_id.eq.${caseId},nomor_lp.eq."${noLp}"`);
+        } else if (caseId) {
+          query = query.eq('case_id', caseId);
+        } else if (noLp) {
+          query = query.eq('nomor_lp', noLp);
         }
 
-        const [resGen, resArsip, resDocs] = await Promise.allSettled([
-          queryGen.order('created_at', { ascending: false }),
-          queryArsip.order('created_at', { ascending: false }),
-          queryDocs.order('created_at', { ascending: false })
-        ]);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
 
-        const listGen = (resGen.status === 'fulfilled' && resGen.value.data) ? resGen.value.data : [];
-        const listArsip = (resArsip.status === 'fulfilled' && resArsip.value.data) ? resArsip.value.data : [];
-        const listDocs = (resDocs.status === 'fulfilled' && resDocs.value.data) ? resDocs.value.data : [];
-
-        const map = new Map();
-        [...listGen, ...listArsip, ...listDocs].forEach(d => {
-          if (d && d.id) map.set(d.id, d);
-        });
-
-        setCaseDocuments(Array.from(map.values()));
+        setCaseDocuments(data || []);
       } catch (err) {
-        console.error('Error load case documents:', err);
+        console.error('Gagal memuat arsip dokumen perkara:', err);
       }
     };
     loadCaseDocs();
-  }, [currentCase?.id]);
+  }, [currentCase?.id, tahapMindik]);
 
-  // Evaluasi arsip dokumen SP.SIDIK resmi pada perkara ini
+  // Deteksi dokumen SP.SIDIK secara menyeluruh dari arsip case_documents
   const validArchiveSpSidikDoc = (caseDocuments || []).find(d => {
-    const c = (d.template_code || d.code || '').toUpperCase().replace(/[\.\-\s]+/g, '_');
-    const t = (d.document_title || d.doc_title || d.title || '').toUpperCase();
+    if (!d) return false;
+    const code = (d.template_code || d.code || d.document_type || d.type || '').toUpperCase();
+    const title = (d.document_name || d.document_title || d.title || d.name || '').toUpperCase();
+    
     const isSpSidikType = (
-      c === 'SP_SIDIK' || 
-      c === 'SPRIN_SIDIK' || 
-      (c.includes('SP_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
-      (c.includes('SPRIN_SIDIK') && !c.includes('TAMBAHAN') && !c.includes('LANJUTAN')) ||
-      (t.includes('PERINTAH PENYIDIKAN') && !t.includes('TUGAS') && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN')) ||
-      ((t.includes('SP.SIDIK') || t.includes('SPRIN.SIDIK')) && !t.includes('TAMBAHAN') && !t.includes('LANJUTAN'))
+      code === 'SPRIN_SIDIK' || 
+      code === 'SP_SIDIK' || 
+      (code.includes('SIDIK') && !code.includes('GAS') && !code.includes('LANJUTAN') && !code.includes('TAMBAHAN')) ||
+      (title.includes('PERINTAH PENYIDIKAN') && !title.includes('TUGAS') && !title.includes('LANJUTAN') && !title.includes('TAMBAHAN'))
     );
+    
     if (!isSpSidikType) return false;
-    const num = d?.document_number || d?.doc_number || d?.nomor_surat || '';
-    return typeof num === 'string' && num.trim() !== '' && num.trim() !== '-' && !num.startsWith('...');
+
+    // Ambil nomor surat dari berbagai kemungkinan kolom dan metadata form
+    const num = String(
+      d.document_number || 
+      d.doc_number || 
+      d.nomor_surat || 
+      d.no_surat || 
+      d.metadata?.NOMOR_SURAT || 
+      d.metadata?.nomor_surat || 
+      d.metadata?.DOC_NO || 
+      d.meta_values?.NOMOR_SURAT ||
+      d.meta_values?.nomor_surat ||
+      d.meta_values?.DOC_NO ||
+      ''
+    ).trim();
+
+    // Cukup pastikan ada dokumen tercatat dan bukan strip kosong
+    return num !== '' && num !== '-';
   });
 
-  const hasValidSpSidikArchive = Boolean(validArchiveSpSidikDoc);
-  const spSidikBaseNo = (validArchiveSpSidikDoc?.doc_number || validArchiveSpSidikDoc?.nomor_surat || validArchiveSpSidikDoc?.document_number || currentCase?.no_sprin_sidik || '') || '';
+  // Valid jika ditemukan arsip fisik SP.Sidik ATAU perkara aktif sudah memiliki nomor SP.Sidik terdaftar
+  const hasValidSpSidikArchive = Boolean(
+    validArchiveSpSidikDoc || 
+    (currentCase?.no_sprin_sidik && String(currentCase.no_sprin_sidik).trim() !== '' && currentCase.no_sprin_sidik !== '-') ||
+    (currentCase?.nomor_sprin_sidik && String(currentCase.nomor_sprin_sidik).trim() !== '' && currentCase.nomor_sprin_sidik !== '-') ||
+    (currentCase?.no_sp_sidik && String(currentCase.no_sp_sidik).trim() !== '' && currentCase.no_sp_sidik !== '-') ||
+    (currentCase?.references?.no_sprin_sidik && String(currentCase.references.no_sprin_sidik).trim() !== '' && currentCase.references.no_sprin_sidik !== '-') ||
+    (currentCase?.references?.no_sp_sidik && String(currentCase.references.no_sp_sidik).trim() !== '' && currentCase.references.no_sp_sidik !== '-')
+  );
+
+  const spSidikBaseNo = (
+    validArchiveSpSidikDoc?.doc_number || 
+    validArchiveSpSidikDoc?.nomor_surat || 
+    validArchiveSpSidikDoc?.document_number || 
+    validArchiveSpSidikDoc?.metadata?.NOMOR_SURAT ||
+    validArchiveSpSidikDoc?.meta_values?.NOMOR_SURAT ||
+    currentCase?.no_sprin_sidik || 
+    currentCase?.nomor_sprin_sidik ||
+    currentCase?.no_sp_sidik ||
+    currentCase?.references?.no_sprin_sidik ||
+    ''
+  ) || '';
 
   // Sinkronkan selectedTemplateCode segera setelah allTemplates berhasil di-fetch
   useEffect(() => {
     if (tahapMindik === 'SIDIK') {
-      // Cari template fisik SP.SIDIK di allTemplates
       const spSidikTpl = allTemplates.find(t => {
         const c = (t.code || t.template_code || '').toUpperCase().trim();
         return c === 'SPRIN_SIDIK' || c === 'SP_SIDIK';
       });
-      // Jika belum ada arsip SP.Sidik dan belum ada manual select, wajibkan SP.SIDIK
-      if (!hasValidSpSidikArchive && (!selectedTemplateCode || selectedTemplateCode.includes('SPDP'))) {
+      // Jika belum ada arsip SP.Sidik, selalu kunci ke SPRIN_SIDIK
+      if (!hasValidSpSidikArchive) {
         setSelectedTemplateCode(spSidikTpl?.code || 'SPRIN_SIDIK');
       }
     }
   }, [allTemplates, tahapMindik, hasValidSpSidikArchive]);
 
-  // Otomatis tentukan template awal jika belum terpilih dan ada template yang terbuka
+  // Otomatis pastikan pilihan format ke format dasar awal tahap tanpa menebak dokumen lanjutan
   useEffect(() => {
     if (allTemplates.length === 0) return;
     if (!selectedTemplateCode) {
-      const availableTemplates = allTemplates.filter(t => 
-        Boolean((t.file_path && String(t.file_path).trim()) || (t.file_url && String(t.file_url).trim()))
-      );
-      const inStage = availableTemplates.filter(t => getTemplateStage(t) === tahapMindik);
-      const pool = inStage.length > 0 ? inStage : availableTemplates;
-
-      // Khusus tahap SIDIK: PRIORITASKAN SP.SIDIK (SPRIN_SIDIK) sebagai Gerbang Utama, BUKAN SPDP!
       if (tahapMindik === 'SIDIK') {
         const spSidikMaster = MASTER_MINDIK_SIDIK[0];
         const spSidikTpl = findUploadedTemplate(spSidikMaster, allTemplates);
-        if (!hasValidSpSidikArchive) {
-          setSelectedTemplateCode(spSidikTpl?.code || 'SPRIN_SIDIK');
-          return;
-        }
+        setSelectedTemplateCode(spSidikTpl?.code || 'SPRIN_SIDIK');
+        return;
       }
-
-      const sortTemplatesByMasterOrder = (tplList = []) => {
-        return [...tplList].sort((a, b) => {
-          const aCode = (a.code || a.template_code || '').toUpperCase().trim();
-          const bCode = (b.code || b.template_code || '').toUpperCase().trim();
-          const idxA = MASTER_MINDIK_SIDIK.findIndex(m => m.code === aCode || (m.aliases || []).includes(aCode));
-          const idxB = MASTER_MINDIK_SIDIK.findIndex(m => m.code === bCode || (m.aliases || []).includes(bCode));
-          const rankA = idxA !== -1 ? idxA : 999;
-          const rankB = idxB !== -1 ? idxB : 999;
-          return rankA - rankB;
-        });
-      };
-      const orderedPool = sortTemplatesByMasterOrder(pool);
-      const firstUnlocked = orderedPool.find(t => {
-        const p = checkPrerequisite(t, currentCase, caseDocuments, caseSuspects, null);
-        return p.unlocked || p.allowed;
-      });
-      if (firstUnlocked) {
-        setSelectedTemplateCode(firstUnlocked.code || firstUnlocked.template_code);
+      if (tahapMindik === 'LIDIK') {
+        setSelectedTemplateCode('SPRIN_LIDIK');
+        return;
       }
     }
-  }, [allTemplates, tahapMindik, caseDocuments.length, currentCase?.id, hasValidSpSidikArchive]);
+  }, [allTemplates, tahapMindik, selectedTemplateCode]);
 
   // Daftar template yang masuk ke tahapan aktif (LIDIK vs SIDIK)
   const currentStageTemplates = (allTemplates || []).filter(t => getTemplateStage(t) === tahapMindik);
@@ -1557,13 +1152,17 @@ export default function DocGeneratorView({
     }) || MASTER_MINDIK_SIDIK[0];
   }, [selectedTemplateCode]);
 
-  // 2. Cocokkan item katalog resmi ke daftar template Supabase (allTemplates)
+  // 2. Cocokkan item katalog resmi ke daftar template Supabase yang aktif (activeTemplatesList)
   const currentUploadedTemplate = useMemo(() => {
+    const listToSearch = (activeTemplatesList && activeTemplatesList.length > 0)
+      ? activeTemplatesList
+      : (allTemplates && allTemplates.length > 0 ? allTemplates : (Array.isArray(templates) ? templates : []));
+
     return findUploadedTemplate(
       activeCatalogItem,
-      allTemplates
+      listToSearch
     );
-  }, [activeCatalogItem, allTemplates]);
+  }, [activeCatalogItem, activeTemplatesList, allTemplates, templates]);
 
   // 3. Tentukan currentTemplate dengan memprioritaskan data fisik dari Supabase
   const currentTemplate = useMemo(() => {
@@ -2343,10 +1942,8 @@ export default function DocGeneratorView({
       if (upperKey === 'TANGGAL_SURAT' || upperKey === 'DOC_DATE') {
         if (isTapTskDoc && (selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk)) {
           initial[cleanKey] = selectedSuspect?.tanggal_sp_tap || selectedSuspect?.tgl_sp_tap_tsk;
-        } else if (isCurrentParentDoc && activeParentConfig && currentCase?.[activeParentConfig.targetTglCol]) {
-          initial[cleanKey] = currentCase[activeParentConfig.targetTglCol];
         } else {
-          initial[cleanKey] = defVal || todayStr;
+          initial[cleanKey] = todayStr;
         }
       } else if (upperKey === 'NOMOR_SURAT' || upperKey === 'DOC_NO' || upperKey === 'NO_SURAT') {
         const templateFormatNomor = currentTemplate?.format_nomor 
@@ -3133,6 +2730,9 @@ export default function DocGeneratorView({
     setIsSaved(true);
 
     try {
+      const { error: errCaseDoc } = await supabase.from('case_documents').insert([newDoc]);
+      if (errCaseDoc) console.warn('[Supabase] Gagal simpan ke case_documents:', errCaseDoc.message);
+
       const { error: errGen } = await supabase.from('case_generated_documents').insert([newDoc]);
       if (errGen) console.warn('[Supabase] Gagal simpan ke case_generated_documents:', errGen.message);
 
@@ -3996,7 +3596,7 @@ export default function DocGeneratorView({
                 </div>
 
                 {/* Banner Peringatan jika belum ada tersangka yang ditetapkan */}
-                {!caseSuspects.some(s => s.status === 'tersangka' || s.no_sp_tap_tsk || s.nomor_sp_tap) && (
+                {!checkHasSpTap(caseSuspects, caseDocuments) && (
                   <div style={{
                     padding: '8px 10px',
                     background: 'rgba(245, 158, 11, 0.15)',

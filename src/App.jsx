@@ -5,7 +5,8 @@ import ExpandingSidebar from './components/layout/ExpandingSidebar';
 import Navbar from './components/Navbar';
 import DashboardView from './views/DashboardView';
 import CasesView from './views/CasesView';
-import DocGeneratorView from './views/DocGeneratorView';
+// import DocGeneratorView from './views/DocGeneratorView';
+import MindikGeneratorView from './views/mindik/MindikGeneratorView';
 import ArchivesView from './views/ArchivesView';
 import PersonnelView, { cleanOfficerName } from './views/PersonnelView';
 import AdminTemplateStudio from './views/AdminTemplateStudio';
@@ -253,12 +254,14 @@ export default function App() {
         } catch {}
 
         try {
-          const [resCaseGen, resDocs, resArsip] = await Promise.allSettled([
+          const [resCaseDocs, resCaseGen, resDocs, resArsip] = await Promise.allSettled([
+            supabase.from('case_documents').select('*').order('created_at', { ascending: false }),
             supabase.from('case_generated_documents').select('*').order('created_at', { ascending: false }),
             supabase.from('documents').select('*').order('created_at', { ascending: false }),
             supabase.from('arsip_dokumen').select('*').order('created_at', { ascending: false })
           ]);
 
+          const listCaseDocs = (resCaseDocs.status === 'fulfilled' && !resCaseDocs.value.error && resCaseDocs.value.data) ? resCaseDocs.value.data : [];
           const listCaseGen = (resCaseGen.status === 'fulfilled' && !resCaseGen.value.error && resCaseGen.value.data) ? resCaseGen.value.data : [];
           const listDocs = (resDocs.status === 'fulfilled' && !resDocs.value.error && resDocs.value.data) ? resDocs.value.data : [];
           const listArsip = (resArsip.status === 'fulfilled' && !resArsip.value.error && resArsip.value.data) ? resArsip.value.data : [];
@@ -272,7 +275,7 @@ export default function App() {
 
           // Gabungkan dan hilangkan duplikasi berdasarkan ID
           const combinedMap = new Map();
-          [...listLocal, ...listCaseGen, ...listDocs, ...listArsip].forEach(doc => {
+          [...listLocal, ...listCaseDocs, ...listCaseGen, ...listDocs, ...listArsip].forEach(doc => {
             if (doc && doc.id && !combinedMap.has(doc.id)) {
               combinedMap.set(doc.id, doc);
             }
@@ -1052,7 +1055,7 @@ export default function App() {
           )}
 
           {activeTab === 'generator' && (
-            <DocGeneratorView
+            <MindikGeneratorView
               cases={cases}
               personnel={personnel}
               userRole={userRole}
@@ -1070,6 +1073,7 @@ export default function App() {
               cases={cases}
               onPreviewDoc={(doc) => setSelectedDocForPreview(doc)}
               onDeleteDoc={handleDeleteDocument}
+              onOpenGenerator={(c) => handleOpenGeneratorForCase(c)}
             />
           )}
 
