@@ -31,7 +31,7 @@ import {
   formatTanggalIndonesia,
   formatPangkatLengkap
 } from '../../services/mindikGenerator';
-import { MINDIK_PRESETS } from '../../constants/mindikPresets';
+import { MINDIK_PRESETS, MINDIK_CATEGORY_TABS, MINDIK_CODE_TO_CATEGORY } from '../../constants/mindikPresets';
 
 export default function MindikGeneratorView({
   cases = [],
@@ -70,6 +70,7 @@ export default function MindikGeneratorView({
   );
   const [templateFilter, setTemplateFilter] = useState('ALL'); // 'ALL' | 'UTAMA' | 'TERBUKA' | 'TERKUNCI'
   const [templateSearch, setTemplateSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
 
   // --- STATE FORM GENERATOR ---
   const [formValues, setFormValues] = useState({});
@@ -363,28 +364,23 @@ export default function MindikGeneratorView({
 
   // Saring Daftar Template Berdasarkan Filter & Pencarian
   const filteredTemplates = useMemo(() => {
-    return allTemplates.filter(t => {
-      const title = (t.title || t.name || '').toLowerCase();
-      const code = (t.code || t.template_code || '').toLowerCase();
+    return allTemplates.filter((template) => {
+      const tplCode = (template.code || template.template_code || template.id || '').toUpperCase();
+      const mappedCategory = MINDIK_CODE_TO_CATEGORY[tplCode] || template.category;
+
+      // 1. Cek Kategori
+      const matchesCategory = selectedCategory === 'ALL' || mappedCategory === selectedCategory;
+
+      // 2. Cek Pencarian
       const query = templateSearch.toLowerCase();
-      const matchesSearch = title.includes(query) || code.includes(query);
-      if (!matchesSearch) return false;
+      const title = (template.title || template.name || '').toLowerCase();
+      const matchesSearch = !query || 
+        title.includes(query) || 
+        tplCode.toLowerCase().includes(query);
 
-      const evalResult = checkPrerequisite(t.code || t.template_code, selectedCase, activeCaseDocs);
-
-      if (templateFilter === 'UTAMA') {
-        const c = (t.code || t.template_code || '').toUpperCase();
-        return c.includes('SIDIK') || c.includes('SPDP') || c.includes('TAP_TSK');
-      }
-      if (templateFilter === 'TERBUKA') {
-        return evalResult.allowed;
-      }
-      if (templateFilter === 'TERKUNCI') {
-        return !evalResult.allowed;
-      }
-      return true;
+      return matchesCategory && matchesSearch;
     });
-  }, [allTemplates, templateSearch, templateFilter, selectedCase, activeCaseDocs]);
+  }, [allTemplates, templateSearch, selectedCategory]);
 
   // Handle Input Perubahan Field Form
   const handleInputChange = (key, value) => {
@@ -533,6 +529,10 @@ export default function MindikGeneratorView({
     setFeedbackNotice(null);
 
     try {
+      // 1. Eksekusi Auto-Save sebelum mengunduh
+      await handleSaveArchive();
+
+      // 2. Generate dan Unduh
       await generateAndDownloadDocx({
         template: currentTemplate,
         activeCase: currentCase,
@@ -544,7 +544,7 @@ export default function MindikGeneratorView({
 
       setFeedbackNotice({
         type: 'success',
-        message: `Dokumen Word (.docx) berhasil dibuat dan diunduh.`
+        message: `Arsip berhasil disimpan & dokumen terunduh.`
       });
     } catch (err) {
       console.error('[MindikGeneratorView] Gagal membuat file docx:', err);
@@ -727,10 +727,10 @@ export default function MindikGeneratorView({
       </div>
 
       {/* --- SECTION 2: WORKSPACE DUA PANEL (KIRI: FORMAT & FORM, KANAN: PREVIEW DOKUMEN) --- */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(380px, 480px) 1fr', gap: '22px', alignItems: 'start' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* PANEL KIRI: KATALOG TEMPLATE & INPUT FIELD */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div className="lg:col-span-7 flex flex-col gap-[18px]">
           
           {/* Card 1: Pilihan Format Dokumen Mindik */}
           <div style={{
@@ -754,6 +754,34 @@ export default function MindikGeneratorView({
               </span>
             </div>
 
+            {/* Tab Kategori */}
+            <div className="flex flex-wrap gap-1.5 pb-1">
+              {MINDIK_CATEGORY_TABS.map(tab => {
+                const isActive = selectedCategory === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedCategory(tab.id)}
+                    type="button"
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      border: isActive ? '1px solid rgba(255, 53, 45, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                      background: isActive ? 'rgba(255, 53, 45, 0.15)' : 'rgba(15, 23, 42, 0.4)',
+                      color: isActive ? '#ff352d' : '#94A3B8',
+                      cursor: 'pointer',
+                      transition: 'all 150ms ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Filter & Search Bar */}
             <div style={{ display: 'flex', gap: '8px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
@@ -763,22 +791,10 @@ export default function MindikGeneratorView({
                   placeholder="Cari kode / judul format..."
                   value={templateSearch}
                   onChange={(e) => setTemplateSearch(e.target.value)}
-                  className="form-input"
+                  className="form-input w-full"
                   style={{ paddingLeft: '30px', fontSize: '12px', height: '36px' }}
                 />
               </div>
-
-              <select
-                value={templateFilter}
-                onChange={(e) => setTemplateFilter(e.target.value)}
-                className="form-select"
-                style={{ fontSize: '11.5px', height: '36px', width: '120px' }}
-              >
-                <option value="ALL">Semua</option>
-                <option value="UTAMA">Fase Utama</option>
-                <option value="TERBUKA">Terbuka (Sah)</option>
-                <option value="TERKUNCI">Terkunci</option>
-              </select>
             </div>
 
             {/* Daftar Pilihan Template dengan Validasi Rantai Formil KUHAP */}
@@ -1022,12 +1038,12 @@ export default function MindikGeneratorView({
               </div>
             )}
 
-            {/* Tombol Aksi: Generate File .docx & Simpan Arsip */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
+            {/* Tombol Aksi: Simpan Arsip */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginTop: '8px' }}>
               <button
                 type="button"
-                disabled={isGenerating || !activeChainStatus.allowed}
-                onClick={handleDownloadDocx}
+                disabled={isSaving || !activeChainStatus.allowed}
+                onClick={handleSaveArchive}
                 className="btn btn-primary"
                 style={{
                   padding: '11px 14px',
@@ -1036,30 +1052,7 @@ export default function MindikGeneratorView({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  opacity: (!activeChainStatus.allowed || isGenerating) ? 0.6 : 1,
-                  cursor: (!activeChainStatus.allowed || isGenerating) ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {isGenerating ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
-                <span>{isGenerating ? 'Memproses...' : 'Unduh .docx'}</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={isSaving || !activeChainStatus.allowed}
-                onClick={handleSaveArchive}
-                className="btn btn-secondary"
-                style={{
-                  padding: '11px 14px',
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  borderColor: isSaved ? '#22C55E' : undefined,
-                  color: isSaved ? '#4ADE80' : undefined
+                  gap: '8px'
                 }}
               >
                 {isSaving ? <RefreshCw size={15} className="animate-spin" /> : (isSaved ? <CheckCircle2 size={15} /> : <Save size={15} />)}
@@ -1070,9 +1063,7 @@ export default function MindikGeneratorView({
         </div>
 
         {/* PANEL KANAN: DASHBOARD STATUS NASKAH DINAS SIAP TERBIT */}
-        <div style={{
-          flex: 1,
-          minWidth: '450px',
+        <div className="lg:col-span-5" style={{
           background: '#0e1726',
           borderRadius: '16px',
           border: '1px solid #1e293b',
@@ -1168,24 +1159,6 @@ export default function MindikGeneratorView({
             >
               {isGenerating ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
               <span>{isGenerating ? 'Memproses...' : 'Unduh .docx'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveArchive}
-              disabled={!activeChainStatus.allowed || isSaving}
-              className="btn btn-secondary"
-              style={{
-                padding: '12px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                borderColor: isSaved ? '#22C55E' : undefined,
-                color: isSaved ? '#4ADE80' : undefined
-              }}
-              title="Simpan ke Arsip Perkara"
-            >
-              {isSaving ? <RefreshCw size={16} className="animate-spin" /> : (isSaved ? <CheckCircle2 size={16} /> : <Save size={16} />)}
-              <span>{isSaved ? 'Tersimpan' : 'Simpan'}</span>
             </button>
           </div>
         </div>

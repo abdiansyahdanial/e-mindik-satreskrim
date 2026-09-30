@@ -12,7 +12,7 @@ export function checkPrerequisite(targetCode, caseItem, activeCaseDocs = []) {
   // Cek keberadaan dokumen yang benar-benar tersimpan di arsip dokumen
   const hasSprinSidik = publishedCodes.has('SPRIN_SIDIK') || publishedCodes.has('SP_SIDIK');
   const hasSpGasSidik = publishedCodes.has('SPGAS_SIDIK') || publishedCodes.has('SP_GAS_SIDIK');
-  const hasSpTapTsk = publishedCodes.has('SP_TAP_TSK') || publishedCodes.has('S_TAP_TSK');
+  const hasSpTapTsk = publishedCodes.has('SP_TAP_TSK') || publishedCodes.has('S_TAP_TSK') || publishedCodes.has('TAP_TSK');
 
   // 1. Level 1: Surat Perintah Penyidikan
   if (code === 'SPRIN_SIDIK' || code === 'SP_SIDIK') {
@@ -46,6 +46,9 @@ export function checkPrerequisite(targetCode, caseItem, activeCaseDocs = []) {
   if (code.startsWith('SPDP')) {
     if (!hasSpGasSidik) {
       return { allowed: false, unlocked: false, reason: 'Wajib membuat SP.Gas.Sidik sebelum mengirim SPDP.', badge: 'Perlu SP.Gas.Sidik', isLocked: true };
+    }
+    if ((code === 'SPDP_TSK' || code === 'SPDP_MORE_1_TSK') && !hasSpTapTsk) {
+      return { allowed: false, unlocked: false, reason: 'Menunggu Surat Ketetapan Penetapan Tersangka (TAP_TSK) terlebih dahulu.', badge: 'Perlu SP.Tap.Tsk', isLocked: true };
     }
     return { allowed: true, unlocked: true, reason: '', badge: 'Siap Diterbitkan', isLocked: false };
   }
