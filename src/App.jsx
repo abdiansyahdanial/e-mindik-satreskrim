@@ -794,7 +794,10 @@ export default function App() {
     if (docCode.includes('SIDIK') && !docCode.includes('GAS') && !docCode.includes('TAMBAHAN')) {
       if (doc.case_id) {
         await supabase.from('cases')
-          .update({ no_sprin_sidik: null, no_sp_sidik: null, tgl_sprin_sidik: null, sprin_date: null })
+          .update({ 
+            no_sprin_sidik: null, no_sp_sidik: null, tgl_sprin_sidik: null, sprin_date: null,
+            no_sp_gas_sidik: null, no_sprin_gas_sidik: null, tgl_sp_gas_sidik: null, tgl_sprin_gas_sidik: null
+          })
           .eq('id', doc.case_id);
       }
         
@@ -806,12 +809,19 @@ export default function App() {
             no_sp_sidik: null,
             sprin_date: null,
             tgl_sprin_sidik: null,
+            no_sp_gas_sidik: null,
+            no_sprin_gas_sidik: null,
+            tgl_sp_gas_sidik: null,
+            tgl_sprin_gas_sidik: null,
             references: {
               ...(c.references || {}),
               no_sprin_sidik: null,
               no_sp_sidik: null,
               sprin_date: null,
-              tgl_sprin_sidik: null
+              tgl_sprin_sidik: null,
+              no_spgas_sidik: null,
+              no_sp_gas_sidik: null,
+              no_sprin_gas_sidik: null
             }
           };
         }
@@ -826,7 +836,11 @@ export default function App() {
           no_sp_sidik: null,
           sprin_date: null,
           tgl_sprin_sidik: null,
-          references: { ...(prev.references || {}), no_sprin_sidik: null, no_sp_sidik: null, sprin_date: null, tgl_sprin_sidik: null }
+          no_sp_gas_sidik: null,
+          no_sprin_gas_sidik: null,
+          tgl_sp_gas_sidik: null,
+          tgl_sprin_gas_sidik: null,
+          references: { ...(prev.references || {}), no_sprin_sidik: null, no_sp_sidik: null, sprin_date: null, tgl_sprin_sidik: null, no_spgas_sidik: null, no_sp_gas_sidik: null, no_sprin_gas_sidik: null }
         };
       });
 
@@ -838,7 +852,63 @@ export default function App() {
           no_sp_sidik: null,
           sprin_date: null,
           tgl_sprin_sidik: null,
-          references: { ...(prev.references || {}), no_sprin_sidik: null, no_sp_sidik: null, sprin_date: null, tgl_sprin_sidik: null }
+          no_sp_gas_sidik: null,
+          no_sprin_gas_sidik: null,
+          tgl_sp_gas_sidik: null,
+          tgl_sprin_gas_sidik: null,
+          references: { ...(prev.references || {}), no_sprin_sidik: null, no_sp_sidik: null, sprin_date: null, tgl_sprin_sidik: null, no_spgas_sidik: null, no_sp_gas_sidik: null, no_sprin_gas_sidik: null }
+        };
+      });
+    }
+
+    // D. JIKA YANG DIHAPUS ADALAH SP.GAS.SIDIK:
+    if (docCode.includes('GAS') && docCode.includes('SIDIK')) {
+      if (doc.case_id) {
+        await supabase.from('cases')
+          .update({ no_sp_gas_sidik: null, no_sprin_gas_sidik: null, tgl_sp_gas_sidik: null, tgl_sprin_gas_sidik: null })
+          .eq('id', doc.case_id);
+      }
+
+      setCases(prev => prev.map(c => {
+        if (String(c.id) === String(doc.case_id)) {
+          return {
+            ...c,
+            no_sp_gas_sidik: null,
+            no_sprin_gas_sidik: null,
+            tgl_sp_gas_sidik: null,
+            tgl_sprin_gas_sidik: null,
+            references: {
+              ...(c.references || {}),
+              no_spgas_sidik: null,
+              no_sp_gas_sidik: null,
+              no_sprin_gas_sidik: null
+            }
+          };
+        }
+        return c;
+      }));
+
+      setSelectedCaseForDetail(prev => {
+        if (!prev || String(prev.id) !== String(doc.case_id)) return prev;
+        return {
+          ...prev,
+          no_sp_gas_sidik: null,
+          no_sprin_gas_sidik: null,
+          tgl_sp_gas_sidik: null,
+          tgl_sprin_gas_sidik: null,
+          references: { ...(prev.references || {}), no_spgas_sidik: null, no_sp_gas_sidik: null, no_sprin_gas_sidik: null }
+        };
+      });
+
+      setCaseForGenerator(prev => {
+        if (!prev || String(prev.id) !== String(doc.case_id)) return prev;
+        return {
+          ...prev,
+          no_sp_gas_sidik: null,
+          no_sprin_gas_sidik: null,
+          tgl_sp_gas_sidik: null,
+          tgl_sprin_gas_sidik: null,
+          references: { ...(prev.references || {}), no_spgas_sidik: null, no_sp_gas_sidik: null, no_sprin_gas_sidik: null }
         };
       });
     }

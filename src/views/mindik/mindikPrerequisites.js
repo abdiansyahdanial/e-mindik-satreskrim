@@ -7,26 +7,12 @@ export const MINDIK_CODES = {
 
 export function checkPrerequisite(targetCode, caseItem, activeCaseDocs = []) {
   const code = (targetCode || '').toUpperCase().trim();
-  const publishedCodes = new Set(activeCaseDocs.map(d => (d.template_code || '').toUpperCase().trim()));
+  const publishedCodes = new Set((activeCaseDocs || []).map(d => (d.template_code || '').toUpperCase().trim()));
 
-  const hasSprinSidik = 
-    publishedCodes.has('SPRIN_SIDIK') || 
-    publishedCodes.has('SP_SIDIK') || 
-    Boolean(caseItem?.no_sprin_sidik) || 
-    Boolean(caseItem?.references?.no_sprin_sidik) || 
-    Boolean(caseItem?.references?.sprin_sidik);
-
-  const hasSpGasSidik = 
-    publishedCodes.has('SPGAS_SIDIK') || 
-    publishedCodes.has('SP_GAS_SIDIK') || 
-    Boolean(caseItem?.no_sp_gas_sidik) || 
-    Boolean(caseItem?.references?.no_spgas_sidik) || 
-    Boolean(caseItem?.references?.no_sprin_gas_sidik);
-
-  const hasSpTapTsk = 
-    publishedCodes.has('SP_TAP_TSK') || 
-    publishedCodes.has('S_TAP_TSK') || 
-    Boolean(caseItem?.references?.no_sp_tap_tsk);
+  // Cek keberadaan dokumen yang benar-benar tersimpan di arsip dokumen
+  const hasSprinSidik = publishedCodes.has('SPRIN_SIDIK') || publishedCodes.has('SP_SIDIK');
+  const hasSpGasSidik = publishedCodes.has('SPGAS_SIDIK') || publishedCodes.has('SP_GAS_SIDIK');
+  const hasSpTapTsk = publishedCodes.has('SP_TAP_TSK') || publishedCodes.has('S_TAP_TSK');
 
   // 1. Level 1: Surat Perintah Penyidikan
   if (code === 'SPRIN_SIDIK' || code === 'SP_SIDIK') {
