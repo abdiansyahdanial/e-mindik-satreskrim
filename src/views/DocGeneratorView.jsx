@@ -1002,7 +1002,8 @@ export default function DocGeneratorView({
       TANGGAL_SURAT: todayStr,
       tanggal_surat: todayStr,
       DOC_DATE: todayStr,
-      doc_date: todayStr
+      doc_date: todayStr,
+      MASA_BERLAKU: todayStr
     });
     setDocNumber('');
     setIsSaved(false);
@@ -1628,8 +1629,16 @@ export default function DocGeneratorView({
   useEffect(() => {
     if (!currentTemplate) return;
 
-    // Dapatkan string format asli dari Template Studio
-    const templateRawFormat = currentTemplate?.format_nomor 
+    let savedNo = '';
+    const tCode = (currentTemplate?.code || '').toUpperCase();
+    if (tCode === 'SPRIN_SIDIK') savedNo = currentCase?.no_sprin_sidik || currentCase?.no_sp_sidik || '';
+    else if (tCode === 'SPGAS_SIDIK') savedNo = currentCase?.no_sp_gas_sidik || currentCase?.no_sprin_gas_sidik || '';
+
+    // Dapatkan string format asli dari Template Studio (Prioritas pada savedNo, lalu MINDIK_PRESETS murni)
+    const presetDefault = getMindikPreset(currentTemplate?.code)?.find(f => (f.tag || '').toUpperCase() === 'NOMOR_SURAT')?.default;
+    const templateRawFormat = savedNo 
+      || presetDefault
+      || currentTemplate?.format_nomor 
       || currentTemplate?.nomor_format 
       || currentTemplate?.doc_number 
       || currentTemplate?.default_doc_number 
@@ -1645,7 +1654,6 @@ export default function DocGeneratorView({
            const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
            return k === 'NOMOR_SURAT' || k === 'NO_SURAT';
          })?.placeholder
-      || getMindikPreset(currentTemplate?.code)?.find(f => (f.tag || '').toUpperCase() === 'NOMOR_SURAT')?.default
       || '';
 
     // Terapkan LANGSUNG sebagai nilai (value) form, BUKAN placeholder!
@@ -1890,7 +1898,7 @@ export default function DocGeneratorView({
       { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
       { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
       { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
-      { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false }
+      { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'date', default_value: '', is_required: false }
     ];
 
     const presetForTemplate = getMindikPreset(currentTemplate?.code);
@@ -1946,7 +1954,8 @@ export default function DocGeneratorView({
           initial[cleanKey] = todayStr;
         }
       } else if (upperKey === 'NOMOR_SURAT' || upperKey === 'DOC_NO' || upperKey === 'NO_SURAT') {
-        const templateFormatNomor = currentTemplate?.format_nomor 
+        const templateFormatNomor = presetFieldMatch?.default 
+          || currentTemplate?.format_nomor 
           || currentTemplate?.nomor_format 
           || currentTemplate?.doc_number 
           || currentTemplate?.default_doc_number 
@@ -2059,7 +2068,15 @@ export default function DocGeneratorView({
 
       // Jika template berganti, pastikan NOMOR_SURAT selalu mengambil format mentah template
       if (isTemplateChanged) {
-        const templateFormatNomor = currentTemplate?.format_nomor 
+        let savedNo = '';
+        const tCode = (currentTemplate?.code || '').toUpperCase();
+        if (tCode === 'SPRIN_SIDIK') savedNo = currentCase?.no_sprin_sidik || currentCase?.no_sp_sidik || '';
+        else if (tCode === 'SPGAS_SIDIK') savedNo = currentCase?.no_sp_gas_sidik || currentCase?.no_sprin_gas_sidik || '';
+
+        const presetFieldMatch = presetForTemplate?.find(p => p.tag === 'NOMOR_SURAT');
+        const templateFormatNomor = savedNo
+          || presetFieldMatch?.default
+          || currentTemplate?.format_nomor 
           || currentTemplate?.nomor_format 
           || currentTemplate?.doc_number 
           || currentTemplate?.default_doc_number 
@@ -2407,9 +2424,18 @@ export default function DocGeneratorView({
     // 1. Dokumen Induk Perkara (Universal Auto-Sync ke Supabase cases)
     if (isCurrentParentDoc && activeParentConfig) {
       const updateObj = {};
+      const refs = { ...(currentCase.references || {}) };
+
       if (enteredNo && activeParentConfig.targetNoCol) {
         currentCase[activeParentConfig.targetNoCol] = enteredNo;
         updateObj[activeParentConfig.targetNoCol] = enteredNo;
+        refs[activeParentConfig.targetNoCol] = enteredNo;
+        
+        // Also ensure alternate reference keys are written for fallback unlocking rules
+        if (activeParentConfig.targetNoCol === 'no_sp_gas_sidik') {
+          refs['no_spgas_sidik'] = enteredNo;
+          refs['no_sprin_gas_sidik'] = enteredNo;
+        }
       }
       if (docDate && activeParentConfig.targetTglCol) {
         currentCase[activeParentConfig.targetTglCol] = docDate;
@@ -2421,6 +2447,8 @@ export default function DocGeneratorView({
       }
 
       if (Object.keys(updateObj).length > 0) {
+        updateObj.references = refs;
+        currentCase.references = refs;
         try {
           await supabase.from('cases').update(updateObj).eq('id', currentCase.id);
         } catch (e) {
@@ -2792,7 +2820,7 @@ export default function DocGeneratorView({
         { id: 3, field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
         { id: 4, field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
         { id: 5, field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
-        { id: 6, field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false }
+        { id: 6, field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'date', default_value: '', is_required: false }
       ];
 
       // Save metadata to document_templates with UPSERT to prevent unique constraint conflicts
@@ -4149,7 +4177,7 @@ export default function DocGeneratorView({
                         { field_key: 'TEMPAT_SURAT', field_label: 'Tempat Surat', field_type: 'text', default_value: 'Tirawuta', is_required: false },
                         { field_key: 'TUJUAN_SURAT', field_label: 'Tujuan Surat', field_type: 'text', default_value: 'Kepala Kejaksaan Negeri Kolaka', is_required: false },
                         { field_key: 'ALAMAT_TUJUAN', field_label: 'Alamat Tujuan', field_type: 'text', default_value: 'Jl. Dr. Sutomo No. 5, Kolaka', is_required: false },
-                        { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'text', default_value: '30 (tiga puluh) hari', is_required: false },
+                        { field_key: 'MASA_BERLAKU', field_label: 'Masa Berlaku', field_type: 'date', default_value: '', is_required: false },
                       ]);
 
                 // Universal Auto-Sync: Sembunyikan input manual rujukan dokumen induk pada dokumen induk itu sendiri

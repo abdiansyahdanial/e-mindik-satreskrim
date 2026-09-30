@@ -660,19 +660,20 @@ export default function App() {
       localStorage.setItem('emindik_archive_documents', JSON.stringify([cleanPayload, ...currentLocal.filter(x => x.id !== cleanPayload.id)]));
     } catch (e) {}
 
-    // Simpan ke database Supabase (coba case_generated_documents lalu fallback ke arsip_dokumen)
+    // Simpan ke database Supabase
     try {
-      const { error: err1 } = await supabase.from('case_generated_documents').insert([cleanPayload]);
-      if (err1) {
-        console.error('[CRITICAL SUPABASE ERROR] Gagal insert case_generated_documents:', err1.message);
-      } else {
-        console.log('[SUPABASE SUCCESS] Berhasil simpan dokumen ke case_generated_documents!');
-      }
+      const { data, error } = await supabase
+        .from('documents')
+        .upsert([cleanPayload], { onConflict: 'id' })
+        .select();
 
-      // Simpan juga ke arsip_dokumen sebagai redundansi
-      await supabase.from('arsip_dokumen').insert([cleanPayload]).catch(e => console.warn('Backup arsip notice:', e));
-    } catch (dbErr) {
-      console.error('[CRITICAL DB INSERT ERROR]:', dbErr);
+      if (error) {
+        console.error('[CRITICAL DB INSERT ERROR]:', error.message);
+      } else {
+        console.log('[App] Dokumen berhasil disimpan ke Supabase:', data);
+      }
+    } catch (err) {
+      console.error('[CRITICAL DB INSERT ERROR]:', err);
     }
   };
 

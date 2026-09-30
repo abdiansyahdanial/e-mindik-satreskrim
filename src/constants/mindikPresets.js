@@ -8,49 +8,49 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPRIN_SIDIK_MORE_5: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPGAS_SIDIK: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Gas.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPGAS_SIDIK_MORE_5: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Gas.Sidik/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPRIN_SIDIK_TAMBAHAN: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Sidik.Tambahan/.... .a/I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPGAS_SIDIK_TAMBAHAN: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Gas.Sidik.Tambahan/.... .a/I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPRIN_SIDIK_LANJUTAN: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Sidik.Lanjutan/.... .a/I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPGAS_SIDIK_LANJUTAN: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Gas.Sidik.Lanjutan/.... .a/I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPGL_SAKSI_1: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "S.Pgl/Saksi.1/..../I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
@@ -147,7 +147,7 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Sprin - Nomor Surat", type: "text", default: "SP.Bawa.Saksi/......../I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Sprin - Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Sprin - Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Sprin - Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true },
+    { tag: "MASA_BERLAKU", label: "Sprin - Masa Berlaku Surat", type: "date", default: "", required: true },
     { tag: "HARI_BA_BAWA", label: "BA - Hari Berita Acara", type: "text", default: "…......", required: true },
     { tag: "TANGGAL_BA_BAWA", label: "BA - Tanggal Berita Acara", type: "text", default: "…......", required: true },
     { tag: "BULAN_BA_BAWA", label: "BA - Bulan Berita Acara", type: "text", default: "…......", required: true },
@@ -165,7 +165,7 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Sprin - Nomor Surat", type: "text", default: "SP.Bawa.Tsk/......../I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Sprin - Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Sprin - Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Sprin - Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true },
+    { tag: "MASA_BERLAKU", label: "Sprin - Masa Berlaku Surat", type: "date", default: "", required: true },
     { tag: "HARI_BA_BAWA", label: "BA - Hari Berita Acara", type: "text", default: "…......", required: true },
     { tag: "TANGGAL_BA_BAWA", label: "BA - Tanggal Berita Acara", type: "text", default: "…......", required: true },
     { tag: "BULAN_BA_BAWA", label: "BA - Bulan Berita Acara", type: "text", default: "…......", required: true },
@@ -176,13 +176,13 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Sita/...../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   SPRIN_BUNGKUS_SEGEL: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Sita/Bungkus.Segel/        /I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   IZIN_SITA_PN_LEBIH_1: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "B/….../I/RES.0.0./2026/Satreskrim", required: true },
@@ -209,7 +209,7 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Sita/Titip.Rawat/...... .a/I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "... Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   TAP_TSK: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "S.Tap.Tsk/..../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
@@ -278,7 +278,7 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Sprin - Nomor Surat", type: "text", default: "SP.Kap/......./I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Sprin - Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Sprin - Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Sprin - Masa Berlaku Kap", type: "text", default: "... Januari 2026", required: true },
+    { tag: "MASA_BERLAKU", label: "Sprin - Masa Berlaku Kap", type: "date", default: "", required: true },
     { tag: "HARI_KAP", label: "BA - Hari BA KAP", type: "text", default: "…......", required: true },
     { tag: "TANGGAL_KAP", label: "BA - Tanggal BA KAP", type: "text", default: "…......", required: true },
     { tag: "BULAN_KAP", label: "BA - Bulan BA KAP", type: "text", default: "…......", required: true },
@@ -291,13 +291,13 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Gas.Kap/......./I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Kap", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Kap", type: "date", default: "", required: true }
   ],
   SPRIN_BAWA_LEWAT_KAP: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Bawa.Hadap/......./I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "text", default: "… Januari 2026", required: true }
+    { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
   BA_HAK_TSK: [
     { tag: "HARI_BA", label: "Hari Berita Acara", type: "text", default: "…......", required: true },

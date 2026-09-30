@@ -643,7 +643,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     (isKapDoc && cleanInput.TEMPAT_KAP ? cleanInput.TEMPAT_KAP : (isHanDoc && cleanInput.TEMPAT_HAN ? cleanInput.TEMPAT_HAN : 'Tirawuta'));
   const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || '';
   const alamatTujuan = cleanInput.ALAMAT_TUJUAN || cleanInput.alamat_tujuan || cleanInput.DOC_TARGET_ADDR || '';
-  const masaBerlaku = cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '';
+  const rawMasaBerlaku = cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '';
+  const masaBerlaku = formatTanggalIndonesia(rawMasaBerlaku);
 
   // B. RUJUKAN TINGKAT PERKARA (dari activeCase / input form)
   const nomorLp = cleanInput.NOMOR_LP || cleanInput.nomor_lp || activeCase?.nomor_lp || activeCase?.no_lp || '';

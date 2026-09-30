@@ -5,35 +5,28 @@ export const MINDIK_CODES = {
   SPDP: 'SPDP'
 };
 
-export const evaluateMindikChain = (targetTemplateCode, activeCase, caseDocuments = []) => {
-  const code = (targetTemplateCode || '').toUpperCase().trim();
+export function checkPrerequisite(targetCode, caseItem, activeCaseDocs = []) {
+  const code = (targetCode || '').toUpperCase().trim();
+  const publishedCodes = new Set(activeCaseDocs.map(d => (d.template_code || '').toUpperCase().trim()));
 
-  // Helper pencocokan dokumen di arsip perkara aktif
-  const hasDoc = (searchKey) => {
-    return (caseDocuments || []).some(doc => {
-      const docCode = (doc.template_code || doc.code || doc.document_type || doc.type || '').toUpperCase().trim();
-      const docTitle = (doc.document_name || doc.title || doc.name || '').toUpperCase();
-      
-      if (searchKey === MINDIK_CODES.SPRIN_SIDIK) {
-        return docCode === 'SPRIN_SIDIK' || docCode === 'SP_SIDIK' || 
-          (docTitle.includes('PERINTAH PENYIDIKAN') && !docTitle.includes('TUGAS'));
-      }
-      if (searchKey === MINDIK_CODES.SPGAS_SIDIK) {
-        return docCode === 'SPGAS_SIDIK' || docCode === 'SP_GAS_SIDIK' || docTitle.includes('TUGAS PENYIDIKAN');
-      }
-      if (searchKey === MINDIK_CODES.SP_TAP_TSK) {
-        return docCode.includes('TAP_TSK') || docCode.includes('SP_TAP') || docTitle.includes('PENETAPAN TERSANGKA');
-      }
-      if (searchKey === MINDIK_CODES.SPDP) {
-        return docCode.startsWith('SPDP') || docTitle.includes('DIMULAINYA PENYIDIKAN');
-      }
-      return docCode === searchKey;
-    });
-  };
+  const hasSprinSidik = 
+    publishedCodes.has('SPRIN_SIDIK') || 
+    publishedCodes.has('SP_SIDIK') || 
+    Boolean(caseItem?.no_sprin_sidik) || 
+    Boolean(caseItem?.references?.no_sprin_sidik) || 
+    Boolean(caseItem?.references?.sprin_sidik);
 
-  const hasSprinSidik = hasDoc(MINDIK_CODES.SPRIN_SIDIK) || Boolean(activeCase?.no_sprin_sidik);
-  const hasSpGasSidik = hasDoc(MINDIK_CODES.SPGAS_SIDIK) || Boolean(activeCase?.no_sp_gas_sidik);
-  const hasSpTapTsk   = hasDoc(MINDIK_CODES.SP_TAP_TSK);
+  const hasSpGasSidik = 
+    publishedCodes.has('SPGAS_SIDIK') || 
+    publishedCodes.has('SP_GAS_SIDIK') || 
+    Boolean(caseItem?.no_sp_gas_sidik) || 
+    Boolean(caseItem?.references?.no_spgas_sidik) || 
+    Boolean(caseItem?.references?.no_sprin_gas_sidik);
+
+  const hasSpTapTsk = 
+    publishedCodes.has('SP_TAP_TSK') || 
+    publishedCodes.has('S_TAP_TSK') || 
+    Boolean(caseItem?.references?.no_sp_tap_tsk);
 
   // 1. Level 1: Surat Perintah Penyidikan
   if (code === 'SPRIN_SIDIK' || code === 'SP_SIDIK') {
@@ -80,4 +73,4 @@ export const evaluateMindikChain = (targetTemplateCode, activeCase, caseDocument
   }
 
   return { allowed: true, unlocked: true, reason: '', badge: '', isLocked: false };
-};
+}
