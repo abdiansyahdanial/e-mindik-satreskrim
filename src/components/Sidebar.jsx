@@ -15,6 +15,7 @@ import {
   UserCog
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import { cn } from './command/hud';
 
 export default function Sidebar({ 
   activeTab, 
@@ -86,133 +87,62 @@ export default function Sidebar({
   const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
 
   return (
-    <aside className="app-sidebar no-print" style={{
-      width: '270px',
-      background: 'var(--gradient-sidebar)',
-      borderRight: '1px solid var(--border-glass)',
-      display: 'flex',
-      flexDirection: 'column',
-      flexShrink: 0,
-      minHeight: '100vh',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-    }}>
+    <aside className="no-print bg-[#05070a] border-r border-white/10 text-zinc-300 w-[270px] shrink-0 flex flex-col min-h-screen sticky top-0 z-[100]">
       {/* Brand Header with Official Logo */}
-      <div style={{
-        padding: '20px 18px',
-        borderBottom: '1px solid var(--border-glass)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-      }}>
-        <div style={{
-          width: '46px',
-          height: '46px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}>
+      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-5 bg-transparent">
+        <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center">
           {!logoFailed ? (
             <img
               src={logoImg}
               alt="Logo Sat Reskrim"
               onError={() => setLogoFailed(true)}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 0 10px rgba(0, 212, 255, 0.4))',
-              }}
+              className="h-full w-full object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]"
             />
           ) : (
-            <div style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(59, 130, 246, 0.2))',
-              border: '1px solid var(--accent-cyan)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: 'var(--glow-cyan)',
-            }}>
-              <ShieldCheck size={26} color="var(--accent-cyan)" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+              <ShieldCheck size={26} className="text-white" />
             </div>
           )}
         </div>
 
-        <div style={{ overflow: 'hidden' }}>
-          <div style={{
-            fontSize: '12.5px',
-            fontWeight: 800,
-            letterSpacing: '0.06em',
-            color: '#FFFFFF',
-            textTransform: 'uppercase',
-            lineHeight: 1.2,
-            whiteSpace: 'nowrap',
-            textOverflow: 'ellipsis',
-            overflow: 'hidden',
-          }}>
+        <div className="overflow-hidden">
+          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] font-extrabold uppercase leading-[1.2] tracking-[0.06em] text-white">
             E-MINDIK SATRESKRIM
           </div>
-          <div style={{
-            fontSize: '10px',
-            color: 'var(--accent-cyan)',
-            letterSpacing: '0.04em',
-            fontWeight: 600,
-            marginTop: '2px',
-          }}>
+          <div className="mt-0.5 text-[10px] font-semibold tracking-[0.04em] text-zinc-400">
             POLRES KOLAKA TIMUR
           </div>
         </div>
       </div>
 
       {/* Role & Security Status Bar */}
-      <div style={{
-        padding: '10px 18px',
-        background: isSuperAdmin 
-          ? 'rgba(168, 85, 247, 0.1)' 
-          : isAdmin 
-          ? 'rgba(0, 212, 255, 0.08)' 
-          : 'rgba(34, 197, 94, 0.06)',
-        borderBottom: '1px solid var(--border-subtle)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        fontSize: '11px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div className={cn(
+        "flex items-center justify-between border-b border-white/10 px-4 py-2.5 text-[11px]",
+        isSuperAdmin ? "bg-red-950/20" : isAdmin ? "bg-white/5" : "bg-emerald-950/20"
+      )}>
+        <div className="flex items-center gap-1.5">
           {isSuperAdmin ? (
-            <ShieldAlert size={14} color="#ff352d" />
+            <ShieldAlert size={14} className="text-red-500" />
           ) : isAdmin ? (
-            <Shield size={14} color="#ffffff" />
+            <Shield size={14} className="text-white" />
           ) : (
-            <UserCheck size={14} color="var(--accent-green)" />
+            <UserCheck size={14} className="text-emerald-500" />
           )}
-          <span style={{ 
-            fontWeight: 700, 
-            color: isSuperAdmin ? '#ff352d' : isAdmin ? '#ffffff' : 'var(--accent-green)' 
-          }}>
+          <span className={cn(
+            "font-bold",
+            isSuperAdmin ? "text-red-500" : isAdmin ? "text-white" : "text-emerald-500"
+          )}>
             {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
           </span>
         </div>
-        <span className="badge badge-neutral" style={{ fontSize: '9px', padding: '1px 5px' }}>
+        <span className="rounded border border-white/10 bg-black/40 px-1.5 py-px text-[9px] font-semibold text-zinc-400">
           SUPABASE
         </span>
       </div>
 
       {/* Navigation Menu */}
-      <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{
-          fontSize: '10px',
-          fontWeight: 700,
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          padding: '6px 12px',
-        }}>
+      <nav className="flex flex-1 flex-col gap-1.5 p-3">
+        <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
           Menu Akses ({isSuperAdmin ? 'Akses Penuh' : isAdmin ? 'Akses Admin' : 'Akses Anggota'})
         </div>
 
@@ -223,59 +153,30 @@ export default function Sidebar({
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-md)',
-                background: isActive 
-                  ? 'linear-gradient(90deg, rgba(0, 212, 255, 0.18) 0%, rgba(59, 130, 246, 0.08) 100%)' 
-                  : 'transparent',
-                border: isActive 
-                  ? '1px solid var(--border-glass-hover)' 
-                  : '1px solid transparent',
-                color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all var(--transition-fast)',
-                boxShadow: isActive ? '0 0 16px rgba(255, 53, 45, 0.2)' : 'none',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }
-              }}
+              className={cn(
+                "flex w-full items-center justify-between rounded-md px-3.5 py-2.5 text-left transition-all duration-200",
+                isActive
+                  ? "bg-white/[0.04] text-white border-l-[3px] border-l-red-500 shadow-[0_0_15px_-3px_rgba(239,68,68,0.15)]"
+                  : "border-l-[3px] border-l-transparent text-zinc-400 hover:bg-white/[0.03] hover:text-white"
+              )}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="flex items-center gap-3">
                 <Icon 
                   size={18} 
-                  color={isActive ? '#ff352d' : 'currentColor'} 
+                  className={isActive ? "text-red-500" : "text-current"} 
                 />
-                <span style={{ 
-                  fontSize: '13px', 
-                  fontWeight: isActive ? 600 : 500,
-                  letterSpacing: '0.01em',
-                }}>
+                <span className={cn("text-[13px] tracking-wide", isActive ? "font-semibold" : "font-medium")}>
                   {item.label}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="flex items-center gap-1.5">
                 {item.badge !== null && item.badge !== undefined && (
-                  <span className={`badge ${item.badgeColor || 'badge-neutral'}`} style={{ fontSize: '10px' }}>
+                  <span className="rounded bg-black/40 border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300">
                     {item.badge}
                   </span>
                 )}
-                {isActive && <ChevronRight size={14} color="#ff352d" />}
+                {isActive && <ChevronRight size={14} className="text-red-500" />}
               </div>
             </button>
           );
@@ -283,66 +184,41 @@ export default function Sidebar({
 
         {/* Khusus Super Admin: Tombol Kelola Peran Pengguna (RBAC) */}
         {isSuperAdmin && onOpenUserManagement && (
-          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed rgba(255, 53, 45, 0.25)' }}>
+          <div className="mt-3 border-t border-dashed border-red-500/20 pt-2.5">
             <button
               type="button"
               onClick={onOpenUserManagement}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-md)',
-                background: '#222b34',
-                border: '1px solid rgba(255, 53, 45, 0.35)',
-                color: '#ffffff',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all var(--transition-fast)',
-              }}
+              className="flex w-full items-center justify-between rounded-md border border-red-500/30 bg-[#05070a] px-3.5 py-2.5 text-left text-white transition-all hover:bg-red-500/10 hover:border-red-500/50"
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <UserCog size={17} color="#ff352d" />
-                <span style={{ fontSize: '12.5px', fontWeight: 600 }}>Kelola Peran (RBAC)</span>
+              <div className="flex items-center gap-2.5">
+                <UserCog size={17} className="text-red-500" />
+                <span className="text-[12.5px] font-semibold">Kelola Peran (RBAC)</span>
               </div>
-              <span className="badge" style={{ background: '#2d3748', border: '1px solid rgba(255, 53, 45, 0.3)', color: '#ffffff', fontSize: '8.5px' }}>AKUN</span>
+              <span className="rounded bg-black border border-red-500/30 px-1.5 py-0.5 text-[8.5px] font-bold text-white">
+                AKUN
+              </span>
             </button>
           </div>
         )}
       </nav>
 
       {/* Quick Ops Banner */}
-      <div style={{
-        padding: '14px',
-        margin: '12px',
-        background: 'rgba(13, 21, 38, 0.6)',
-        border: '1px solid var(--border-glass)',
-        borderRadius: 'var(--radius-lg)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <Radio size={14} color="var(--accent-cyan)" className="animate-pulse" />
-          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+      <div className="m-3 rounded-lg border border-white/10 bg-[#05070a] p-3.5">
+        <div className="mb-1.5 flex items-center gap-2">
+          <Radio size={14} className="animate-pulse text-zinc-400" />
+          <span className="text-[11px] font-bold text-zinc-300">
             MINDIK PRESISI
           </span>
         </div>
-        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4, margin: 0 }}>
+        <p className="m-0 text-[11px] leading-[1.4] text-zinc-500">
           Sistem terhubung real-time ke database Supabase & template Word (.docx).
         </p>
       </div>
 
       {/* Footer / Version */}
-      <div style={{
-        padding: '16px 20px',
-        borderTop: '1px solid var(--border-glass)',
-        fontSize: '11px',
-        color: 'var(--text-muted)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
+      <div className="flex items-center justify-between border-t border-white/10 px-5 py-4 text-[11px] text-zinc-500 bg-transparent">
         <span>Satreskrim Polrestim &copy; 2026</span>
-        <span className="mono">v2.1-RBAC</span>
+        <span className="font-mono">v2.1-RBAC</span>
       </div>
     </aside>
   );

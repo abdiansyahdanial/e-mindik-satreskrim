@@ -978,7 +978,7 @@ export default function App() {
         position: 'relative',
         minHeight: '100vh',
         display: 'flex',
-        backgroundColor: '#0B0F17'
+        backgroundColor: '#05070a'
       }}
     >
       {/* Watermark Insignia Satreskrim */}
@@ -1081,6 +1081,7 @@ export default function App() {
             <DashboardView
               cases={cases}
               documents={documents}
+              personnel={personnel}
               onSelectCase={(c) => setSelectedCaseForDetail(c)}
               onNewCase={() => setIsNewCaseModalOpen(true)}
               onOpenGenerator={(c) => handleOpenGeneratorForCase(c)}
@@ -1141,6 +1142,7 @@ export default function App() {
           {activeTab === 'archives' && (
             <ArchivesView
               documents={documents}
+              personnel={personnel}
               cases={cases}
               onPreviewDoc={(doc) => setSelectedDocForPreview(doc)}
               onDeleteDoc={handleDeleteDocument}
@@ -1229,3 +1231,5 @@ export default function App() {
     </div>
   );
 }
+
+

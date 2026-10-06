@@ -1,10 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 /* ============================================================
    E-Mindik Satreskrim — Design System
    Tactical Dark Theme / Cyber-Investigator
    ============================================================ */
 
 /* --- Google Fonts Import --- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 
 /* --- CSS Custom Properties (Tokens) --- */
 :root {
@@ -244,6 +249,17 @@ p {
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-lg);
   box-shadow: var(--glow-cyan);
+}
+
+.hud-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.hud-scanlines {
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px);
 }
 
 /* --- Animation Keyframes --- */
@@ -1240,4 +1256,7 @@ p {
 .rounded-lg { border-radius: 0.5rem !important; }
 .rounded-xl { border-radius: 0.75rem !important; }
 .rounded-2xl { border-radius: 1rem !important; }
+
+
+
 

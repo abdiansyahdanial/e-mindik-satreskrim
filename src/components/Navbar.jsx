@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Clock, 
-  PlusCircle, 
-  FilePlus, 
   LogOut, 
-  ShieldAlert 
+  FileText
 } from 'lucide-react';
+import { TacticalButton, HudCorners, PulseDot, cn } from './command/hud';
 
 export default function Navbar({ 
   onNewCase, 
@@ -18,7 +17,7 @@ export default function Navbar({
   onLogout,
   onOpenUserManagement
 }) {
-  const [timeStr, setTimeStr] = useState('');
+  const [timeStr, setTimeStr] = useState({});
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const isSuperAdmin = userRole === 'super_admin';
@@ -44,7 +43,7 @@ export default function Navbar({
         year: 'numeric',
       };
       const date = new Intl.DateTimeFormat('id-ID', dateOptions).format(now);
-      setTimeStr(`${date} • ${time} WITA`);
+      setTimeStr({ date, time: `${time} WITA` });
     };
 
     updateTime();
@@ -59,233 +58,92 @@ export default function Navbar({
   const officerInitials = officerName ? officerName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'P';
 
   return (
-    <header className="app-navbar no-print" style={{
-      height: 'var(--header-height)',
-      background: '#0E1420',
-      backdropFilter: 'blur(16px)',
-      borderBottom: '1px solid #1E293B',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 24px',
-      position: 'sticky',
-      top: 0,
-      zIndex: 90,
-    }}>
-      {/* Left: Quick Search with Command Palette Clue */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '0 1 400px' }}>
-        <div style={{
-          position: 'relative',
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-        }}>
-          <Search size={15} color="#64748B" style={{ position: 'absolute', left: '12px', pointerEvents: 'none' }} />
-          <input
-            type="text"
-            value={searchQuery || ''}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari No. LP, Tersangka, Pasal, Saksi..."
-            style={{
-              width: '100%',
-              background: '#141C2B',
-              border: '1px solid #263347',
-              borderRadius: '8px',
-              padding: '7px 70px 7px 34px',
-              fontSize: '12.5px',
-              color: '#F8FAFC',
-              outline: 'none',
-              transition: 'all var(--transition-fast)',
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#DC2626';
-              e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.2)';
-              e.target.style.background = '#182234';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#263347';
-              e.target.style.boxShadow = 'none';
-              e.target.style.background = '#141C2B';
-            }}
-          />
-          <span style={{
-            position: 'absolute',
-            right: '8px',
-            fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 600,
-            color: '#64748B',
-            background: '#0B0F17',
-            border: '1px solid #263347',
-            padding: '1px 5px',
-            borderRadius: '4px',
-            pointerEvents: 'none'
-          }}>
-            Ctrl + K
-          </span>
-        </div>
-      </div>
-
-      {/* Middle: Live Tactical Clock (UTC+8 WITA) */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '5px 14px',
-        background: '#141C2B',
-        borderRadius: '6px',
-        border: '1px solid #263347',
-        fontSize: '11.5px',
-        color: '#94A3B8',
-      }}>
-        <span style={{
-          width: '6px',
-          height: '6px',
-          borderRadius: '50%',
-          background: '#10B981',
-          boxShadow: '0 0 6px rgba(16, 185, 129, 0.8)',
-          display: 'inline-block'
-        }} />
-        <Clock size={13} color="#64748B" />
-        <span className="mono" style={{ fontWeight: 600, letterSpacing: '0.02em', color: '#CBD5E1' }}>
-          {timeStr || 'Memuat waktu...'}
+    <header className="sticky top-0 z-[90] h-14 w-full border-b border-white/10 bg-[#05070a]/90 backdrop-blur-md px-4 flex items-center justify-between gap-4 shrink-0 no-print">
+      {/* Left (Search) */}
+      <div className="relative w-72 md:w-80 flex items-center">
+        <Search size={15} className="absolute left-3 text-slate-500 pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery || ''}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Cari No. LP, Tersangka, Pasal, Saksi..."
+          className="h-9 w-full bg-black/40 border border-white/10 rounded px-3 pl-9 text-xs text-white placeholder-zinc-500 font-mono outline-none focus:border-red-500/50"
+        />
+        <span className="absolute right-2 rounded-sm border border-white/10 bg-zinc-950 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500 pointer-events-none">
+          Ctrl + K
         </span>
       </div>
 
-      {/* Right: Actions & Officer Profile & Logout */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {/* Quick Action: New Case */}
-        <button 
-          onClick={onNewCase}
-          className="btn btn-secondary btn-sm"
-          title="Input Laporan Polisi Baru"
-        >
-          <PlusCircle size={14} />
-          <span>Input LP Baru</span>
-        </button>
+      {/* Tengah (Widget Waktu Taktis) */}
+      <div className="flex items-center gap-2.5 px-3 py-1.5 bg-black/40 border border-white/10 rounded font-mono text-xs text-zinc-300">
+        <PulseDot />
+        <div className="flex items-center gap-2">
+          <span className="uppercase tracking-widest text-zinc-400">{timeStr.date || 'Memuat...'}</span>
+          <span className="font-bold text-white">{timeStr.time || '--:--:-- WITA'}</span>
+        </div>
+      </div>
 
-        {/* Quick Action: Generate Mindik */}
-        <button 
+      {/* Kanan (Action & Profile) */}
+      <div className="flex items-center gap-3 shrink-0">
+        {/* Tombol BUAT MINDIK */}
+        <TacticalButton
+          label="Buat Mindik"
+          icon={FileText}
+          variant="crimson-glow"
+          className="h-9 px-3.5 font-mono text-xs rounded"
           onClick={onNewDoc}
-          className="btn btn-primary btn-sm"
-          title="Buat Dokumen Mindik Baru"
-        >
-          <FilePlus size={14} />
-          <span>Buat Mindik</span>
-        </button>
+        />
 
-        {/* Khusus Super Admin: Tombol Kelola RBAC */}
-        {isSuperAdmin && onOpenUserManagement && (
-          <button
-            type="button"
-            onClick={onOpenUserManagement}
-            className="btn btn-secondary btn-sm"
-            style={{
-              borderColor: 'rgba(168, 85, 247, 0.4)',
-              color: '#C084FC',
-              background: '#141C2B'
-            }}
-            title="Kelola Peran Akun (RBAC)"
-          >
-            <ShieldAlert size={14} color="#A855F7" />
-            <span>Kelola RBAC</span>
-          </button>
-        )}
-
-        {/* Officer Active Session */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '9px',
-          padding: '5px 12px',
-          background: '#141C2B',
-          border: isSuperAdmin 
-            ? '1px solid rgba(220, 38, 38, 0.4)' 
-            : '1px solid #263347',
-          borderRadius: '8px',
-          marginLeft: '4px',
-        }}>
-          <div style={{
-            width: '30px',
-            height: '30px',
-            borderRadius: '6px',
-            background: isSuperAdmin ? 'rgba(220, 38, 38, 0.15)' : '#182234',
-            border: isSuperAdmin 
-              ? '1px solid rgba(220, 38, 38, 0.4)' 
-              : '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 800,
-            fontSize: '11px',
-            color: isSuperAdmin ? '#F87171' : '#F8FAFC',
-          }}>
+        {/* Kartu Profil */}
+        <div className="flex items-center gap-2.5 px-2.5 py-1 bg-black/40 border border-white/10 rounded text-left">
+          <div className="w-7 h-7 flex items-center justify-center bg-zinc-900 border border-white/20 text-white font-mono text-[11px] rounded shrink-0">
             {officerInitials || 'P'}
           </div>
-          <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
-            <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#F8FAFC' }}>
+          <div className="flex flex-col justify-center leading-tight">
+            <span className="text-xs font-medium text-white line-clamp-1">
               {officerName}
-            </div>
-            <div style={{ fontSize: '10px', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '1px' }}>
-              <span>{officerPangkat && officerPangkat !== '-' ? `${officerPangkat} • ` : ''}{officerJabatan}</span>
-              <span className="mono" style={{ color: '#64748B' }}>• {officerNrp}</span>
-              <span 
-                style={{
-                  fontSize: '8px',
-                  fontFamily: 'var(--font-mono)',
-                  padding: '1px 5px',
-                  borderRadius: '3px',
-                  fontWeight: 700,
-                  background: isSuperAdmin ? 'rgba(220, 38, 38, 0.18)' : '#1E293B',
-                  color: isSuperAdmin ? '#FCA5A5' : isAdmin ? '#38BDF8' : '#34D399',
-                  border: isSuperAdmin ? '1px solid rgba(220, 38, 38, 0.35)' : '1px solid #334155'
-                }}
-              >
-                {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
-              </span>
-            </div>
+            </span>
+            <span className="text-[10px] font-mono text-zinc-400">
+              {officerJabatan}
+            </span>
           </div>
         </div>
 
-        {/* Logout Button */}
+        {/* Tombol KELUAR */}
         {onLogout && (
           <button
             type="button"
             onClick={() => setIsLogoutModalOpen(true)}
-            className="btn btn-secondary btn-sm"
-            style={{ padding: '6px 10px', color: '#F87171', borderColor: 'rgba(220, 38, 38, 0.3)' }}
+            className="h-9 px-3 flex items-center gap-1.5 border border-white/10 bg-black/40 hover:bg-white/5 rounded text-xs font-mono text-zinc-300 transition-colors"
             title="Keluar dari Sesi E-Mindik"
           >
-            <LogOut size={14} />
-            <span>Keluar</span>
+            [<LogOut size={13} className="ml-0.5" />
+            <span>KELUAR]</span>
           </button>
         )}
       </div>
 
       {/* Logout Confirmation Modal */}
       {isLogoutModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsLogoutModalOpen(false)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setIsLogoutModalOpen(false)}>
           <div 
-            className="modal-content" 
-            style={{ maxWidth: '400px' }}
+            className="w-full max-w-md rounded-md border border-white/10 bg-zinc-950 p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <LogOut size={20} color="var(--accent-red)" />
-                <h3 style={{ fontSize: '15px', margin: 0 }}>Konfirmasi Keluar Sesi</h3>
-              </div>
+            <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+              <LogOut size={20} className="text-red-500" />
+              <h3 className="text-lg font-semibold text-white m-0">Konfirmasi Keluar Sesi</h3>
             </div>
 
-            <div className="modal-body" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <div className="py-6 text-sm text-slate-400">
               Apakah Anda ingin mengakhiri sesi dinas aktif di sistem E-Mindik Satreskrim?
             </div>
 
-            <div className="modal-footer">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
               <button 
                 type="button" 
                 onClick={() => setIsLogoutModalOpen(false)} 
-                className="btn btn-secondary btn-sm"
+                className="rounded-md border border-white/20 bg-transparent px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
               >
                 Batal
               </button>
@@ -295,9 +153,9 @@ export default function Navbar({
                   setIsLogoutModalOpen(false);
                   onLogout();
                 }} 
-                className="btn btn-danger btn-sm"
+                className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
               >
-                <LogOut size={14} />
+                <LogOut size={16} />
                 <span>Ya, Keluar Sesi</span>
               </button>
             </div>
@@ -307,3 +165,7 @@ export default function Navbar({
     </header>
   );
 }
+
+
+
+
