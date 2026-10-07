@@ -1,4 +1,5 @@
 import React from 'react';
+import { HudCorners } from '../../command/hud';
 
 export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
   const handleChange = (field, value) => {
@@ -7,109 +8,40 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
     }
   };
 
-  const inputStyle = {
-    width: '100%',
-    backgroundColor: '#141C2B',
-    border: '1px solid #263347',
-    borderRadius: '0.5rem',
-    padding: '0.625rem 0.875rem',
-    color: '#F1F5F9',
-    fontSize: '0.8125rem',
-    outline: 'none',
-    boxSizing: 'border-box'
-  };
-
-  const labelStyle = {
-    display: 'block',
-    fontSize: '0.6875rem',
-    fontFamily: 'monospace',
-    fontWeight: 700,
-    color: '#94A3B8',
-    marginBottom: '0.375rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em'
-  };
+  const inputClass = "w-full bg-black/40 backdrop-blur-sm border border-white/10 text-white placeholder-zinc-500 rounded-lg px-3.5 py-2.5 text-xs focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none transition-all";
+  const labelClass = "block text-[11px] font-mono font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider";
 
   return (
-    <div
-      style={{
-        backgroundColor: '#111622',
-        border: '1px solid #1E293B',
-        borderRadius: '0.75rem',
-        padding: '1.25rem',
-        color: '#F1F5F9'
-      }}
-    >
+    <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] text-zinc-100">
+      <HudCorners size="md" />
+
       {/* Header Bagian 04 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid #1E293B',
-          paddingBottom: '0.875rem',
-          marginBottom: '1.25rem'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <div
-            style={{
-              width: '1.5rem',
-              height: '1.5rem',
-              borderRadius: '0.375rem',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              color: '#EF4444',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              fontSize: '0.75rem'
-            }}
-          >
+      <div className="flex items-center justify-between border-b border-white/10 pb-3.5 mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-md bg-red-950/40 border border-red-500/30 text-red-400 flex items-center justify-center font-mono font-bold text-xs">
             04
           </div>
           <div>
-            <h3
-              style={{
-                fontSize: '0.875rem',
-                fontWeight: 700,
-                color: '#FFFFFF',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                fontFamily: 'monospace',
-                margin: 0
-              }}
-            >
+            <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider font-mono m-0">
               PERISTIWA &amp; DUGAAN PASAL PIDANA
             </h3>
-            <p style={{ fontSize: '0.6875rem', color: '#64748B', margin: '0.125rem 0 0 0' }}>
+            <p className="text-[11px] text-zinc-400 mt-0.5 mb-0">
               Rincian dugaan peristiwa tindak pidana, tempus, locus, dan kronologis
             </p>
           </div>
         </div>
-        <span
-          style={{
-            fontSize: '0.625rem',
-            fontFamily: 'monospace',
-            color: '#94A3B8',
-            backgroundColor: '#0B0D13',
-            padding: '0.2rem 0.5rem',
-            borderRadius: '0.25rem',
-            border: '1px solid #263347'
-          }}
-        >
+        <span className="text-[10px] font-mono text-zinc-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
           Kronologi Perkara
         </span>
       </div>
 
       {/* Grid Input Perkara */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="flex flex-col gap-4">
         {/* Baris 1: Dugaan Tindak Pidana & Dugaan Pasal */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="dumas_tindak_pidana" style={labelStyle}>
-              DUGAAN TINDAK PIDANA <span style={{ color: '#EF4444' }}>*</span>
+            <label htmlFor="dumas_tindak_pidana" className={labelClass}>
+              DUGAAN TINDAK PIDANA <span className="text-red-500">*</span>
             </label>
             <input
               id="dumas_tindak_pidana"
@@ -118,12 +50,12 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
               value={caseInfo.tindak_pidana || caseInfo.dugaan_tindak_pidana || ''}
               onChange={(e) => handleChange('tindak_pidana', e.target.value)}
               placeholder="Contoh: Penggelapan Dana Kas / Penipuan"
-              style={{ ...inputStyle, fontWeight: 600 }}
+              className={`${inputClass} font-semibold`}
             />
           </div>
 
           <div>
-            <label htmlFor="dumas_pasal" style={labelStyle}>
+            <label htmlFor="dumas_pasal" className={labelClass}>
               DUGAAN PASAL YANG DISANGKAKAN
             </label>
             <input
@@ -133,15 +65,15 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
               value={caseInfo.pasal || caseInfo.pasal_disangkakan || ''}
               onChange={(e) => handleChange('pasal', e.target.value)}
               placeholder="Contoh: Pasal 372 KUHP dan/atau Pasal 378 KUHP"
-              style={{ ...inputStyle, fontWeight: 600 }}
+              className={`${inputClass} font-semibold`}
             />
           </div>
         </div>
 
         {/* Baris 2: Waktu Kejadian & TKP */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="dumas_waktu_kejadian" style={labelStyle}>
+            <label htmlFor="dumas_waktu_kejadian" className={labelClass}>
               WAKTU KEJADIAN (TEMPUS DELICTI)
             </label>
             <input
@@ -151,12 +83,12 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
               value={caseInfo.waktu_kejadian || caseInfo.waktu || ''}
               onChange={(e) => handleChange('waktu_kejadian', e.target.value)}
               placeholder="Contoh: Senin, 14 September 2026 - Pukul 10.30 WITA"
-              style={inputStyle}
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label htmlFor="dumas_tkp" style={labelStyle}>
+            <label htmlFor="dumas_tkp" className={labelClass}>
               TEMPAT KEJADIAN (LOCUS DELICTI)
             </label>
             <input
@@ -166,15 +98,15 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
               value={caseInfo.tkp || caseInfo.locus_delicti || ''}
               onChange={(e) => handleChange('tkp', e.target.value)}
               placeholder="Contoh: Kantor Bumdes Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur"
-              style={inputStyle}
+              className={inputClass}
             />
           </div>
         </div>
 
         {/* Baris 3: Narasi Kronologi Kejadian Lengkap */}
         <div>
-          <label htmlFor="dumas_uraian" style={labelStyle}>
-            RINGKASAN POSISI KASUS / URAIAN KRONOLOGIS KEJADIAN LENGKAP <span style={{ color: '#EF4444' }}>*</span>
+          <label htmlFor="dumas_uraian" className={labelClass}>
+            RINGKASAN POSISI KASUS / URAIAN KRONOLOGIS KEJADIAN LENGKAP <span className="text-red-500">*</span>
           </label>
           <textarea
             id="dumas_uraian"
@@ -183,7 +115,7 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
             value={caseInfo.uraian || caseInfo.uraian_kejadian || ''}
             onChange={(e) => handleChange('uraian', e.target.value)}
             placeholder="Salinan lengkap kronologis atau uraian kejadian persis sesuai dokumen laporan/aduan..."
-            style={{ ...inputStyle, resize: 'vertical', minHeight: '160px', lineHeight: '1.6' }}
+            className={`${inputClass} resize-y min-h-[160px] leading-relaxed`}
           />
         </div>
       </div>

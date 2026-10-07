@@ -13,6 +13,7 @@ import {
 import { CRIME_CATEGORIES } from '../../constants/crimeCategories.js';
 import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
 import ModalSelectPamapta from './ModalSelectPamapta';
+import { HudCard, HudCorners } from '../command/hud';
 
 // Kamus kata kunci / alias tindak pidana untuk pencocokan pintar (fuzzy keyword matching)
 const CRIME_KEYWORD_ALIASES = {
@@ -305,71 +306,35 @@ export default function DumasListView({
   };
 
   return (
-    <div className="dumas-container" style={{ padding: '24px 32px' }}>
-      <div style={{ maxWidth: '1280px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="dumas-container p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl w-full mx-auto flex flex-col gap-5">
 
         {/* ======================================================= */}
         {/* HEADER & QUICK TITLE */}
         {/* ======================================================= */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '4px 12px',
-              borderRadius: '9999px',
-              backgroundColor: 'rgba(229, 46, 46, 0.1)',
-              border: '1px solid rgba(229, 46, 46, 0.3)',
-              color: '#FF352D',
-              fontSize: '11px',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              marginBottom: '8px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#FF352D' }}></span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/40 border border-red-500/30 text-red-400 text-[11px] font-mono font-semibold tracking-wider mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
               SISTEM INFORMASI REGISTRASI DUMAS PRESISI
             </div>
-            <h1 style={{
-              fontSize: '22px',
-              fontWeight: 800,
-              color: '#FFFFFF',
-              textTransform: 'uppercase',
-              letterSpacing: '-0.02em',
-              fontFamily: 'JetBrains Mono, monospace',
-              margin: 0
-            }}>
+            <h1 className="text-xl md:text-2xl font-bold font-mono text-white uppercase tracking-tight m-0">
               DAFTAR PENGADUAN MASYARAKAT (DUMAS)
             </h1>
-            <p style={{ color: '#94A3B8', fontSize: '13px', margin: '4px 0 0 0', fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-xs text-zinc-400 mt-1 mb-0">
               Satreskrim Polres Kolaka Timur • Arsip Pengaduan, Berkas LP Awal, &amp; Map Kedinasan
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="flex items-center gap-2.5">
             {hasDraft && onOpenDraft && (
               <button
                 type="button"
                 onClick={onOpenDraft}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '9px 16px',
-                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
-                  color: '#34D399',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-950/30 border border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-mono font-semibold cursor-pointer hover:bg-emerald-900/50 transition-all"
                 title="Buka kembali draf formulir yang tersimpan di browser"
               >
-                <Clock size={15} />
+                <Clock size={14} />
                 <span>Lanjutkan Draf Tersimpan</span>
               </button>
             )}
@@ -377,25 +342,26 @@ export default function DumasListView({
             <button
               type="button"
               onClick={onOpenModeSelect}
-              className="dumas-btn-new"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold font-mono bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_15px_-3px_rgba(239,68,68,0.3)] border border-red-500/30 transition-all cursor-pointer tracking-wide"
               title="Registrasi Dumas Baru"
             >
-              <FilePlus size={16} />
+              <FilePlus size={15} />
               <span>+ Input Dumas Baru</span>
             </button>
           </div>
         </div>
 
         {/* ======================================================= */}
-        {/* KONTEN UTAMA: SURFACE CARD ELEGAN (TEMA DARK CHARCOAL) */}
+        {/* KONTEN UTAMA: SURFACE CARD ELEGAN (OBSIDIAN HUD) */}
         {/* ======================================================= */}
-        <div className="dumas-surface-card">
+        <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] flex flex-col gap-4">
+          <HudCorners size="md" />
           
           {/* TOOLBAR ATAS (SEARCH & FILTER DROPDOWN) */}
-          <div className="dumas-toolbar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '300px', flexWrap: 'wrap' }}>
-              <div className="dumas-search-wrap" style={{ flex: 1, minWidth: '220px' }}>
-                <Search size={15} className="dumas-search-icon" />
+          <div className="flex items-center justify-between flex-wrap gap-3.5">
+            <div className="flex items-center gap-2.5 flex-1 min-w-[280px] flex-wrap">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search size={15} className="absolute left-3.5 top-3 text-zinc-400 pointer-events-none" />
                 <input 
                   id="dumas_search_term"
                   name="dumas_search_term"
@@ -405,43 +371,31 @@ export default function DumasListView({
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Cari No. Dumas, Pelapor, Terlapor, atau Pasal..."
-                  className="dumas-search-input"
+                  className="w-full bg-black/40 backdrop-blur-sm border border-white/10 text-white placeholder-zinc-500 rounded-lg pl-9 pr-3.5 py-2 text-xs font-mono focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none transition-all"
                 />
               </div>
 
               {/* DROPDOWN FILTER KATEGORI TINDAK PIDANA */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="flex items-center gap-1.5">
                 <select
                   id="dumas_crime_category_filter"
                   name="dumas_crime_category_filter"
                   aria-label="Filter Kategori Tindak Pidana"
                   value={selectedCrimeCategory}
                   onChange={(e) => setSelectedCrimeCategory(e.target.value)}
-                  style={{
-                    backgroundColor: '#111622',
-                    border: '1px solid #1E293B',
-                    color: '#cbd5e1',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    fontSize: '12px',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    maxWidth: '280px',
-                    boxSizing: 'border-box'
-                  }}
+                  className="bg-black/40 backdrop-blur-sm border border-white/10 text-zinc-300 rounded-lg px-3 py-2 text-xs font-mono focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none cursor-pointer max-w-[240px]"
                   title="Filter Berdasarkan Kategori Kejahatan"
                 >
-                  <option value="">Semua Kategori Pidana</option>
+                  <option value="" className="bg-zinc-900 text-white">Semua Kategori Pidana</option>
                   {CRIME_CATEGORIES.map((group) => (
-                    <optgroup key={group.group} label={group.group}>
+                    <optgroup key={group.group} label={group.group} className="bg-zinc-900 text-zinc-400">
                       {group.categories.map((cat) => (
                         <React.Fragment key={cat.name}>
-                          <option value={cat.name} style={{ fontWeight: 700, color: '#60a5fa' }}>
+                          <option value={cat.name} className="bg-zinc-900 text-red-400 font-bold">
                             ── Semua {cat.name} ──
                           </option>
                           {cat.items.map((subItem) => (
-                            <option key={subItem} value={subItem}>
+                            <option key={subItem} value={subItem} className="bg-zinc-900 text-zinc-200">
                               &nbsp;&nbsp;• {subItem}
                             </option>
                           ))}
@@ -455,16 +409,7 @@ export default function DumasListView({
                   <button
                     type="button"
                     onClick={() => setSelectedCrimeCategory('')}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#f87171',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      fontFamily: 'monospace',
-                      whiteSpace: 'nowrap'
-                    }}
+                    className="bg-transparent border-none text-red-400 text-xs font-mono cursor-pointer px-1.5 py-1 whitespace-nowrap hover:text-red-300"
                     title="Hapus filter kategori pidana"
                   >
                     ✕ Reset
@@ -473,35 +418,36 @@ export default function DumasListView({
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
-              <label htmlFor="dumas_status_filter" style={{ color: '#94A3B8' }}>Status:</label>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <label htmlFor="dumas_status_filter" className="text-zinc-400">Status:</label>
               <select
                 id="dumas_status_filter"
                 name="dumas_status_filter"
                 aria-label="Filter Status Laporan Dumas"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="dumas-select"
+                className="bg-black/40 backdrop-blur-sm border border-white/10 text-white rounded-lg px-3 py-2 text-xs font-mono focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none cursor-pointer"
               >
-                <option value="ALL">Semua Status</option>
-                <option value="Penyelidikan">Tahap Penyelidikan</option>
-                <option value="Penyidikan">Tahap Penyidikan</option>
+                <option value="ALL" className="bg-zinc-900 text-white">Semua Status</option>
+                <option value="Penyelidikan" className="bg-zinc-900 text-white">Tahap Penyelidikan</option>
+                <option value="Penyidikan" className="bg-zinc-900 text-white">Tahap Penyidikan</option>
               </select>
             </div>
           </div>
 
           {/* TABEL DATA DUMAS PRESISI */}
-          <div className="dumas-table-container">
-            <table className="dumas-table">
+          <div className="relative group/card bg-[#05070a]/60 backdrop-blur-md border border-white/10 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)] overflow-x-auto">
+            <HudCorners size="sm" />
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr>
-                  <th style={{ width: '260px' }}>NO. DUMAS / TANGGAL</th>
-                  <th>PELAPOR / KORBAN</th>
-                  <th>PIHAK TERLAPOR</th>
-                  <th>DUGAAN TINDAK PIDANA &amp; PASAL</th>
-                  <th style={{ width: '190px' }}>STATUS BERKAS</th>
-                  <th style={{ textAlign: 'center', width: '80px' }}>BUKTI</th>
-                  <th style={{ textAlign: 'right', width: '140px' }}>AKSI KEDINASAN</th>
+                <tr className="bg-white/[0.03] text-zinc-400 font-mono text-xs uppercase border-b border-white/10">
+                  <th className="p-3.5 font-medium tracking-wider w-64">NO. DUMAS / TANGGAL</th>
+                  <th className="p-3.5 font-medium tracking-wider">PELAPOR / KORBAN</th>
+                  <th className="p-3.5 font-medium tracking-wider">PIHAK TERLAPOR</th>
+                  <th className="p-3.5 font-medium tracking-wider">DUGAAN TINDAK PIDANA &amp; PASAL</th>
+                  <th className="p-3.5 font-medium tracking-wider w-44">STATUS BERKAS</th>
+                  <th className="p-3.5 font-medium tracking-wider text-center w-20">BUKTI</th>
+                  <th className="p-3.5 font-medium tracking-wider text-right w-36">AKSI KEDINASAN</th>
                 </tr>
               </thead>
               <tbody>
@@ -511,84 +457,81 @@ export default function DumasListView({
                     return (
                       <tr 
                         key={item.id}
-                        className="table-row-hover"
+                        className="hover:bg-white/[0.02] border-b border-white/5 text-zinc-200 transition-colors cursor-pointer"
                         onClick={() => onSelectDumas && onSelectDumas(item)}
                       >
                         {/* No. Dumas & Tanggal */}
-                        <td>
-                          <div className="dumas-cell-no">
-                            <span className="dumas-no-text">
-                              {item.nomor_lp}
-                            </span>
-                            <span className="dumas-cell-date">
-                              {item.tanggal_lapor ? new Date(item.tanggal_lapor).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '14 Sep 2026'}
-                            </span>
+                        <td className="p-3.5 align-middle">
+                          <div className="font-mono text-xs font-semibold text-red-400 tracking-wide">
+                            {item.nomor_lp}
+                          </div>
+                          <div className="font-mono text-[11px] text-zinc-500 mt-0.5">
+                            {item.tanggal_lapor ? new Date(item.tanggal_lapor).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '14 Sep 2026'}
                           </div>
                         </td>
 
                         {/* Pelapor */}
-                        <td>
-                          <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '12px' }}>
+                        <td className="p-3.5 align-middle">
+                          <div className="font-semibold text-white">
                             {item.pelapor_nama || '-'}
                           </div>
-                          <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>
+                          <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
                             NIK: {item.pelapor_nik || '-'}
                           </div>
                         </td>
 
                         {/* Terlapor */}
-                        <td>
-                          <div style={{ fontWeight: 600, color: '#F87171', fontSize: '12px' }}>
+                        <td className="p-3.5 align-middle">
+                          <div className="font-semibold text-red-400">
                             {item.terlapor_nama || '-'}
                           </div>
-                          <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px' }}>
+                          <div className="text-[10px] text-zinc-500 mt-0.5">
                             {item.terlapor_status || 'Terlapor Utama'}
                           </div>
                         </td>
 
                         {/* Delik & Dugaan Pasal */}
-                        <td style={{ maxWidth: '280px' }}>
-                          <div style={{ color: '#E2E8F0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'Inter, sans-serif' }} title={item.tindak_pidana}>
+                        <td className="p-3.5 align-middle max-w-xs">
+                          <div className="text-zinc-200 truncate font-sans" title={item.tindak_pidana}>
                             {item.tindak_pidana || '-'}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#FBBF24', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.pasal_disangkakan}>
+                          <div className="text-[11px] text-amber-400 mt-0.5 truncate font-mono" title={item.pasal_disangkakan}>
                             {item.pasal_disangkakan || '-'}
                           </div>
                         </td>
 
                         {/* Status Berkas */}
-                        <td>
+                        <td className="p-3.5 align-middle">
                           {renderDumasStatusBadge(item.status_berkas)}
                         </td>
 
                         {/* Bukti Digital Count */}
-                        <td style={{ textAlign: 'center' }}>
-                          <span className="dumas-badge-evidence">
-                            <FileText size={12} color="#E52E2E" />
+                        <td className="p-3.5 align-middle text-center">
+                          <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-zinc-300 font-mono text-[11px] px-2 py-0.5 rounded">
+                            <FileText size={12} className="text-red-400" />
                             <span>{bbCount}</span>
                           </span>
                         </td>
 
                         {/* Aksi Kedinasan */}
-                        <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <td className="p-3.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => onSelectDumas && onSelectDumas(item)}
-                              className="dumas-action-btn btn-red"
+                              className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-500/30 transition-all cursor-pointer"
                               title="Buka Map Berkas Kedinasan"
                             >
-                              <FolderOpen size={14} />
+                              <FolderOpen size={13} />
                             </button>
 
                             <button
                               type="button"
                               onClick={() => printSuratPengaduan(item)}
-                              className="dumas-action-btn"
-                              style={{ color: '#38BDF8' }}
+                              className="p-1.5 rounded-lg bg-sky-950/40 hover:bg-sky-900/60 text-sky-400 border border-sky-500/30 transition-all cursor-pointer"
                               title="Cetak Surat Laporan Pengaduan (Dumas)"
                             >
-                              <Printer size={14} />
+                              <Printer size={13} />
                             </button>
 
                             <button
@@ -597,20 +540,19 @@ export default function DumasListView({
                                 setSelectedDumasForPrint(item);
                                 setIsPamaptaModalOpen(true);
                               }}
-                              className="dumas-action-btn"
-                              style={{ color: '#34D399' }}
+                              className="p-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-500/30 transition-all cursor-pointer"
                               title="Cetak Tanda Terima Laporan (STTLP)"
                             >
-                              <FileText size={14} />
+                              <FileText size={13} />
                             </button>
 
                             <button
                               type="button"
                               onClick={() => onOpenGeneratorForDumas && onOpenGeneratorForDumas(item)}
-                              className="dumas-action-btn"
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 transition-all cursor-pointer"
                               title="Lanjut Buat Sprin (Generator Mindik)"
                             >
-                              <FileSignature size={14} />
+                              <FileSignature size={13} />
                             </button>
 
                             {onDeleteDumas && (
@@ -621,8 +563,7 @@ export default function DumasListView({
                                     onDeleteDumas(item.id);
                                   }
                                 }}
-                                className="dumas-action-btn"
-                                style={{ color: '#EF4444' }}
+                                className="p-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border border-rose-500/30 transition-all cursor-pointer"
                                 title="Hapus Berkas"
                               >
                                 <Trash2 size={13} />
@@ -635,7 +576,7 @@ export default function DumasListView({
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: '#64748B' }}>
+                    <td colSpan={7} className="text-center py-12 px-4 text-zinc-400 font-mono">
                       {searchTerm ? 'Tidak ada laporan pengaduan yang cocok dengan kata kunci pencarian.' : 'Belum ada data pengaduan masyarakat. Klik tombol "+ Input Dumas Baru" untuk registrasi.'}
                     </td>
                   </tr>

@@ -17,6 +17,7 @@ import {
   Clock
 } from 'lucide-react';
 import { scanSuratPengaduan } from '../../lib/geminiOcrService';
+import { HudCard, HudCorners } from '../command/hud';
 
 export default function DumasModeSelectModal({
   isOpen = true,
@@ -399,20 +400,12 @@ export default function DumasModeSelectModal({
 
       {/* MODAL CONTAINER UTAMA */}
       <div 
-        className="dumas-modal-container"
+        className="dumas-modal-container relative group/card bg-[#05070a]/90 backdrop-blur-2xl border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.5)] rounded-xl w-full max-w-[920px] max-h-[90vh] overflow-y-auto"
         style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: '920px',
-          maxHeight: '90vh',
-          backgroundColor: '#0E1118',
-          border: '1px solid #292F42',
-          borderRadius: '16px',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95)',
-          overflowY: 'auto',
           animation: 'dumasFadeIn 0.2s ease-out',
         }}
       >
+        <HudCorners size="lg" />
         {/* Top Header Decorator Bar */}
         <div style={{ height: '4px', width: '100%', background: 'linear-gradient(90deg, #E52E2E 0%, #FF352D 50%, #C82323 100%)' }}></div>
 
@@ -629,23 +622,14 @@ export default function DumasModeSelectModal({
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
-              style={{
-                position: 'relative',
-                borderRadius: '16px',
-                background: dragActive 
-                  ? 'linear-gradient(180deg, rgba(229, 46, 46, 0.15) 0%, rgba(184, 29, 24, 0.1) 100%)' 
-                  : 'linear-gradient(180deg, #1C1215 0%, #130E10 100%)',
-                border: dragActive ? '2px dashed #FF352D' : '1px solid #7F1D1D',
-                padding: '24px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: dragActive ? '0 0 25px rgba(229, 46, 46, 0.3)' : '0 10px 30px -10px rgba(127, 29, 29, 0.3)',
-                transition: 'all 0.2s ease-in-out'
-              }}
+              className={`relative group/card bg-[#05070a]/70 backdrop-blur-xl border ${
+                dragActive ? 'border-red-500 bg-red-950/20' : 'border-red-500/30 hover:border-red-500/60'
+              } shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] rounded-xl p-6 flex flex-col justify-between transition-all duration-300`}
             >
+              <HudCorners size="md" />
+
               {/* Category Badge */}
-              <div style={{ position: 'absolute', top: '-14px', left: '20px' }}>
+              <div style={{ position: 'absolute', top: '-14px', left: '20px', zIndex: 10 }}>
                 <span style={{
                   background: 'linear-gradient(90deg, #E52E2E 0%, #B81D18 100%)',
                   color: '#FFFFFF',
@@ -714,10 +698,11 @@ export default function DumasModeSelectModal({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '6px',
-                  backgroundColor: '#0B0D13',
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                  backdropFilter: 'blur(8px)',
                   padding: '10px 12px',
                   borderRadius: '10px',
-                  border: '1px solid #292F42'
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#CBD5E1', fontFamily: 'JetBrains Mono, monospace' }}>
                     <CheckCircle2 size={13} color="#FF352D" />
@@ -906,12 +891,13 @@ export default function DumasModeSelectModal({
                     onClick={triggerFileInput}
                     style={{
                       marginTop: '14px',
-                      border: '1px dashed #475569',
+                      border: '1px dashed rgba(255, 255, 255, 0.15)',
                       borderRadius: '8px',
                       padding: '16px',
                       textAlign: 'center',
                       cursor: 'pointer',
-                      backgroundColor: 'rgba(21, 24, 34, 0.6)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(8px)',
                       transition: 'all 0.2s'
                     }}
                   >
@@ -927,7 +913,7 @@ export default function DumasModeSelectModal({
               </div>
 
               {/* Action Button OPSI A */}
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #292F42' }}>
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
                 <button 
                   type="button"
                   disabled={isScanning}
@@ -966,22 +952,14 @@ export default function DumasModeSelectModal({
 
             {/* OPSI B: INPUT MANUAL LANGSUNG */}
             <div 
-              style={{
-                position: 'relative',
-                borderRadius: '16px',
-                background: 'linear-gradient(180deg, #151822 0%, #10141D 100%)',
-                border: '1px solid #292F42',
-                padding: '24px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                transition: 'all 0.2s ease-in-out'
-              }}
+              className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 hover:border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] rounded-xl p-6 flex flex-col justify-between transition-all duration-300"
             >
+              <HudCorners size="md" />
+
               {/* Category Badge */}
-              <div style={{ position: 'absolute', top: '-14px', left: '20px' }}>
+              <div style={{ position: 'absolute', top: '-14px', left: '20px', zIndex: 10 }}>
                 <span style={{
-                  background: '#1F2633',
+                  background: 'rgba(255, 255, 255, 0.08)',
                   color: '#CBD5E1',
                   fontFamily: 'JetBrains Mono, monospace',
                   fontSize: '10px',
@@ -990,7 +968,7 @@ export default function DumasModeSelectModal({
                   fontWeight: 700,
                   padding: '3px 10px',
                   borderRadius: '9999px',
-                  border: '1px solid #475569',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
@@ -1007,8 +985,8 @@ export default function DumasModeSelectModal({
                     width: '52px',
                     height: '52px',
                     borderRadius: '12px',
-                    backgroundColor: '#1E2538',
-                    border: '1px solid #334155',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1021,10 +999,10 @@ export default function DumasModeSelectModal({
                     fontSize: '11px',
                     fontWeight: 700,
                     color: '#94A3B8',
-                    backgroundColor: '#1E2538',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
                     padding: '3px 8px',
                     borderRadius: '6px',
-                    border: '1px solid #334155'
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
                   }}>
                     STANDAR INPUT SPKT
                   </span>
@@ -1044,10 +1022,11 @@ export default function DumasModeSelectModal({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
-                  backgroundColor: '#0B0D13',
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                  backdropFilter: 'blur(8px)',
                   padding: '12px 14px',
                   borderRadius: '10px',
-                  border: '1px solid #292F42'
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace' }}>
                     <Shield size={13} color="#64748B" />
@@ -1065,13 +1044,13 @@ export default function DumasModeSelectModal({
               </div>
 
               {/* Action Button OPSI B */}
-              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #292F42' }}>
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
                 <button 
                   type="button"
                   onClick={() => onSelectMode && onSelectMode('manual')}
                   style={{
                     width: '100%',
-                    background: '#1E2538',
+                    background: 'rgba(255, 255, 255, 0.06)',
                     color: '#E2E8F0',
                     fontFamily: 'JetBrains Mono, monospace',
                     fontWeight: 700,
@@ -1080,7 +1059,7 @@ export default function DumasModeSelectModal({
                     textTransform: 'uppercase',
                     padding: '12px 16px',
                     borderRadius: '10px',
-                    border: '1px solid #334155',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1089,12 +1068,12 @@ export default function DumasModeSelectModal({
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2A344D';
-                    e.currentTarget.style.borderColor = '#475569';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1E2538';
-                    e.currentTarget.style.borderColor = '#334155';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
                   }}
                 >
                   <span>[ Buka Formulir Manual ]</span>

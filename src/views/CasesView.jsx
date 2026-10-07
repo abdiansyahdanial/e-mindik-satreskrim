@@ -83,65 +83,54 @@ export default function CasesView({
   };
 
   return (
-    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="page-enter flex flex-col gap-5">
       {/* Header & Controls */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-      }}>
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <FolderLock size={22} color="var(--accent-cyan)" />
+          <h2 className="text-xl font-bold font-mono tracking-tight text-white flex items-center gap-2.5 m-0">
+            <FolderLock className="w-5 h-5 text-red-500" />
             <span>Manajemen Berkas Perkara Pidana</span>
           </h2>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <p className="mt-1 text-xs text-zinc-400">
             Daftar Laporan Polisi (LP), tersangka, dan administrasi penyidikan Satreskrim terhubung Supabase.
           </p>
         </div>
 
-        <button onClick={onNewCase} className="btn btn-primary">
-          <PlusCircle size={16} />
+        <button 
+          onClick={onNewCase} 
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_15px_-3px_rgba(239,68,68,0.3)] border border-red-500/30 transition-all cursor-pointer font-mono tracking-wide"
+        >
+          <PlusCircle size={15} />
           <span>+ Input Perkara Baru</span>
         </button>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="glass" style={{
-        padding: '16px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '14px',
-        backgroundColor: '#1b2229',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '12px'
-      }}>
+      <div className="p-4 md:px-5 flex items-center justify-between flex-wrap gap-3.5 bg-[#07090e]/80 backdrop-blur-md border border-white/10 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
         {/* Search */}
-        <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: '450px' }}>
-          <Search size={16} color="var(--text-secondary)" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+        <div className="relative flex-1 min-w-[280px] max-w-md">
+          <Search size={15} className="absolute left-3.5 top-3 text-zinc-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Cari No. LP, Terlapor, Pelapor, atau Tindak Pidana..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="form-input"
-            style={{ paddingLeft: '36px' }}
+            className="w-full bg-black/50 border border-white/10 text-white placeholder-zinc-500 rounded-lg pl-9 pr-3.5 py-2 text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all font-mono"
           />
         </div>
 
         {/* Filter Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Status:</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-zinc-400">Status:</span>
           {['all', 'active', 'completed'].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`btn btn-sm ${statusFilter === status ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ textTransform: 'capitalize' }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono capitalize transition-all cursor-pointer ${
+                statusFilter === status
+                  ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_15px_-3px_rgba(239,68,68,0.3)] border border-red-500/30 font-semibold'
+                  : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10'
+              }`}
             >
               {status === 'all' ? 'Semua' : status === 'active' ? 'Dalam Proses' : 'P21 / Selesai'}
             </button>
@@ -150,23 +139,23 @@ export default function CasesView({
       </div>
 
       {/* Cases Table */}
-      <div className="table-container">
-        <table className="tactical-table">
+      <div className="bg-[#07090e]/80 backdrop-blur-md border border-white/10 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)] overflow-x-auto">
+        <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr>
-              <th>Nomor LP & Tanggal</th>
-              <th>Tindak Pidana & Pasal</th>
-              <th>Terlapor / Tersangka</th>
-              <th>Pelapor / Korban</th>
-              <th>Penyidik Utama</th>
-              <th>Status</th>
-              <th style={{ textAlign: 'right' }}>Aksi</th>
+            <tr className="bg-white/[0.03] text-zinc-400 font-mono text-xs uppercase border-b border-white/10">
+              <th className="p-3.5 font-medium tracking-wider">Nomor LP & Tanggal</th>
+              <th className="p-3.5 font-medium tracking-wider">Tindak Pidana & Pasal</th>
+              <th className="p-3.5 font-medium tracking-wider">Terlapor / Tersangka</th>
+              <th className="p-3.5 font-medium tracking-wider">Pelapor / Korban</th>
+              <th className="p-3.5 font-medium tracking-wider">Penyidik Utama</th>
+              <th className="p-3.5 font-medium tracking-wider">Status</th>
+              <th className="p-3.5 font-medium tracking-wider text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {filteredCases.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)' }}>
+                <td colSpan="7" className="text-center py-10 px-4 text-zinc-400 border-b border-white/5 font-mono">
                   Tidak ada perkara yang cocok dengan kriteria pencarian.
                 </td>
               </tr>
@@ -176,89 +165,89 @@ export default function CasesView({
                 const leadInv = leadInvRef ? findPerson(leadInvRef.user_id || leadInvRef.nrp) || leadInvRef : null;
 
                 return (
-                  <tr key={item.id} className="table-row-hover">
-                    <td>
-                      <div className="mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-cyan)' }}>
+                  <tr key={item.id} className="hover:bg-white/[0.02] border-b border-white/5 text-zinc-200 transition-colors">
+                    <td className="p-3.5 align-middle">
+                      <div className="font-mono text-xs font-semibold text-red-400 tracking-wide">
                         {item.no_lp}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      <div className="font-mono text-[11px] text-zinc-500 mt-0.5">
                         Tgl LP: {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : '-'}
                       </div>
                     </td>
 
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <td className="p-3.5 align-middle">
+                      <div className="font-semibold text-white">
                         {item.tindak_pidana}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <div className="text-[11px] text-zinc-400 mt-0.5">
                         {item.pasal_uu}
                       </div>
                     </td>
 
-                    <td>
-                      <div style={{ fontWeight: 600 }}>
+                    <td className="p-3.5 align-middle">
+                      <div className="font-semibold text-zinc-200">
                         {item.person?.nama || item.terlapor_name}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <div className="text-[11px] text-zinc-400 mt-0.5">
                         {item.person?.umur ? `${item.person.umur} • ` : ''}
                         {item.person?.alamat ? `${item.person.alamat.slice(0, 26)}...` : item.locus}
                       </div>
                     </td>
 
-                    <td>
-                      <div style={{ fontWeight: 500 }}>
+                    <td className="p-3.5 align-middle">
+                      <div className="font-medium text-zinc-200">
                         {item.pelapor_name}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      <div className="text-[11px] text-zinc-500 mt-0.5">
                         Saksi Pelapor
                       </div>
                     </td>
 
-                    <td>
+                    <td className="p-3.5 align-middle">
                       {leadInv ? (
                         <div>
-                          <div style={{ fontWeight: 500, fontSize: '12px' }}>
+                          <div className="font-medium text-xs text-zinc-200">
                             {leadInv.nama}
                           </div>
-                          <div className="mono" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                          <div className="font-mono text-[10px] text-zinc-400 mt-0.5">
                             {leadInv.pangkat} • {leadInv.nrp}
                           </div>
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>-</span>
+                        <span className="text-zinc-500 text-xs font-mono">-</span>
                       )}
                     </td>
 
-                    <td>
+                    <td className="p-3.5 align-middle">
                       {renderCaseStatusBadge(item.status)}
                     </td>
 
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '6px' }}>
+                    <td className="p-3.5 align-middle text-right">
+                      <div className="inline-flex items-center gap-1.5">
                         <button
                           onClick={() => onSelectCase(item)}
-                          className="btn btn-secondary btn-sm"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 transition-all cursor-pointer font-mono"
                           title="Lihat Dossier Lengkap"
                         >
-                          <Eye size={13} />
+                          <Eye size={12} />
                           <span>Detail</span>
                         </button>
 
                         <button
                           onClick={() => setCaseToEdit(item)}
-                          className="btn btn-secondary btn-sm"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 transition-all cursor-pointer font-mono"
                           title="Edit Data Berkas Perkara"
                         >
-                          <Edit3 size={13} />
+                          <Edit3 size={12} />
                           <span>Edit</span>
                         </button>
 
                         <button
                           onClick={() => onGenerateDocForCase(item)}
-                          className="btn btn-primary btn-sm"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_15px_-3px_rgba(239,68,68,0.3)] border border-red-500/30 transition-all cursor-pointer font-mono"
                           title="Buat Dokumen Mindik"
                         >
-                          <FileSignature size={13} />
+                          <FileSignature size={12} />
                           <span>Mindik</span>
                         </button>
 
@@ -266,7 +255,7 @@ export default function CasesView({
                         {canDeleteCase && (
                           <button
                             onClick={() => setCaseToDelete(item)}
-                            className="btn btn-danger btn-sm"
+                            className="inline-flex items-center justify-center p-1.5 rounded-lg text-xs font-medium bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-200 border border-red-500/30 transition-all cursor-pointer"
                             title="Hapus Berkas Perkara dari Supabase (Super Admin & Admin)"
                           >
                             <Trash2 size={13} />
@@ -284,31 +273,21 @@ export default function CasesView({
 
       {/* Modal Konfirmasi Hapus Berkas Perkara (Super Admin & Admin) */}
       {caseToDelete && (
-        <div className="modal-backdrop" onClick={() => setCaseToDelete(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setCaseToDelete(null)}>
           <div 
-            className="modal-content" 
-            style={{ maxWidth: '480px', borderColor: 'var(--accent-red)' }}
+            className="w-full max-w-md bg-[#07090e] border border-red-500/30 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_20px_25px_-5px_rgba(0,0,0,0.5)] overflow-hidden" 
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header" style={{ borderBottomColor: 'rgba(239, 68, 68, 0.3)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  background: 'rgba(239, 68, 68, 0.2)',
-                  border: '1px solid var(--accent-red)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <AlertTriangle size={18} color="var(--accent-red)" />
+            <div className="px-5 py-4 border-b border-red-500/20 flex items-center justify-between bg-red-950/20">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-red-950/40 border border-red-500/40 flex items-center justify-center">
+                  <AlertTriangle size={18} className="text-red-400" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--accent-red)' }}>
+                  <h3 className="text-sm font-bold font-mono text-red-400 m-0">
                     Hapus Berkas Perkara Pidana
                   </h3>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  <div className="text-[11px] text-zinc-400">
                     Otoritas Super Admin & Admin Satreskrim
                   </div>
                 </div>
@@ -316,45 +295,39 @@ export default function CasesView({
 
               <button 
                 onClick={() => setCaseToDelete(null)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                className="bg-transparent border-none text-zinc-400 hover:text-white cursor-pointer p-1"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="modal-body" style={{ fontSize: '13px', lineHeight: 1.5 }}>
-              <p style={{ margin: 0 }}>
+            <div className="p-5 space-y-3 text-xs leading-relaxed text-zinc-300">
+              <p className="m-0">
                 Apakah Anda yakin ingin menghapus berkas perkara ini secara permanen dari database Supabase?
               </p>
 
-              <div style={{
-                marginTop: '12px',
-                padding: '12px',
-                background: 'rgba(239, 68, 68, 0.08)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 'var(--radius-md)',
-              }}>
-                <div className="mono" style={{ fontWeight: 700, color: 'var(--accent-cyan)', fontSize: '12.5px' }}>
+              <div className="p-3 bg-black/60 border border-red-500/20 rounded-lg">
+                <div className="font-mono font-bold text-red-400 text-xs">
                   {caseToDelete.no_lp}
                 </div>
-                <div style={{ fontWeight: 600, color: '#FFFFFF', marginTop: '4px' }}>
+                <div className="font-semibold text-white mt-1">
                   {caseToDelete.tindak_pidana}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                <div className="text-[11px] text-zinc-400 mt-0.5">
                   Terlapor: {caseToDelete.person?.nama || caseToDelete.terlapor_name} • Pelapor: {caseToDelete.pelapor_name}
                 </div>
               </div>
 
-              <p style={{ fontSize: '11px', color: 'var(--accent-red)', marginTop: '10px', marginBottom: 0 }}>
+              <p className="text-[11px] text-red-400 mt-2 mb-0">
                 * Perhatian: Seluruh histori dokumen administrasi penyidikan terkait perkara ini juga akan dibersihkan.
               </p>
             </div>
 
-            <div className="modal-footer">
+            <div className="px-5 py-3.5 bg-black/40 border-t border-white/10 flex items-center justify-end gap-2">
               <button 
                 type="button" 
                 onClick={() => setCaseToDelete(null)} 
-                className="btn btn-secondary btn-sm"
+                className="px-4 py-2 rounded-lg text-xs font-medium bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 transition-all cursor-pointer font-mono"
               >
                 Batal
               </button>
@@ -362,9 +335,9 @@ export default function CasesView({
                 type="button" 
                 disabled={isDeleting}
                 onClick={confirmDeleteCase}
-                className="btn btn-danger btn-sm"
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_15px_-3px_rgba(239,68,68,0.3)] border border-red-500/30 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 font-mono"
               >
-                <Trash2 size={14} />
+                <Trash2 size={13} />
                 <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus Perkara'}</span>
               </button>
             </div>

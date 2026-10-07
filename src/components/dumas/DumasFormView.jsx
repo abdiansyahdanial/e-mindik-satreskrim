@@ -10,6 +10,7 @@ import { deleteR2File } from '../../lib/r2Client.js';
 import { generateNomorDumasResmi, isUUID } from '../../services/dumasService.js';
 import { printSuratPengaduan, printTandaTerimaDumas } from '../../utils/dumasPrintGenerator.js';
 import ModalSelectPamapta from './ModalSelectPamapta';
+import { HudCard, HudCorners } from '../command/hud';
 
 const EVID_STORAGE_KEY = 'emindik_dumas_evidence_v2';
 
@@ -515,95 +516,39 @@ export default function DumasFormView({
   return (
     <div className="w-full max-w-6xl mx-auto py-6 px-4 space-y-6 text-zinc-100">
       {/* Header Navigasi & Status */}
-      <div 
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border rounded-xl p-4 sm:p-5"
-        style={{ backgroundColor: '#111622', borderColor: '#1E293B' }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <HudCorners size="md" />
+        <div className="flex items-center gap-3.5">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '36px',
-                height: '36px',
-                borderRadius: '0.5rem',
-                backgroundColor: '#1f2937',
-                border: '1px solid #374151',
-                color: '#cbd5e1',
-                cursor: 'pointer',
-                flexShrink: 0,
-                transition: 'background-color 0.2s ease'
-              }}
+              className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 cursor-pointer shrink-0 transition-all font-mono"
               title="Kembali ke Daftar Dumas"
             >
-              <ArrowLeft size={18} color="#cbd5e1" />
+              <ArrowLeft size={16} />
             </button>
           )}
 
-
           <div>
-            <div 
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                flexWrap: 'wrap'
-              }}
-            >
-              <div 
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  flexShrink: 0
-                }}
-              >
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-red-950/40 border border-red-500/30 shrink-0">
                 {isSubmitting ? (
-                  <Loader2 size={20} className="text-red-500 animate-spin" />
+                  <Loader2 size={18} className="text-red-500 animate-spin" />
                 ) : (
-                  <Shield size={20} className="text-red-500" />
+                  <Shield size={18} className="text-red-500" />
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <h2 
-                  style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 700,
-                    letterSpacing: '-0.025em',
-                    color: '#FFFFFF',
-                    margin: 0,
-                    lineHeight: 1.3
-                  }}
-                >
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold font-mono tracking-tight text-white m-0">
                   FORMULIR PENGADUAN MASYARAKAT (DUMAS)
                 </h2>
-                <span 
-                  style={{
-                    fontSize: '10px',
-                    fontFamily: 'monospace',
-                    textTransform: 'uppercase',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#F87171',
-                    fontWeight: 700
-                  }}
-                >
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-red-950/40 border border-red-500/30 text-red-400 font-bold">
                   {mode === 'edit' ? 'MODE EDIT' : 'MODE BARU'}
                 </span>
               </div>
             </div>
-            <p className="text-xs text-zinc-400 mt-1 pl-[50px]">
+            <p className="text-xs text-zinc-400 mt-1 pl-[48px]">
               Modul formulir terpadu SAT RESKRIM POLRES KOLAKA TIMUR
             </p>
           </div>
@@ -613,75 +558,41 @@ export default function DumasFormView({
           <button
             type="button"
             onClick={handleClearEvidence}
-            style={{
-              backgroundColor: 'rgba(244, 63, 94, 0.1)',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
-              color: '#fb7185',
-              padding: '0.375rem 0.75rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.75rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              cursor: 'pointer'
-            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-rose-950/30 hover:bg-rose-900/50 text-rose-400 border border-rose-500/30 cursor-pointer transition-all"
             title="Kosongkan Berkas Bukti"
           >
-            <RotateCcw size={13} />
-            Kosongkan Bukti
+            <RotateCcw size={12} />
+            <span>Kosongkan Bukti</span>
           </button>
         )}
       </div>
 
       {/* Bagian Informasi Registrasi & Nomor Dumas */}
-      <div 
-        style={{
-          backgroundColor: '#111827',
-          border: '1px solid #1f2937',
-          borderRadius: '0.75rem',
-          padding: '1rem',
-          marginBottom: '1.5rem',
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileText size={15} style={{ color: '#60a5fa' }} />
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#e2e8f0' }}>
+      <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] mb-6">
+        <HudCorners size="md" />
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <FileText size={15} className="text-red-400" />
+            <span className="text-xs font-semibold font-mono tracking-wider uppercase text-zinc-200">
               Nomor Registrasi Dumas
             </span>
-            <span style={{ color: '#f87171' }}>*</span>
-            <span 
-              style={{
-                fontSize: '10px',
-                fontFamily: 'monospace',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                color: '#60a5fa',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
-                borderRadius: '0.25rem',
-                padding: '0.125rem 0.5rem'
-              }}
-            >
+            <span className="text-red-500">*</span>
+            <span className="text-[10px] font-mono bg-red-950/30 text-red-400 border border-red-500/30 rounded px-2 py-0.5">
               Otomatis Sistem / Bisa Diedit Manual
             </span>
           </div>
 
           {ocrNomorSurat && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>Scan OCR:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-zinc-400">Scan OCR:</span>
               <button
                 type="button"
                 onClick={() => setNomorDumas(ocrNomorSurat)}
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  padding: '0.125rem 0.5rem',
-                  borderRadius: '0.25rem',
-                  cursor: 'pointer',
-                  backgroundColor: nomorDumas === ocrNomorSurat ? 'rgba(6, 78, 59, 0.6)' : '#1e293b',
-                  color: nomorDumas === ocrNomorSurat ? '#6ee7b7' : '#38bdf8',
-                  border: nomorDumas === ocrNomorSurat ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid #334155'
-                }}
+                className={`text-[11px] font-mono px-2 py-0.5 rounded cursor-pointer transition-all ${
+                  nomorDumas === ocrNomorSurat
+                    ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/40 font-bold'
+                    : 'bg-white/5 text-zinc-300 border border-white/10 hover:bg-white/10'
+                }`}
                 title="Gunakan nomor surat hasil scan dokumen OCR"
               >
                 Gunakan No. OCR
@@ -690,9 +601,9 @@ export default function DumasFormView({
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <div style={{ position: 'absolute', top: 0, bottom: 0, left: '0.75rem', display: 'flex', alignItems: 'center', pointerEvents: 'none', color: '#64748b' }}>
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
               <Hash size={15} />
             </div>
             <input
@@ -700,18 +611,7 @@ export default function DumasFormView({
               value={nomorDumas}
               onChange={(e) => setNomorDumas(e.target.value)}
               placeholder="B/DUMAS/01/IX/2026/SPKT/Polres Koltim/Polda Sultra"
-              style={{
-                width: '100%',
-                backgroundColor: '#030712',
-                border: '1px solid #374151',
-                borderRadius: '0.5rem',
-                padding: '0.5rem 1rem 0.5rem 2.25rem',
-                fontSize: '0.875rem',
-                fontFamily: 'monospace',
-                color: '#34d399',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
+              className="w-full bg-black/40 backdrop-blur-sm border border-white/10 text-white placeholder-zinc-500 rounded-lg pl-9 pr-3.5 py-2.5 text-xs font-mono focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none transition-all"
             />
           </div>
           
@@ -719,27 +619,13 @@ export default function DumasFormView({
             type="button"
             onClick={handleResetNomorOtomatis}
             disabled={isGeneratingNo}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              padding: '0.5rem 0.875rem',
-              backgroundColor: '#1f2937',
-              border: '1px solid #374151',
-              borderRadius: '0.5rem',
-              fontSize: '0.75rem',
-              fontWeight: 500,
-              color: '#e2e8f0',
-              cursor: isGeneratingNo ? 'not-allowed' : 'pointer',
-              opacity: isGeneratingNo ? 0.5 : 1,
-              whiteSpace: 'nowrap'
-            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-mono font-medium bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
             title="Kembalikan ke nomor registrasi rekomendasi sistem dinas"
           >
             {isGeneratingNo ? (
-              <Loader2 size={13} className="animate-spin" style={{ color: '#60a5fa' }} />
+              <Loader2 size={13} className="animate-spin text-red-400" />
             ) : (
-              <RotateCcw size={13} style={{ color: '#cbd5e1' }} />
+              <RotateCcw size={13} className="text-zinc-400" />
             )}
             <span>Reset Nomor Otomatis</span>
           </button>
@@ -774,44 +660,18 @@ export default function DumasFormView({
       />
 
       {/* Sticky Bottom Action Bar */}
-      <div
-        style={{
-          position: 'sticky',
-          bottom: 0,
-          backgroundColor: 'rgba(17, 22, 34, 0.95)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid #1E293B',
-          borderRadius: '0.75rem',
-          padding: '0.875rem 1.25rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          zIndex: 30,
-          boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.4)'
-        }}
-      >
+      <div className="sticky bottom-0 z-30 p-3.5 md:px-5 relative group/card bg-[#05070a]/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_-8px_25px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.06)] flex items-center justify-between gap-3">
+        <HudCorners size="md" />
         <button
           type="button"
           onClick={onBack}
-          style={{
-            padding: '0.5rem 1rem',
-            borderRadius: '0.5rem',
-            fontSize: '0.75rem',
-            fontFamily: 'monospace',
-            color: '#CBD5E1',
-            backgroundColor: '#1E2638',
-            border: '1px solid #292F42',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem'
-          }}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono font-medium bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 transition-all cursor-pointer"
         >
           <ArrowLeft size={14} />
           Batal
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
@@ -850,19 +710,7 @@ export default function DumasFormView({
               };
               printSuratPengaduan(currentFormData);
             }}
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#38BDF8',
-              backgroundColor: '#0F172A',
-              border: '1px solid #1E293B',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem'
-            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-semibold text-sky-400 bg-sky-950/30 hover:bg-sky-900/50 border border-sky-500/30 transition-all cursor-pointer"
             title="Cetak Surat Laporan Pengaduan (Dumas)"
           >
             <Printer size={14} />
@@ -908,19 +756,7 @@ export default function DumasFormView({
               setTempFormDataForPrint(currentFormData);
               setIsPamaptaModalOpen(true);
             }}
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#34D399',
-              backgroundColor: '#0F172A',
-              border: '1px solid #1E293B',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem'
-            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-semibold text-emerald-400 bg-emerald-950/30 hover:bg-emerald-900/50 border border-emerald-500/30 transition-all cursor-pointer"
             title="Cetak Surat Tanda Penerimaan Laporan (STTLP)"
           >
             <FileText size={14} />
@@ -931,22 +767,9 @@ export default function DumasFormView({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            style={{
-              padding: '0.5rem 1.25rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              color: '#FFFFFF',
-              backgroundColor: isSubmitting ? '#991B1B' : '#DC2626',
-              border: '1px solid #EF4444',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              boxShadow: '0 0 12px rgba(220, 38, 38, 0.3)'
-            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-mono bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-[0_0_15px_-3px_rgba(239,68,68,0.3)] border border-red-500/30 transition-all cursor-pointer disabled:opacity-50"
           >
-            {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             {isSubmitting
               ? 'Menyimpan Dumas...'
               : mode === 'edit'

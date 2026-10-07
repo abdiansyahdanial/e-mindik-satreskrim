@@ -1,4 +1,5 @@
 import React from 'react';
+import { HudCorners } from '../../command/hud';
 
 export default function PelaporSection({ data = {}, onChange }) {
   const handleChange = (field, value) => {
@@ -7,109 +8,40 @@ export default function PelaporSection({ data = {}, onChange }) {
     }
   };
 
-  const inputStyle = {
-    width: '100%',
-    backgroundColor: '#141C2B',
-    border: '1px solid #263347',
-    borderRadius: '0.5rem',
-    padding: '0.625rem 0.875rem',
-    color: '#F1F5F9',
-    fontSize: '0.8125rem',
-    outline: 'none',
-    boxSizing: 'border-box'
-  };
-
-  const labelStyle = {
-    display: 'block',
-    fontSize: '0.6875rem',
-    fontFamily: 'monospace',
-    fontWeight: 700,
-    color: '#94A3B8',
-    marginBottom: '0.375rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em'
-  };
+  const inputClass = "w-full bg-black/40 backdrop-blur-sm border border-white/10 text-white placeholder-zinc-500 rounded-lg px-3.5 py-2.5 text-xs focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none transition-all";
+  const labelClass = "block text-[11px] font-mono font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider";
 
   return (
-    <div
-      style={{
-        backgroundColor: '#111622',
-        border: '1px solid #1E293B',
-        borderRadius: '0.75rem',
-        padding: '1.25rem',
-        color: '#F1F5F9'
-      }}
-    >
+    <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] text-zinc-100">
+      <HudCorners size="md" />
+
       {/* Header Bagian 01 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid #1E293B',
-          paddingBottom: '0.875rem',
-          marginBottom: '1.25rem'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <div
-            style={{
-              width: '1.5rem',
-              height: '1.5rem',
-              borderRadius: '0.375rem',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              color: '#EF4444',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              fontSize: '0.75rem'
-            }}
-          >
+      <div className="flex items-center justify-between border-b border-white/10 pb-3.5 mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-md bg-red-950/40 border border-red-500/30 text-red-400 flex items-center justify-center font-mono font-bold text-xs">
             01
           </div>
           <div>
-            <h3
-              style={{
-                fontSize: '0.875rem',
-                fontWeight: 700,
-                color: '#FFFFFF',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                fontFamily: 'monospace',
-                margin: 0
-              }}
-            >
+            <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider font-mono m-0">
               IDENTITAS PELAPOR / KORBAN
             </h3>
-            <p style={{ fontSize: '0.6875rem', color: '#64748B', margin: '0.125rem 0 0 0' }}>
+            <p className="text-[11px] text-zinc-400 mt-0.5 mb-0">
               Data diri lengkap pihak yang mengadukan atau melapor perkara
             </p>
           </div>
         </div>
-        <span
-          style={{
-            fontSize: '0.625rem',
-            fontFamily: 'monospace',
-            color: '#94A3B8',
-            backgroundColor: '#0B0D13',
-            padding: '0.2rem 0.5rem',
-            borderRadius: '0.25rem',
-            border: '1px solid #263347'
-          }}
-        >
+        <span className="text-[10px] font-mono text-zinc-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
           Pihak Pelapor
         </span>
       </div>
 
       {/* Grid Formulir Pelapor */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="flex flex-col gap-4">
         {/* Baris 1: NIK & Nama Lengkap */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="pelapor_nik" style={labelStyle}>
-              NIK (NOMOR INDUK KEPENDUDUKAN) <span style={{ color: '#EF4444' }}>*</span>
+            <label htmlFor="pelapor_nik" className={labelClass}>
+              NIK (NOMOR INDUK KEPENDUDUKAN) <span className="text-red-500">*</span>
             </label>
             <input
               id="pelapor_nik"
@@ -119,13 +51,13 @@ export default function PelaporSection({ data = {}, onChange }) {
               value={data.nik || ''}
               onChange={(e) => handleChange('nik', e.target.value)}
               placeholder="74**************"
-              style={inputStyle}
+              className={`${inputClass} font-mono`}
             />
           </div>
 
           <div>
-            <label htmlFor="pelapor_nama" style={labelStyle}>
-              NAMA LENGKAP <span style={{ color: '#EF4444' }}>*</span>
+            <label htmlFor="pelapor_nama" className={labelClass}>
+              NAMA LENGKAP <span className="text-red-500">*</span>
             </label>
             <input
               id="pelapor_nama"
@@ -134,14 +66,14 @@ export default function PelaporSection({ data = {}, onChange }) {
               value={data.nama || ''}
               onChange={(e) => handleChange('nama', e.target.value)}
               placeholder="Nama lengkap beserta gelar (jika ada)"
-              style={inputStyle}
+              className={inputClass}
             />
           </div>
         </div>
 
         {/* Baris 2: Tempat & Tanggal Lahir (Single Text Input) */}
         <div>
-          <label htmlFor="pelapor_tempat_tanggal_lahir" style={labelStyle}>
+          <label htmlFor="pelapor_tempat_tanggal_lahir" className={labelClass}>
             TEMPAT, TGL LAHIR
           </label>
           <input
@@ -154,14 +86,14 @@ export default function PelaporSection({ data = {}, onChange }) {
               handleChange('ttl', e.target.value);
             }}
             placeholder="Contoh: Kolaka, 12 Mei 1990"
-            style={inputStyle}
+            className={inputClass}
           />
         </div>
 
         {/* Baris 3: Jenis Kelamin, Agama, Kewarganegaraan */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label htmlFor="pelapor_jenis_kelamin" style={labelStyle}>
+            <label htmlFor="pelapor_jenis_kelamin" className={labelClass}>
               JENIS KELAMIN
             </label>
             <select
@@ -169,15 +101,15 @@ export default function PelaporSection({ data = {}, onChange }) {
               name="pelapor_jenis_kelamin"
               value={data.jenis_kelamin || 'Laki-laki'}
               onChange={(e) => handleChange('jenis_kelamin', e.target.value)}
-              style={inputStyle}
+              className={inputClass}
             >
-              <option value="Laki-laki">Laki-laki</option>
-              <option value="Perempuan">Perempuan</option>
+              <option value="Laki-laki" className="bg-zinc-900 text-white">Laki-laki</option>
+              <option value="Perempuan" className="bg-zinc-900 text-white">Perempuan</option>
             </select>
           </div>
 
           <div>
-            <label htmlFor="pelapor_agama" style={labelStyle}>
+            <label htmlFor="pelapor_agama" className={labelClass}>
               AGAMA
             </label>
             <select
@@ -185,19 +117,19 @@ export default function PelaporSection({ data = {}, onChange }) {
               name="pelapor_agama"
               value={data.agama || 'Islam'}
               onChange={(e) => handleChange('agama', e.target.value)}
-              style={inputStyle}
+              className={inputClass}
             >
-              <option value="Islam">Islam</option>
-              <option value="Kristen Protestan">Kristen Protestan</option>
-              <option value="Katolik">Katolik</option>
-              <option value="Hindu">Hindu</option>
-              <option value="Buddha">Buddha</option>
-              <option value="Konghucu">Konghucu</option>
+              <option value="Islam" className="bg-zinc-900 text-white">Islam</option>
+              <option value="Kristen Protestan" className="bg-zinc-900 text-white">Kristen Protestan</option>
+              <option value="Katolik" className="bg-zinc-900 text-white">Katolik</option>
+              <option value="Hindu" className="bg-zinc-900 text-white">Hindu</option>
+              <option value="Buddha" className="bg-zinc-900 text-white">Buddha</option>
+              <option value="Konghucu" className="bg-zinc-900 text-white">Konghucu</option>
             </select>
           </div>
 
           <div>
-            <label htmlFor="pelapor_kewarganegaraan" style={labelStyle}>
+            <label htmlFor="pelapor_kewarganegaraan" className={labelClass}>
               KEWARGANEGARAAN
             </label>
             <select
@@ -205,18 +137,18 @@ export default function PelaporSection({ data = {}, onChange }) {
               name="pelapor_kewarganegaraan"
               value={data.kewarganegaraan || 'WNI'}
               onChange={(e) => handleChange('kewarganegaraan', e.target.value)}
-              style={inputStyle}
+              className={inputClass}
             >
-              <option value="WNI">WNI (Indonesia)</option>
-              <option value="WNA">WNA (Asing)</option>
+              <option value="WNI" className="bg-zinc-900 text-white">WNI (Indonesia)</option>
+              <option value="WNA" className="bg-zinc-900 text-white">WNA (Asing)</option>
             </select>
           </div>
         </div>
 
         {/* Baris 4: Pekerjaan & No Telepon */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="pelapor_pekerjaan" style={labelStyle}>
+            <label htmlFor="pelapor_pekerjaan" className={labelClass}>
               PEKERJAAN
             </label>
             <input
@@ -226,13 +158,13 @@ export default function PelaporSection({ data = {}, onChange }) {
               value={data.pekerjaan || ''}
               onChange={(e) => handleChange('pekerjaan', e.target.value)}
               placeholder="Contoh: Wiraswasta, PNS, Petani, Karyawan"
-              style={inputStyle}
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label htmlFor="pelapor_telepon" style={labelStyle}>
-              NO. TELEPON / WHATSAPP <span style={{ color: '#EF4444' }}>*</span>
+            <label htmlFor="pelapor_telepon" className={labelClass}>
+              NO. TELEPON / WHATSAPP <span className="text-red-500">*</span>
             </label>
             <input
               id="pelapor_telepon"
@@ -241,14 +173,14 @@ export default function PelaporSection({ data = {}, onChange }) {
               value={data.telepon || data.kontak || ''}
               onChange={(e) => handleChange('telepon', e.target.value)}
               placeholder="08************"
-              style={inputStyle}
+              className={`${inputClass} font-mono`}
             />
           </div>
         </div>
 
         {/* Baris 5: Alamat Lengkap Domisili KTP */}
         <div>
-          <label htmlFor="pelapor_alamat" style={labelStyle}>
+          <label htmlFor="pelapor_alamat" className={labelClass}>
             ALAMAT DOMISILI KTP
           </label>
           <textarea
@@ -258,7 +190,7 @@ export default function PelaporSection({ data = {}, onChange }) {
             value={data.alamat || ''}
             onChange={(e) => handleChange('alamat', e.target.value)}
             placeholder="Alamat lengkap tempat tinggal / domisili sesuai KTP"
-            style={{ ...inputStyle, resize: 'vertical' }}
+            className={`${inputClass} resize-y`}
           />
         </div>
       </div>
