@@ -5,6 +5,59 @@ const saveAs = fileSaver.saveAs || fileSaver;
 import mammoth from 'mammoth';
 import { supabase } from '../supabaseClient.js';
 
+async function syncDataFromArchive(currentCase, suspectsList, formValues = {}) {
+  if (!currentCase || !currentCase.id) return;
+  try {
+    const { data: arsip } = await supabase.from('documents').select('*').eq('case_id', currentCase.id);
+    if (!arsip || arsip.length === 0) return;
+
+    // Helper presisi berdasarkan struktur payload asli
+    const extractDate = (doc) => doc.doc_date || doc.tanggal_surat || doc.document_date || (doc.created_at ? doc.created_at.split('T')[0] : null);
+    const extractNo = (doc) => doc.document_number || doc.doc_number || doc.nomor_surat;
+
+    // 1. INJEKSI PAKSA SPRIN SIDIK
+    const sprinSidik = arsip.find(d => d.template_code?.includes('SPRIN_SIDIK'));
+    if (sprinSidik) {
+      const no = extractNo(sprinSidik);
+      const tgl = extractDate(sprinSidik);
+      if (no) { formValues.NO_SPRIN_SIDIK = formValues.NO_SPRIN_SIDIK || no; currentCase.no_sprin_sidik = no; }
+      if (tgl) { formValues.TGL_SPRIN_SIDIK = formValues.TGL_SPRIN_SIDIK || tgl; currentCase.tgl_sprin_sidik = tgl; }
+    }
+
+    // 2. INJEKSI PAKSA SPRIN GAS SIDIK
+    const gasSidik = arsip.find(d => d.template_code?.includes('GAS_SIDIK') || d.template_code?.includes('TUGAS_PENYIDIKAN'));
+    if (gasSidik) {
+      const no = extractNo(gasSidik);
+      const tgl = extractDate(gasSidik);
+      if (no) { formValues.NO_SPRIN_GAS_SIDIK = formValues.NO_SPRIN_GAS_SIDIK || no; currentCase.no_sprin_gas_sidik = no; }
+      if (tgl) { formValues.TGL_SPRIN_GAS_SIDIK = formValues.TGL_SPRIN_GAS_SIDIK || tgl; currentCase.tgl_sprin_gas_sidik = tgl; }
+    }
+
+    // 3. DEEP SCAN UNTUK S.TAP TERSANGKA
+    if (Array.isArray(suspectsList)) {
+      const semuaTap = arsip.filter(d => d.template_code?.includes('TAP_TSK') || (d.document_name || '').toUpperCase().includes('PENETAPAN TERSANGKA'));
+      
+      suspectsList.forEach(s => {
+        if (!s || !s.nama) return;
+        
+        // Kunci Final: Cari nama tersangka di dalam koper JSON metadata!
+        const tap = semuaTap.find(d => {
+          const metaStr = JSON.stringify(d.metadata || d.meta_values || {}).toLowerCase();
+          const titleStr = (d.document_name || d.title || d.doc_title || '').toLowerCase();
+          return metaStr.includes(s.nama.toLowerCase()) || titleStr.includes(s.nama.toLowerCase());
+        });
+        
+        if (tap) {
+          s.nomor_sp_tap = extractNo(tap) || s.nomor_sp_tap;
+          s.tanggal_sp_tap = extractDate(tap) || s.tanggal_sp_tap;
+        }
+      });
+    }
+  } catch (e) {
+    console.error('Universal Tracker Error:', e);
+  }
+}
+
 // In-memory cache biner template untuk download instan (0 ms)
 const templateArrayBufferCache = new Map();
 
@@ -1947,12 +2000,99 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     finalPayload.terbilang_tahun = finalPayload.TERBILANG_TAHUN;
   }
 
+  // ==============================================================
+  // INJEKSI ABSOLUT: SPDP MULTI-TERSANGKA (Bypass State Frontend)
+  // ==============================================================
+  const isSpdpMultiDoc = tplCode === 'SPDP_MORE_1_TSK' || (selectedTemplate && (selectedTemplate.title || selectedTemplate.name || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA'));
+
+  if (isSpdpMultiDoc && Array.isArray(suspectsList) && suspectsList.length > 0) {
+    const sahSuspects = suspectsList.filter(s => s && s.nama);
+
+    for (let i = 1; i <= 5; i++) {
+      const s = sahSuspects[i - 1];
+      if (s) {
+        // Tarik semua alias untuk Nomor & Tanggal SP.Tap
+        finalPayload[`TSK_${i}_NOMOR_SP_TAP`] = s.nomor_sp_tap || s.no_sp_tap_tsk || s.no_sp_tap || s.nomor_sptap || s.no_sptap_tsk || '-';
+        
+        const rawTglSpTap = s.tanggal_sp_tap || s.tgl_sp_tap_tsk || s.tgl_sp_tap || s.tanggal_sptap || s.tgl_sptap_tsk;
+        finalPayload[`TSK_${i}_TGL_SP_TAP`] = rawTglSpTap ? formatTanggalIndonesia(rawTglSpTap) : '-';
+
+        finalPayload[`TSK_${i}_NAMA`] = s.nama || '-';
+        finalPayload[`TSK_${i}_NIK`] = s.nik || s.no_identitas || '-';
+        finalPayload[`TSK_${i}_KEWARGANEGARAAN`] = s.kewarganegaraan || 'Indonesia';
+        finalPayload[`TSK_${i}_JK`] = s.jenis_kelamin || s.jk || '-';
+        finalPayload[`TSK_${i}_TTL`] = (s.tempat_lahir || s.tgl_lahir) ? `${s.tempat_lahir || ''}, ${s.tgl_lahir || ''}` : '-';
+        finalPayload[`TSK_${i}_UMUR`] = s.umur ? `${s.umur}` : '-';
+        finalPayload[`TSK_${i}_PEKERJAAN`] = s.pekerjaan || '-';
+        finalPayload[`TSK_${i}_PENDIDIKAN`] = s.pendidikan || '-';
+        finalPayload[`TSK_${i}_AGAMA`] = s.agama || '-';
+        finalPayload[`TSK_${i}_STATUS_NIKAH`] = s.status_nikah || s.status_pernikahan || '-';
+        finalPayload[`TSK_${i}_ALAMAT`] = s.alamat || '-';
+      } else {
+        // Kosongkan sisa slot tersangka agar tag di dokumen Word terhapus bersih
+        finalPayload[`TSK_${i}_NOMOR_SP_TAP`] = '';
+        finalPayload[`TSK_${i}_TGL_SP_TAP`] = '';
+        finalPayload[`TSK_${i}_NAMA`] = '';
+        finalPayload[`TSK_${i}_NIK`] = '';
+        finalPayload[`TSK_${i}_KEWARGANEGARAAN`] = '';
+        finalPayload[`TSK_${i}_JK`] = '';
+        finalPayload[`TSK_${i}_TTL`] = '';
+        finalPayload[`TSK_${i}_UMUR`] = '';
+        finalPayload[`TSK_${i}_PEKERJAAN`] = '';
+        finalPayload[`TSK_${i}_PENDIDIKAN`] = '';
+        finalPayload[`TSK_${i}_AGAMA`] = '';
+        finalPayload[`TSK_${i}_STATUS_NIKAH`] = '';
+        finalPayload[`TSK_${i}_ALAMAT`] = '';
+      }
+      
+      // Daftarkan format huruf kecil (lowercase) agar mesin docxtemplater aman
+      const currentKeys = Object.keys(finalPayload).filter(k => k.startsWith(`TSK_${i}_`));
+      currentKeys.forEach(k => { 
+        finalPayload[k.toLowerCase()] = finalPayload[k]; 
+      });
+    }
+  }
+  // ==============================================================
+
   // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined' di dokumen Word
   Object.keys(finalPayload).forEach((k) => {
     if (finalPayload[k] === null || finalPayload[k] === undefined || finalPayload[k] === 'null' || finalPayload[k] === 'undefined') {
       finalPayload[k] = '';
     }
   });
+
+  // ==========================================
+  // INJEKSI ABSOLUT MULTI-TERSANGKA
+  // ==========================================
+  if (Array.isArray(suspectsList)) {
+    const sahSuspects = suspectsList.filter(s => s && s.nama);
+    for (let i = 0; i < 5; i++) {
+      const s = sahSuspects[i];
+      const idx = i + 1;
+      if (s) {
+        finalPayload[`TSK_${idx}_NAMA`] = s.nama || '-';
+        finalPayload[`TSK_${idx}_NOMOR_SP_TAP`] = s.nomor_sp_tap || s.no_sp_tap_tsk || '-';
+        finalPayload[`TSK_${idx}_TGL_SP_TAP`] = s.tanggal_sp_tap ? formatTanggalIndonesia(s.tanggal_sp_tap) : '-';
+        finalPayload[`TSK_${idx}_NIK`] = s.nik || s.nomor_identitas || '-';
+        finalPayload[`TSK_${idx}_TTL`] = `${s.tempat_lahir || '-'}, ${s.tanggal_lahir ? formatTanggalIndonesia(s.tanggal_lahir) : '-'}`;
+        finalPayload[`TSK_${idx}_JK`] = s.jenis_kelamin || s.jk || '-';
+        finalPayload[`TSK_${idx}_AGAMA`] = s.agama || '-';
+        finalPayload[`TSK_${idx}_PEKERJAAN`] = s.pekerjaan || '-';
+        finalPayload[`TSK_${idx}_ALAMAT`] = s.alamat || s.tempat_tinggal || '-';
+        finalPayload[`TSK_${idx}_UMUR`] = s.umur || '-';
+        finalPayload[`TSK_${idx}_PENDIDIKAN`] = s.pendidikan || '-';
+        finalPayload[`TSK_${idx}_KEWARGANEGARAAN`] = s.kewarganegaraan || 'Indonesia';
+        finalPayload[`TSK_${idx}_STATUS_NIKAH`] = s.status_nikah || s.status_pernikahan || '-';
+      } else {
+        // Kosongkan sisa tag jika tersangka kurang dari 5 agar tidak tertulis di Word
+        finalPayload[`TSK_${idx}_NAMA`] = ''; finalPayload[`TSK_${idx}_NOMOR_SP_TAP`] = ''; finalPayload[`TSK_${idx}_TGL_SP_TAP`] = '';
+        finalPayload[`TSK_${idx}_NIK`] = ''; finalPayload[`TSK_${idx}_TTL`] = ''; finalPayload[`TSK_${idx}_JK`] = '';
+        finalPayload[`TSK_${idx}_AGAMA`] = ''; finalPayload[`TSK_${idx}_PEKERJAAN`] = ''; finalPayload[`TSK_${idx}_ALAMAT`] = '';
+        finalPayload[`TSK_${idx}_UMUR`] = ''; finalPayload[`TSK_${idx}_PENDIDIKAN`] = ''; finalPayload[`TSK_${idx}_KEWARGANEGARAAN`] = '';
+        finalPayload[`TSK_${idx}_STATUS_NIKAH`] = '';
+      }
+    }
+  }
 
   return finalPayload;
 }
@@ -2066,9 +2206,9 @@ export async function generateAndDownloadDocx({
   caseData,
   activeCase,
   activeSuspect,
-  suspectsList,
+  suspectsList = [],
   activeVictim,
-  victimsList,
+  victimsList = [],
   formValues = {},
   personnelList = []
 }) {
@@ -2080,55 +2220,30 @@ export async function generateAndDownloadDocx({
     throw new Error('Data berkas perkara belum dipilih.');
   }
 
-  // 1. Fetch .docx from Supabase Storage
-  let arrayBuffer;
-  if (template.file_path) {
-    arrayBuffer = await fetchDocxArrayBuffer(template.file_path);
-  } else {
-    throw new Error(`Template '${template.title}' belum memiliki file .docx di Supabase Storage. Silakan upload file fisik di Template Studio.`);
-  }
-
-  // 2. Load into PizZip & normalize delimiters
-  const zip = new PizZip(arrayBuffer);
-  normalizeDocxXml(zip);
-
-  // 3. Prepare data map
-  const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
+  const docxRes = await generateDocxBlob({
+    template,
+    caseData: currentCase,
+    activeCase: currentCase,
     activeSuspect,
     suspectsList,
     activeVictim,
     victimsList,
-    template
+    formValues,
+    personnelList
   });
 
-  // 4. Compile with Docxtemplater
-  const doc = new Docxtemplater(zip, {
-    paragraphLoop: true,
-    linebreaks: true,
-    nullGetter: () => ''
-  });
-
-  doc.render(dataMap);
-
-  // 5. Generate output blob
-  const outputBlob = doc.getZip().generate({
-    type: 'blob',
-    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  });
-
-  // 6. Filename
-  const cleanTitle = (template.title || 'Dokumen_Mindik').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const cleanNoLp = (currentCase.nomor_lp || currentCase.no_lp || 'LP').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const filename = `${cleanTitle}_${cleanNoLp}.docx`;
+  if (!docxRes.hasPhysicalFile || !docxRes.blob) {
+    throw new Error(docxRes.message || `Template '${template.title}' belum memiliki file .docx di Supabase Storage. Silakan upload file fisik di Template Studio.`);
+  }
 
   // 7. Save file to client
-  saveAs(outputBlob, filename);
+  saveAs(docxRes.blob, docxRes.filename);
 
   return {
     success: true,
-    filename,
-    blob: outputBlob,
-    dataMap
+    filename: docxRes.filename,
+    blob: docxRes.blob,
+    dataMap: docxRes.dataMap
   };
 }
 
@@ -2141,9 +2256,9 @@ export async function renderDocxToHtml({
   caseData,
   activeCase,
   activeSuspect,
-  suspectsList,
+  suspectsList = [],
   activeVictim,
-  victimsList,
+  victimsList = [],
   formValues = {},
   personnelList = []
 }) {
@@ -2168,6 +2283,9 @@ export async function renderDocxToHtml({
   // 2. Load into PizZip & clean delimiters
   const zip = new PizZip(arrayBuffer);
   normalizeDocxXml(zip);
+
+  // SISIPKAN BARIS INI:
+  await syncDataFromArchive(currentCase || caseData, suspectsList, formValues);
 
   // 3. Build data map
   const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
@@ -2232,9 +2350,9 @@ export async function generateDocxBlob({
   caseData,
   activeCase,
   activeSuspect,
-  suspectsList,
+  suspectsList = [],
   activeVictim,
-  victimsList,
+  victimsList = [],
   formValues = {},
   personnelList = []
 }) {
@@ -2261,6 +2379,9 @@ export async function generateDocxBlob({
   // 2. Load into PizZip & clean delimiters
   const zip = new PizZip(arrayBuffer);
   normalizeDocxXml(zip);
+
+  // SISIPKAN BARIS INI:
+  await syncDataFromArchive(currentCase || caseData, suspectsList, formValues);
 
   // 3. Build data map
   const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
@@ -2321,7 +2442,8 @@ export async function convertDocxToPdf(docxBlob, options = {}) {
     if (!base64) return null;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 detik timeout
+    // Beri waktu 30 detik untuk rendering PDF lokal yang berat
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     const response = await fetch('/api/convert-docx-to-pdf', {
       method: 'POST',
@@ -2361,9 +2483,9 @@ export async function generatePdfBlob({
   caseData,
   activeCase,
   activeSuspect,
-  suspectsList,
+  suspectsList = [],
   activeVictim,
-  victimsList,
+  victimsList = [],
   formValues = {},
   personnelList = [],
   bypassCache = false

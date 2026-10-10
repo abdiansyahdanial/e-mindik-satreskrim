@@ -776,6 +776,13 @@ export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [],
   const targetCode = (tpl.code || tpl.template_code || '').toUpperCase().trim();
   const targetTitle = (tpl.title || tpl.name || '').toUpperCase().trim();
 
+  const establishedCount = (suspects || []).filter(s => s.status === 'tersangka' || s.no_sp_tap_tsk || s.nomor_sp_tap).length;
+  if (targetCode === 'SPDP_MORE_1_TSK' || targetTitle.includes('LEBIH DARI 1 TERSANGKA')) {
+    if (establishedCount < 2) {
+      return { allowed: false, unlocked: false, reason: `Baru ${establishedCount} tersangka sah. Wajib minimal 2 SP.Tap.Tsk.`, badge: 'Terkunci', isLocked: true };
+    }
+  }
+
   // Dokumen LIDIK selalu terbuka
   if (getTemplateStage(tpl) === 'LIDIK' || targetCode.startsWith('LIDIK')) {
     return { allowed: true, unlocked: true, reason: '', badge: 'Lidik', isLocked: false };
@@ -841,10 +848,61 @@ export const checkPrerequisite = (tpl, targetCase, caseDocs = [], suspects = [],
         isLocked: true
       };
     }
+    
+    // Penegakan syarat jumlah tersangka SPDP
+    
+    if (targetCode === 'SPDP_TSK' && establishedCount < 1) {
+      return {
+        allowed: false,
+        unlocked: false,
+        reason: 'Wajib membuat SP.Tap.Tsk terlebih dahulu.',
+        badge: 'Perlu SP.Tap.Tsk',
+        isLocked: true
+      };
+    }
+
     return { allowed: true, unlocked: true, reason: '', badge: 'Siap Dikirim', isLocked: false };
   }
 
   return { allowed: true, unlocked: true, reason: '', badge: '', isLocked: false };
+};
+
+export const buildMultiSuspectFields = (caseSuspects) => {
+  const establishedSuspects = (caseSuspects || []).filter(s => s.status === 'tersangka' || s.no_sp_tap_tsk || s.nomor_sp_tap);
+  const fields = {};
+  for (let i = 1; i <= 5; i++) {
+    const s = establishedSuspects[i - 1];
+    if (s) {
+      fields[`TSK_${i}_NOMOR_SP_TAP`] = s.nomor_sp_tap || s.no_sp_tap_tsk || '-';
+      fields[`TSK_${i}_TGL_SP_TAP`] = s.tanggal_sp_tap || s.tgl_sp_tap_tsk ? formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk) : '-';
+      fields[`TSK_${i}_NAMA`] = s.nama || '-';
+      fields[`TSK_${i}_NIK`] = s.nik || s.no_identitas || '-';
+      fields[`TSK_${i}_KEWARGANEGARAAN`] = s.kewarganegaraan || 'Indonesia';
+      fields[`TSK_${i}_JK`] = s.jenis_kelamin || s.jk || '-';
+      fields[`TSK_${i}_TTL`] = (s.tempat_lahir || s.tgl_lahir) ? `${s.tempat_lahir || ''}, ${s.tgl_lahir ? formatTanggalIndonesia(s.tgl_lahir) : ''}` : '-';
+      fields[`TSK_${i}_UMUR`] = s.umur ? `${s.umur}` : '-';
+      fields[`TSK_${i}_PEKERJAAN`] = s.pekerjaan || '-';
+      fields[`TSK_${i}_PENDIDIKAN`] = s.pendidikan || '-';
+      fields[`TSK_${i}_AGAMA`] = s.agama || '-';
+      fields[`TSK_${i}_STATUS_NIKAH`] = s.status_nikah || s.status_pernikahan || '-';
+      fields[`TSK_${i}_ALAMAT`] = s.alamat || '-';
+    } else {
+      fields[`TSK_${i}_NOMOR_SP_TAP`] = '-';
+      fields[`TSK_${i}_TGL_SP_TAP`] = '-';
+      fields[`TSK_${i}_NAMA`] = '-';
+      fields[`TSK_${i}_NIK`] = '-';
+      fields[`TSK_${i}_KEWARGANEGARAAN`] = '-';
+      fields[`TSK_${i}_JK`] = '-';
+      fields[`TSK_${i}_TTL`] = '-';
+      fields[`TSK_${i}_UMUR`] = '-';
+      fields[`TSK_${i}_PEKERJAAN`] = '-';
+      fields[`TSK_${i}_PENDIDIKAN`] = '-';
+      fields[`TSK_${i}_AGAMA`] = '-';
+      fields[`TSK_${i}_STATUS_NIKAH`] = '-';
+      fields[`TSK_${i}_ALAMAT`] = '-';
+    }
+  }
+  return fields;
 };
 
 export default function DocGeneratorView({ 
@@ -1752,6 +1810,31 @@ export default function DocGeneratorView({
     }
   };
 
+  useEffect(() => {
+    const isSpdpMulti = (currentTemplate?.code === 'SPDP_MORE_1_TSK') || ((currentTemplate?.title || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA'));
+    
+    // Jika formatnya adalah SPDP Multi-Tersangka dan data tersangka sudah ter-load dari Supabase
+    if (isSpdpMulti && caseSuspects && caseSuspects.length > 0) {
+      const multiFields = buildMultiSuspectFields(caseSuspects);
+      
+      setFormValues(prev => {
+        let hasChanges = false;
+        const updated = { ...prev };
+        
+        // Merge diam-diam ke state formValues
+        Object.keys(multiFields).forEach(key => {
+          if (updated[key] !== multiFields[key]) {
+            updated[key] = multiFields[key];
+            hasChanges = true;
+          }
+        });
+        
+        return hasChanges ? updated : prev;
+      });
+    }
+  }, [currentTemplate, caseSuspects]);
+
+
   // Sinkronisasi Profil Korban Terpilih
   useEffect(() => {
     if (registeredVictims.length > 0) {
@@ -2045,6 +2128,12 @@ export default function DocGeneratorView({
       }
     });
 
+    const isSpdpMoreThanOne = (currentTemplate?.code === 'SPDP_MORE_1_TSK') || ((currentTemplate?.title || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA'));
+    if (isSpdpMoreThanOne) {
+      const multiFields = buildMultiSuspectFields(caseSuspects);
+      Object.assign(initial, multiFields);
+    }
+
     setFormValues(prev => {
       const isTemplateChanged = prevTemplateIdRef.current !== (currentTemplate?.id || selectedTemplateCode);
       prevTemplateIdRef.current = currentTemplate?.id || selectedTemplateCode;
@@ -2127,7 +2216,7 @@ export default function DocGeneratorView({
       return merged;
     });
     setIsSaved(false);
-  }, [selectedCaseId, selectedTemplateCode, currentTemplate?.id, currentTemplate?.code, selectedSuspectId, selectedSuspect, isSidikDoc, hasValidSpSidikArchive, spSidikBaseNo]);
+  }, [selectedCaseId, selectedTemplateCode, currentTemplate?.id, currentTemplate?.code, selectedSuspectId, selectedSuspect, isSidikDoc, hasValidSpSidikArchive, spSidikBaseNo, caseSuspects]);
 
   const handleInputChange = (key, value) => {
     setFormValues(prev => {
@@ -2585,7 +2674,7 @@ export default function DocGeneratorView({
     try {
       const formattedDocDate = formatTanggalIndonesia(docDate) || docDate;
 
-      const enrichedFormValues = {
+      let enrichedFormValues = {
         ...formValues,
         NOMOR_SURAT: docNumber,
         nomor_surat: docNumber,
@@ -2615,10 +2704,61 @@ export default function DocGeneratorView({
         nama_tersangka: selectedSuspect?.nama || '',
       };
 
+      // ==========================================
+      // INJEKSI PAKSA DATA MULTI-TERSANGKA (BYPASS STATE)
+      // ==========================================
+      const isSpdpMulti = (currentTemplate?.code === 'SPDP_MORE_1_TSK') || ((currentTemplate?.title || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA'));
+      
+      if (isSpdpMulti && caseSuspects && caseSuspects.length > 0) {
+        // Ambil HANYA tersangka yang sah
+        const sahSuspects = caseSuspects.filter(s => s.status === 'tersangka' || s.no_sp_tap_tsk || s.nomor_sp_tap);
+        
+        // Loop untuk slot 1 sampai 5
+        for (let i = 1; i <= 5; i++) {
+          const s = sahSuspects[i - 1];
+          if (s) {
+            enrichedFormValues[`TSK_${i}_NOMOR_SP_TAP`] = s.nomor_sp_tap || s.no_sp_tap_tsk || '-';
+            enrichedFormValues[`TSK_${i}_TGL_SP_TAP`] = s.tanggal_sp_tap || s.tgl_sp_tap_tsk || '-';
+            enrichedFormValues[`TSK_${i}_NAMA`] = s.nama || '-';
+            enrichedFormValues[`TSK_${i}_NIK`] = s.nik || s.no_identitas || '-';
+            enrichedFormValues[`TSK_${i}_KEWARGANEGARAAN`] = s.kewarganegaraan || 'Indonesia';
+            enrichedFormValues[`TSK_${i}_JK`] = s.jenis_kelamin || s.jk || '-';
+            
+            const formattedTglLahir = s.tgl_lahir ? s.tgl_lahir : ''; 
+            enrichedFormValues[`TSK_${i}_TTL`] = `${s.tempat_lahir || ''}, ${formattedTglLahir || ''}`;
+            
+            enrichedFormValues[`TSK_${i}_UMUR`] = s.umur || '-';
+            enrichedFormValues[`TSK_${i}_PEKERJAAN`] = s.pekerjaan || '-';
+            enrichedFormValues[`TSK_${i}_PENDIDIKAN`] = s.pendidikan || '-';
+            enrichedFormValues[`TSK_${i}_AGAMA`] = s.agama || '-';
+            enrichedFormValues[`TSK_${i}_STATUS_NIKAH`] = s.status_nikah || s.status_pernikahan || '-';
+            enrichedFormValues[`TSK_${i}_ALAMAT`] = s.alamat || '-';
+          } else {
+            // Kosongkan sisa slot agar tag Word terhapus
+            enrichedFormValues[`TSK_${i}_NOMOR_SP_TAP`] = '';
+            enrichedFormValues[`TSK_${i}_TGL_SP_TAP`] = '';
+            enrichedFormValues[`TSK_${i}_NAMA`] = '';
+            enrichedFormValues[`TSK_${i}_NIK`] = '';
+            enrichedFormValues[`TSK_${i}_KEWARGANEGARAAN`] = '';
+            enrichedFormValues[`TSK_${i}_JK`] = '';
+            enrichedFormValues[`TSK_${i}_TTL`] = '';
+            enrichedFormValues[`TSK_${i}_UMUR`] = '';
+            enrichedFormValues[`TSK_${i}_PEKERJAAN`] = '';
+            enrichedFormValues[`TSK_${i}_PENDIDIKAN`] = '';
+            enrichedFormValues[`TSK_${i}_AGAMA`] = '';
+            enrichedFormValues[`TSK_${i}_STATUS_NIKAH`] = '';
+            enrichedFormValues[`TSK_${i}_ALAMAT`] = '';
+          }
+        }
+      }
+      // ==========================================
+
       const res = await generateAndDownloadDocx({
         template: currentTemplate,
         caseData: currentCase,
         activeCase: currentCase,
+        suspectsList: caseSuspects,       // <== TAMBAHKAN BARIS INI (Rombongan Tersangka)
+        formValues: enrichedFormValues,   // <== TAMBAHKAN BARIS INI (Data Form Injeksi)
         activeSuspect: selectedSuspect ? {
           ...selectedSuspect,
           nama: selectedSuspect.nama,
@@ -2631,10 +2771,8 @@ export default function DocGeneratorView({
           tanggal_sp_tap: isTapTsk ? (docDate || selectedSuspect.tanggal_sp_tap) : (selectedSuspect.tanggal_sp_tap || ''),
           tgl_sp_tap_tsk: isTapTsk ? (docDate || selectedSuspect.tgl_sp_tap_tsk) : (selectedSuspect.tgl_sp_tap_tsk || ''),
         } : null,
-        suspectsList: caseSuspects,
-        activeVictim: selectedVictim,
+        activeVictim: selectedVictim || null,
         victimsList: registeredVictims,
-        formValues: enrichedFormValues,
         personnelList: activePersonnel
       });
 
@@ -2682,6 +2820,28 @@ export default function DocGeneratorView({
     const romanLabel = `Tersangka ${getRomanUrutan(urutanTersangka)}`;
 
     if (isTapTsk && selectedSuspect) {
+      // 1. Injeksi Auto-Update Profil Tersangka di Database
+      if (docNumber && docDate) {
+        try {
+          // Normalisasi tanggal untuk disisipkan ke PostgreSQL
+          const cleanDate = docDate.includes('-') && docDate.split('-')[0].length === 4 
+            ? docDate 
+            : new Date().toISOString().split('T')[0];
+
+          await supabase
+            .from('pihak_terlibat')
+            .update({ 
+              nomor_sp_tap: docNumber, 
+              tanggal_sp_tap: cleanDate 
+            })
+            .eq('id', selectedSuspect.id);
+            
+          console.log(`[Auto-Update] SP.Tap tersinkronisasi untuk tersangka: ${selectedSuspect.nama}`);
+        } catch (err) {
+          console.error('[Auto-Update Error] Gagal sinkronisasi nomor SP.Tap tersangka', err);
+        }
+      }
+
       try {
         await syncPenetapanTersangka({
           suspectId: selectedSuspect.id,
@@ -3654,6 +3814,10 @@ export default function DocGeneratorView({
                   <div style={{ fontSize: '12px', color: '#FCA5A5', padding: '6px 0' }}>
                     Belum ada subjek tersangka terdaftar pada perkara ini.
                   </div>
+                ) : ((currentTemplate?.code === 'SPDP_MORE_1_TSK') || ((currentTemplate?.title || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA'))) ? (
+                  <div style={{ padding: '10px 14px', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10B981', border: '1px dashed rgba(16, 185, 129, 0.4)', borderRadius: '6px', fontWeight: 600, fontSize: '13px' }}>
+                    ✔️ FORMAT MULTI-TERSANGKA: Seluruh tersangka yang sah pada perkara ini akan dimasukkan secara otomatis ke dalam dokumen.
+                  </div>
                 ) : (
                   <select
                     value={selectedSuspectId}
@@ -4231,10 +4395,17 @@ export default function DocGeneratorView({
                     'URUTAN_TERSANGKA', 'STATUS_TERSANGKA_LABEL'
                   ];
                   dynamicList = dynamicList.filter(f => {
-                    const k = (f.field_key || f.key || '').replace(/[{}]/g, '').trim().toUpperCase();
+                    const k = (f.field_key || f.key || f.tag || '').replace(/[{}]/g, '').trim().toUpperCase();
                     return !redundantSpTapKeys.includes(k);
                   });
                 }
+
+                // Sembunyikan field yang diawali dengan TSK_1_ s.d TSK_5_ untuk semua jenis dokumen
+                dynamicList = dynamicList.filter(f => {
+                  const k = (f.field_key || f.key || f.tag || '').replace(/[{}]/g, '').trim().toUpperCase();
+                  const isHiddenTskField = /^TSK_[1-5]_/.test(k);
+                  return !isHiddenTskField;
+                });
 
                 if (!Array.isArray(dynamicList) || dynamicList.length === 0) {
                   return null;
@@ -4514,7 +4685,16 @@ export default function DocGeneratorView({
             <OfficialDocPreview
               selectedCase={currentCase}
               template={currentTemplate}
-              formValues={formValues}
+              formValues={(() => {
+                let previewValues = { ...formValues };
+                const isSpdpMulti = (currentTemplate?.code === 'SPDP_MORE_1_TSK') || ((currentTemplate?.title || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA'));
+                
+                if (isSpdpMulti && caseSuspects && caseSuspects.length > 0) {
+                  const multiFields = buildMultiSuspectFields(caseSuspects);
+                  previewValues = { ...previewValues, ...multiFields };
+                }
+                return previewValues;
+              })()}
               personnel={activePersonnel}
               activeSuspect={selectedSuspect}
               suspectsList={caseSuspects}

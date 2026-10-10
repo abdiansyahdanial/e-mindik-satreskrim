@@ -41,16 +41,34 @@ export default function DocPreviewModal({ docItem, cases = [], onClose }) {
         </div>
 
         <div className="modal-body" style={{ background: '#080E1E' }}>
-          <OfficialDocPreview
-            selectedCase={relatedCase}
-            template={template}
-            formValues={{
-              DOC_NO: docItem.doc_number,
-              DOC_DATE: docItem.created_at,
-              ...docItem.meta_values,
-            }}
-            isSaved={true}
-          />
+          {(() => {
+            // 1. Pengamanan mutlak ekstrak metadata: Cegah JSON String yang merusak struktur
+            const rawMeta = docItem.metadata || docItem.meta_values || {};
+            let safeMetadata = {};
+            try {
+              safeMetadata = typeof rawMeta === 'string' ? JSON.parse(rawMeta) : rawMeta;
+            } catch (e) {
+              console.warn('Gagal mem-parsing metadata arsip:', e);
+            }
+
+            // 2. Render komponen dengan data yang sudah bersih dan utuh
+            return (
+              <OfficialDocPreview
+                selectedCase={relatedCase || {
+                  id: docItem.case_id,
+                  ...(docItem.case_data || {})
+                }}
+                template={template || docItem.template || {}}
+                formValues={{
+                  NOMOR_SURAT: docItem.document_number || docItem.doc_number || docItem.nomor_surat || '-',
+                  NO_SURAT: docItem.document_number || docItem.doc_number || docItem.nomor_surat || '-',
+                  TANGGAL_SURAT: docItem.doc_date || docItem.document_date || docItem.tanggal_surat || docItem.created_at || '-',
+                  ...safeMetadata
+                }}
+                isSaved={true}
+              />
+            );
+          })()}
         </div>
 
         <div className="modal-footer">

@@ -403,6 +403,32 @@ export default function MindikGeneratorView({
       const tplCode = currentTemplate.code || currentTemplate.template_code || 'MINDIK';
       const tplTitle = currentTemplate.title || currentTemplate.name || 'Dokumen Mindik';
 
+      // =========================================================
+      // AUTO-UPDATE DATABASE TERSANGKA (S.TAP)
+      // =========================================================
+      const isTapTsk = tplCode.toUpperCase().includes('TAP_TSK') || tplTitle.toUpperCase().includes('PENETAPAN TERSANGKA');
+      
+      if (isTapTsk && activeSuspect?.id) {
+        try {
+          const cleanDate = docDate.includes('-') && docDate.split('-')[0].length === 4 
+            ? docDate 
+            : new Date().toISOString().split('T')[0];
+
+          await supabase
+            .from('pihak_terlibat')
+            .update({ 
+              nomor_sp_tap: docNo !== '-' ? docNo : null, 
+              tanggal_sp_tap: cleanDate 
+            })
+            .eq('id', activeSuspect.id);
+            
+          console.log(`[Auto-Update] Sukses update S.Tap untuk ${activeSuspect.nama}`);
+        } catch (err) {
+          console.error('[Auto-Update Error]', err);
+        }
+      }
+      // =========================================================
+
       const payload = {
         id: crypto.randomUUID(),
         case_id: currentCase.id,
@@ -1131,8 +1157,10 @@ export default function MindikGeneratorView({
             {requiresSuspectTarget && (
               <div style={{ gridColumn: '1 / -1' }}>
                 <div style={{ fontSize: '11px', color: '#64748b' }}>Subjek Tersangka:</div>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#38BDF8' }}>
-                  {activeSuspect?.nama || activeSuspect?.nama_lengkap || '-'}
+                <div style={{ color: 'var(--accent-blue)', fontWeight: 600, fontSize: '14px', textTransform: 'uppercase' }}>
+                  {((currentTemplate?.code === 'SPDP_MORE_1_TSK') || ((currentTemplate?.title || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA')))
+                    ? 'OTOMATIS (MULTI-TERSANGKA)'
+                    : (activeSuspect?.nama || activeSuspect?.nama_lengkap || '-')}
                 </div>
               </div>
             )}

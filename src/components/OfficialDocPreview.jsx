@@ -43,6 +43,7 @@ export default function OfficialDocPreview({
 
       setIsLoading(true);
       setErrorMsg(null);
+      setPdfBlobUrl(null); // Reset tuntas sebelum memuat ulang
 
       try {
         const res = await generatePdfBlob({
@@ -52,27 +53,32 @@ export default function OfficialDocPreview({
           activeSuspect,
           suspectsList,
           formValues,
-          personnelList: personnelList.length > 0 ? personnelList : personnel
+          personnelList: personnelList.length > 0 ? personnelList : personnel,
+          bypassCache: false // Matikan bypassCache agar konversi berulang lebih cepat
         });
 
         if (!isMounted) return;
 
+        // Simpan Docx untuk fitur unduh
         if (res?.docxBlob) {
           setGeneratedDocxBlob(res.docxBlob);
           setGeneratedFilename(res.filename || `${template.title || 'Dokumen'}.docx`);
         }
 
+        // Validasi ketat PDF Blob
         if (res?.pdfBlobUrl) {
           setPdfBlobUrl(res.pdfBlobUrl);
         } else {
-          setPdfBlobUrl(null);
+          throw new Error('Layanan konversi PDF tidak mengembalikan URL yang valid. Mesin rendering mungkin sedang sibuk.');
         }
       } catch (err) {
         if (!isMounted) return;
         console.error('Doc preview preparation error:', err);
-        setErrorMsg(err.message || 'Gagal memproses master dokumen dari Supabase.');
+        setErrorMsg(err.message || 'Layanan konversi PDF gagal. Silakan gunakan tombol Unduh .docx.');
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
 
@@ -84,7 +90,7 @@ export default function OfficialDocPreview({
         URL.revokeObjectURL(pdfBlobUrl);
       }
     };
-  }, [template, selectedCase?.id, activeSuspect?.id, formValues]);
+  }, [template, selectedCase, activeSuspect, suspectsList, formValues]);
 
   const handleDownloadDocx = () => {
     if (!generatedDocxBlob) return;
