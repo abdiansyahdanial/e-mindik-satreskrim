@@ -42,30 +42,35 @@ export default function DocPreviewModal({ docItem, cases = [], onClose }) {
 
         <div className="modal-body" style={{ background: '#080E1E' }}>
           {(() => {
-            // 1. Pengamanan mutlak ekstrak metadata: Cegah JSON String yang merusak struktur
+            // 1. Ekstrak metadata arsip
             const rawMeta = docItem.metadata || docItem.meta_values || {};
             let safeMetadata = {};
             try {
               safeMetadata = typeof rawMeta === 'string' ? JSON.parse(rawMeta) : rawMeta;
             } catch (e) {
-              console.warn('Gagal mem-parsing metadata arsip:', e);
+              console.warn('Gagal mem-parsing metadata:', e);
             }
 
-            // 2. Render komponen dengan data yang sudah bersih dan utuh
+            // 2. Gabungkan nilai arsip ke formValues
+            const finalFormValues = {
+              DOC_NO: docItem.doc_number || docItem.document_number || docItem.nomor_surat,
+              DOC_DATE: docItem.created_at || docItem.doc_date || docItem.tanggal_surat,
+              ...safeMetadata
+            };
+
+            // 3. Fallback Mutlak: Cegah TypeError di mindikGenerator karena data tersangka/kasus 'null'
+            const fallbackCase = relatedCase || docItem.case_data || { lp_number: safeMetadata.NOMOR_LP || safeMetadata.nomor_lp || '-' };
+            const fallbackSuspect = docItem.suspect_data || {};
+
             return (
-              <OfficialDocPreview
-                selectedCase={relatedCase || {
-                  id: docItem.case_id,
-                  ...(docItem.case_data || {})
-                }}
-                template={template || docItem.template || {}}
-                formValues={{
-                  NOMOR_SURAT: docItem.document_number || docItem.doc_number || docItem.nomor_surat || '-',
-                  NO_SURAT: docItem.document_number || docItem.doc_number || docItem.nomor_surat || '-',
-                  TANGGAL_SURAT: docItem.doc_date || docItem.document_date || docItem.tanggal_surat || docItem.created_at || '-',
-                  ...safeMetadata
-                }}
+              <OfficialDocPreview 
+                activeSuspect={fallbackSuspect}
+                formValues={finalFormValues}
                 isSaved={true}
+                personnelList={[]}
+                selectedCase={fallbackCase}
+                suspectsList={[fallbackSuspect]}
+                template={template}
               />
             );
           })()}
