@@ -446,6 +446,9 @@ export default function MindikGeneratorView({
         tanggal_surat: docDate,
         metadata: formValues,
         meta_values: formValues,
+        suspect_data: (caseSuspects && caseSuspects.length > 0) 
+                     ? JSON.stringify(caseSuspects) 
+                     : (activeSuspect ? JSON.stringify(activeSuspect) : null),
         created_at: new Date().toISOString()
       };
 

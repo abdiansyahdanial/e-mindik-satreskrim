@@ -2906,6 +2906,19 @@ export default function DocGeneratorView({
       template_code: currentTemplate?.code || 'MINDIK',
       meta_values: { ...formValues },
       metadata: { ...formValues },
+      // Menangkap array tersangka dari semua kemungkinan state/props yang ada di DocGeneratorView
+      suspect_data: (() => {
+        const fullList = (typeof suspectsList !== 'undefined' ? suspectsList : null)
+          || (typeof caseData !== 'undefined' && caseData && (caseData.suspectsList || caseData.suspects))
+          || (typeof selectedCase !== 'undefined' && selectedCase && (selectedCase.suspectsList || selectedCase.suspects))
+          || (typeof currentCase !== 'undefined' && currentCase && (currentCase.suspectsList || currentCase.suspects || currentCase.terlapor_list))
+          || (typeof suspectList !== 'undefined' ? suspectList : null)
+          || (typeof caseSuspects !== 'undefined' ? caseSuspects : null);
+        if (Array.isArray(fullList) && fullList.length > 0) {
+          return JSON.stringify(fullList);
+        }
+        return selectedSuspect ? JSON.stringify(selectedSuspect) : null;
+      })(),
       created_at: finalDocDate,
       tgl_surat: inputDate || finalDocDate,
       tanggal_surat: inputDate || finalDocDate
