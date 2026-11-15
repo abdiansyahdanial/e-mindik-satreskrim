@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { requireSupabaseAuth } from './_auth.js';
 
 /**
  * Inisialisasi S3Client Cloudflare R2 secara dinamis berdasarkan process.env saat request
@@ -39,10 +40,27 @@ export default async function handler(req, res) {
   }
 
   try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    const action = String(body.action || '').toLowerCase();
+    const requestedFolder = String(body.folder || 'barang-bukti').replace(/^\/+|\/+$/g, '');
+
+    // Blokir aksi 'delete' tanpa token & izinkan akses tanpa login HANYA untuk unggahan QR folder 'mobile-upload/'
+    const isMobileUploadException =
+      action !== 'delete' &&
+      action !== 'get-read-url' &&
+      (requestedFolder === 'mobile-upload' || requestedFolder.startsWith('mobile-upload/'));
+
+    if (!isMobileUploadException) {
+      const authUser = await requireSupabaseAuth(req, res);
+      if (!authUser) return;
+    }
+
+    if (action === 'delete') {
+      return res.status(400).json({ error: 'Aksi delete tidak didukung pada endpoint presign. Gunakan /api/r2-storage.' });
+    }
+
     const s3 = getR2Client();
     const bucketName = process.env.R2_BUCKET_NAME || 'emindik-storage';
-
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
     // Action opsional: Dapatkan Presigned GET URL on-demand untuk key berkas yang sudah ada
     if (body.action === 'get-read-url' && (body.key || body.fileName)) {

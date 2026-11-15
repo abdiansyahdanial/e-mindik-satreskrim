@@ -1,27 +1,4 @@
-/**
- * Helper untuk mengambil API Key secara aman dari environment Vite maupun Node
- */
-export const getGeminiApiKey = () => {
-  try {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      if (import.meta.env.VITE_GEMINI_API_KEY) return import.meta.env.VITE_GEMINI_API_KEY.trim();
-      if (import.meta.env.GEMINI_API_KEY) return import.meta.env.GEMINI_API_KEY.trim();
-    }
-  } catch {
-    // Abaikan error di environment non-Vite
-  }
-
-  try {
-    if (typeof process !== 'undefined' && process.env) {
-      if (process.env.VITE_GEMINI_API_KEY) return process.env.VITE_GEMINI_API_KEY.trim();
-      if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY.trim();
-    }
-  } catch {
-    // Abaikan error di environment non-Node
-  }
-
-  return '';
-};
+import { getSupabaseAuthHeaders } from '../supabaseClient.js';
 
 /**
  * Pembersih karakter strip (-) atau placeholder kosong dari dokumen fisik
@@ -257,11 +234,12 @@ export async function scanSuratPengaduan(files, options = {}) {
 
     // 3. Kirim request POST ke endpoint backend serverless (/api/ocr-scan)
     const endpointUrl = options.endpoint || '/api/ocr-scan';
+    const headers = await getSupabaseAuthHeaders({
+      'Content-Type': 'application/json',
+    });
     const response = await fetch(endpointUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ images }),
     });
 
@@ -647,5 +625,4 @@ export default {
   convertImageToBase64,
   resizeImageFile,
   sanitizeField,
-  getGeminiApiKey,
 };

@@ -248,25 +248,23 @@ export async function fetchDumasRecords() {
         return { success: true, data: [] };
       }
 
-      // Ambil lampiran barang bukti untuk tiap record secara asinkron
+      // Ambil lampiran barang bukti untuk tiap record dari tabel resmi public.lampiran_barang_bukti
       const enriched = await Promise.all(
         dbRecords.map(async (d) => {
           try {
-            let bbQuery = supabase.from('barang_bukti').select('*').order('created_at', { ascending: true });
-            if (d.nomor_lp) {
-              bbQuery = bbQuery.eq('nomor_register', d.nomor_lp);
-            } else if (isUUID(d.id)) {
-              bbQuery = bbQuery.eq('id_perkara', d.id);
-            } else {
-              bbQuery = null;
+            let bbRows = [];
+            if (isUUID(d.id)) {
+              const { data } = await supabase
+                .from('lampiran_barang_bukti')
+                .select('*')
+                .eq('laporan_id', d.id)
+                .order('diunggah_pada', { ascending: true });
+              bbRows = data || [];
             }
-
-            const bbRows = bbQuery ? (await bbQuery).data : [];
 
             return {
               ...d,
-              lampiran_barang_bukti: bbRows || [],
-              barang_bukti: bbRows || []
+              lampiran_barang_bukti: bbRows
             };
           } catch {
             return d;
@@ -526,7 +524,7 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
       }
     }
 
-    // 3. Simpan lampiran barang bukti baru ke tabel barang_bukti
+    // 3. Simpan lampiran barang bukti baru ke tabel resmi public.lampiran_barang_bukti
     const allEvidence = [
       ...(Array.isArray(completeRecord.lampiran_barang_bukti) ? completeRecord.lampiran_barang_bukti : []),
       ...(Array.isArray(completeRecord.barang_bukti) ? completeRecord.barang_bukti : [])
@@ -534,28 +532,36 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
 
     if (allEvidence.length > 0) {
       const parentId = savedRecord?.id || completeRecord.id;
-      const parentNoLp = savedRecord?.nomor_lp || completeRecord.nomor_lp;
+      if (isUUID(parentId)) {
+        const seenUrls = new Set();
+        for (const bb of allEvidence) {
+          const fileUrl = (bb.file_url || bb.url || bb.fileUrl || '').trim();
+          if (!fileUrl || seenUrls.has(fileUrl)) continue;
+          seenUrls.add(fileUrl);
 
-      for (const bb of allEvidence) {
-        const fileUrl = (bb.file_url || bb.url || bb.fileUrl || '').trim();
-        if (!fileUrl) continue;
+          // Cek apakah bukti ini sudah tersimpan di Supabase lampiran_barang_bukti
+          const { data: existingBb } = await supabase
+            .from('lampiran_barang_bukti')
+            .select('id')
+            .eq('laporan_id', parentId)
+            .eq('file_url', fileUrl)
+            .maybeSingle();
 
-        // Cek apakah bukti ini sudah tersimpan di Supabase
-        const { data: existingBb } = await supabase
-          .from('barang_bukti')
-          .select('id')
-          .eq('file_url', fileUrl)
-          .maybeSingle();
-
-        if (!existingBb) {
-          await supabase.from('barang_bukti').insert([{
-            nomor_register: parentNoLp,
-            id_perkara: isUUID(parentId) ? parentId : null,
-            nama_berkas: bb.nama_file || bb.nama_berkas || 'Berkas Bukti',
-            file_url: fileUrl,
-            tipe_berkas: bb.mime_type || bb.tipe || 'image/jpeg',
-            ukuran_berkas: bb.file_size_bytes || bb.ukuran || 0
-          }]);
+          if (!existingBb) {
+            const mimeType = bb.mime_type || bb.tipe || 'image/jpeg';
+            const kategoriBukti = bb.kategori_bukti || (mimeType === 'application/pdf' ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG');
+            await supabase.from('lampiran_barang_bukti').insert([{
+              laporan_id: parentId,
+              kategori_bukti: kategoriBukti,
+              nama_file: bb.nama_file || bb.nama_berkas || 'Berkas Bukti',
+              file_path: bb.file_path || bb.storage_path || null,
+              file_url: fileUrl,
+              file_size_bytes: bb.file_size_bytes || bb.ukuran || 0,
+              mime_type: mimeType,
+              hash_sha256: bb.hash_sha256 || null,
+              keterangan: bb.keterangan || 'Lampiran bukti digital perkara pengaduan'
+            }]);
+          }
         }
       }
     }
@@ -639,20 +645,18 @@ export async function deleteDumasRecord(id) {
       console.warn('Gagal membaca cache lokal saat cleanup:', e);
     }
 
-    // 3. Ambil juga referensi dari tabel barang_bukti di Supabase secara aman (tanpa .or UUID rawan error)
+    // 3. Ambil juga referensi dari tabel lampiran_barang_bukti di Supabase
     try {
-      let query = null;
-      if (nomorLp) {
-        query = supabase.from('barang_bukti').select('file_url').eq('nomor_register', nomorLp);
-      } else if (validUuid) {
-        query = supabase.from('barang_bukti').select('file_url').eq('id_perkara', id);
-      }
-
-      if (query) {
-        const { data: bbRows } = await query;
+      if (validUuid) {
+        const { data: bbRows } = await supabase
+          .from('lampiran_barang_bukti')
+          .select('file_path, file_url')
+          .eq('laporan_id', id);
         if (bbRows && bbRows.length > 0) {
           bbRows.forEach(row => {
-            if (row.file_url) {
+            if (row.file_path) {
+              filesToDelete.add(row.file_path.replace(/^\/+/, ''));
+            } else if (row.file_url) {
               try {
                 const u = new URL(row.file_url);
                 filesToDelete.add(u.pathname.replace(/^\/+/, ''));
@@ -664,7 +668,7 @@ export async function deleteDumasRecord(id) {
         }
       }
     } catch (dbErr) {
-      console.warn('Notice: Query barang_bukti Supabase dilewati:', dbErr);
+      console.warn('Notice: Query lampiran_barang_bukti Supabase dilewati:', dbErr);
     }
 
     // 4. Eksekusi penghapusan fisik di Cloudflare R2
@@ -684,15 +688,9 @@ export async function deleteDumasRecord(id) {
 
     // 5. Hapus relasi database Supabase (Cascade anak terlebih dahulu)
     try {
-      if (nomorLp) {
-        await supabase.from('barang_bukti').delete().eq('nomor_register', nomorLp);
-      }
       if (validUuid) {
         try {
-          await supabase.from('barang_bukti').delete().eq('laporan_id', id);
-        } catch {}
-        try {
-          await supabase.from('barang_bukti').delete().eq('id_perkara', id);
+          await supabase.from('lampiran_barang_bukti').delete().eq('laporan_id', id);
         } catch {}
         try {
           await supabase.from('saksi_dumas').delete().eq('laporan_id', id);
@@ -815,32 +813,35 @@ export async function addEvidenceToDumas(dumasId, evidenceInput, nomorRegister =
     keterangan: evidenceInput.keterangan || 'Lampiran bukti digital perkara pengaduan',
   };
 
-  // 2. Simpan ke Supabase tabel barang_bukti (Single Source of Truth)
-  try {
-    const payload = {
-      nomor_register: targetNoRegister,
-      nama_berkas: newEvidence.nama_file || 'Berkas Bukti',
-      file_url: newEvidence.file_url || '',
-      tipe_berkas: newEvidence.mime_type || 'image/jpeg',
-      ukuran_berkas: newEvidence.file_size_bytes || 0,
-      keterangan: newEvidence.keterangan || 'Lampiran bukti digital perkara pengaduan',
-      storage_provider: 'cloudflare_r2',
-      created_at: new Date().toISOString()
-    };
+  // 2. Simpan ke Supabase tabel resmi public.lampiran_barang_bukti
+  if (isUUID(dumasId)) {
+    try {
+      const payload = {
+        laporan_id: dumasId,
+        kategori_bukti: newEvidence.kategori_bukti,
+        nama_file: newEvidence.nama_file || 'Berkas_Bukti',
+        file_path: newEvidence.file_path || null,
+        file_url: newEvidence.file_url || '',
+        file_size_bytes: newEvidence.file_size_bytes || 0,
+        mime_type: newEvidence.mime_type || 'image/jpeg',
+        hash_sha256: newEvidence.hash_sha256 || null,
+        keterangan: newEvidence.keterangan || 'Lampiran bukti digital perkara pengaduan',
+      };
 
-    const { data: insertedData, error: insErr } = await supabase
-      .from('barang_bukti')
-      .insert([payload])
-      .select()
-      .single();
+      const { data: insertedData, error: insErr } = await supabase
+        .from('lampiran_barang_bukti')
+        .insert([payload])
+        .select()
+        .single();
 
-    if (insErr) {
-      console.warn('[addEvidenceToDumas] Gagal simpan ke Supabase barang_bukti:', insErr);
-    } else if (insertedData?.id) {
-      newEvidence.id = insertedData.id;
+      if (insErr) {
+        console.warn('[addEvidenceToDumas] Gagal simpan ke Supabase lampiran_barang_bukti:', insErr);
+      } else if (insertedData?.id) {
+        newEvidence.id = insertedData.id;
+      }
+    } catch (supErr) {
+      console.warn('[addEvidenceToDumas] Notice: Sinkronisasi Supabase ditunda:', supErr);
     }
-  } catch (supErr) {
-    console.warn('[addEvidenceToDumas] Notice: Sinkronisasi Supabase ditunda:', supErr);
   }
 
   // 3. Perbarui localStorage
@@ -901,10 +902,10 @@ export async function deleteEvidenceFromDumas(dumasId, evidenceId, filePath = nu
     }
   }
 
-  // 3. Hapus baris dari tabel Supabase barang_bukti
+  // 3. Hapus baris dari tabel Supabase lampiran_barang_bukti
   try {
     if (evidenceId && isUUID(evidenceId)) {
-      await supabase.from('barang_bukti').delete().eq('id', evidenceId);
+      await supabase.from('lampiran_barang_bukti').delete().eq('id', evidenceId);
     }
   } catch (supErr) {
     console.warn('[deleteEvidenceFromDumas] Gagal hapus dari Supabase:', supErr);

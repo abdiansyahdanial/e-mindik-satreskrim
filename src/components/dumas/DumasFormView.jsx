@@ -289,29 +289,29 @@ export default function DumasFormView({
       
       if (existingEvidence.length > 0) {
         setDaftarBukti(existingEvidence);
-      } else if (initialData.nomor_lp || (initialData.id && isUUID(initialData.id))) {
-        // Fallback fetch dari Supabase barang_bukti jika object belum memuat relasi bukti
+      } else if (initialData.id && isUUID(initialData.id)) {
+        // Fallback fetch dari Supabase lampiran_barang_bukti jika object belum memuat relasi bukti
         const loadBuktiFromDb = async () => {
           try {
-            let query = supabase.from('barang_bukti').select('*');
-            if (initialData.nomor_lp) {
-              query = query.eq('nomor_register', initialData.nomor_lp);
-            } else {
-              query = query.eq('id_perkara', initialData.id);
-            }
-            const { data: bbRows } = await query.order('created_at', { ascending: true });
+            const { data: bbRows } = await supabase
+              .from('lampiran_barang_bukti')
+              .select('*')
+              .eq('laporan_id', initialData.id)
+              .order('diunggah_pada', { ascending: true });
             if (bbRows && bbRows.length > 0) {
               const formatted = bbRows.map(row => ({
                 id: row.id,
-                nama_file: row.nama_berkas || row.nama_file || 'Berkas Bukti',
+                laporan_id: row.laporan_id,
+                nama_file: row.nama_file || row.nama_berkas || 'Berkas Bukti',
+                file_path: row.file_path || null,
                 file_url: row.file_url || row.url,
                 url: row.file_url || row.url,
-                kategori_bukti: row.tipe_berkas?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
-                mime_type: row.tipe_berkas,
-                file_size_bytes: row.ukuran_berkas,
+                kategori_bukti: row.kategori_bukti || (row.mime_type?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'),
+                mime_type: row.mime_type,
+                file_size_bytes: row.file_size_bytes,
                 keterangan: row.keterangan,
                 hash_sha256: row.hash_sha256,
-                created_at: row.created_at
+                diunggah_pada: row.diunggah_pada
               }));
               setDaftarBukti(formatted);
             }
@@ -392,13 +392,13 @@ export default function DumasFormView({
       }
     }
 
-    // 3. Jika bukti sudah tercatat di Supabase barang_bukti (UUID valid), hapus barisnya
+    // 3. Jika bukti sudah tercatat di Supabase lampiran_barang_bukti (UUID valid), hapus barisnya
     const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(str));
     if (targetId && isUUID(targetId)) {
       try {
-        await supabase.from('barang_bukti').delete().eq('id', targetId);
+        await supabase.from('lampiran_barang_bukti').delete().eq('id', targetId);
       } catch (dbErr) {
-        console.warn('Gagal menghapus baris barang_bukti di Supabase:', dbErr);
+        console.warn('Gagal menghapus baris lampiran_barang_bukti di Supabase:', dbErr);
       }
     }
 

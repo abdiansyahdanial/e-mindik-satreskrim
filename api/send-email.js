@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { requireSupabaseAuth } from './_auth.js';
 
 /**
  * Serverless / Dev API Handler for sending automated Resend emails
@@ -10,6 +11,9 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method Not Allowed. Use POST.' });
     return;
   }
+
+  const authUser = await requireSupabaseAuth(req, res);
+  if (!authUser) return;
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
   const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || process.env.VITE_SUPERADMIN_EMAIL || 'abdiansyahdanial@gmail.com';

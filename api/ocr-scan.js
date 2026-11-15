@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { requireSupabaseAuth } from './_auth.js';
 
 /**
  * Serverless Handler untuk OCR Scan Dokumen Dumas / LP menggunakan Groq Vision SDK
@@ -9,6 +10,9 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
+
+  const authUser = await requireSupabaseAuth(req, res);
+  if (!authUser) return;
 
   const rawApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
   const apiKeys = rawApiKey

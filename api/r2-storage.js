@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { requireSupabaseAuth } from './_auth.js';
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '18927f2f5d2b4e49a1c521c5c7e73073';
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
@@ -31,12 +32,15 @@ function getS3() {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.status(200).send('');
     return;
   }
+
+  const authUser = await requireSupabaseAuth(req, res);
+  if (!authUser) return;
 
   try {
     const s3 = getS3();

@@ -8,6 +8,8 @@
  * dan TIDAK PERNAH diekspos ke browser pengguna.
  */
 
+import { getSupabaseAuthHeaders } from '../supabaseClient.js';
+
 const DEFAULT_BUCKET = 'emindik-storage';
 
 /**
@@ -96,11 +98,12 @@ export async function uploadFileToR2(fileInput, fileName, mimeType = '', options
 
   try {
     // 2. Minta Presigned PUT URL dari Serverless Endpoint
+    const presignHeaders = await getSupabaseAuthHeaders({
+      'Content-Type': 'application/json',
+    });
     const presignRes = await fetch('/api/r2-presign', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: presignHeaders,
       body: JSON.stringify({
         fileName: targetName,
         filename: targetName,
@@ -179,9 +182,10 @@ export async function getR2FileUrl(fileName, options = {}) {
 
   // Panggil serverless proxy untuk mendapatkan presigned get URL yang aman
   try {
+    const headers = await getSupabaseAuthHeaders({ 'Content-Type': 'application/json' });
     const res = await fetch('/api/r2-storage', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         action: 'get-url',
         fileName: cleanKey,
@@ -221,9 +225,10 @@ export async function checkR2FileExists(fileName) {
 export async function deleteR2File(fileName) {
   if (!fileName) return { success: false, error: 'Nama file kosong.' };
   try {
+    const headers = await getSupabaseAuthHeaders({ 'Content-Type': 'application/json' });
     const res = await fetch('/api/r2-storage', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         action: 'delete',
         fileName: fileName.trim().replace(/^\/+/, ''),

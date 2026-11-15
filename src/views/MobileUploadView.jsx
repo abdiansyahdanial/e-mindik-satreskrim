@@ -264,7 +264,7 @@ export default function MobileUploadView() {
         body: JSON.stringify({
           fileName: targetName,
           contentType: mimeType,
-          folder: 'barang-bukti',
+          folder: 'mobile-upload',
         }),
       });
 

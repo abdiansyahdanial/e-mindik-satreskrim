@@ -15,7 +15,7 @@ import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
 import UserManagementModal from './components/UserManagementModal';
 import DumasView from './views/DumasView';
-import DumasFormView from './views/DumasFormView';
+import DumasFormView from './components/dumas/DumasFormView';
 import MobileUploadView from './views/MobileUploadView';
 import { fetchDumasRecords } from './services/dumasService';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
@@ -254,17 +254,14 @@ export default function App() {
         } catch {}
 
         try {
-          const [resCaseDocs, resCaseGen, resDocs, resArsip] = await Promise.allSettled([
-            supabase.from('case_documents').select('*').order('created_at', { ascending: false }),
-            supabase.from('case_generated_documents').select('*').order('created_at', { ascending: false }),
-            supabase.from('documents').select('*').order('created_at', { ascending: false }),
-            supabase.from('arsip_dokumen').select('*').order('created_at', { ascending: false })
-          ]);
+          const { data: listDocs, error: docsError } = await supabase
+            .from('documents')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-          const listCaseDocs = (resCaseDocs.status === 'fulfilled' && !resCaseDocs.value.error && resCaseDocs.value.data) ? resCaseDocs.value.data : [];
-          const listCaseGen = (resCaseGen.status === 'fulfilled' && !resCaseGen.value.error && resCaseGen.value.data) ? resCaseGen.value.data : [];
-          const listDocs = (resDocs.status === 'fulfilled' && !resDocs.value.error && resDocs.value.data) ? resDocs.value.data : [];
-          const listArsip = (resArsip.status === 'fulfilled' && !resArsip.value.error && resArsip.value.data) ? resArsip.value.data : [];
+          if (docsError) {
+            console.warn('[FETCH DOCUMENTS NOTICE]:', docsError.message);
+          }
 
           // Ambil juga cache offline dari localStorage jika ada
           let listLocal = [];
@@ -273,9 +270,9 @@ export default function App() {
             if (Array.isArray(cached)) listLocal = cached;
           } catch {}
 
-          // Gabungkan dan hilangkan duplikasi berdasarkan ID
+          // Gabungkan hasil public.documents (prioritas server) dan cache offline berdasarkan ID
           const combinedMap = new Map();
-          [...listLocal, ...listCaseDocs, ...listCaseGen, ...listDocs, ...listArsip].forEach(doc => {
+          [...(listDocs || []), ...listLocal].forEach(doc => {
             if (doc && doc.id && !combinedMap.has(doc.id)) {
               combinedMap.set(doc.id, doc);
             }
@@ -638,17 +635,15 @@ export default function App() {
       id: docToSave.id || crypto.randomUUID(),
       case_id: docToSave.case_id ? String(docToSave.case_id) : null,
       nomor_lp: docToSave.nomor_lp || docToSave.no_lp || '-',
-      no_lp: docToSave.no_lp || docToSave.nomor_lp || '-',
       template_id: (docToSave.template_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docToSave.template_id)) ? docToSave.template_id : null,
       template_code: docToSave.template_code || 'MINDIK',
       doc_title: docToSave.doc_title || docToSave.title || 'Dokumen Mindik',
-      title: docToSave.title || docToSave.doc_title || 'Dokumen Mindik',
       doc_number: docToSave.doc_number || docToSave.nomor_surat || '-',
-      nomor_surat: docToSave.nomor_surat || docToSave.doc_number || '-',
       meta_values: docToSave.meta_values || docToSave.metadata || {},
-      created_at: docToSave.created_at || docToSave.tgl_surat || docToSave.tanggal_surat || new Date().toISOString(),
+      file_url: docToSave.file_url || null,
+      storage_path: docToSave.storage_path || null,
       tgl_surat: docToSave.tgl_surat || docToSave.tanggal_surat || docToSave.created_at || null,
-      tanggal_surat: docToSave.tanggal_surat || docToSave.tgl_surat || docToSave.created_at || null
+      created_at: docToSave.created_at || docToSave.tgl_surat || docToSave.tanggal_surat || new Date().toISOString()
     };
 
     setDocuments((prev) => [cleanPayload, ...prev.filter(d => d.id !== cleanPayload.id)]);
@@ -711,12 +706,8 @@ export default function App() {
       }
     }
 
-    // A. Hapus dari database tabel arsip
-    await Promise.allSettled([
-      supabase.from('case_generated_documents').delete().eq('id', doc.id),
-      supabase.from('documents').delete().eq('id', doc.id),
-      supabase.from('arsip_dokumen').delete().eq('id', doc.id)
-    ]);
+    // A. Hapus dari database tabel resmi public.documents
+    await supabase.from('documents').delete().eq('id', doc.id);
 
     // B. JIKA YANG DIHAPUS ADALAH SP.TAP TSK / PENETAPAN TERSANGKA:
     if (docCode.includes('TAP_TSK') || docTitle.includes('PENETAPAN TERSANGKA')) {
@@ -953,7 +944,7 @@ export default function App() {
         alignItems: 'center',
         justifyContent: 'center',
         gap: '16px',
-        color: 'var(--accent-cyan)',
+        color: '#ff352d',
         fontFamily: 'Inter, sans-serif',
       }}>
         <RefreshCw size={32} className="animate-spin" />
@@ -1021,9 +1012,9 @@ export default function App() {
           bottom: '24px',
           right: '24px',
           zIndex: 9999,
-          background: 'rgba(13, 21, 38, 0.95)',
-          border: '1px solid var(--accent-cyan)',
-          boxShadow: 'var(--glow-cyan-strong)',
+          background: '#222b34',
+          border: '1px solid #ff352d',
+          boxShadow: '0 8px 28px rgba(255, 53, 45, 0.25)',
           borderRadius: 'var(--radius-md)',
           padding: '12px 20px',
           display: 'flex',
@@ -1034,7 +1025,7 @@ export default function App() {
           fontWeight: 600,
           animation: 'slideInRight 250ms ease-out',
         }}>
-          <CheckCircle2 size={18} color="var(--accent-cyan)" />
+          <CheckCircle2 size={18} color="#ff352d" />
           <span>{toastMessage}</span>
         </div>
       )}

@@ -34,6 +34,8 @@ import {
   normalizePresetCode 
 } from '../constants/mindikPresets';
 
+const STORAGE_BUCKET = 'templates';
+
 export default function AdminTemplateStudio({ 
   onTemplateSaved, 
   onSelectTemplateForGenerator,
@@ -313,7 +315,7 @@ export default function AdminTemplateStudio({
         const cleanFileName = `${templateCode}_${Date.now()}.docx`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('templates')
+          .from(STORAGE_BUCKET)
           .upload(cleanFileName, docxFile, {
             cacheControl: '3600',
             upsert: true,
@@ -326,7 +328,7 @@ export default function AdminTemplateStudio({
         }
 
         const { data: publicUrlData } = supabase.storage
-          .from('templates')
+          .from(STORAGE_BUCKET)
           .getPublicUrl(cleanFileName);
 
         const fileUrl = publicUrlData?.publicUrl;
@@ -440,22 +442,14 @@ export default function AdminTemplateStudio({
     }
   };
 
-  // Download template .docx file from Supabase Storage
+      // Download template .docx file from Supabase Storage
   const handleDownloadDocx = async (filePath, templateTitle) => {
     try {
-      let bucket = 'templates';
-      let cleanPath = filePath.replace(/^\/+/, '');
-      
-      let { data, error } = await supabase.storage.from(bucket).download(cleanPath);
-      if (error) {
-        bucket = 'docx-templates';
-        const res2 = await supabase.storage.from(bucket).download(cleanPath);
-        data = res2.data;
-        error = res2.error;
-      }
+      const cleanPath = extractStoragePath(filePath) || filePath.replace(/^\/+/, '');
+      const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(cleanPath);
 
       if (error || !data) {
-        alert(`Gagal mengunduh file dari Supabase Storage: ${error?.message || 'File tidak ditemukan'}`);
+        alert(`Gagal mengunduh file dari Supabase Storage (${STORAGE_BUCKET}): ${error?.message || 'File tidak ditemukan'}`);
         return;
       }
 
@@ -490,11 +484,11 @@ export default function AdminTemplateStudio({
     try {
       // 1. Ekstrak dan hapus file fisik di storage terlebih dahulu secara aman
       if (templateToDelete.file_url) {
-        const urlParts = templateToDelete.file_url.split('/templates/');
+        const urlParts = templateToDelete.file_url.split(`/${STORAGE_BUCKET}/`);
         if (urlParts.length > 1) {
           const storagePath = decodeURIComponent(urlParts[1].split('?')[0]);
           try {
-            await supabase.storage.from('templates').remove([storagePath]);
+            await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
           } catch (storageErr) {
             console.warn('Gagal menghapus file storage (diabaikan agar proses database tetap lanjut):', storageErr);
           }
@@ -503,7 +497,7 @@ export default function AdminTemplateStudio({
         const storagePath = extractStoragePath(templateToDelete.file_path);
         if (storagePath) {
           try {
-            await supabase.storage.from('templates').remove([storagePath]);
+            await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
           } catch (storageErr) {
             console.warn('Gagal menghapus file storage (diabaikan agar proses database tetap lanjut):', storageErr);
           }
@@ -701,7 +695,16 @@ export default function AdminTemplateStudio({
                     Kode Template (Unik) <span style={{ color: 'var(--accent-red)' }}>*</span>
                   </label>
                   {getMindikPreset(code) && (
-                    <span className="badge badge-cyan" style={{ fontSize: '9px', padding: '1px 5px' }}>
+                    <span
+                      className="badge"
+                      style={{
+                        fontSize: '9px',
+                        padding: '1px 5px',
+                        background: 'rgba(255, 53, 45, 0.15)',
+                        color: '#ff352d',
+                        border: '1px solid rgba(255, 53, 45, 0.4)',
+                      }}
+                    >
                       Preset Match
                     </span>
                   )}
@@ -760,11 +763,11 @@ export default function AdminTemplateStudio({
               
               <div 
                 style={{
-                  border: '2px dashed var(--border-glass-hover)',
+                  border: docxFile ? '2px dashed #ff352d' : '2px dashed var(--border-glass-hover)',
                   borderRadius: 'var(--radius-lg)',
                   padding: '16px',
                   textAlign: 'center',
-                  background: docxFile ? 'rgba(0, 212, 255, 0.06)' : 'rgba(13, 21, 38, 0.4)',
+                  background: docxFile ? 'rgba(255, 53, 45, 0.08)' : '#1b2229',
                   cursor: 'pointer',
                   transition: 'all var(--transition-fast)',
                 }}
@@ -995,7 +998,15 @@ export default function AdminTemplateStudio({
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {searchQuery || (selectedCategory && selectedCategory !== 'Semua') ? (
-                  <span className="badge badge-cyan" style={{ fontSize: '11px' }}>
+                  <span
+                    className="badge"
+                    style={{
+                      fontSize: '11px',
+                      background: 'rgba(255, 53, 45, 0.15)',
+                      color: '#ff352d',
+                      border: '1px solid rgba(255, 53, 45, 0.35)',
+                    }}
+                  >
                     {filteredTemplates.length} dari {templates.length} Template
                   </span>
                 ) : (

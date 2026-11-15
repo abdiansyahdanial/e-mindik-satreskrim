@@ -69,42 +69,38 @@ export default function DumasDetailView({
 
   const fetchedLpRef = useRef(null);
 
-  // Hydration Query: Muat ulang bukti digital dari tabel barang_bukti berdasarkan nomor register resmi Dumas
+  // Hydration Query: Muat ulang bukti digital dari tabel resmi lampiran_barang_bukti berdasarkan laporan_id
   useEffect(() => {
-    const nomorRegister = perkara?.nomor_lp || dumasItem?.nomor_lp;
     const idPerkara = perkara?.id || dumasItem?.id;
 
-    // Lewati jika belum ada nomor register atau sudah pernah di-fetch untuk nomor LP ini
-    if (!nomorRegister && (!idPerkara || !isUUID(idPerkara))) return;
-    const fetchKey = nomorRegister || idPerkara;
-    if (fetchedLpRef.current === fetchKey) return;
+    // Lewati jika belum ada UUID laporan atau sudah pernah di-fetch
+    if (!idPerkara || !isUUID(idPerkara)) return;
+    if (fetchedLpRef.current === idPerkara) return;
 
     const fetchBuktiForDetail = async () => {
       try {
-        let query = supabase.from('barang_bukti').select('*');
-
-        if (nomorRegister) {
-          query = query.eq('nomor_register', nomorRegister);
-        } else if (idPerkara && isUUID(idPerkara)) {
-          query = query.eq('id_perkara', idPerkara);
-        }
-
-        const { data: bbData, error: bbErr } = await query.order('created_at', { ascending: true });
+        const { data: bbData, error: bbErr } = await supabase
+          .from('lampiran_barang_bukti')
+          .select('*')
+          .eq('laporan_id', idPerkara)
+          .order('diunggah_pada', { ascending: true });
 
         if (!bbErr && Array.isArray(bbData)) {
-          fetchedLpRef.current = fetchKey; // Tandai sudah diambil agar tidak loop
+          fetchedLpRef.current = idPerkara; // Tandai sudah diambil agar tidak loop
 
           const formatted = bbData.map((row) => ({
             id: row.id,
-            nama_file: row.nama_berkas || row.nama_file || 'Berkas Bukti',
+            laporan_id: row.laporan_id,
+            nama_file: row.nama_file || row.nama_berkas || 'Berkas Bukti',
+            file_path: row.file_path || null,
             file_url: row.file_url || row.url,
             url: row.file_url || row.url,
-            kategori_bukti: row.tipe_berkas?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG',
-            mime_type: row.tipe_berkas,
-            file_size_bytes: row.ukuran_berkas,
+            kategori_bukti: row.kategori_bukti || (row.mime_type?.includes('pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'),
+            mime_type: row.mime_type,
+            file_size_bytes: row.file_size_bytes,
             keterangan: row.keterangan,
             hash_sha256: row.hash_sha256,
-            created_at: row.created_at
+            diunggah_pada: row.diunggah_pada
           }));
 
           setPerkara((prev) => {
@@ -112,7 +108,6 @@ export default function DumasDetailView({
             return {
               ...prev,
               lampiran_barang_bukti: formatted,
-              barang_bukti: formatted
             };
           });
         }

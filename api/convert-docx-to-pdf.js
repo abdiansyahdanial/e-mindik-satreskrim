@@ -451,8 +451,8 @@ async function generateFallbackPdf(docxBuffer) {
  * 3. Fallback to native PDF generation using pdf-lib
  */
 export async function convertDocxBufferToPdf(docxBuffer) {
-  // Strategy 1: Remote Gotenberg (LibreOffice True Engine)
-  const gotenbergUrl = process.env.GOTENBERG_URL || 'https://demo.gotenberg.dev';
+  // Strategy 1: Remote Gotenberg (hanya jika GOTENBERG_URL dikonfigurasi secara eksplisit)
+  const gotenbergUrl = process.env.GOTENBERG_URL;
   if (gotenbergUrl) {
     try {
       const formData = new FormData();
@@ -530,10 +530,14 @@ export default async function handler(req, res) {
     if (jsonBody && jsonBody.docxBase64) {
       docxBuffer = Buffer.from(jsonBody.docxBase64, 'base64');
     } else if (jsonBody && (jsonBody.storagePath || jsonBody.fileUrl)) {
+      const supabaseBaseUrl = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+      if (!jsonBody.fileUrl && !jsonBody.storagePath.startsWith('http') && !supabaseBaseUrl) {
+        return res.status(500).json({ error: 'Konfigurasi VITE_SUPABASE_URL / SUPABASE_URL belum diatur di server.' });
+      }
       const targetUrl = jsonBody.fileUrl || (
         jsonBody.storagePath.startsWith('http')
           ? jsonBody.storagePath
-          : `https://ncsjgjftybxpxuixgumm.supabase.co/storage/v1/object/public/${jsonBody.storagePath.includes('/') ? jsonBody.storagePath : 'templates/' + jsonBody.storagePath}`
+          : `${supabaseBaseUrl}/storage/v1/object/public/${jsonBody.storagePath.includes('/') ? jsonBody.storagePath : 'templates/' + jsonBody.storagePath}`
       );
       const sRes = await fetch(targetUrl);
       if (!sRes.ok) {

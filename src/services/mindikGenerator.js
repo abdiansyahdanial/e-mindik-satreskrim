@@ -11,9 +11,9 @@ async function syncDataFromArchive(currentCase, suspectsList, formValues = {}) {
     const { data: arsip } = await supabase.from('documents').select('*').eq('case_id', currentCase.id);
     if (!arsip || arsip.length === 0) return;
 
-    // Helper presisi berdasarkan struktur payload asli
-    const extractDate = (doc) => doc.doc_date || doc.tanggal_surat || doc.document_date || (doc.created_at ? doc.created_at.split('T')[0] : null);
-    const extractNo = (doc) => doc.document_number || doc.doc_number || doc.nomor_surat;
+    // Helper presisi berdasarkan skema resmi public.documents
+    const extractDate = (doc) => doc.tgl_surat || doc.created_at || null;
+    const extractNo = (doc) => doc.doc_number;
 
     // 1. INJEKSI PAKSA SPRIN SIDIK
     const sprinSidik = arsip.find(d => d.template_code?.includes('SPRIN_SIDIK'));
@@ -35,15 +35,15 @@ async function syncDataFromArchive(currentCase, suspectsList, formValues = {}) {
 
     // 3. DEEP SCAN UNTUK S.TAP TERSANGKA
     if (Array.isArray(suspectsList)) {
-      const semuaTap = arsip.filter(d => d.template_code?.includes('TAP_TSK') || (d.document_name || '').toUpperCase().includes('PENETAPAN TERSANGKA'));
+      const semuaTap = arsip.filter(d => d.template_code?.includes('TAP_TSK') || (d.doc_title || '').toUpperCase().includes('PENETAPAN TERSANGKA'));
       
       suspectsList.forEach(s => {
         if (!s || !s.nama) return;
         
-        // Kunci Final: Cari nama tersangka di dalam koper JSON metadata!
+        // Kunci Final: Cari nama tersangka di dalam koper JSON meta_values!
         const tap = semuaTap.find(d => {
-          const metaStr = JSON.stringify(d.metadata || d.meta_values || {}).toLowerCase();
-          const titleStr = (d.document_name || d.title || d.doc_title || '').toLowerCase();
+          const metaStr = JSON.stringify(d.meta_values || {}).toLowerCase();
+          const titleStr = (d.doc_title || '').toLowerCase();
           return metaStr.includes(s.nama.toLowerCase()) || titleStr.includes(s.nama.toLowerCase());
         });
         
@@ -1223,8 +1223,6 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     PENYIDIK_5_PANGKAT_NRP: penyidik5PangkatNrp,
 
     // Aliases lowercase & format pendukung untuk kompatibilitas template fleksibel
-    nomor_surat: nomorSurat,
-    tanggal_surat: tanggalSurat,
     tempat_surat: tempatSurat,
     tujuan_surat: tujuanSurat,
     alamat_tujuan: alamatTujuan,
@@ -1281,10 +1279,6 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     sp_tap_tsk: noSpTapTsk,
     NOMOR_SP_TAP_TSK: noSpTapTsk,
     nomor_sp_tap_tsk: noSpTapTsk,
-    STATUS_TERSANGKA_LABEL: statusTersangkaLabel,
-    status_tersangka_label: statusTersangkaLabel,
-    URUTAN_TERSANGKA: urutanTersangka,
-    urutan_tersangka: urutanTersangka,
 
     no_sprin_kap: noSprinKap,
     tgl_sprin_kap: tglSprinKap,
@@ -1415,8 +1409,6 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     doc_location: tempatSurat,
     DOC_DATE: tanggalSurat,
     doc_date: tanggalSurat,
-    TEMPAT_LAHIR: activeSuspect?.tempat_lahir || '',
-    TGL_LAHIR: formattedTglLahirSuspect,
 
     // Dukungan Multi-Tersangka & Terlapor (Array Perulangan Dokumen Kolektif, misal SPDP)
     tersangka_list: (Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : (activeSuspect ? [activeSuspect] : []))
@@ -2060,39 +2052,6 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
       finalPayload[k] = '';
     }
   });
-
-  // ==========================================
-  // INJEKSI ABSOLUT MULTI-TERSANGKA
-  // ==========================================
-  if (Array.isArray(suspectsList)) {
-    const sahSuspects = suspectsList.filter(s => s && s.nama);
-    for (let i = 0; i < 5; i++) {
-      const s = sahSuspects[i];
-      const idx = i + 1;
-      if (s) {
-        finalPayload[`TSK_${idx}_NAMA`] = s.nama || '-';
-        finalPayload[`TSK_${idx}_NOMOR_SP_TAP`] = s.nomor_sp_tap || s.no_sp_tap_tsk || '-';
-        finalPayload[`TSK_${idx}_TGL_SP_TAP`] = s.tanggal_sp_tap ? formatTanggalIndonesia(s.tanggal_sp_tap) : '-';
-        finalPayload[`TSK_${idx}_NIK`] = s.nik || s.nomor_identitas || '-';
-        finalPayload[`TSK_${idx}_TTL`] = `${s.tempat_lahir || '-'}, ${s.tanggal_lahir ? formatTanggalIndonesia(s.tanggal_lahir) : '-'}`;
-        finalPayload[`TSK_${idx}_JK`] = s.jenis_kelamin || s.jk || '-';
-        finalPayload[`TSK_${idx}_AGAMA`] = s.agama || '-';
-        finalPayload[`TSK_${idx}_PEKERJAAN`] = s.pekerjaan || '-';
-        finalPayload[`TSK_${idx}_ALAMAT`] = s.alamat || s.tempat_tinggal || '-';
-        finalPayload[`TSK_${idx}_UMUR`] = s.umur || '-';
-        finalPayload[`TSK_${idx}_PENDIDIKAN`] = s.pendidikan || '-';
-        finalPayload[`TSK_${idx}_KEWARGANEGARAAN`] = s.kewarganegaraan || 'Indonesia';
-        finalPayload[`TSK_${idx}_STATUS_NIKAH`] = s.status_nikah || s.status_pernikahan || '-';
-      } else {
-        // Kosongkan sisa tag jika tersangka kurang dari 5 agar tidak tertulis di Word
-        finalPayload[`TSK_${idx}_NAMA`] = ''; finalPayload[`TSK_${idx}_NOMOR_SP_TAP`] = ''; finalPayload[`TSK_${idx}_TGL_SP_TAP`] = '';
-        finalPayload[`TSK_${idx}_NIK`] = ''; finalPayload[`TSK_${idx}_TTL`] = ''; finalPayload[`TSK_${idx}_JK`] = '';
-        finalPayload[`TSK_${idx}_AGAMA`] = ''; finalPayload[`TSK_${idx}_PEKERJAAN`] = ''; finalPayload[`TSK_${idx}_ALAMAT`] = '';
-        finalPayload[`TSK_${idx}_UMUR`] = ''; finalPayload[`TSK_${idx}_PENDIDIKAN`] = ''; finalPayload[`TSK_${idx}_KEWARGANEGARAAN`] = '';
-        finalPayload[`TSK_${idx}_STATUS_NIKAH`] = '';
-      }
-    }
-  }
 
   return finalPayload;
 }
