@@ -150,19 +150,19 @@ export default function BuktiDigitalSection({
   };
 
   return (
-    <div className="relative group/card bg-[#161310]/85 backdrop-blur-xl border border-[#FBDBAF]/15 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] text-[#FAF6F0]">
+    <div className="relative group/card bg-[#11161F]/85 backdrop-blur-xl border border-[#94A3B8]/15 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] text-[#F8FAFC]">
       <HudCorners size="md" />
 
       {/* Header Bagian */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#FBDBAF]/12 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#94A3B8]/15 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FF5A1F] inline-block" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#FF2A2A] inline-block" />
             <h3 className="heading-font text-sm sm:text-base font-bold text-white m-0 tracking-wide">
               05. LAMPIRAN BARANG BUKTI DIGITAL
             </h3>
           </div>
-          <p className="text-xs text-[#FBDBAF]/65 mt-1 mb-0">
+          <p className="text-xs text-[#CBD5E1]/70 mt-1 mb-0">
             Unggah dokumen PDF atau foto barang bukti fisik melalui Laptop atau Kamera HP secara nirkabel.
           </p>
         </div>
@@ -170,12 +170,12 @@ export default function BuktiDigitalSection({
         {/* Badge Jumlah Berkas */}
         <div>
           {currentList.length > 0 ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-[#E07020]/15 border border-[#E07020]/35 text-[#FF7A33]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-[#FF2A2A]/15 border border-[#FF2A2A]/35 text-[#FF3B3B]">
               <CheckCircle2 size={13} />
               {currentList.length} Berkas Terlampir
             </span>
           ) : (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono text-[#FBDBAF]/65 bg-white/5 border border-[#FBDBAF]/15">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono text-[#CBD5E1]/70 bg-white/5 border border-[#94A3B8]/18">
               0 Berkas Terlampir
             </span>
           )}
@@ -190,10 +190,10 @@ export default function BuktiDigitalSection({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`relative group/card bg-[#0E0C0A]/65 backdrop-blur-sm border rounded-xl p-4 flex flex-col gap-3 cursor-pointer transition-all ${
+          className={`relative group/card bg-[#0B0E14]/65 backdrop-blur-sm border rounded-xl p-4 flex flex-col gap-3 cursor-pointer transition-all ${
             isDragOver 
-              ? 'border-[#FF5A1F] bg-[#E07020]/15 shadow-[0_0_20px_rgba(224,112,32,0.25)]' 
-              : 'border-[#FBDBAF]/15 hover:border-[#E07020]/45'
+              ? 'border-[#FF2A2A] bg-[#FF2A2A]/15 shadow-[0_0_20px_rgba(255,42,42,0.25)]' 
+              : 'border-[#94A3B8]/18 hover:border-[#FF2A2A]/45'
           }`}
         >
           <HudCorners size="sm" />
@@ -208,89 +208,89 @@ export default function BuktiDigitalSection({
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#FF7A33] inline-block" />
-              <span className="text-[10px] font-mono font-bold text-[#FF7A33] tracking-wider uppercase">
+              <span className="w-2 h-2 rounded-full bg-[#FF3B3B] inline-block" />
+              <span className="text-[10px] font-mono font-bold text-[#FF3B3B] tracking-wider uppercase">
                 Konsol Input A • Storage Lokal
               </span>
             </div>
-            <span className="text-[10px] font-mono text-[#FBDBAF]/70 bg-[#0E0C0A]/70 border border-[#FBDBAF]/15 px-2 py-0.5 rounded">
+            <span className="text-[10px] font-mono text-[#CBD5E1]/75 bg-[#0B0E14]/70 border border-[#94A3B8]/18 px-2 py-0.5 rounded">
               PC / LAPTOP
             </span>
           </div>
 
           <div className="flex items-center gap-3 py-1">
-            <div className="w-11 h-11 rounded-lg bg-[#E07020]/15 border border-[#E07020]/35 flex items-center justify-center text-[#FF7A33] shrink-0">
+            <div className="w-11 h-11 rounded-lg bg-[#FF2A2A]/15 border border-[#FF2A2A]/35 flex items-center justify-center text-[#FF3B3B] shrink-0">
               {isUploading ? <Loader2 size={20} className="animate-spin" /> : <UploadCloud size={20} />}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs sm:text-sm font-semibold text-white">
                 {isUploading ? 'Sedang Mengunggah Berkas...' : 'Pilih Berkas dari Komputer'}
               </div>
-              <div className="text-xs text-[#FBDBAF]/65 truncate">
+              <div className="text-xs text-[#CBD5E1]/70 truncate">
                 Klik telusuri atau seret berkas langsung ke area ini
               </div>
             </div>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-lg bg-[#E07020]/15 border border-[#E07020]/35 text-[#FF7A33] text-xs font-mono font-semibold cursor-pointer hover:bg-[#E07020]/25 transition-all"
+              className="px-3 py-1.5 rounded-lg bg-[#FF2A2A]/15 border border-[#FF2A2A]/35 text-[#FF3B3B] text-xs font-mono font-semibold cursor-pointer hover:bg-[#FF2A2A]/25 transition-all"
             >
               Telusuri
             </button>
           </div>
 
-          <div className="flex items-center gap-1.5 pt-2 border-t border-[#FBDBAF]/10 text-[10px] font-mono text-[#FBDBAF]/65">
+          <div className="flex items-center gap-1.5 pt-2 border-t border-[#94A3B8]/15 text-[10px] font-mono text-[#CBD5E1]/70">
             <span>Dukungan:</span>
-            <span className="text-[#FAF6F0] bg-[#0E0C0A]/70 border border-[#FBDBAF]/15 px-1 py-0.5 rounded">PDF</span>
-            <span className="text-[#FF7A33] bg-[#0E0C0A]/70 border border-[#FBDBAF]/15 px-1 py-0.5 rounded">JPG</span>
-            <span className="text-[#FBDBAF] bg-[#0E0C0A]/70 border border-[#FBDBAF]/15 px-1 py-0.5 rounded">PNG</span>
-            <span className="ml-auto text-[#FBDBAF]/65">Maks 25 MB</span>
+            <span className="text-[#F8FAFC] bg-[#0B0E14]/70 border border-[#94A3B8]/18 px-1 py-0.5 rounded">PDF</span>
+            <span className="text-[#FF3B3B] bg-[#0B0E14]/70 border border-[#94A3B8]/18 px-1 py-0.5 rounded">JPG</span>
+            <span className="text-[#CBD5E1] bg-[#0B0E14]/70 border border-[#94A3B8]/18 px-1 py-0.5 rounded">PNG</span>
+            <span className="ml-auto text-[#CBD5E1]/70">Maks 25 MB</span>
           </div>
         </div>
 
         {/* Konsol Input B: Live QR Bridge Kamera HP */}
         <div
           onClick={onOpenQrModal}
-          className="relative group/card bg-[#0E0C0A]/65 backdrop-blur-sm border border-[#FBDBAF]/15 hover:border-[#E07020]/45 rounded-xl p-4 flex flex-col gap-3 cursor-pointer transition-all"
+          className="relative group/card bg-[#0B0E14]/65 backdrop-blur-sm border border-[#94A3B8]/18 hover:border-[#FF2A2A]/45 rounded-xl p-4 flex flex-col gap-3 cursor-pointer transition-all"
         >
           <HudCorners size="sm" />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#FF5A1F] inline-block" />
-              <span className="text-[10px] font-mono font-bold text-[#FF7A33] tracking-wider uppercase">
+              <span className="w-2 h-2 rounded-full bg-[#FF2A2A] inline-block" />
+              <span className="text-[10px] font-mono font-bold text-[#FF3B3B] tracking-wider uppercase">
                 Konsol Input B • Live QR Bridge
               </span>
             </div>
-            <span className="text-[10px] font-mono text-[#FBDBAF] bg-[#0E0C0A]/70 border border-[#FBDBAF]/15 px-2 py-0.5 rounded">
+            <span className="text-[10px] font-mono text-[#CBD5E1] bg-[#0B0E14]/70 border border-[#94A3B8]/18 px-2 py-0.5 rounded">
               KAMERA HP
             </span>
           </div>
 
           <div className="flex items-center gap-3 py-1">
-            <div className="w-11 h-11 rounded-lg bg-[#E07020]/15 border border-[#E07020]/35 flex items-center justify-center text-[#FF7A33] shrink-0">
+            <div className="w-11 h-11 rounded-lg bg-[#FF2A2A]/15 border border-[#FF2A2A]/35 flex items-center justify-center text-[#FF3B3B] shrink-0">
               <Smartphone size={20} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs sm:text-sm font-semibold text-white">
                 Pindai Bukti via Kamera HP
               </div>
-              <div className="text-xs text-[#FBDBAF]/65 truncate">
+              <div className="text-xs text-[#CBD5E1]/70 truncate">
                 Foto barang bukti via ponsel &amp; sinkron otomatis
               </div>
             </div>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-lg bg-[#E07020]/15 border border-[#E07020]/35 text-[#FF7A33] text-xs font-mono font-semibold cursor-pointer hover:bg-[#E07020]/25 transition-all"
+              className="px-3 py-1.5 rounded-lg bg-[#FF2A2A]/15 border border-[#FF2A2A]/35 text-[#FF3B3B] text-xs font-mono font-semibold cursor-pointer hover:bg-[#FF2A2A]/25 transition-all"
             >
               Buka QR
             </button>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-[#FBDBAF]/10 text-[10px] font-mono">
-            <span className="text-[#FF7A33] flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] inline-block" />
+          <div className="flex items-center justify-between pt-2 border-t border-[#94A3B8]/15 text-[10px] font-mono">
+            <span className="text-[#FF3B3B] flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FF2A2A] inline-block" />
               Live Sync R2 Aktif
             </span>
-            <span className="text-[#FBDBAF]/65">Nirkabel / Tanpa Kabel Data</span>
+            <span className="text-[#CBD5E1]/70">Nirkabel / Tanpa Kabel Data</span>
           </div>
         </div>
       </div>
@@ -324,9 +324,9 @@ export default function BuktiDigitalSection({
                   title="Klik untuk memperbesar pratinjau"
                 >
                   {isPdf ? (
-                    <div className="flex flex-col items-center gap-2 text-[#FF7A33]">
+                    <div className="flex flex-col items-center gap-2 text-[#FF3B3B]">
                       <FileText size={36} />
-                      <span className="text-xs font-mono text-[#FBDBAF]/65">DOKUMEN PDF</span>
+                      <span className="text-xs font-mono text-[#CBD5E1]/70">DOKUMEN PDF</span>
                     </div>
                   ) : url ? (
                     <>
@@ -361,8 +361,8 @@ export default function BuktiDigitalSection({
                     <span 
                       className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                         isPdf 
-                          ? 'bg-[#FF5A1F]/15 border-[#FF5A1F]/35 text-[#FF7A33]' 
-                          : 'bg-[#E07020]/15 border-[#E07020]/35 text-[#FBDBAF]'
+                          ? 'bg-[#FF2A2A]/15 border-[#FF2A2A]/35 text-[#FF3B3B]' 
+                          : 'bg-[#FFFFFF]/10 border-[#94A3B8]/30 text-[#CBD5E1]'
                       }`}
                     >
                       {isPdf ? 'PDF' : 'FOTO_R2'}
@@ -386,12 +386,12 @@ export default function BuktiDigitalSection({
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[#FBDBAF]/10">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#94A3B8]/15">
                     <a
                       href={url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs font-mono text-[#FAF6F0] hover:text-[#FF7A33] flex items-center gap-1 no-underline font-medium"
+                      className="text-xs font-mono text-[#F8FAFC] hover:text-[#FF3B3B] flex items-center gap-1 no-underline font-medium"
                     >
                       <ExternalLink size={12} /> Buka Asli
                     </a>
@@ -399,7 +399,7 @@ export default function BuktiDigitalSection({
                     <button
                       type="button"
                       onClick={() => onRemoveEvidence(item)}
-                      className="text-xs font-mono text-[#FF7A33] hover:text-[#FF5A1F] flex items-center gap-1 bg-transparent border-none cursor-pointer p-1 rounded"
+                      className="text-xs font-mono text-[#FF3B3B] hover:text-[#FF2A2A] flex items-center gap-1 bg-transparent border-none cursor-pointer p-1 rounded"
                       title="Hapus berkas bukti ini"
                     >
                       <Trash2 size={12} /> Hapus
@@ -427,18 +427,18 @@ export default function BuktiDigitalSection({
           onClick={() => setPreviewItem(null)}
         >
           <div 
-            className="relative group/card bg-[#161310]/95 backdrop-blur-2xl border border-[#FBDBAF]/15 rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+            className="relative group/card bg-[#11161F]/95 backdrop-blur-2xl border border-[#94A3B8]/20 rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <HudCorners size="md" />
-            <div className="p-3 border-b border-[#FBDBAF]/12 flex items-center justify-between">
-              <span className="text-xs font-mono text-[#FAF6F0] font-bold truncate">
+            <div className="p-3 border-b border-[#94A3B8]/15 flex items-center justify-between">
+              <span className="text-xs font-mono text-[#F8FAFC] font-bold truncate">
                 {previewItem.nama_berkas || 'Pratinjau Berkas'}
               </span>
               <button
                 type="button"
                 onClick={() => setPreviewItem(null)}
-                className="bg-transparent border-none text-[#FBDBAF]/65 hover:text-white cursor-pointer p-1 flex items-center"
+                className="bg-transparent border-none text-[#CBD5E1]/70 hover:text-white cursor-pointer p-1 flex items-center"
               >
                 <X size={18} />
               </button>
@@ -447,13 +447,13 @@ export default function BuktiDigitalSection({
             <div className="flex-1 bg-black/90 p-4 flex items-center justify-center overflow-auto min-h-[300px]">
               {previewItem.tipe?.includes('pdf') || (previewItem.url || '').toLowerCase().endsWith('.pdf') ? (
                 <div className="flex flex-col items-center gap-3 text-center">
-                  <FileText size={48} className="text-[#FF7A33]" />
-                  <span className="text-xs text-[#FBDBAF]/80">Pratinjau dokumen PDF</span>
+                  <FileText size={48} className="text-[#FF3B3B]" />
+                  <span className="text-xs text-[#CBD5E1]/80">Pratinjau dokumen PDF</span>
                   <a
                     href={previewItem.url || previewItem.fileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#E07020] to-[#FF5A1F] hover:from-[#FF5A1F] hover:to-[#FF7A33] text-white text-xs font-semibold no-underline flex items-center gap-2 shadow-[0_0_20px_-4px_rgba(224,112,32,0.5)] border border-[#FF5A1F]/40"
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#E61919] to-[#FF2A2A] hover:from-[#FF2A2A] hover:to-[#FF3B3B] text-white text-xs font-semibold no-underline flex items-center gap-2 shadow-[0_0_20px_-4px_rgba(255,42,42,0.5)] border border-[#FF5252]/40"
                   >
                     <ExternalLink size={14} /> Buka Dokumen PDF di Tab Baru
                   </a>

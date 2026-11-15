@@ -595,9 +595,9 @@ export default function MindikGeneratorView({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '20px 24px',
-        background: 'linear-gradient(135deg, #1e2530 0%, #171c24 100%)',
+        background: 'linear-gradient(135deg, #161D2A 0%, #11161F 100%)',
         borderRadius: '16px',
-        border: '1px solid rgba(251, 219, 175, 0.14)',
+        border: '1px solid rgba(148, 163, 184, 0.14)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -605,11 +605,11 @@ export default function MindikGeneratorView({
             width: '46px',
             height: '46px',
             borderRadius: '12px',
-            background: '#E07020',
+            background: '#FF2A2A',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 18px rgba(224, 112, 32, 0.35)'
+            boxShadow: '0 4px 18px rgba(255, 42, 42, 0.35)'
           }}>
             <FileSignature size={24} color="#FFFFFF" />
           </div>
@@ -620,7 +620,7 @@ export default function MindikGeneratorView({
               </h2>
               <span style={{
                 background: '#FFFFFF',
-                color: '#0E0C0A',
+                color: '#0B0E14',
                 border: '1px solid #FFFFFF',
                 padding: '2px 10px',
                 borderRadius: '9999px',
@@ -630,7 +630,7 @@ export default function MindikGeneratorView({
                 ISOLASI LP AKTIF
               </span>
             </div>
-            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#FBDBAF' }}>
+            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#CBD5E1' }}>
               Administrasi Penyidikan terisolasi per Laporan Polisi dengan mesin rantai formil KUHAP.
             </p>
           </div>
@@ -659,23 +659,23 @@ export default function MindikGeneratorView({
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          background: feedbackNotice.type === 'success' ? 'rgba(224, 112, 32, 0.14)' : (feedbackNotice.type === 'warning' ? 'rgba(251, 219, 175, 0.12)' : 'rgba(255, 90, 31, 0.18)'),
-          border: `1px solid ${feedbackNotice.type === 'success' ? 'rgba(224, 112, 32, 0.5)' : (feedbackNotice.type === 'warning' ? 'rgba(251, 219, 175, 0.35)' : '#FF5A1F')}`,
-          color: feedbackNotice.type === 'success' ? '#FFFFFF' : (feedbackNotice.type === 'warning' ? '#FBDBAF' : '#FF5A1F'),
+          background: feedbackNotice.type === 'success' ? 'rgba(255, 42, 42, 0.14)' : (feedbackNotice.type === 'warning' ? 'rgba(148, 163, 184, 0.12)' : 'rgba(255, 42, 42, 0.18)'),
+          border: `1px solid ${feedbackNotice.type === 'success' ? 'rgba(255, 42, 42, 0.5)' : (feedbackNotice.type === 'warning' ? 'rgba(148, 163, 184, 0.35)' : '#FF2A2A')}`,
+          color: feedbackNotice.type === 'success' ? '#FFFFFF' : (feedbackNotice.type === 'warning' ? '#CBD5E1' : '#FF3B3B'),
           animation: 'fadeIn 200ms ease-out'
         }}>
-          {feedbackNotice.type === 'success' && <CheckCircle2 size={18} color="#FF5A1F" />}
-          {feedbackNotice.type === 'warning' && <AlertTriangle size={18} color="#FBDBAF" />}
-          {feedbackNotice.type === 'error' && <AlertCircle size={18} color="#FF5A1F" />}
+          {feedbackNotice.type === 'success' && <CheckCircle2 size={18} color="#FF2A2A" />}
+          {feedbackNotice.type === 'warning' && <AlertTriangle size={18} color="#CBD5E1" />}
+          {feedbackNotice.type === 'error' && <AlertCircle size={18} color="#FF2A2A" />}
           <span>{feedbackNotice.message}</span>
         </div>
       )}
 
       {/* --- SECTION 1: PEMILIH PERKARA / LP AKTIF --- */}
       <div style={{
-        background: 'rgba(18, 14, 11, 0.72)',
+        background: 'rgba(17, 22, 31, 0.80)',
         borderRadius: '16px',
-        border: '1px solid rgba(251, 219, 175, 0.14)',
+        border: '1px solid rgba(148, 163, 184, 0.14)',
         padding: '18px 22px',
         display: 'flex',
         flexDirection: 'column',
@@ -683,7 +683,7 @@ export default function MindikGeneratorView({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Shield size={18} color="#FF5A1F" />
+            <Shield size={18} color="#FF2A2A" />
             <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.4px' }}>
               BERKAS PERKARA AKTIF (LAPORAN POLISI)
             </span>
@@ -726,27 +726,27 @@ export default function MindikGeneratorView({
               gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: '10px',
               padding: '10px 16px',
-              background: '#161310',
+              background: '#11161F',
               borderRadius: '12px',
-              border: '1px solid rgba(251, 219, 175, 0.14)'
+              border: '1px solid rgba(148, 163, 184, 0.14)'
             }}>
               <div>
-                <span style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)', display: 'block' }}>Pelapor</span>
+                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.6)', display: 'block' }}>Pelapor</span>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF' }}>{currentCase.pelapor || '-'}</span>
               </div>
               <div>
-                <span style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)', display: 'block' }}>Tanggal LP</span>
+                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.6)', display: 'block' }}>Tanggal LP</span>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF' }}>
                   {formatTanggalIndonesia(currentCase.tanggal_lp || currentCase.sprin_date) || '-'}
                 </span>
               </div>
               <div>
-                <span style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)', display: 'block' }}>Penyidik Penangan</span>
+                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.6)', display: 'block' }}>Penyidik Penangan</span>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF' }}>{currentCase.penyidik_1_nama || '-'}</span>
               </div>
               <div>
-                <span style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)', display: 'block' }}>Arsip Naskah Dinas</span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#FBDBAF' }}>
+                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.6)', display: 'block' }}>Arsip Naskah Dinas</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#CBD5E1' }}>
                   {isLoadingDocs ? 'Memuat...' : `${activeCaseDocs.length} Dokumen Sah`}
                 </span>
               </div>
@@ -763,9 +763,9 @@ export default function MindikGeneratorView({
           
           {/* Card 1: Pilihan Format Dokumen Mindik */}
           <div style={{
-            background: 'rgba(18, 14, 11, 0.72)',
+            background: 'rgba(17, 22, 31, 0.80)',
             borderRadius: '16px',
-            border: '1px solid rgba(251, 219, 175, 0.14)',
+            border: '1px solid rgba(148, 163, 184, 0.14)',
             padding: '18px',
             display: 'flex',
             flexDirection: 'column',
@@ -773,12 +773,12 @@ export default function MindikGeneratorView({
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={17} color="#FF5A1F" />
+                <FileText size={17} color="#FF2A2A" />
                 <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF' }}>
                   FORMAT MINDIK TERSEDIA
                 </span>
               </div>
-              <span style={{ fontSize: '11px', color: '#FBDBAF' }}>
+              <span style={{ fontSize: '11px', color: '#CBD5E1' }}>
                 {filteredTemplates.length} Format
               </span>
             </div>
@@ -798,9 +798,9 @@ export default function MindikGeneratorView({
                       fontSize: '11px',
                       fontWeight: 700,
                       whiteSpace: 'nowrap',
-                      border: isActive ? '1px solid #FF5A1F' : '1px solid rgba(251, 219, 175, 0.16)',
-                      background: isActive ? '#E07020' : '#161310',
-                      color: isActive ? '#FFFFFF' : '#FBDBAF',
+                      border: isActive ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.16)',
+                      background: isActive ? '#FF2A2A' : '#11161F',
+                      color: isActive ? '#FFFFFF' : '#CBD5E1',
                       cursor: 'pointer',
                       transition: 'all 150ms ease'
                     }}
@@ -859,11 +859,11 @@ export default function MindikGeneratorView({
                         padding: '10px 14px',
                         borderRadius: '8px',
                         background: isSelected 
-                          ? 'rgba(255, 53, 45, 0.16)' 
-                          : (isLocked ? 'rgba(16, 13, 11, 0.65)' : '#161310'),
+                          ? 'rgba(255, 42, 42, 0.16)' 
+                          : (isLocked ? 'rgba(11, 14, 20, 0.65)' : '#11161F'),
                         border: isSelected 
-                          ? '1.5px solid #FF5A1F' 
-                          : (isLocked ? '1px solid rgba(251, 219, 175, 0.1)' : '1px solid rgba(251, 219, 175, 0.16)'),
+                          ? '1.5px solid #FF2A2A' 
+                          : (isLocked ? '1px solid rgba(148, 163, 184, 0.1)' : '1px solid rgba(148, 163, 184, 0.16)'),
                         cursor: isLocked ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -875,22 +875,22 @@ export default function MindikGeneratorView({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                         {isLocked ? (
-                          <Lock size={14} color="#FF5A1F" style={{ flexShrink: 0 }} />
+                          <Lock size={14} color="#FF2A2A" style={{ flexShrink: 0 }} />
                         ) : (
-                          <Unlock size={14} color="#FBDBAF" style={{ flexShrink: 0 }} />
+                          <Unlock size={14} color="#CBD5E1" style={{ flexShrink: 0 }} />
                         )}
                         <div style={{ minWidth: 0 }}>
                           <div style={{
                             fontSize: '12px',
                             fontWeight: 700,
-                            color: isSelected ? '#FFFFFF' : '#FAF6F0',
+                            color: isSelected ? '#FFFFFF' : '#F8FAFC',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis'
                           }}>
                             {tplTitle}
                           </div>
-                          <div style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)' }}>
+                          <div style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.55)' }}>
                             Kode: <span className="mono">{tplCode}</span>
                           </div>
                         </div>
@@ -903,9 +903,9 @@ export default function MindikGeneratorView({
                           padding: '2px 9px',
                           borderRadius: '9999px',
                           whiteSpace: 'nowrap',
-                          background: evalRes.isLocked ? 'rgba(224, 112, 32, 0.15)' : '#FFFFFF',
-                          border: evalRes.isLocked ? '1px solid rgba(255, 90, 31, 0.4)' : '1px solid #FFFFFF',
-                          color: evalRes.isLocked ? '#FF5A1F' : '#0E0C0A'
+                          background: evalRes.isLocked ? 'rgba(255, 42, 42, 0.15)' : '#FFFFFF',
+                          border: evalRes.isLocked ? '1px solid rgba(255, 42, 42, 0.4)' : '1px solid #FFFFFF',
+                          color: evalRes.isLocked ? '#FF2A2A' : '#0B0E14'
                         }}>
                           {evalRes.badge}
                         </span>
@@ -919,9 +919,9 @@ export default function MindikGeneratorView({
 
           {/* Card 2: Status Prasyarat & Form Input Aktif */}
           <div style={{
-            background: 'rgba(18, 14, 11, 0.72)',
+            background: 'rgba(17, 22, 31, 0.80)',
             borderRadius: '16px',
-            border: '1px solid rgba(251, 219, 175, 0.14)',
+            border: '1px solid rgba(148, 163, 184, 0.14)',
             padding: '20px',
             display: 'flex',
             flexDirection: 'column',
@@ -930,11 +930,11 @@ export default function MindikGeneratorView({
             {/* Header Form Dokumen Terpilih */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(251, 219, 175, 0.65)' }}>DOKUMEN TERPILIH</span>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(203, 213, 225, 0.65)' }}>DOKUMEN TERPILIH</span>
                 <span style={{
                   fontSize: '11px',
                   fontWeight: 700,
-                  color: activeChainStatus.allowed ? '#FBDBAF' : '#FF5A1F'
+                  color: activeChainStatus.allowed ? '#CBD5E1' : '#FF2A2A'
                 }}>
                   {activeChainStatus.allowed ? '✓ Rantai Formil Terpenuhi' : '✕ Syarat Belum Lengkap'}
                 </span>
@@ -949,13 +949,13 @@ export default function MindikGeneratorView({
               <div style={{
                 padding: '12px 14px',
                 borderRadius: '10px',
-                background: 'rgba(224, 112, 32, 0.12)',
-                border: '1px solid rgba(255, 90, 31, 0.4)',
+                background: 'rgba(255, 42, 42, 0.12)',
+                border: '1px solid rgba(255, 42, 42, 0.4)',
                 display: 'flex',
                 alignItems: 'start',
                 gap: '10px',
                 fontSize: '12px',
-                color: '#FBDBAF'
+                color: '#CBD5E1'
               }}>
                 <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
@@ -1094,18 +1094,18 @@ export default function MindikGeneratorView({
 
         {/* PANEL KANAN: DASHBOARD STATUS NASKAH DINAS SIAP TERBIT */}
         <div className="lg:col-span-5" style={{
-          background: 'rgba(18, 14, 11, 0.72)',
+          background: 'rgba(17, 22, 31, 0.80)',
           borderRadius: '16px',
-          border: '1px solid rgba(251, 219, 175, 0.14)',
+          border: '1px solid rgba(148, 163, 184, 0.14)',
           padding: '24px',
           display: 'flex',
           flexDirection: 'column',
           gap: '20px',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
         }}>
-          <div style={{ borderBottom: '1px solid rgba(251, 219, 175, 0.14)', paddingBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ borderBottom: '1px solid rgba(148, 163, 184, 0.14)', paddingBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <span style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.65)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '11px', color: 'rgba(203, 213, 225, 0.65)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Naskah Dinas Siap Terbit
               </span>
               <h2 className="heading-font" style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: '4px 0 0' }}>
@@ -1117,9 +1117,9 @@ export default function MindikGeneratorView({
               fontWeight: 700,
               padding: '4px 10px',
               borderRadius: '9999px',
-              background: activeChainStatus.allowed ? '#FFFFFF' : 'rgba(224, 112, 32, 0.15)',
-              border: activeChainStatus.allowed ? '1px solid #FFFFFF' : '1px solid rgba(255, 90, 31, 0.45)',
-              color: activeChainStatus.allowed ? '#0E0C0A' : '#FF5A1F'
+              background: activeChainStatus.allowed ? '#FFFFFF' : 'rgba(255, 42, 42, 0.15)',
+              border: activeChainStatus.allowed ? '1px solid #FFFFFF' : '1px solid rgba(255, 42, 42, 0.45)',
+              color: activeChainStatus.allowed ? '#0B0E14' : '#FF2A2A'
             }}>
               {activeChainStatus.allowed ? '✓ Rantai Formil Sah' : '✕ Belum Memenuhi Syarat'}
             </span>
@@ -1127,22 +1127,22 @@ export default function MindikGeneratorView({
 
           {/* Ringkasan Parameter */}
           <div style={{
-            background: '#161310',
+            background: '#11161F',
             padding: '16px',
             borderRadius: '12px',
-            border: '1px solid rgba(251, 219, 175, 0.14)',
+            border: '1px solid rgba(148, 163, 184, 0.14)',
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '14px'
           }}>
             <div>
-              <div style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.55)' }}>Nomor Naskah:</div>
+              <div style={{ fontSize: '11px', color: 'rgba(203, 213, 225, 0.55)' }}>Nomor Naskah:</div>
               <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#FFFFFF', wordBreak: 'break-all' }}>
                 {formValues.NOMOR_SURAT || '-'}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.55)' }}>Tanggal Surat:</div>
+              <div style={{ fontSize: '11px', color: 'rgba(203, 213, 225, 0.55)' }}>Tanggal Surat:</div>
               <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#FFFFFF' }}>
                 {formValues.TANGGAL_SURAT ? formatTanggalIndonesia(formValues.TANGGAL_SURAT) : '-'}
               </div>
@@ -1217,9 +1217,9 @@ export default function MindikGeneratorView({
             width: '95vw',
             maxWidth: '1200px',
             height: '90vh',
-            background: '#0E0C0A',
+            background: '#0B0E14',
             borderRadius: '18px',
-            border: '1px solid rgba(251, 219, 175, 0.18)',
+            border: '1px solid rgba(148, 163, 184, 0.18)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -1227,14 +1227,14 @@ export default function MindikGeneratorView({
           }}>
             <div style={{
               padding: '14px 20px',
-              borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
+              borderBottom: '1px solid rgba(148, 163, 184, 0.14)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: '#161310'
+              background: '#11161F'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Eye color="#FF5A1F" size={18} />
+                <Eye color="#FF2A2A" size={18} />
                 <span className="heading-font" style={{ fontWeight: 800, fontSize: '14px', color: '#FFFFFF' }}>
                   Pratinjau Resmi: {currentTemplate?.title || currentTemplate?.name || selectedTemplateCode}
                 </span>

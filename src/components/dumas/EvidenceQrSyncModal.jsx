@@ -286,10 +286,10 @@ export default function EvidenceQrSyncModal({
       ctx.lineWidth = 2;
       ctx.strokeRect(40, 170, 520, 230);
 
-      ctx.fillStyle = '#FAF6F0';
+      ctx.fillStyle = '#F8FAFC';
       ctx.font = 'bold 20px sans-serif';
       ctx.fillText('FOTO BARANG BUKTI FISIK TERVERIFIKASI', 80, 270);
-      ctx.fillStyle = '#FF7A33';
+      ctx.fillStyle = '#FF3B3B';
       ctx.font = '14px monospace';
       ctx.fillText('• Enkripsi SHA-256 Otomatis Berhasil •', 160, 310);
     }
@@ -362,12 +362,12 @@ export default function EvidenceQrSyncModal({
       }}
     >
       <div 
-        className="w-full max-w-md rounded-2xl bg-[#161310] border border-[rgba(251,219,175,0.16)] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-md rounded-2xl bg-[#11161F] border border-[rgba(148,163,184,0.2)] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
         style={{
           width: '100%',
           maxWidth: '460px',
-          backgroundColor: '#161310',
-          border: '1px solid rgba(251, 219, 175, 0.16)',
+          backgroundColor: '#11161F',
+          border: '1px solid rgba(148, 163, 184, 0.2)',
           borderRadius: '18px',
           boxShadow: '0 20px 50px rgba(0, 0, 0, 0.75)',
           overflow: 'hidden',
@@ -377,11 +377,11 @@ export default function EvidenceQrSyncModal({
       >
         {/* Header Modal */}
         <div 
-          className="p-4 px-5 bg-[#0E0C0A] border-b border-[rgba(251,219,175,0.14)] flex items-center justify-between"
+          className="p-4 px-5 bg-[#0B0E14] border-b border-[rgba(148,163,184,0.16)] flex items-center justify-between"
           style={{
             padding: '16px 20px',
-            backgroundColor: '#0E0C0A',
-            borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
+            backgroundColor: '#0B0E14',
+            borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -393,18 +393,18 @@ export default function EvidenceQrSyncModal({
                 width: '34px',
                 height: '34px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(224, 112, 32, 0.18)',
-                border: '1px solid rgba(255, 90, 31, 0.45)',
+                backgroundColor: 'rgba(255, 42, 42, 0.18)',
+                border: '1px solid rgba(255, 42, 42, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#FF5A1F'
+                color: '#FF2A2A'
               }}
             >
               <Smartphone size={18} />
             </div>
             <div>
-              <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#FF5A1F', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#FF2A2A', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 LIVE MOBILE BRIDGE
               </span>
               <h3 className="heading-font" style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
@@ -471,8 +471,8 @@ export default function EvidenceQrSyncModal({
                 width: '252px',
                 height: '252px',
                 borderRadius: '16px',
-                backgroundColor: '#0E0C0A',
-                border: '1.5px dashed #FF5A1F',
+                backgroundColor: '#0B0E14',
+                border: '1.5px dashed #FF2A2A',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -494,10 +494,10 @@ export default function EvidenceQrSyncModal({
               }}>
                 <AlertTriangle size={24} />
               </div>
-              <span style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FF5A1F' }}>
+              <span style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FF2A2A' }}>
                 QR KEDALUWARSA
               </span>
-              <span style={{ fontSize: '11px', color: '#FBDBAF', lineHeight: 1.4 }}>
+              <span style={{ fontSize: '11px', color: '#CBD5E1', lineHeight: 1.4 }}>
                 Batas waktu 30 detik QR telah habis demi keamanan enkripsi.
               </span>
               <button
@@ -507,7 +507,7 @@ export default function EvidenceQrSyncModal({
                   marginTop: '4px',
                   padding: '8px 16px',
                   borderRadius: '9999px',
-                  backgroundColor: '#E07020',
+                  backgroundColor: '#FF2A2A',
                   border: 'none',
                   color: '#FFFFFF',
                   fontSize: '11px',
@@ -518,7 +518,7 @@ export default function EvidenceQrSyncModal({
                   alignItems: 'center',
                   gap: '6px'
                 }}
-                className="hover:bg-[#FF5A1F] transition-colors"
+                className="hover:bg-[#FF3B3B] transition-colors"
               >
                 <RefreshCw size={12} />
                 <span>QR Kedaluwarsa. Klik untuk Buat QR Baru</span>
@@ -538,16 +538,16 @@ export default function EvidenceQrSyncModal({
                   gap: '6px',
                   padding: '7px 14px',
                   borderRadius: '9999px',
-                  backgroundColor: copied ? '#FFFFFF' : '#1E1915',
-                  border: copied ? '1px solid #FFFFFF' : '1px solid rgba(251, 219, 175, 0.18)',
-                  color: copied ? '#0E0C0A' : '#FBDBAF',
+                  backgroundColor: copied ? '#FFFFFF' : '#161D2A',
+                  border: copied ? '1px solid #FFFFFF' : '1px solid rgba(148, 163, 184, 0.2)',
+                  color: copied ? '#0B0E14' : '#CBD5E1',
                   fontSize: '11px',
                   fontFamily: 'JetBrains Mono, monospace',
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.15s'
                 }}
-                className="hover:bg-[#221C17]"
+                className="hover:bg-[#171E2B]"
                 title="Salin tautan upload sesi ke clipboard"
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -557,7 +557,7 @@ export default function EvidenceQrSyncModal({
                 style={{ 
                   fontSize: '10px', 
                   fontFamily: 'JetBrains Mono, monospace', 
-                  color: 'rgba(251, 219, 175, 0.5)', 
+                  color: 'rgba(203, 213, 225, 0.55)', 
                   maxWidth: '380px', 
                   overflow: 'hidden', 
                   textOverflow: 'ellipsis', 
@@ -578,8 +578,8 @@ export default function EvidenceQrSyncModal({
               {/* Token & Status Sesi Bar */}
               <div 
                 style={{
-                  backgroundColor: '#0E0C0A',
-                  border: countdown <= 10 ? '1px solid rgba(255, 90, 31, 0.7)' : '1px solid rgba(251, 219, 175, 0.16)',
+                  backgroundColor: '#0B0E14',
+                  border: countdown <= 10 ? '1px solid rgba(255, 42, 42, 0.7)' : '1px solid rgba(148, 163, 184, 0.18)',
                   borderRadius: '10px',
                   padding: '10px 14px',
                   display: 'flex',
@@ -589,22 +589,22 @@ export default function EvidenceQrSyncModal({
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: countdown <= 10 ? '#FF5A1F' : '#FBDBAF' }}>
-                    <Clock size={12} color={countdown <= 10 ? '#FF5A1F' : '#FF7A33'} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: countdown <= 10 ? '#FF2A2A' : '#CBD5E1' }}>
+                    <Clock size={12} color={countdown <= 10 ? '#FF2A2A' : '#FF3B3B'} />
                     <span>Sesi QR Kedaluwarsa dalam:</span>
                   </div>
-                  <span style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: countdown <= 10 ? '#FF5A1F' : '#FBDBAF' }}>
+                  <span style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: countdown <= 10 ? '#FF2A2A' : '#CBD5E1' }}>
                     {countdown} detik
                   </span>
                 </div>
 
                 {/* Progress Bar 30s */}
-                <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(251, 219, 175, 0.12)', borderRadius: '9999px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(148, 163, 184, 0.15)', borderRadius: '9999px', overflow: 'hidden' }}>
                   <div 
                     style={{
                       height: '100%',
                       width: `${sessionPercent}%`,
-                      backgroundColor: countdown <= 10 ? '#FF5A1F' : '#E07020',
+                      backgroundColor: countdown <= 10 ? '#FF3B3B' : '#FF2A2A',
                       transition: 'width 1s linear, background-color 0.3s ease'
                     }} 
                   />
@@ -613,11 +613,11 @@ export default function EvidenceQrSyncModal({
 
               {/* Sesi Info */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', fontSize: '10.5px', fontFamily: 'JetBrains Mono, monospace' }}>
-                <span style={{ color: 'rgba(251, 219, 175, 0.6)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <ShieldCheck size={12} color="#FF5A1F" />
+                <span style={{ color: 'rgba(203, 213, 225, 0.65)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <ShieldCheck size={12} color="#FF2A2A" />
                   Batas Akses Kamera HP:
                 </span>
-                <span style={{ color: '#FF7A33', fontWeight: 600 }}>
+                <span style={{ color: '#FF3B3B', fontWeight: 600 }}>
                   2 Menit (120 Detik)
                 </span>
               </div>
@@ -630,7 +630,7 @@ export default function EvidenceQrSyncModal({
                 width: '100%',
                 padding: '12px 16px',
                 borderRadius: '9999px',
-                backgroundColor: '#E07020',
+                backgroundColor: '#FF2A2A',
                 border: 'none',
                 color: '#FFFFFF',
                 fontSize: '12px',
@@ -641,9 +641,9 @@ export default function EvidenceQrSyncModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: '0 4px 14px rgba(224, 112, 32, 0.4)'
+                boxShadow: '0 4px 14px rgba(255, 42, 42, 0.4)'
               }}
-              className="hover:bg-[#FF5A1F] transition-all"
+              className="hover:bg-[#FF3B3B] transition-all"
             >
               <RefreshCw size={14} />
               <span>QR Kedaluwarsa. Klik untuk Buat QR Baru</span>
@@ -655,8 +655,8 @@ export default function EvidenceQrSyncModal({
             <div 
               style={{
                 width: '100%',
-                backgroundColor: 'rgba(224, 112, 32, 0.14)',
-                border: '1px solid #FF5A1F',
+                backgroundColor: 'rgba(255, 42, 42, 0.14)',
+                border: '1px solid #FF2A2A',
                 color: '#FFFFFF',
                 borderRadius: '10px',
                 padding: '8px 12px',
@@ -668,7 +668,7 @@ export default function EvidenceQrSyncModal({
                 animation: 'pulse 1.5s infinite'
               }}
             >
-              <CheckCircle2 size={16} color="#FF5A1F" />
+              <CheckCircle2 size={16} color="#FF2A2A" />
               <span>Bukti berhasil diterima &amp; disimpan! ({receivedCount} berkas). Anda dapat mengambil foto berikutnya dari HP</span>
             </div>
           )}
@@ -678,7 +678,7 @@ export default function EvidenceQrSyncModal({
             style={{
               width: '100%',
               paddingTop: '12px',
-              borderTop: '1px solid rgba(251, 219, 175, 0.14)',
+              borderTop: '1px solid rgba(148, 163, 184, 0.16)',
               display: 'flex',
               flexDirection: 'column',
               gap: '8px'
@@ -692,9 +692,9 @@ export default function EvidenceQrSyncModal({
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: '9999px',
-                backgroundColor: isExpired ? '#1E1915' : '#0E0C0A',
-                border: '1px solid rgba(251, 219, 175, 0.18)',
-                color: isExpired ? 'rgba(251, 219, 175, 0.4)' : '#FFFFFF',
+                backgroundColor: isExpired ? '#161D2A' : '#0B0E14',
+                border: '1px solid rgba(148, 163, 184, 0.2)',
+                color: isExpired ? 'rgba(203, 213, 225, 0.45)' : '#FFFFFF',
                 fontSize: '11px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 600,
@@ -707,10 +707,10 @@ export default function EvidenceQrSyncModal({
               }}
               title="Kirim contoh foto simulasi dari ponsel ke daftar bukti"
             >
-              <Camera size={14} color="#FF5A1F" />
+              <Camera size={14} color="#FF2A2A" />
               <span>+ Simulasi Kamera HP Mengirim Foto Bukti</span>
             </button>
-            <span style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
+            <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.58)', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
               Klik tombol simulasi di atas untuk langsung menguji penerimaan berkas foto dari ponsel tanpa koneksi eksternal.
             </span>
           </div>
@@ -719,17 +719,17 @@ export default function EvidenceQrSyncModal({
 
         {/* Footer Modal */}
         <div 
-          className="p-3.5 px-5 bg-[#0E0C0A] border-t border-[rgba(251,219,175,0.14)] flex items-center justify-between"
+          className="p-3.5 px-5 bg-[#0B0E14] border-t border-[rgba(148,163,184,0.16)] flex items-center justify-between"
           style={{
             padding: '12px 20px',
-            backgroundColor: '#0E0C0A',
-            borderTop: '1px solid rgba(251, 219, 175, 0.14)',
+            backgroundColor: '#0B0E14',
+            borderTop: '1px solid rgba(148, 163, 184, 0.16)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#FF7A33' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#FF3B3B' }}>
             <ShieldCheck size={13} />
             <span>Koneksi Terenkripsi AES-256</span>
           </div>
@@ -740,9 +740,9 @@ export default function EvidenceQrSyncModal({
             style={{
               padding: '6px 14px',
               borderRadius: '9999px',
-              backgroundColor: '#1E1915',
-              border: '1px solid rgba(251, 219, 175, 0.2)',
-              color: '#FBDBAF',
+              backgroundColor: '#161D2A',
+              border: '1px solid rgba(148, 163, 184, 0.22)',
+              color: '#CBD5E1',
               fontSize: '11px',
               fontFamily: 'JetBrains Mono, monospace',
               cursor: 'pointer'

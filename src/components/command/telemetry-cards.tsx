@@ -35,15 +35,15 @@ export function TelemetryCards({
       {TELEMETRY.map((item) => (
         <HudCard
           key={item.code}
-          className="!bg-[rgba(18,14,11,0.68)] !border-[#FBDBAF]/15 hover:!bg-[#221C17]/90 hover:!border-[#E07020]/50 backdrop-blur-[18px] transition-all duration-300"
+          className="!bg-[rgba(17,22,31,0.78)] !border-[rgba(148,163,184,0.14)] hover:!bg-[#171E2B]/95 hover:!border-[rgba(255,42,42,0.50)] backdrop-blur-[18px] transition-all duration-300"
           contentClassName="flex flex-col gap-4 p-5"
         >
-          <div className="flex items-start justify-between gap-3 border-b border-[#FBDBAF]/12 pb-3">
+          <div className="flex items-start justify-between gap-3 border-b border-[rgba(148,163,184,0.12)] pb-3">
             <div>
-              <p className="font-mono text-[10px] tracking-[0.3em] text-[#E07020]">{item.code}</p>
-              <h3 className="mt-1 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-[#FBDBAF]/85">{item.label}</h3>
+              <p className="font-mono text-[10px] tracking-[0.3em] text-[#FF2A2A]">{item.code}</p>
+              <h3 className="mt-1 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-[#CBD5E1]/90">{item.label}</h3>
             </div>
-            <span className="grid size-[38px] place-items-center rounded-full border border-[#FBDBAF]/25 bg-[#181411] text-[#FBDBAF] transition-all duration-200 group-hover/card:border-white group-hover/card:bg-white group-hover/card:text-[#0E0C0A]">
+            <span className="grid size-[38px] place-items-center rounded-full border border-[rgba(148,163,184,0.25)] bg-[#131924] text-[#CBD5E1] transition-all duration-200 group-hover/card:border-[#FF2A2A] group-hover/card:bg-[#FF2A2A] group-hover/card:text-white group-hover/card:shadow-[0_0_16px_rgba(255,42,42,0.45)]">
               <item.icon className="size-[17px]" aria-hidden="true" />
             </span>
           </div>
@@ -54,12 +54,12 @@ export function TelemetryCards({
 
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <BracketTag pulse={item.pulse}>{item.tag}</BracketTag>
-            <span className="text-xs text-[#FBDBAF]/65">{item.caption}</span>
+            <span className="text-xs text-[#94A3B8]">{item.caption}</span>
           </p>
 
-          <div className="flex items-center gap-3 border-t border-[#FBDBAF]/12 pt-3">
+          <div className="flex items-center gap-3 border-t border-[rgba(148,163,184,0.12)] pt-3">
             <div
-              className="relative h-1 flex-1 overflow-hidden rounded-full bg-[#221C17]"
+              className="relative h-1 flex-1 overflow-hidden rounded-full bg-[#161D2A]"
               role="progressbar"
               aria-label={`Indikator ${item.label}`}
               aria-valuenow={item.progress}
@@ -67,11 +67,11 @@ export function TelemetryCards({
               aria-valuemax={100}
             >
               <span
-                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#C45A18] to-[#FF5A1F]"
+                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#B91C1C] to-[#FF2A2A]"
                 style={{ width: `${Math.max(item.progress, 2)}%` }}
               />
             </div>
-            <span className="font-mono text-[10px] font-semibold tabular-nums text-[#E07020]">{String(item.progress).padStart(2, '0')}%</span>
+            <span className="font-mono text-[10px] font-semibold tabular-nums text-[#FF3B3B]">{String(item.progress).padStart(2, '0')}%</span>
           </div>
         </HudCard>
       ))}

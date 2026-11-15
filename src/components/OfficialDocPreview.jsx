@@ -162,7 +162,7 @@ export default function OfficialDocPreview({
               className="btn btn-secondary btn-sm"
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px' }}
             >
-              <CheckCircle2 color={isSaved ? '#FF5A1F' : 'currentColor'} size={13} />
+              <CheckCircle2 color={isSaved ? '#FF2A2A' : 'currentColor'} size={13} />
               <span>{isSaved ? 'Tersimpan' : 'Simpan Arsip'}</span>
             </button>
           )}
@@ -181,26 +181,26 @@ export default function OfficialDocPreview({
       </div>
 
       {downloadNotice && (
-        <div style={{ padding: '8px 16px', background: 'rgba(224, 112, 32, 0.14)', borderBottom: '1px solid rgba(255, 90, 31, 0.35)', color: '#FBDBAF', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <CheckCircle2 size={14} color="#FF5A1F" />
+        <div style={{ padding: '8px 16px', background: 'rgba(255, 42, 42, 0.14)', borderBottom: '1px solid rgba(255, 42, 42, 0.35)', color: '#CBD5E1', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <CheckCircle2 size={14} color="#FF2A2A" />
           <span>{downloadNotice}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div style={{ padding: '12px 16px', background: 'rgba(255, 90, 31, 0.16)', borderBottom: '1px solid rgba(255, 90, 31, 0.45)', color: '#FBDBAF', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <AlertCircle size={16} color="#FF5A1F" />
+        <div style={{ padding: '12px 16px', background: 'rgba(255, 42, 42, 0.16)', borderBottom: '1px solid rgba(255, 42, 42, 0.45)', color: '#CBD5E1', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <AlertCircle size={16} color="#FF2A2A" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {/* Body Viewer */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'auto', background: '#0E0C0A' }}>
+      <div style={{ flex: 1, position: 'relative', overflow: 'auto', background: '#0B0E14' }}>
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '400px' }}>
-            <RefreshCw size={32} className="animate-spin" style={{ color: '#FF5A1F', margin: '0 auto 12px' }} />
+            <RefreshCw size={32} className="animate-spin" style={{ color: '#FF2A2A', margin: '0 auto 12px' }} />
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>Memproses Template Asli dari Supabase...</div>
-            <div style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.6)', marginTop: '4px' }}>Menginjeksi variabel perkara ke master berkas</div>
+            <div style={{ fontSize: '11px', color: 'rgba(203, 213, 225, 0.6)', marginTop: '4px' }}>Menginjeksi variabel perkara ke master berkas</div>
           </div>
         ) : pdfBlobUrl ? (
           <iframe
@@ -211,8 +211,8 @@ export default function OfficialDocPreview({
           />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '450px', padding: '30px', textAlign: 'center' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-              <FileText color="#60a5fa" size={32} />
+            <div style={{ width: '64px', height: '64px', borderRadius: '12px', background: 'rgba(255, 42, 42, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+              <FileText color="#FF2A2A" size={32} />
             </div>
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#f8fafc', margin: '0 0 8px' }}>
               Naskah Dinas Asli Siap Digunakan

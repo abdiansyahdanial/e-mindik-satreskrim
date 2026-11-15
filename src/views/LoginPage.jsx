@@ -404,7 +404,7 @@ export default function LoginPage({ onLoginSuccess }) {
     <div className="split-auth-page">
       {/* HUD Decors */}
       <div className="auth-top-status">
-        <Radio size={13} className="animate-pulse" color="#FF5A1F" />
+        <Radio size={13} className="animate-pulse" color="#FF2A2A" />
         <span>Sistem Otomasi Administrasi Penyidikan Polri</span>
       </div>
 
@@ -449,9 +449,9 @@ export default function LoginPage({ onLoginSuccess }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: '#161310',
+                background: '#131924',
                 borderRadius: '50%',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(251, 219, 175, 0.2)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(148, 163, 184, 0.22)',
                 overflow: 'hidden'
               }}>
                 {!logoError ? (
@@ -462,7 +462,7 @@ export default function LoginPage({ onLoginSuccess }) {
                     style={{ width: '44px', height: '44px', objectFit: 'contain' }}
                   />
                 ) : (
-                  <ShieldCheck size={32} color="#FF5A1F" />
+                  <ShieldCheck size={32} color="#FF2A2A" />
                 )}
               </div>
 
@@ -656,7 +656,7 @@ export default function LoginPage({ onLoginSuccess }) {
                       disabled={loading}
                     >
                       {PANGKAT_OPTIONS.map((p) => (
-                        <option key={p} value={p} style={{ background: '#161310', color: '#FFFFFF' }}>
+                        <option key={p} value={p} style={{ background: '#11161F', color: '#FFFFFF' }}>
                           {p}
                         </option>
                       ))}
@@ -710,7 +710,7 @@ export default function LoginPage({ onLoginSuccess }) {
                       disabled={loading}
                     >
                       {UNIT_OPTIONS.map((u) => (
-                        <option key={u} value={u} style={{ background: '#161310', color: '#FFFFFF' }}>
+                        <option key={u} value={u} style={{ background: '#11161F', color: '#FFFFFF' }}>
                           {u}
                         </option>
                       ))}

@@ -115,24 +115,24 @@ export default function ModalSelectPamapta({
       }}
     >
       <div
-        className="w-full max-w-lg bg-[#161310] border border-[rgba(251,219,175,0.18)] rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        className="w-full max-w-lg bg-[#11161F] border border-[rgba(148,163,184,0.2)] rounded-xl shadow-2xl overflow-hidden flex flex-col"
         style={{
           width: '100%',
           maxWidth: '520px',
-          backgroundColor: '#161310',
-          border: '1px solid rgba(251, 219, 175, 0.18)',
+          backgroundColor: '#11161F',
+          border: '1px solid rgba(148, 163, 184, 0.2)',
           borderRadius: '18px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 32px rgba(224, 112, 32, 0.14)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 32px rgba(255, 42, 42, 0.14)',
           overflow: 'hidden'
         }}
       >
         {/* Header */}
         <div
-          className="px-5 py-4 bg-[#0E0C0A] border-b border-[rgba(251,219,175,0.14)] flex items-center justify-between"
+          className="px-5 py-4 bg-[#0B0E14] border-b border-[rgba(148,163,184,0.16)] flex items-center justify-between"
           style={{
             padding: '16px 20px',
-            backgroundColor: '#0E0C0A',
-            borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
+            backgroundColor: '#0B0E14',
+            borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -144,12 +144,12 @@ export default function ModalSelectPamapta({
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(224, 112, 32, 0.16)',
-                border: '1px solid rgba(255, 90, 31, 0.45)',
+                backgroundColor: 'rgba(255, 42, 42, 0.16)',
+                border: '1px solid rgba(255, 42, 42, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#FF5A1F'
+                color: '#FF2A2A'
               }}
             >
               <ShieldCheck size={20} />
@@ -208,7 +208,7 @@ export default function ModalSelectPamapta({
           >
             <span>Daftar Perwira Jaga / Pamapta Aktif</span>
             {isLoading && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#FF7A33' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#FF3B3B' }}>
                 <Loader2 size={12} className="animate-spin" /> Memuat data...
               </span>
             )}
@@ -232,9 +232,9 @@ export default function ModalSelectPamapta({
                     borderRadius: '10px',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
-                    backgroundColor: isSelected ? 'rgba(224, 112, 32, 0.14)' : '#0E0C0A',
-                    border: isSelected ? '1.5px solid #FF5A1F' : '1px solid rgba(251, 219, 175, 0.14)',
-                    boxShadow: isSelected ? '0 0 18px rgba(224, 112, 32, 0.2)' : 'none'
+                    backgroundColor: isSelected ? 'rgba(255, 42, 42, 0.14)' : '#0B0E14',
+                    border: isSelected ? '1.5px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.16)',
+                    boxShadow: isSelected ? '0 0 18px rgba(255, 42, 42, 0.2)' : 'none'
                   }}
                 >
                   {/* Radio Indicator */}
@@ -243,8 +243,8 @@ export default function ModalSelectPamapta({
                       width: '20px',
                       height: '20px',
                       borderRadius: '50%',
-                      border: isSelected ? '2px solid #FF5A1F' : '2px solid rgba(251, 219, 175, 0.35)',
-                      backgroundColor: isSelected ? '#FF5A1F' : 'transparent',
+                      border: isSelected ? '2px solid #FF2A2A' : '2px solid rgba(148, 163, 184, 0.35)',
+                      backgroundColor: isSelected ? '#FF2A2A' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -258,7 +258,7 @@ export default function ModalSelectPamapta({
                           width: '8px',
                           height: '8px',
                           borderRadius: '50%',
-                          backgroundColor: '#0E0C0A'
+                          backgroundColor: '#0B0E14'
                         }}
                       />
                     )}
@@ -274,8 +274,8 @@ export default function ModalSelectPamapta({
                           fontWeight: 700,
                           padding: '2px 8px',
                           borderRadius: '9999px',
-                          backgroundColor: isSelected ? '#FFFFFF' : 'rgba(251, 219, 175, 0.08)',
-                          color: isSelected ? '#0E0C0A' : '#FBDBAF',
+                          backgroundColor: isSelected ? '#FFFFFF' : 'rgba(203, 213, 225, 0.08)',
+                          color: isSelected ? '#0B0E14' : '#CBD5E1',
                           letterSpacing: '0.04em'
                         }}
                       >
@@ -287,7 +287,7 @@ export default function ModalSelectPamapta({
                       style={{
                         fontSize: '13px',
                         fontWeight: 700,
-                        color: isSelected ? '#FFFFFF' : '#FAF6F0',
+                        color: isSelected ? '#FFFFFF' : '#F8FAFC',
                         fontFamily: 'JetBrains Mono, monospace',
                         letterSpacing: '0.02em',
                         whiteSpace: 'nowrap',
@@ -301,7 +301,7 @@ export default function ModalSelectPamapta({
                     <div
                       style={{
                         fontSize: '11px',
-                        color: isSelected ? '#FF7A33' : 'rgba(251, 219, 175, 0.55)',
+                        color: isSelected ? '#FF3B3B' : 'rgba(203, 213, 225, 0.58)',
                         fontFamily: 'JetBrains Mono, monospace',
                         marginTop: '2px'
                       }}
@@ -311,7 +311,7 @@ export default function ModalSelectPamapta({
                   </div>
 
                   {isSelected && (
-                    <CheckCircle2 size={18} style={{ color: '#FF5A1F', flexShrink: 0 }} />
+                    <CheckCircle2 size={18} style={{ color: '#FF2A2A', flexShrink: 0 }} />
                   )}
                 </div>
               );
@@ -332,7 +332,7 @@ export default function ModalSelectPamapta({
               marginTop: '4px'
             }}
           >
-            <UserCheck size={14} style={{ color: '#FF7A33', flexShrink: 0 }} />
+            <UserCheck size={14} style={{ color: '#FF3B3B', flexShrink: 0 }} />
             <span>Pejabat yang dipilih akan tercetak pada kolom Tanda Tangan Penerima Laporan (Kanit / Pamapta SPKT).</span>
           </div>
         </div>
@@ -379,13 +379,13 @@ export default function ModalSelectPamapta({
               fontWeight: 700,
               fontFamily: 'JetBrains Mono, monospace',
               color: '#FFFFFF',
-              backgroundColor: '#E07020',
+              backgroundColor: '#FF2A2A',
               border: 'none',
               cursor: !selectedPamapta ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 0 18px rgba(224, 112, 32, 0.45)',
+              boxShadow: '0 0 18px rgba(255, 42, 42, 0.45)',
               transition: 'all 0.15s ease'
             }}
           >

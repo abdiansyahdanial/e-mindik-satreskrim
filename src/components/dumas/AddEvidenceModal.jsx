@@ -1,12 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { 
-  X, 
-  UploadCloud, 
-  Smartphone, 
-  FileText, 
-  Image as ImageIcon, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  X,
+  UploadCloud,
+  Smartphone,
+  FileText,
+  Image as ImageIcon,
+  CheckCircle2,
+  AlertCircle,
   Loader2
 } from 'lucide-react';
 import EvidenceQrSyncModal from './EvidenceQrSyncModal.jsx';
@@ -162,7 +162,7 @@ export default function AddEvidenceModal({
 
   return (
     <>
-      <div 
+      <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
         style={{
           position: 'fixed',
@@ -179,13 +179,13 @@ export default function AddEvidenceModal({
           padding: '16px'
         }}
       >
-        <div 
-          className="w-full max-w-lg rounded-2xl bg-[#161310] border border-[rgba(251,219,175,0.18)] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+        <div
+          className="w-full max-w-lg rounded-2xl bg-[#11161F] border border-[rgba(148,163,184,0.18)] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
           style={{
             width: '100%',
             maxWidth: '520px',
-            backgroundColor: '#161310',
-            border: '1px solid rgba(251, 219, 175, 0.16)',
+            backgroundColor: '#11161F',
+            border: '1px solid rgba(148, 163, 184, 0.16)',
             borderRadius: '18px',
             boxShadow: '0 20px 50px rgba(0, 0, 0, 0.75)',
             overflow: 'hidden',
@@ -194,19 +194,19 @@ export default function AddEvidenceModal({
           }}
         >
           {/* Header */}
-          <div 
-            className="p-4 px-5 bg-[#0E0C0A] border-b border-[rgba(251,219,175,0.14)] flex items-center justify-between"
+          <div
+            className="p-4 px-5 bg-[#0B0E14] border-b border-[rgba(148,163,184,0.14)] flex items-center justify-between"
             style={{
               padding: '16px 20px',
-              backgroundColor: '#0E0C0A',
-              borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
+              backgroundColor: '#0B0E14',
+              borderBottom: '1px solid rgba(148, 163, 184, 0.14)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}
           >
             <div>
-              <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#FF5A1F', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', color: '#FF2A2A', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 ADMINISTRASI BUKTI PERKARA
               </span>
               <h3 className="heading-font" style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
@@ -221,7 +221,7 @@ export default function AddEvidenceModal({
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#FBDBAF',
+                color: '#CBD5E1',
                 cursor: 'pointer',
                 padding: '4px',
                 borderRadius: '6px'
@@ -234,18 +234,18 @@ export default function AddEvidenceModal({
 
           {/* Body */}
           <div className="p-6 flex flex-col gap-4" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
+
             {/* 2 Pilihan Berdampingan */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              
+
               {/* Opsi 1: Dari Komputer */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  border: '1px dashed rgba(251, 219, 175, 0.22)',
+                  border: '1px dashed rgba(148, 163, 184, 0.22)',
                   borderRadius: '12px',
-                  backgroundColor: '#1E1915',
+                  backgroundColor: '#131924',
                   padding: '16px 12px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -257,17 +257,17 @@ export default function AddEvidenceModal({
                   color: '#FFFFFF'
                 }}
               >
-                <div 
+                <div
                   style={{
                     width: '38px',
                     height: '38px',
                     borderRadius: '8px',
-                    backgroundColor: 'rgba(224, 112, 32, 0.15)',
-                    border: '1px solid rgba(255, 90, 31, 0.4)',
+                    backgroundColor: 'rgba(255, 42, 42, 0.15)',
+                    border: '1px solid rgba(255, 42, 42, 0.4)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#FF7A33'
+                    color: '#FF3B3B'
                   }}
                 >
                   <UploadCloud size={20} />
@@ -275,7 +275,7 @@ export default function AddEvidenceModal({
                 <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, textAlign: 'center' }}>
                   Upload dari Laptop
                 </span>
-                <span style={{ fontSize: '9px', color: 'rgba(251, 219, 175, 0.6)', textAlign: 'center' }}>
+                <span style={{ fontSize: '9px', color: 'rgba(203, 213, 225, 0.6)', textAlign: 'center' }}>
                   PDF, JPG, PNG lokal
                 </span>
               </button>
@@ -285,9 +285,9 @@ export default function AddEvidenceModal({
                 type="button"
                 onClick={() => setIsQrModalOpen(true)}
                 style={{
-                  border: '1px dashed rgba(255, 90, 31, 0.45)',
+                  border: '1px dashed rgba(255, 42, 42, 0.45)',
                   borderRadius: '12px',
-                  backgroundColor: '#1E1915',
+                  backgroundColor: '#131924',
                   padding: '16px 12px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -299,17 +299,17 @@ export default function AddEvidenceModal({
                   color: '#FFFFFF'
                 }}
               >
-                <div 
+                <div
                   style={{
                     width: '38px',
                     height: '38px',
                     borderRadius: '8px',
-                    backgroundColor: 'rgba(224, 112, 32, 0.16)',
-                    border: '1px solid rgba(255, 90, 31, 0.45)',
+                    backgroundColor: 'rgba(255, 42, 42, 0.16)',
+                    border: '1px solid rgba(255, 42, 42, 0.45)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#FF5A1F'
+                    color: '#FF2A2A'
                   }}
                 >
                   <Smartphone size={20} />
@@ -317,14 +317,14 @@ export default function AddEvidenceModal({
                 <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, textAlign: 'center' }}>
                   Pindai via QR HP
                 </span>
-                <span style={{ fontSize: '9px', color: 'rgba(251, 219, 175, 0.6)', textAlign: 'center' }}>
+                <span style={{ fontSize: '9px', color: 'rgba(203, 213, 225, 0.6)', textAlign: 'center' }}>
                   Rotasi 30s &amp; Timeout 60s
                 </span>
               </button>
             </div>
 
             {/* Hidden Native File Input */}
-            <input 
+            <input
               ref={fileInputRef}
               type="file"
               accept=".pdf,.jpg,.jpeg,.png,.webp"
@@ -335,10 +335,10 @@ export default function AddEvidenceModal({
 
             {/* Preview Berkas Terpilih */}
             {selectedFile ? (
-              <div 
+              <div
                 style={{
-                  backgroundColor: '#0E0C0A',
-                  border: '1px solid rgba(251, 219, 175, 0.16)',
+                  backgroundColor: '#0B0E14',
+                  border: '1px solid rgba(148, 163, 184, 0.16)',
                   borderRadius: '10px',
                   padding: '12px',
                   display: 'flex',
@@ -348,16 +348,16 @@ export default function AddEvidenceModal({
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                    <div 
+                    <div
                       style={{
                         width: '34px',
                         height: '34px',
                         borderRadius: '6px',
-                        backgroundColor: 'rgba(224, 112, 32, 0.18)',
+                        backgroundColor: 'rgba(255, 42, 42, 0.18)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#FF5A1F',
+                        color: '#FF2A2A',
                         flexShrink: 0
                       }}
                     >
@@ -394,8 +394,8 @@ export default function AddEvidenceModal({
                     placeholder="Contoh: Kuitansi pembayaran tunai bermeterai / Foto kendaraan terlapor"
                     style={{
                       width: '100%',
-                      backgroundColor: '#1E1915',
-                      border: '1px solid rgba(251, 219, 175, 0.16)',
+                      backgroundColor: '#131924',
+                      border: '1px solid rgba(148, 163, 184, 0.16)',
                       borderRadius: '8px',
                       padding: '8px 10px',
                       color: '#FFFFFF',
@@ -406,23 +406,23 @@ export default function AddEvidenceModal({
                 </div>
               </div>
             ) : (
-              <div style={{ padding: '16px', textAlign: 'center', backgroundColor: '#0E0C0A', borderRadius: '10px', border: '1px dashed rgba(251, 219, 175, 0.18)', color: 'rgba(251, 219, 175, 0.55)', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
+              <div style={{ padding: '16px', textAlign: 'center', backgroundColor: '#0B0E14', borderRadius: '10px', border: '1px dashed rgba(148, 163, 184, 0.18)', color: 'rgba(203, 213, 225, 0.55)', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
                 Belum ada berkas bukti yang dipilih. Silakan pilih salah satu opsi di atas.
               </div>
             )}
 
             {/* Auto-save notification badge */}
             {autoSaveMsg && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(224, 112, 32, 0.14)', border: '1px solid rgba(255, 90, 31, 0.45)', color: '#FBDBAF', padding: '10px 12px', borderRadius: '10px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
-                <CheckCircle2 size={16} color="#FF5A1F" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255, 42, 42, 0.14)', border: '1px solid rgba(255, 42, 42, 0.45)', color: '#CBD5E1', padding: '10px 12px', borderRadius: '10px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
+                <CheckCircle2 size={16} color="#FF2A2A" />
                 <span>{autoSaveMsg}</span>
               </div>
             )}
 
             {/* Error banner */}
             {errorMsg && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255, 90, 31, 0.16)', border: '1px solid #FF5A1F', color: '#FBDBAF', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
-                <AlertCircle size={14} color="#FF5A1F" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255, 42, 42, 0.16)', border: '1px solid #FF2A2A', color: '#CBD5E1', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
+                <AlertCircle size={14} color="#FF2A2A" />
                 <span>{errorMsg}</span>
               </div>
             )}
@@ -430,12 +430,12 @@ export default function AddEvidenceModal({
           </div>
 
           {/* Footer */}
-          <div 
-            className="p-3.5 px-5 bg-[#0E0C0A] border-t border-[rgba(251,219,175,0.14)] flex items-center justify-end gap-2"
+          <div
+            className="p-3.5 px-5 bg-[#0B0E14] border-t border-[rgba(148,163,184,0.14)] flex items-center justify-end gap-2"
             style={{
               padding: '12px 20px',
-              backgroundColor: '#0E0C0A',
-              borderTop: '1px solid rgba(251, 219, 175, 0.14)',
+              backgroundColor: '#0B0E14',
+              borderTop: '1px solid rgba(148, 163, 184, 0.14)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
@@ -449,9 +449,9 @@ export default function AddEvidenceModal({
               style={{
                 padding: '8px 16px',
                 borderRadius: '9999px',
-                backgroundColor: '#1E1915',
-                border: '1px solid rgba(251, 219, 175, 0.18)',
-                color: '#FBDBAF',
+                backgroundColor: '#131924',
+                border: '1px solid rgba(148, 163, 184, 0.18)',
+                color: '#CBD5E1',
                 fontSize: '11px',
                 fontFamily: 'JetBrains Mono, monospace',
                 cursor: 'pointer'
@@ -467,7 +467,7 @@ export default function AddEvidenceModal({
               style={{
                 padding: '8px 20px',
                 borderRadius: '9999px',
-                backgroundColor: !selectedFile || isUploading ? '#221C17' : '#E07020',
+                backgroundColor: !selectedFile || isUploading ? '#161D2A' : '#FF2A2A',
                 border: 'none',
                 color: '#FFFFFF',
                 fontSize: '11px',
@@ -477,7 +477,7 @@ export default function AddEvidenceModal({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: !selectedFile || isUploading ? 'none' : '0 0 14px rgba(224, 112, 32, 0.4)'
+                boxShadow: !selectedFile || isUploading ? 'none' : '0 0 14px rgba(255, 42, 42, 0.4)'
               }}
             >
               {isUploading ? (

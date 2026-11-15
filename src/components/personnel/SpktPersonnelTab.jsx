@@ -353,8 +353,8 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
           style={{
             padding: '12px 18px',
             borderRadius: '12px',
-            backgroundColor: toast.type === 'error' ? 'rgba(255, 90, 31, 0.16)' : 'rgba(224, 112, 32, 0.14)',
-            border: `1px solid ${toast.type === 'error' ? '#FF5A1F' : 'rgba(255, 90, 31, 0.45)'}`,
+            backgroundColor: toast.type === 'error' ? 'rgba(255, 42, 42, 0.16)' : 'rgba(255, 42, 42, 0.12)',
+            border: `1px solid ${toast.type === 'error' ? '#FF2A2A' : 'rgba(255, 42, 42, 0.45)'}`,
             color: '#FFFFFF',
             fontSize: '13px',
             display: 'flex',
@@ -363,7 +363,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
             animation: 'fadeIn 0.2s ease-out'
           }}
         >
-          <CheckCircle2 size={16} color="#FF5A1F" />
+          <CheckCircle2 size={16} color="#FF2A2A" />
           <span style={{ fontWeight: 600 }}>{toast.msg}</span>
         </div>
       )}
@@ -380,7 +380,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
       >
         <div>
           <h2 className="heading-font" style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px', color: '#FFFFFF' }}>
-            <Radio size={22} color="#FF5A1F" />
+            <Radio size={22} color="#FF2A2A" />
             <span>Direktori Personel SPKT (Sentra Pelayanan Kepolisian Terpadu)</span>
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -407,7 +407,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
               onClick={handleSeedDefault}
               disabled={isSubmitting}
               className="btn btn-secondary btn-sm"
-              style={{ borderColor: '#FF5A1F', color: '#FF5A1F' }}
+              style={{ borderColor: '#FF2A2A', color: '#FF2A2A' }}
             >
               <span>+ Inisialisasi Data PAMAPTA</span>
             </button>
@@ -422,8 +422,8 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                backgroundColor: '#E07020',
-                borderColor: '#FF5A1F'
+                backgroundColor: '#FF2A2A',
+                borderColor: '#FF5252'
               }}
             >
               <UserPlus size={16} />
@@ -435,8 +435,8 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
 
       {/* Grid of SPKT Personnel Cards */}
       {isLoading && pejabatList.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#FBDBAF' }}>
-          <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 12px auto', color: '#FF5A1F' }} />
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#CBD5E1' }}>
+          <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 12px auto', color: '#FF2A2A' }} />
           <p style={{ margin: 0, fontSize: '14px' }}>Memuat direktori Pejabat SPKT dari Supabase...</p>
         </div>
       ) : pejabatList.length === 0 ? (
@@ -444,10 +444,10 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
           style={{
             textAlign: 'center',
             padding: '48px 24px',
-            backgroundColor: 'rgba(18, 14, 11, 0.72)',
+            backgroundColor: 'rgba(17, 22, 31, 0.80)',
             borderRadius: '16px',
-            border: '1px dashed rgba(251, 219, 175, 0.2)',
-            color: '#FBDBAF'
+            border: '1px dashed rgba(148, 163, 184, 0.2)',
+            color: '#CBD5E1'
           }}
         >
           <Radio size={32} style={{ margin: '0 auto 10px', color: '#64748B' }} />
@@ -461,7 +461,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
               onClick={handleSeedDefault}
               disabled={isSubmitting}
               className="btn btn-primary btn-sm"
-              style={{ backgroundColor: '#E07020', borderColor: '#FF5A1F' }}
+              style={{ backgroundColor: '#FF2A2A', borderColor: '#FF5252' }}
             >
               Inisialisasi Data Default PAMAPTA
             </button>
@@ -490,8 +490,8 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                   gap: '14px',
                   position: 'relative',
                   overflow: 'hidden',
-                  backgroundColor: 'rgba(18, 14, 11, 0.72)',
-                  border: isActive ? '1px solid rgba(251, 219, 175, 0.14)' : '1px solid rgba(251, 219, 175, 0.06)',
+                  backgroundColor: 'rgba(17, 22, 31, 0.80)',
+                  border: isActive ? '1px solid rgba(148, 163, 184, 0.14)' : '1px solid rgba(148, 163, 184, 0.08)',
                   opacity: isActive ? 1 : 0.65
                 }}
               >
@@ -502,9 +502,9 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                     top: 0,
                     right: 0,
                     background: isPamapta
-                      ? '#E07020'
+                      ? '#FF2A2A'
                       : '#FFFFFF',
-                    color: isPamapta ? '#FFFFFF' : '#0E0C0A',
+                    color: isPamapta ? '#FFFFFF' : '#0B0E14',
                     fontSize: '9px',
                     fontWeight: 800,
                     padding: '3px 14px',
@@ -522,12 +522,12 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                       width: '46px',
                       height: '46px',
                       borderRadius: '12px',
-                      background: 'rgba(224, 112, 32, 0.14)',
-                      border: '1px solid rgba(255, 90, 31, 0.4)',
+                      background: 'rgba(255, 42, 42, 0.14)',
+                      border: '1px solid rgba(255, 42, 42, 0.4)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#FF5A1F',
+                      color: '#FF2A2A',
                       fontWeight: 700,
                       fontSize: '13px'
                     }}
@@ -553,7 +553,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                     <div
                       style={{
                         fontSize: '11px',
-                        color: '#FF7A33',
+                        color: '#FF6B6B',
                         fontWeight: 600,
                         marginTop: '2px',
                         fontFamily: 'JetBrains Mono, monospace'
@@ -602,8 +602,8 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                         fontWeight: 700,
                         padding: '2px 8px',
                         borderRadius: '9999px',
-                        backgroundColor: isActive ? '#FFFFFF' : 'rgba(251, 219, 175, 0.1)',
-                        color: isActive ? '#0E0C0A' : '#FBDBAF'
+                        backgroundColor: isActive ? '#FFFFFF' : 'rgba(148, 163, 184, 0.12)',
+                        color: isActive ? '#0B0E14' : '#CBD5E1'
                       }}
                     >
                       {isActive ? 'SIAGA / AKTIF' : 'NON-AKTIF'}
@@ -618,7 +618,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      borderTop: '1px solid rgba(251, 219, 175, 0.12)',
+                      borderTop: '1px solid rgba(148, 163, 184, 0.14)',
                       paddingTop: '10px',
                       marginTop: '2px'
                     }}
@@ -633,7 +633,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                         display: 'flex',
                         alignItems: 'center',
                         gap: '5px',
-                        color: isActive ? '#FF5A1F' : '#FBDBAF'
+                        color: isActive ? '#FF2A2A' : '#CBD5E1'
                       }}
                       title={isActive ? 'Non-aktifkan dari jadwal piket' : 'Aktifkan untuk jadwal piket'}
                     >
@@ -660,8 +660,8 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                         style={{
                           padding: '4px 8px',
                           fontSize: '11px',
-                          color: '#FF5A1F',
-                          borderColor: 'rgba(255, 90, 31, 0.4)'
+                          color: '#FF2A2A',
+                          borderColor: 'rgba(255, 42, 42, 0.4)'
                         }}
                         title="Hapus Personel SPKT"
                       >
@@ -683,12 +683,12 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
         <div className="modal-backdrop" onClick={() => setIsAddModalOpen(false)}>
           <div
             className="modal-content"
-            style={{ maxWidth: '480px', backgroundColor: '#161310', border: '1px solid rgba(251, 219, 175, 0.18)', borderRadius: '18px' }}
+            style={{ maxWidth: '480px', backgroundColor: '#11161F', border: '1px solid rgba(148, 163, 184, 0.18)', borderRadius: '18px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header" style={{ borderBottom: '1px solid rgba(251, 219, 175, 0.14)' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid rgba(148, 163, 184, 0.14)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Shield size={18} color="#FF5A1F" />
+                <Shield size={18} color="#FF2A2A" />
                 <h3 className="heading-font" style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFF' }}>
                   Tambah Pejabat / Personel SPKT
                 </h3>
@@ -697,7 +697,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
                 className="btn-icon"
-                style={{ background: 'none', border: 'none', color: '#FBDBAF', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
@@ -822,8 +822,8 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    backgroundColor: '#E07020',
-                    borderColor: '#FF5A1F'
+                    backgroundColor: '#FF2A2A',
+                    borderColor: '#FF5252'
                   }}
                 >
                   {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
@@ -842,12 +842,12 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
         <div className="modal-backdrop" onClick={() => setEditingItem(null)}>
           <div
             className="modal-content"
-            style={{ maxWidth: '480px', backgroundColor: '#161310', border: '1px solid rgba(251, 219, 175, 0.18)', borderRadius: '18px' }}
+            style={{ maxWidth: '480px', backgroundColor: '#11161F', border: '1px solid rgba(148, 163, 184, 0.18)', borderRadius: '18px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header" style={{ borderBottom: '1px solid rgba(251, 219, 175, 0.14)' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid rgba(148, 163, 184, 0.14)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Edit3 size={18} color="#FF5A1F" />
+                <Edit3 size={18} color="#FF2A2A" />
                 <h3 className="heading-font" style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FFF' }}>
                   Edit Pejabat SPKT: {editingItem.jabatan || editingItem.unit || 'PAMAPTA'}
                 </h3>
@@ -856,7 +856,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                 type="button"
                 onClick={() => setEditingItem(null)}
                 className="btn-icon"
-                style={{ background: 'none', border: 'none', color: '#FBDBAF', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
@@ -986,13 +986,13 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
         <div className="modal-backdrop" onClick={() => setItemToDelete(null)}>
           <div
             className="modal-content"
-            style={{ maxWidth: '420px', borderColor: '#FF5A1F', backgroundColor: '#161310', borderRadius: '18px' }}
+            style={{ maxWidth: '420px', borderColor: '#FF2A2A', backgroundColor: '#11161F', borderRadius: '18px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header" style={{ borderBottom: '1px solid rgba(255, 90, 31, 0.35)' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid rgba(255, 42, 42, 0.35)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <AlertTriangle size={18} color="#FF5A1F" />
-                <h3 className="heading-font" style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FF5A1F' }}>
+                <AlertTriangle size={18} color="#FF2A2A" />
+                <h3 className="heading-font" style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#FF2A2A' }}>
                   Hapus Personel SPKT
                 </h3>
               </div>
@@ -1000,7 +1000,7 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                 type="button"
                 onClick={() => setItemToDelete(null)}
                 className="btn-icon"
-                style={{ background: 'none', border: 'none', color: '#FBDBAF', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
@@ -1014,20 +1014,20 @@ export default function SpktPersonnelTab({ userRole = 'super_admin', onShowToast
                 style={{
                   padding: '12px',
                   borderRadius: '8px',
-                  backgroundColor: '#0E0C0A',
-                  border: '1px solid rgba(251, 219, 175, 0.16)'
+                  backgroundColor: '#0B0E14',
+                  border: '1px solid rgba(148, 163, 184, 0.16)'
                 }}
               >
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFF' }}>
                   {itemToDelete.nama}
                 </div>
-                <div style={{ fontSize: '11px', color: '#FF7A33', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#FF6B6B', marginTop: '2px' }}>
                   {itemToDelete.jabatan || itemToDelete.unit || 'PAMAPTA'} ({itemToDelete.pangkat_nrp})
                 </div>
               </div>
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid rgba(251, 219, 175, 0.14)' }}>
+            <div className="modal-footer" style={{ borderTop: '1px solid rgba(148, 163, 184, 0.14)' }}>
               <button
                 type="button"
                 onClick={() => setItemToDelete(null)}

@@ -1,19 +1,19 @@
 /* ============================================================
    Split Panel Auth Component Styles
-   Satreskrim Polres Kolaka Timur - CYBER RONIN (White - Solar Orange - Obsidian)
+   Satreskrim Polres Kolaka Timur - 01 // MIDNIGHT CRIMSON (TAKTIS TEMPUR)
    ============================================================ */
 
 :root {
-  --auth-bg-page: #0E0C0A;
-  --auth-bg-surface: rgba(18, 14, 11, 0.85);
-  --auth-bg-surface-elevated: #181411;
-  --auth-border-subtle: rgba(251, 219, 175, 0.16);
-  --auth-border-hover: rgba(251, 219, 175, 0.35);
-  --auth-gradient-overlay: linear-gradient(145deg, #0E0C0A 0%, #2B170A 32%, #C45A18 72%, #E07020 100%);
-  --auth-btn-primary: #E07020;
-  --auth-glow-red: rgba(224, 112, 32, 0.38);
+  --auth-bg-page: #0B0E14;
+  --auth-bg-surface: rgba(17, 22, 31, 0.85);
+  --auth-bg-surface-elevated: #131924;
+  --auth-border-subtle: rgba(148, 163, 184, 0.16);
+  --auth-border-hover: rgba(255, 42, 42, 0.40);
+  --auth-gradient-overlay: linear-gradient(145deg, #0B0E14 0%, #161D2A 32%, #991B1B 72%, #FF2A2A 100%);
+  --auth-btn-primary: #FF2A2A;
+  --auth-glow-red: rgba(255, 42, 42, 0.38);
   --auth-text-primary: #FFFFFF;
-  --auth-text-muted: rgba(251, 219, 175, 0.72);
+  --auth-text-muted: rgba(203, 213, 225, 0.72);
   --auth-easing: cubic-bezier(0.77, 0, 0.18, 1);
 }
 
@@ -21,12 +21,12 @@
 .split-auth-page {
   min-height: 100vh;
   width: 100vw;
-  background-color: #0E0C0A;
+  background-color: #0B0E14;
   background-image: 
-    radial-gradient(circle at 80% 12%, rgba(196, 90, 24, 0.28) 0%, rgba(224, 112, 32, 0.10) 35%, #0E0C0A 75%),
-    radial-gradient(circle at 15% 85%, rgba(255, 90, 31, 0.12) 0%, transparent 45%),
-    linear-gradient(rgba(251, 219, 175, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(251, 219, 175, 0.02) 1px, transparent 1px);
+    radial-gradient(circle at 80% 12%, rgba(220, 38, 38, 0.22) 0%, rgba(255, 42, 42, 0.08) 35%, #0B0E14 75%),
+    radial-gradient(circle at 15% 85%, rgba(255, 42, 42, 0.12) 0%, transparent 45%),
+    linear-gradient(rgba(148, 163, 184, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.025) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
   display: flex;
   align-items: center;
@@ -49,7 +49,7 @@
     transparent 0%,
     rgba(255, 255, 255, 0.02) 20%,
     rgba(255, 255, 255, 0.22) 50%,
-    rgba(255, 90, 31, 0.35) 75%,
+    rgba(255, 42, 42, 0.35) 75%,
     transparent 100%
   );
   transform: skewX(-24deg);
@@ -96,11 +96,11 @@
   top: 20px;
   right: 24px;
   font-size: 10.5px;
-  color: #FF5A1F;
+  color: #FF3B3B;
   font-family: var(--font-mono, monospace);
   letter-spacing: 0.05em;
-  background: rgba(224, 112, 32, 0.12);
-  border: 1px solid rgba(255, 90, 31, 0.35);
+  background: rgba(255, 42, 42, 0.14);
+  border: 1px solid rgba(255, 42, 42, 0.40);
   padding: 4px 10px;
   border-radius: 9999px;
   z-index: 5;
@@ -108,9 +108,9 @@
 
 /* Main Split Card Container */
 .split-auth-card {
-  background-color: #161310;
+  background-color: #11161F;
   border-radius: 24px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.78), 0 0 42px rgba(224, 112, 32, 0.14);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.78), 0 0 42px rgba(255, 42, 42, 0.14);
   border: 1px solid var(--auth-border-subtle);
   backdrop-filter: blur(18px);
   position: relative;
@@ -194,11 +194,11 @@
   background: transparent;
 }
 .auth-form-scroll::-webkit-scrollbar-thumb {
-  background: rgba(251, 219, 175, 0.16);
+  background: rgba(148, 163, 184, 0.18);
   border-radius: 4px;
 }
 .auth-form-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 90, 31, 0.45);
+  background: rgba(255, 42, 42, 0.45);
 }
 
 /* Overlay Slider Container */
@@ -279,7 +279,7 @@
   border-radius: 999px;
   background: #FFFFFF;
   border: 1px solid #FFFFFF;
-  color: #0E0C0A;
+  color: #0B0E14;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -301,7 +301,7 @@
 
 .overlay-desc {
   font-size: 13px;
-  color: #FAF6F0;
+  color: #F8FAFC;
   line-height: 1.6;
   margin: 0 0 26px;
   opacity: 0.92;
@@ -327,7 +327,7 @@
 
 .overlay-ghost-btn:hover {
   background: #FFFFFF;
-  color: #0E0C0A;
+  color: #0B0E14;
   border-color: #FFFFFF;
   box-shadow: 0 0 22px rgba(255, 255, 255, 0.35);
   transform: translateY(-2px);
@@ -358,7 +358,7 @@
 .auth-input-icon {
   position: absolute;
   left: 12px;
-  color: rgba(251, 219, 175, 0.5);
+  color: rgba(148, 163, 184, 0.65);
   pointer-events: none;
 }
 
@@ -377,9 +377,9 @@
 }
 
 .auth-input:focus {
-  border-color: #FF5A1F;
-  box-shadow: 0 0 0 2px rgba(224, 112, 32, 0.25);
-  background: #221C17;
+  border-color: #FF2A2A;
+  box-shadow: 0 0 0 2px rgba(255, 42, 42, 0.25);
+  background: #171E2B;
 }
 
 .auth-select {
@@ -390,14 +390,14 @@
 /* Primary Action Button */
 .auth-btn-primary {
   width: 100%;
-  background: #E07020;
+  background: linear-gradient(135deg, #E61919 0%, #FF2A2A 100%);
   color: #ffffff;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.03em;
   padding: 12px 18px;
   border-radius: 9999px;
-  border: 1px solid #FF5A1F;
+  border: 1px solid #FF5252;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -410,7 +410,7 @@
 
 .auth-btn-primary:hover:not(:disabled) {
   background: #FFFFFF;
-  color: #0E0C0A;
+  color: #0B0E14;
   border-color: #FFFFFF;
   transform: translateY(-2px);
   box-shadow: 0 8px 26px rgba(255, 255, 255, 0.28);
@@ -424,9 +424,9 @@
 
 /* Alert & Notice Banners */
 .auth-alert-error {
-  background: rgba(196, 90, 24, 0.16);
-  border: 1px solid rgba(255, 90, 31, 0.45);
-  color: #FBDBAF;
+  background: rgba(255, 42, 42, 0.14);
+  border: 1px solid rgba(255, 42, 42, 0.45);
+  color: #CBD5E1;
   padding: 9px 12px;
   border-radius: 10px;
   font-size: 12px;
@@ -437,9 +437,9 @@
 }
 
 .auth-alert-status {
-  background: rgba(224, 112, 32, 0.12);
-  border: 1px solid rgba(255, 90, 31, 0.35);
-  color: #FBDBAF;
+  background: rgba(255, 42, 42, 0.12);
+  border: 1px solid rgba(255, 42, 42, 0.35);
+  color: #CBD5E1;
   padding: 9px 12px;
   border-radius: 10px;
   font-size: 12px;
@@ -451,8 +451,8 @@
 
 /* Password Validation Requirements */
 .password-check-box {
-  background: rgba(14, 12, 10, 0.55);
-  border: 1px solid rgba(251, 219, 175, 0.12);
+  background: rgba(11, 14, 20, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 10px;
   padding: 10px 12px;
   margin-top: 6px;
@@ -470,17 +470,17 @@
 }
 
 .check-item.valid {
-  color: #FF5A1F;
+  color: #FF3B3B;
 }
 
 .check-item.invalid {
-  color: rgba(251, 219, 175, 0.45);
+  color: rgba(148, 163, 184, 0.55);
 }
 
 /* Mobile Toggle Bar (Visible under 760px) */
 .mobile-auth-switch {
   display: none;
-  background: rgba(14, 12, 10, 0.65);
+  background: rgba(11, 14, 20, 0.65);
   border: 1px solid var(--auth-border-subtle);
   border-radius: 9999px;
   padding: 4px;
@@ -503,7 +503,7 @@
 
 .mobile-switch-btn.active {
   background: #FFFFFF;
-  color: #0E0C0A;
+  color: #0B0E14;
   box-shadow: 0 2px 12px rgba(255, 255, 255, 0.25);
 }
 

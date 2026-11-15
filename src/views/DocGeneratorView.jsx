@@ -3161,7 +3161,7 @@ export default function DocGeneratorView({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <FileSignature size={22} color="#FF5A1F" />
+            <FileSignature size={22} color="#FF2A2A" />
             <span>Studio Generator Administrasi Penyidikan (E-Mindik)</span>
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -3828,7 +3828,7 @@ export default function DocGeneratorView({
                     Belum ada subjek tersangka terdaftar pada perkara ini.
                   </div>
                 ) : ((currentTemplate?.code === 'SPDP_MORE_1_TSK') || ((currentTemplate?.title || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA'))) ? (
-                  <div style={{ padding: '10px 14px', backgroundColor: 'rgba(224, 112, 32, 0.14)', color: '#FF7A33', border: '1px dashed rgba(255, 90, 31, 0.45)', borderRadius: '6px', fontWeight: 600, fontSize: '13px' }}>
+                  <div style={{ padding: '10px 14px', backgroundColor: 'rgba(255, 42, 42, 0.14)', color: '#FF3B3B', border: '1px dashed rgba(255, 42, 42, 0.45)', borderRadius: '6px', fontWeight: 600, fontSize: '13px' }}>
                     ✔️ FORMAT MULTI-TERSANGKA: Seluruh tersangka yang sah pada perkara ini akan dimasukkan secara otomatis ke dalam dokumen.
                   </div>
                 ) : (
@@ -3941,8 +3941,8 @@ export default function DocGeneratorView({
             {!isIndividualDoc && caseSuspects.length > 0 && (
               <div style={{
                 padding: '10px 12px',
-                background: 'rgba(0, 212, 255, 0.05)',
-                border: '1px solid rgba(0, 212, 255, 0.2)',
+                background: 'rgba(255, 42, 42, 0.08)',
+                border: '1px solid rgba(255, 42, 42, 0.25)',
                 borderRadius: 'var(--radius-md)',
                 marginBottom: '14px',
                 fontSize: '11px',
@@ -3961,8 +3961,8 @@ export default function DocGeneratorView({
             {false && (isSprinSidik || isSprinGasSidik) && currentCase && (
               <div style={{
                 padding: '12px',
-                background: '#1e262e',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: '#11161F',
+                border: '1px solid rgba(148, 163, 184, 0.14)',
                 borderRadius: 'var(--radius-md)',
                 marginBottom: '14px',
                 fontSize: '11px',
@@ -3970,7 +3970,7 @@ export default function DocGeneratorView({
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Shield size={13} color="#FF5A1F" />
+                    <Shield size={13} color="#FF2A2A" />
                     <span style={{ color: '#ffffff', fontWeight: 700, letterSpacing: '0.3px' }}>
                       TIM PENYIDIK OTOMATIS (PENUGASAN TIM)
                     </span>
@@ -4004,8 +4004,8 @@ export default function DocGeneratorView({
                   </div>
 
                   {/* Penyidik Penangan */}
-                  <div style={{ background: 'rgba(255, 53, 45, 0.06)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255, 53, 45, 0.3)' }}>
-                    <div style={{ color: '#FF5A1F', fontSize: '10px', fontWeight: 700 }}>Penyidik Penangan Perkara:</div>
+                  <div style={{ background: 'rgba(255, 42, 42, 0.08)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255, 42, 42, 0.35)' }}>
+                    <div style={{ color: '#FF3B3B', fontSize: '10px', fontWeight: 700 }}>Penyidik Penangan Perkara:</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>
                       {getPenyidikPenangan(currentCase)?.nama || currentCase?.penyidik_penangan_nama || formValues.PENYIDIK_PENANGAN_NAMA || currentCase?.penyidik_1_nama || '(Belum diset)'}
                     </div>
@@ -4064,7 +4064,7 @@ export default function DocGeneratorView({
                 lineHeight: '1.5'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ color: '#FF5A1F', fontWeight: 700, letterSpacing: '0.3px' }}>
+                  <span style={{ color: '#FF2A2A', fontWeight: 700, letterSpacing: '0.3px' }}>
                     RANTAI RUJUKAN PERKARA (CHAIN OF REFERENCE)
                   </span>
                   <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
@@ -4072,35 +4072,35 @@ export default function DocGeneratorView({
                   </span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', color: 'var(--text-secondary)' }}>
-                  <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
-                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan LP (Tag: <span style={{ color: '#FF5A1F' }}>{'{NOMOR_LP}'}</span>):</div>
+                  <div style={{ background: 'rgba(11, 14, 20, 0.55)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan LP (Tag: <span style={{ color: '#FF2A2A' }}>{'{NOMOR_LP}'}</span>):</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase?.nomor_lp || currentCase?.no_lp || '-'}</div>
                     <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                      Tgl (<span style={{ color: '#FF5A1F' }}>{'{TANGGAL_LP}'}</span>): {formatTanggalIndonesia(currentCase?.tanggal_lp || currentCase?.sprin_date) || '-'}
+                      Tgl (<span style={{ color: '#FF2A2A' }}>{'{TANGGAL_LP}'}</span>): {formatTanggalIndonesia(currentCase?.tanggal_lp || currentCase?.sprin_date) || '-'}
                     </div>
                   </div>
-                  <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
-                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Sidik (Tag: <span style={{ color: '#FF5A1F' }}>{'{NO_SPRIN_SIDIK}'}</span>):</div>
+                  <div style={{ background: 'rgba(11, 14, 20, 0.55)', padding: '6px 8px', borderRadius: '4px' }}>
+                    <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Sidik (Tag: <span style={{ color: '#FF2A2A' }}>{'{NO_SPRIN_SIDIK}'}</span>):</div>
                     <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase?.no_sprin_sidik || (isSprinSidik ? '(Sedang dibuat)' : '-')}</div>
                     <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                      Tgl (<span style={{ color: '#FF5A1F' }}>{'{TGL_SPRIN_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_SIDIK || currentCase?.tgl_sprin_sidik || currentCase?.sprin_date) || '-'}
+                      Tgl (<span style={{ color: '#FF2A2A' }}>{'{TGL_SPRIN_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_SIDIK || currentCase?.tgl_sprin_sidik || currentCase?.sprin_date) || '-'}
                     </div>
                   </div>
                   {(currentCase?.no_sprin_gas_sidik || isSprinGasSidik) && (
-                    <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
-                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Gas.Sidik (Tag: <span style={{ color: '#FF5A1F' }}>{'{NO_SPRIN_GAS_SIDIK}'}</span>):</div>
+                    <div style={{ background: 'rgba(11, 14, 20, 0.55)', padding: '6px 8px', borderRadius: '4px' }}>
+                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SP.Gas.Sidik (Tag: <span style={{ color: '#FF2A2A' }}>{'{NO_SPRIN_GAS_SIDIK}'}</span>):</div>
                       <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase?.no_sprin_gas_sidik || (isSprinGasSidik ? '(Sedang dibuat)' : '-')}</div>
                       <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                        Tgl (<span style={{ color: '#FF5A1F' }}>{'{TGL_SPRIN_GAS_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_GAS_SIDIK || currentCase?.tgl_sprin_gas_sidik) || '-'}
+                        Tgl (<span style={{ color: '#FF2A2A' }}>{'{TGL_SPRIN_GAS_SIDIK}'}</span>): {formatTanggalIndonesia(formValues.TGL_SPRIN_GAS_SIDIK || currentCase?.tgl_sprin_gas_sidik) || '-'}
                       </div>
                     </div>
                   )}
                   {currentCase?.no_spdp && (
-                    <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '6px 8px', borderRadius: '4px' }}>
-                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SPDP (Tag: <span style={{ color: '#FF5A1F' }}>{'{NO_SPDP}'}</span>):</div>
+                    <div style={{ background: 'rgba(11, 14, 20, 0.55)', padding: '6px 8px', borderRadius: '4px' }}>
+                      <div style={{ color: '#94A3B8', fontSize: '10px' }}>Rujukan SPDP (Tag: <span style={{ color: '#FF2A2A' }}>{'{NO_SPDP}'}</span>):</div>
                       <div style={{ color: '#F1F5F9', fontWeight: 600 }}>{currentCase?.no_spdp}</div>
                       <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                        Tgl (<span style={{ color: '#FF5A1F' }}>{'{TGL_SPDP}'}</span>): {formatTanggalIndonesia(currentCase?.tgl_spdp) || '-'}
+                        Tgl (<span style={{ color: '#FF2A2A' }}>{'{TGL_SPDP}'}</span>): {formatTanggalIndonesia(currentCase?.tgl_spdp) || '-'}
                       </div>
                     </div>
                   )}
@@ -4220,7 +4220,7 @@ export default function DocGeneratorView({
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Shield size={15} color="#FF5A1F" />
+                      <Shield size={15} color="#FF2A2A" />
                       <span style={{ color: '#ffffff', fontWeight: 700, fontSize: '11.5px', letterSpacing: '0.3px' }}>
                         PARAMETER KHUSUS PENAHANAN (SPRIN & BA HAN)
                       </span>
@@ -4311,14 +4311,14 @@ export default function DocGeneratorView({
                     return (
                       <div style={{
                         padding: '8px 10px',
-                        background: 'rgba(15, 23, 42, 0.6)',
+                        background: 'rgba(17, 22, 31, 0.72)',
                         borderRadius: '4px',
                         fontSize: '10px',
                         lineHeight: '1.5',
                         color: '#CBD5E1',
-                        border: '1px dashed rgba(59, 130, 246, 0.25)'
+                        border: '1px dashed rgba(255, 42, 42, 0.3)'
                       }}>
-                        <div style={{ color: 'var(--accent-cyan)', fontWeight: 600, marginBottom: '2px' }}>
+                        <div style={{ color: '#FF3B3B', fontWeight: 600, marginBottom: '2px' }}>
                           Preview Injeksi Tag Word (docxtemplater):
                         </div>
                         <div>• Sprin Han: <code>{'{TANGGAL_MULAI_HAN}'}</code>: <strong>{formatTanggalIndonesia(formValues.TANGGAL_MULAI_HAN) || '-'}</strong> s.d. <code>{'{TANGGAL_AKHIR_HAN}'}</code>: <strong>{formatTanggalIndonesia(formValues.TANGGAL_AKHIR_HAN) || '-'}</strong></div>
@@ -4523,8 +4523,8 @@ export default function DocGeneratorView({
                           }}
                           className="form-input mono"
                           style={{
-                            backgroundColor: '#0E0C0A',
-                            borderColor: 'var(--accent-primary, #E07020)',
+                            backgroundColor: '#0B0E14',
+                            borderColor: 'var(--accent-primary, #FF2A2A)',
                             color: '#ffffff',
                             fontWeight: 600,
                             fontSize: '12px'
@@ -4759,7 +4759,7 @@ export default function DocGeneratorView({
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <FileSignature size={20} color="#FF5A1F" />
+                  <FileSignature size={20} color="#FF2A2A" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#FFFFFF', letterSpacing: '0.4px' }}>
@@ -4865,8 +4865,8 @@ export default function DocGeneratorView({
                         fontWeight: 800,
                         letterSpacing: '0.3px',
                         border: 'none',
-                        borderBottom: isActive ? '3px solid #FF5A1F' : '3px solid transparent',
-                        background: isActive ? '#141d2e' : 'transparent',
+                        borderBottom: isActive ? '3px solid #FF2A2A' : '3px solid transparent',
+                        background: isActive ? '#131924' : 'transparent',
                         color: isActive ? '#FFFFFF' : '#94A3B8',
                         cursor: 'pointer',
                         whiteSpace: 'nowrap',
@@ -5015,22 +5015,22 @@ export default function DocGeneratorView({
                               padding: '12px 16px',
                               borderRadius: '10px',
                               backgroundColor: isSelected
-                                ? 'rgba(255, 53, 45, 0.15)'
+                                ? 'rgba(255, 42, 42, 0.15)'
                                 : (isSpSidik || (isUploaded && isUnlocked))
-                                  ? '#111827'
-                                  : 'rgba(17, 24, 39, 0.6)',
+                                  ? '#11161F'
+                                  : 'rgba(17, 22, 31, 0.6)',
                               border: isSelected
-                                ? '1.5px solid #FF5A1F'
+                                ? '1.5px solid #FF2A2A'
                                 : (isSpSidik || (isUploaded && isUnlocked))
-                                  ? '1px solid rgba(255, 255, 255, 0.12)'
-                                  : '1px solid rgba(255, 255, 255, 0.05)',
+                                  ? '1px solid rgba(148, 163, 184, 0.16)'
+                                  : '1px solid rgba(148, 163, 184, 0.08)',
                               cursor: (isSpSidik || (isUploaded && isUnlocked)) ? 'pointer' : 'not-allowed',
                               opacity: (isSpSidik || (isUploaded && isUnlocked)) ? 1 : 0.65,
                               transition: 'all 150ms ease',
                               display: 'flex',
                               flexDirection: 'column',
                               gap: '6px',
-                              boxShadow: isSelected ? '0 0 12px rgba(255, 53, 45, 0.3)' : 'none'
+                              boxShadow: isSelected ? '0 0 12px rgba(255, 42, 42, 0.3)' : 'none'
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
@@ -5057,9 +5057,9 @@ export default function DocGeneratorView({
                                 <span className="badge" style={{
                                   fontSize: '9px',
                                   padding: '2px 6px',
-                                  background: item.type.includes('Wajib') ? 'rgba(224, 112, 32, 0.16)' : 'rgba(251, 219, 175, 0.08)',
-                                  color: item.type.includes('Wajib') ? '#FF7A33' : 'rgba(251, 219, 175, 0.65)',
-                                  border: `1px solid ${item.type.includes('Wajib') ? 'rgba(255, 90, 31, 0.35)' : 'rgba(251, 219, 175, 0.18)'}`
+                                  background: item.type.includes('Wajib') ? 'rgba(255, 42, 42, 0.16)' : 'rgba(148, 163, 184, 0.1)',
+                                  color: item.type.includes('Wajib') ? '#FF3B3B' : '#CBD5E1',
+                                  border: `1px solid ${item.type.includes('Wajib') ? 'rgba(255, 42, 42, 0.35)' : 'rgba(148, 163, 184, 0.18)'}`
                                 }}>
                                   {item.type}
                                 </span>
@@ -5126,15 +5126,15 @@ export default function DocGeneratorView({
                               padding: '12px 16px',
                               borderRadius: '10px',
                               backgroundColor: isSelected
-                                ? 'rgba(255, 53, 45, 0.15)'
+                                ? 'rgba(255, 42, 42, 0.15)'
                                 : isUnlocked
-                                  ? '#111827'
-                                  : 'rgba(17, 24, 39, 0.6)',
+                                  ? '#11161F'
+                                  : 'rgba(17, 22, 31, 0.6)',
                               border: isSelected
-                                ? '1.5px solid #FF5A1F'
+                                ? '1.5px solid #FF2A2A'
                                 : isUnlocked
-                                  ? '1px solid rgba(255, 255, 255, 0.12)'
-                                  : '1px solid rgba(255, 255, 255, 0.05)',
+                                  ? '1px solid rgba(148, 163, 184, 0.16)'
+                                  : '1px solid rgba(148, 163, 184, 0.08)',
                               cursor: isUnlocked ? 'pointer' : 'not-allowed',
                               opacity: isUnlocked ? 1 : 0.65,
                               transition: 'all 150ms ease',
@@ -5462,7 +5462,7 @@ export default function DocGeneratorView({
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Upload size={18} color="#FF5A1F" />
+                  <Upload size={18} color="#FF2A2A" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: 0 }}>Tambah Format Template .docx</h3>
@@ -5569,11 +5569,11 @@ export default function DocGeneratorView({
                       }}
                     />
 
-                    <FileText size={28} color={newDocxFile ? '#FF5A1F' : 'var(--text-secondary)'} style={{ margin: '0 auto 6px' }} />
+                    <FileText size={28} color={newDocxFile ? '#FF2A2A' : 'var(--text-secondary)'} style={{ margin: '0 auto 6px' }} />
                     {newDocxFile ? (
                       <div>
                         <div style={{ fontWeight: 600, color: '#FFF', fontSize: '12.5px' }}>{newDocxFile.name}</div>
-                        <div style={{ fontSize: '11px', color: '#FF5A1F' }}>{(newDocxFile.size / 1024).toFixed(1)} KB</div>
+                        <div style={{ fontSize: '11px', color: '#FF2A2A' }}>{(newDocxFile.size / 1024).toFixed(1)} KB</div>
                       </div>
                     ) : (
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -5616,7 +5616,7 @@ export default function DocGeneratorView({
           >
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Edit3 size={18} color="#FF5A1F" />
+                <Edit3 size={18} color="#FF2A2A" />
                 <h3 style={{ fontSize: '16px', margin: 0 }}>Edit Format Template</h3>
               </div>
               <button 

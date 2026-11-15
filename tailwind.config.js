@@ -11,23 +11,28 @@ export default {
     extend: {
       colors: {
         obsidian: {
-          DEFAULT: '#0E0C0A',
-          raised: '#161310',
-          solid: '#181411',
-          hover: '#221C17',
+          DEFAULT: '#0B0E14',
+          raised: '#11161F',
+          solid: '#10151E',
+          hover: '#171E2B',
         },
         crimson: {
-          DEFAULT: '#E07020',
-          deep: '#C45A18',
+          DEFAULT: '#FF2A2A',
+          bright: '#FF3B3B',
+          deep: '#B91C1C',
         },
         solar: {
-          DEFAULT: '#E07020',
-          bright: '#FF5A1F',
-          burnt: '#C45A18',
+          DEFAULT: '#FF2A2A',
+          bright: '#FF3B3B',
+          burnt: '#991B1B',
         },
         cream: {
-          DEFAULT: '#FBDBAF',
-          soft: '#FAF6F0',
+          DEFAULT: '#CBD5E1',
+          soft: '#F8FAFC',
+        },
+        silver: {
+          DEFAULT: '#CBD5E1',
+          muted: '#94A3B8',
         },
       },
       animation: {

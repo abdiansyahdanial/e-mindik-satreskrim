@@ -162,14 +162,14 @@ export default function EvidenceLightboxModal({
       }}
     >
       <div
-        className="w-full max-w-5xl h-[92vh] max-h-[850px] rounded-2xl bg-[#161310] border border-[rgba(251,219,175,0.16)] shadow-2xl flex flex-col overflow-hidden"
+        className="w-full max-w-5xl h-[92vh] max-h-[850px] rounded-2xl bg-[#11161F] border border-[rgba(148,163,184,0.2)] shadow-2xl flex flex-col overflow-hidden"
         style={{
           width: '100%',
           maxWidth: '1080px',
           height: '92vh',
           maxHeight: '850px',
-          backgroundColor: '#161310',
-          border: '1px solid rgba(251, 219, 175, 0.16)',
+          backgroundColor: '#11161F',
+          border: '1px solid rgba(148, 163, 184, 0.2)',
           borderRadius: '18px',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.85)',
           display: 'flex',
@@ -179,11 +179,11 @@ export default function EvidenceLightboxModal({
       >
         {/* Top Control Bar */}
         <div
-          className="p-3.5 px-5 bg-[#0E0C0A] border-b border-[rgba(251,219,175,0.14)] flex items-center justify-between flex-wrap gap-3"
+          className="p-3.5 px-5 bg-[#0B0E14] border-b border-[rgba(148,163,184,0.16)] flex items-center justify-between flex-wrap gap-3"
           style={{
             padding: '12px 20px',
-            backgroundColor: '#0E0C0A',
-            borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
+            backgroundColor: '#0B0E14',
+            borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -199,12 +199,12 @@ export default function EvidenceLightboxModal({
                 width: '36px',
                 height: '36px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(224, 112, 32, 0.16)',
-                border: '1px solid rgba(255, 90, 31, 0.45)',
+                backgroundColor: 'rgba(255, 42, 42, 0.16)',
+                border: '1px solid rgba(255, 42, 42, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#FF5A1F',
+                color: '#FF2A2A',
                 flexShrink: 0
               }}
             >
@@ -217,7 +217,7 @@ export default function EvidenceLightboxModal({
                     fontSize: '9px',
                     fontFamily: 'JetBrains Mono, monospace',
                     fontWeight: 800,
-                    color: '#0E0C0A',
+                    color: '#0B0E14',
                     backgroundColor: '#FFFFFF',
                     padding: '2px 8px',
                     borderRadius: '9999px',
@@ -227,7 +227,7 @@ export default function EvidenceLightboxModal({
                 >
                   {isPdf ? 'DOKUMEN PDF' : 'OBJEK FISIK (FOTO)'}
                 </span>
-                <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: 'rgba(251, 219, 175, 0.6)' }}>
+                <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: 'rgba(203, 213, 225, 0.65)' }}>
                   {fileSize}
                 </span>
               </div>
@@ -257,8 +257,8 @@ export default function EvidenceLightboxModal({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  backgroundColor: '#1E1915',
-                  border: '1px solid rgba(251, 219, 175, 0.16)',
+                  backgroundColor: '#161D2A',
+                  border: '1px solid rgba(148, 163, 184, 0.18)',
                   borderRadius: '9999px',
                   padding: '2px'
                 }}
@@ -317,7 +317,7 @@ export default function EvidenceLightboxModal({
                   <ZoomIn size={15} />
                 </button>
 
-                <div style={{ width: '1px', height: '16px', backgroundColor: 'rgba(251, 219, 175, 0.18)', margin: '0 4px' }} />
+                <div style={{ width: '1px', height: '16px', backgroundColor: 'rgba(148, 163, 184, 0.2)', margin: '0 4px' }} />
 
                 <button
                   type="button"
@@ -326,7 +326,7 @@ export default function EvidenceLightboxModal({
                     padding: '6px 10px',
                     background: 'none',
                     border: 'none',
-                    color: '#FAF6F0',
+                    color: '#F8FAFC',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -346,7 +346,7 @@ export default function EvidenceLightboxModal({
                       padding: '6px 8px',
                       background: 'none',
                       border: 'none',
-                      color: '#FF7A33',
+                      color: '#FF3B3B',
                       cursor: 'pointer',
                       fontSize: '10px',
                       fontFamily: 'JetBrains Mono, monospace',
@@ -393,9 +393,9 @@ export default function EvidenceLightboxModal({
               style={{
                 padding: '7px 12px',
                 borderRadius: '9999px',
-                backgroundColor: 'rgba(224, 112, 32, 0.16)',
-                border: '1px solid rgba(255, 90, 31, 0.45)',
-                color: '#FF5A1F',
+                backgroundColor: 'rgba(255, 42, 42, 0.16)',
+                border: '1px solid rgba(255, 42, 42, 0.45)',
+                color: '#FF2A2A',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -405,7 +405,7 @@ export default function EvidenceLightboxModal({
                 fontWeight: 700,
                 transition: 'all 0.15s'
               }}
-              className="hover:bg-[#FF5A1F]/25 hover:border-[#FF5A1F]"
+              className="hover:bg-[#FF2A2A]/25 hover:border-[#FF2A2A]"
               title="Tutup Preview (Tekan Esc)"
               aria-label="Tutup Preview"
             >
@@ -418,10 +418,10 @@ export default function EvidenceLightboxModal({
         {/* Viewport Center Area */}
         <div
           ref={containerRef}
-          className="flex-1 bg-[#0E0C0A] relative overflow-hidden flex items-center justify-center select-none"
+          className="flex-1 bg-[#0B0E14] relative overflow-hidden flex items-center justify-center select-none"
           style={{
             flex: 1,
-            backgroundColor: '#0E0C0A',
+            backgroundColor: '#0B0E14',
             position: 'relative',
             overflow: 'hidden',
             display: 'flex',
@@ -448,7 +448,7 @@ export default function EvidenceLightboxModal({
                     width: '100%',
                     height: '100%',
                     border: 'none',
-                    backgroundColor: '#161310'
+                    backgroundColor: '#11161F'
                   }}
                 />
               ) : (
@@ -459,36 +459,36 @@ export default function EvidenceLightboxModal({
                     width: '90%',
                     maxWidth: '650px',
                     padding: '32px',
-                    backgroundColor: '#161310',
-                    border: '1px solid rgba(251, 219, 175, 0.16)',
+                    backgroundColor: '#11161F',
+                    border: '1px solid rgba(148, 163, 184, 0.2)',
                     borderRadius: '14px',
                     boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
                     fontFamily: 'JetBrains Mono, monospace'
                   }}
                 >
-                  <div style={{ borderBottom: '2px solid #E07020', paddingBottom: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ borderBottom: '2px solid #FF2A2A', paddingBottom: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <span style={{ fontSize: '10px', color: '#FF5A1F', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: '10px', color: '#FF2A2A', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         DOKUMEN SURAT RESMI
                       </span>
                       <h4 style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#FFFFFF', fontWeight: 700 }}>
                         {fileName}
                       </h4>
                     </div>
-                    <span style={{ fontSize: '11px', color: '#FBDBAF', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ShieldCheck size={14} color="#FF5A1F" />
+                    <span style={{ fontSize: '11px', color: '#CBD5E1', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <ShieldCheck size={14} color="#FF2A2A" />
                       Tervalidasi Digital
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12px', color: '#FBDBAF', lineHeight: 1.6 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12px', color: '#CBD5E1', lineHeight: 1.6 }}>
                     <div>
-                      <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10px' }}>URAIAN BERKAS PERKARA:</span>
+                      <span style={{ color: 'rgba(203, 213, 225, 0.58)', display: 'block', fontSize: '10px' }}>URAIAN BERKAS PERKARA:</span>
                       <strong style={{ color: '#FFFFFF' }}>{keterangan}</strong>
                     </div>
                     <div>
-                      <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10px' }}>INTEGRITAS DATA (SHA-256):</span>
-                      <span style={{ color: '#FF7A33', fontSize: '11px', wordBreak: 'break-all' }}>{hash}</span>
+                      <span style={{ color: 'rgba(203, 213, 225, 0.58)', display: 'block', fontSize: '10px' }}>INTEGRITAS DATA (SHA-256):</span>
+                      <span style={{ color: '#FF3B3B', fontSize: '11px', wordBreak: 'break-all' }}>{hash}</span>
                     </div>
                     <div>
                       <span style={{ color: '#64748B', display: 'block', fontSize: '10px' }}>UKURAN PENYIMPANAN:</span>
@@ -496,15 +496,15 @@ export default function EvidenceLightboxModal({
                     </div>
                   </div>
 
-                  <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(251, 219, 175, 0.15)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(148, 163, 184, 0.16)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                     <button
                       type="button"
                       onClick={defaultDownloadHandler}
                       style={{
                         padding: '8px 16px',
                         borderRadius: '8px',
-                        backgroundColor: '#1E1915',
-                        border: '1px solid rgba(251, 219, 175, 0.2)',
+                        backgroundColor: '#161D2A',
+                        border: '1px solid rgba(148, 163, 184, 0.22)',
                         color: '#FFFFFF',
                         fontSize: '11px',
                         fontFamily: 'JetBrains Mono, monospace',
@@ -628,9 +628,9 @@ export default function EvidenceLightboxModal({
                     </p>
                   </div>
 
-                  <div style={{ backgroundColor: '#0E0C0A', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(251, 219, 175, 0.14)', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
-                    <span style={{ color: 'rgba(251, 219, 175, 0.6)' }}>Status Barang Bukti:</span>
-                    <span style={{ color: '#FF5A1F', fontWeight: 700 }}>Dalam Penguasaan Tim Penyidik</span>
+                  <div style={{ backgroundColor: '#0B0E14', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(148, 163, 184, 0.16)', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <span style={{ color: 'rgba(203, 213, 225, 0.65)' }}>Status Barang Bukti:</span>
+                    <span style={{ color: '#FF2A2A', fontWeight: 700 }}>Dalam Penguasaan Tim Penyidik</span>
                   </div>
                 </div>
               )}
@@ -646,12 +646,12 @@ export default function EvidenceLightboxModal({
                 left: '16px',
                 fontSize: '10px',
                 fontFamily: 'JetBrains Mono, monospace',
-                color: '#FBDBAF',
-                backgroundColor: 'rgba(14, 12, 10, 0.88)',
+                color: '#CBD5E1',
+                backgroundColor: 'rgba(11, 14, 20, 0.88)',
                 backdropFilter: 'blur(6px)',
                 padding: '5px 10px',
                 borderRadius: '9999px',
-                border: '1px solid rgba(251, 219, 175, 0.16)',
+                border: '1px solid rgba(148, 163, 184, 0.18)',
                 pointerEvents: 'none'
               }}
             >
@@ -662,11 +662,11 @@ export default function EvidenceLightboxModal({
 
         {/* Bottom Metadata Drawer */}
         <div
-          className="p-3 px-5 bg-[#0E0C0A] border-t border-[rgba(251,219,175,0.14)] flex items-center justify-between flex-wrap gap-2 text-[11px] font-mono"
+          className="p-3 px-5 bg-[#0B0E14] border-t border-[rgba(148,163,184,0.16)] flex items-center justify-between flex-wrap gap-2 text-[11px] font-mono"
           style={{
             padding: '10px 20px',
-            backgroundColor: '#0E0C0A',
-            borderTop: '1px solid rgba(251, 219, 175, 0.14)',
+            backgroundColor: '#0B0E14',
+            borderTop: '1px solid rgba(148, 163, 184, 0.16)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -676,14 +676,14 @@ export default function EvidenceLightboxModal({
             fontFamily: 'JetBrains Mono, monospace'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: '#FBDBAF' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', color: '#CBD5E1' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Info size={13} color="#FF5A1F" />
+              <Info size={13} color="#FF2A2A" />
               <span>Keterangan: <strong style={{ color: '#FFFFFF' }}>{keterangan}</strong></span>
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF7A33' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FF3B3B' }}>
             <ShieldCheck size={14} />
             <span>SHA-256: {hash.length > 20 ? `${hash.substring(0, 16)}...` : hash}</span>
           </div>

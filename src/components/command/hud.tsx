@@ -13,7 +13,7 @@ const cornerSizes: Record<CornerSize, string> = {
 /** L-shaped precision brackets on all four corners. Brightens when the nearest `group/card` is hovered. */
 export function HudCorners({ size = 'md', className }: { size?: CornerSize; className?: string }) {
   const base = cn(
-    'pointer-events-none absolute border-[#E07020]/70 drop-shadow-[0_0_4px_rgba(224,112,32,0.45)] transition-colors duration-300 group-hover/card:border-[#FF5A1F]',
+    'pointer-events-none absolute border-[#FF2A2A]/70 drop-shadow-[0_0_4px_rgba(255,42,42,0.45)] transition-colors duration-300 group-hover/card:border-[#FF3B3B]',
     cornerSizes[size],
   )
   return (
@@ -35,7 +35,7 @@ type HudCardProps = {
   'aria-labelledby'?: string
 }
 
-/** Translucent obsidian glass card with solar-orange corner brackets and warm spotlight lift on hover. */
+/** Translucent midnight navy-slate glass card with tactical crimson corner brackets and crimson spotlight lift on hover. */
 export function HudCard({
   children,
   className,
@@ -48,21 +48,21 @@ export function HudCard({
     <Tag
       {...rest}
       className={cn(
-        'cyber-card group/card relative rounded-[18px] border bg-[rgba(18,14,11,0.68)] shadow-[inset_0_1px_0_rgba(251,219,175,0.08),0_14px_36px_-12px_rgba(0,0,0,0.65)] backdrop-blur-[18px] transition-[border-color,box-shadow,background-color,transform] duration-300',
-        dashed ? 'border-dashed border-[#FBDBAF]/25 border-t-[#E07020]/50' : 'border border-[#FBDBAF]/15 border-t-[#FBDBAF]/25',
-        'hover:border-[#FBDBAF]/35 hover:border-t-[#E07020]/60',
+        'cyber-card group/card relative rounded-[18px] border bg-[rgba(17,22,31,0.78)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_14px_36px_-12px_rgba(0,0,0,0.65)] backdrop-blur-[18px] transition-[border-color,box-shadow,background-color,transform] duration-300',
+        dashed ? 'border-dashed border-[rgba(148,163,184,0.24)] border-t-[#FF2A2A]/50' : 'border border-[rgba(148,163,184,0.14)] border-t-[rgba(203,213,225,0.22)]',
+        'hover:border-[rgba(255,42,42,0.35)] hover:border-t-[#FF2A2A]/70',
         className,
       )}
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-8 -top-px h-px bg-gradient-to-r from-transparent via-[#E07020]/60 to-transparent"
+        className="pointer-events-none absolute inset-x-8 -top-px h-px bg-gradient-to-r from-transparent via-[#FF2A2A]/60 to-transparent"
       />
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 overflow-hidden rounded-[18px] opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
       >
-        <span className="absolute -top-1/2 left-1/2 aspect-square w-[120%] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(255,90,31,0.12),transparent)]" />
+        <span className="absolute -top-1/2 left-1/2 aspect-square w-[120%] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(255,42,42,0.12),transparent)]" />
       </span>
       <HudCorners />
       <div className={cn('relative', contentClassName)}>{children}</div>
@@ -73,8 +73,8 @@ export function HudCard({
 export function PulseDot({ className }: { className?: string }) {
   return (
     <span aria-hidden="true" className={cn('relative inline-flex size-1.5 shrink-0', className)}>
-      <span className="absolute inset-0 animate-radar rounded-full bg-[#FF5A1F]" />
-      <span className="relative inline-flex size-1.5 rounded-full bg-[#FF5A1F] shadow-[0_0_8px_rgba(255,90,31,0.95)]" />
+      <span className="absolute inset-0 animate-radar rounded-full bg-[#FF2A2A]" />
+      <span className="relative inline-flex size-1.5 rounded-full bg-[#FF2A2A] shadow-[0_0_8px_rgba(255,42,42,0.95)]" />
     </span>
   )
 }
@@ -84,7 +84,7 @@ export function BracketTag({ children, pulse = false, className }: { children: R
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#FBDBAF]/25 bg-[#181411] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#FBDBAF]',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[rgba(148,163,184,0.22)] bg-[#131924] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#CBD5E1]',
         className,
       )}
     >
@@ -116,16 +116,16 @@ export function TacticalButton({
   className,
 }: TacticalButtonProps) {
   const classes = variant === 'crimson-glow' ? cn(
-    'group/card relative rounded-full bg-[#E07020] border border-[#FF5A1F] text-white shadow-[0_6px_24px_rgba(224,112,32,0.35)] hover:bg-white hover:border-white hover:text-[#0E0C0A] transition-all duration-200 font-mono text-[11px] md:text-xs font-bold tracking-wider uppercase px-5 py-2 flex items-center justify-center shrink-0 gap-2 cursor-pointer',
+    'group/card relative rounded-full bg-[linear-gradient(135deg,#E61919_0%,#FF2A2A_100%)] border border-[#FF5252] text-white shadow-[0_4px_20px_rgba(255,42,42,0.40)] hover:bg-white hover:border-white hover:text-[#0B0E14] transition-all duration-200 font-mono text-[11px] md:text-xs font-bold tracking-wider uppercase px-5 py-2 flex items-center justify-center shrink-0 gap-2 cursor-pointer',
     className
   ) : cn(
     'group/card relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full border font-mono font-semibold uppercase tracking-[0.14em] transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
     size === 'md' ? 'h-11 px-6 text-xs' : 'h-9 px-4 text-[11px]',
     variant === 'accent'
-      ? 'border-[#FF5A1F] bg-[#E07020] text-white hover:bg-white hover:border-white hover:text-[#0E0C0A]'
+      ? 'border-[#FF5252] bg-[#FF2A2A] text-white hover:bg-white hover:border-white hover:text-[#0B0E14]'
       : variant === 'primary'
-      ? 'border-white bg-white text-[#0E0C0A] font-bold hover:border-[#E07020] hover:bg-[#E07020] hover:text-white shadow-[0_4px_20px_rgba(255,255,255,0.16)]'
-      : 'border-[#FBDBAF]/30 bg-transparent text-[#FBDBAF] hover:border-white hover:bg-white/10 hover:text-white',
+      ? 'border-white bg-white text-[#0B0E14] font-bold hover:border-[#FF2A2A] hover:bg-[#FF2A2A] hover:text-white shadow-[0_0_24px_rgba(255,42,42,0.28)]'
+      : 'border-[rgba(203,213,225,0.38)] bg-[rgba(11,14,20,0.65)] text-[#E2E8F0] hover:border-[#FF2A2A] hover:bg-[rgba(255,42,42,0.12)] hover:text-white',
     className,
   )
 
@@ -170,13 +170,13 @@ export function SectionHeader({
   meta?: React.ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[#FBDBAF]/14 pb-4">
+    <div className="flex items-start justify-between gap-4 border-b border-[rgba(148,163,184,0.14)] pb-4">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[#FBDBAF]/20 bg-[#181411] text-[#FF5A1F]">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full border border-[rgba(148,163,184,0.20)] bg-[#131924] text-[#FF2A2A]">
           <Icon className="size-4" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#E07020]">{code}</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#FF2A2A]">{code}</p>
           <h2 id={id} className="heading-font truncate text-base font-semibold tracking-tight text-white md:text-lg">
             {title}
           </h2>

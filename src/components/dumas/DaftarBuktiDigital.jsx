@@ -43,10 +43,10 @@ class DaftarBuktiErrorBoundary extends React.Component {
       return (
         <div style={{
           padding: '16px 20px',
-          border: '1px solid rgba(255, 90, 31, 0.4)',
+          border: '1px solid rgba(255, 42, 42, 0.4)',
           borderRadius: '12px',
-          backgroundColor: 'rgba(224, 112, 32, 0.12)',
-          color: '#FBDBAF',
+          backgroundColor: 'rgba(255, 42, 42, 0.12)',
+          color: '#CBD5E1',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -56,7 +56,7 @@ class DaftarBuktiErrorBoundary extends React.Component {
           <span style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: '#FFFFFF' }}>
             [PERINGATAN] Terdeteksi Data Bukti Korup / Non-Serializable di Cache Lokal
           </span>
-          <p style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.72)', margin: 0, maxWidth: '520px' }}>
+          <p style={{ fontSize: '11px', color: 'rgba(203, 213, 225, 0.72)', margin: 0, maxWidth: '520px' }}>
             Beberapa berkas dalam draf tersimpan tidak valid atau tidak memiliki URL aktif. Anda dapat membersihkan cache barang bukti ini untuk melanjutkan input dumas secara lancar.
           </p>
           <button
@@ -129,9 +129,9 @@ function DaftarBuktiDigitalContent({
             <div
               key={uniqueKey}
               style={{
-                backgroundColor: '#161310',
-                border: bukti?.isNew ? '1.5px solid #FF5A1F' : '1px solid rgba(251, 219, 175, 0.14)',
-                boxShadow: bukti?.isNew ? '0 0 18px rgba(224, 112, 32, 0.25)' : '0 2px 8px rgba(0,0,0,0.3)',
+                backgroundColor: '#11161F',
+                border: bukti?.isNew ? '1.5px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.14)',
+                boxShadow: bukti?.isNew ? '0 0 18px rgba(255, 42, 42, 0.25)' : '0 2px 8px rgba(0,0,0,0.3)',
                 borderRadius: '12px',
                 padding: '12px',
                 display: 'flex',
@@ -141,7 +141,7 @@ function DaftarBuktiDigitalContent({
                 transition: 'all 0.25s ease',
                 position: 'relative'
               }}
-              className={bukti?.isNew ? 'ring-1 ring-[#FF5A1F]/40' : 'hover:border-[#FF5A1F]/50'}
+              className={bukti?.isNew ? 'ring-1 ring-[#FF2A2A]/40' : 'hover:border-[#FF2A2A]/50'}
             >
               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 {/* Thumbnail Pratinjau Gambar / Dokumen */}
@@ -158,8 +158,8 @@ function DaftarBuktiDigitalContent({
                     width: '56px',
                     height: '56px',
                     borderRadius: '8px',
-                    backgroundColor: isPdf ? 'rgba(224, 112, 32, 0.14)' : '#1E1915',
-                    border: bukti?.isNew ? '1px solid #FF5A1F' : '1px solid rgba(251, 219, 175, 0.16)',
+                    backgroundColor: isPdf ? 'rgba(255, 42, 42, 0.14)' : '#131924',
+                    border: bukti?.isNew ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.16)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -188,13 +188,13 @@ function DaftarBuktiDigitalContent({
                           fallback.style.justifyContent = 'center';
                           fallback.style.width = '100%';
                           fallback.style.height = '100%';
-                          fallback.innerHTML = '<span style="font-size:10px;color:#FF5A1F;font-family:monospace;">R2 Err</span>';
+                          fallback.innerHTML = '<span style="font-size:10px;color:#FF2A2A;font-family:monospace;">R2 Err</span>';
                           e.target.parentElement.appendChild(fallback);
                         }
                       }}
                     />
                   ) : (
-                    isPdf ? <FileText size={24} color="#FF7A33" /> : <ImageIcon size={24} color="#FF5A1F" />
+                    isPdf ? <FileText size={24} color="#FF3B3B" /> : <ImageIcon size={24} color="#FF2A2A" />
                   )}
                 </div>
 
@@ -220,14 +220,14 @@ function DaftarBuktiDigitalContent({
                       fontSize: '9px',
                       fontFamily: 'JetBrains Mono, monospace',
                       fontWeight: 700,
-                      color: isPdf ? '#FFFFFF' : '#FF7A33',
-                      backgroundColor: isPdf ? 'rgba(255, 255, 255, 0.12)' : 'rgba(224, 112, 32, 0.16)',
+                      color: isPdf ? '#FFFFFF' : '#FF3B3B',
+                      backgroundColor: isPdf ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 42, 42, 0.16)',
                       padding: '1px 6px',
                       borderRadius: '9999px'
                     }}>
                       {isPdf ? 'PDF' : 'JPG/PNG'}
                     </span>
-                    <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#FBDBAF' }}>
+                    <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#CBD5E1' }}>
                       {fileSizeFormatted}
                     </span>
                     {bukti?.isNew && (
@@ -235,7 +235,7 @@ function DaftarBuktiDigitalContent({
                         fontSize: '8.5px',
                         fontFamily: 'JetBrains Mono, monospace',
                         fontWeight: 800,
-                        color: '#0E0C0A',
+                        color: '#0B0E14',
                         backgroundColor: '#FFFFFF',
                         padding: '1px 6px',
                         borderRadius: '9999px',
@@ -246,7 +246,7 @@ function DaftarBuktiDigitalContent({
                     )}
                   </div>
                   {bukti?.keterangan && (
-                    <p style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)', margin: '4px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <p style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.55)', margin: '4px 0 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {bukti.keterangan}
                     </p>
                   )}
@@ -254,14 +254,14 @@ function DaftarBuktiDigitalContent({
               </div>
 
               {/* Tombol Aksi */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid rgba(251, 219, 175, 0.12)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid rgba(148, 163, 184, 0.14)' }}>
                 <button
                   type="button"
                   onClick={() => onPreview && onPreview({ ...bukti, url: publicUrl })}
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#FBDBAF',
+                    color: '#CBD5E1',
                     fontSize: '11px',
                     fontFamily: 'JetBrains Mono, monospace',
                     display: 'flex',
@@ -271,7 +271,7 @@ function DaftarBuktiDigitalContent({
                     padding: '2px 6px',
                     borderRadius: '9999px'
                   }}
-                  className="hover:bg-[#E07020]/15"
+                  className="hover:bg-[#FF2A2A]/15"
                 >
                   <Eye size={12} />
                   <span>Perbesar</span>
@@ -282,9 +282,9 @@ function DaftarBuktiDigitalContent({
                     type="button"
                     onClick={() => onRemove(bukti?.id)}
                     style={{
-                      background: 'rgba(224, 112, 32, 0.12)',
-                      border: '1px solid rgba(255, 90, 31, 0.35)',
-                      color: '#FF5A1F',
+                      background: 'rgba(255, 42, 42, 0.12)',
+                      border: '1px solid rgba(255, 42, 42, 0.35)',
+                      color: '#FF2A2A',
                       borderRadius: '9999px',
                       padding: '4px 10px',
                       fontSize: '10px',
@@ -294,7 +294,7 @@ function DaftarBuktiDigitalContent({
                       alignItems: 'center',
                       gap: '4px'
                     }}
-                    className="hover:bg-[#FF5A1F]/20"
+                    className="hover:bg-[#FF2A2A]/20"
                     title="Hapus Item Bukti"
                   >
                     <Trash2 size={12} />

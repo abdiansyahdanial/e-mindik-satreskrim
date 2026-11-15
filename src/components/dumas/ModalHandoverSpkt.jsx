@@ -82,14 +82,14 @@ export default function ModalHandoverSpkt({
       }}
     >
       <div
-        className="w-full max-w-lg bg-[#161310] border border-[rgba(251,219,175,0.18)] rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        className="w-full max-w-lg bg-[#11161F] border border-[rgba(148,163,184,0.2)] rounded-xl shadow-2xl overflow-hidden flex flex-col"
         style={{
           width: '100%',
           maxWidth: '520px',
-          backgroundColor: '#161310',
-          border: '1px solid rgba(251, 219, 175, 0.18)',
+          backgroundColor: '#11161F',
+          border: '1px solid rgba(148, 163, 184, 0.2)',
           borderRadius: '18px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 35px rgba(224, 112, 32, 0.18)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 35px rgba(255, 42, 42, 0.18)',
           display: 'flex',
           flexDirection: 'column'
         }}
@@ -98,8 +98,8 @@ export default function ModalHandoverSpkt({
         <div
           style={{
             padding: '16px 20px',
-            backgroundColor: '#0E0C0A',
-            borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
+            backgroundColor: '#0B0E14',
+            borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -111,12 +111,12 @@ export default function ModalHandoverSpkt({
                 width: '38px',
                 height: '38px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(224, 112, 32, 0.16)',
-                border: '1px solid rgba(255, 90, 31, 0.45)',
+                backgroundColor: 'rgba(255, 42, 42, 0.16)',
+                border: '1px solid rgba(255, 42, 42, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#FF5A1F'
+                color: '#FF2A2A'
               }}
             >
               <Lock size={18} />
@@ -131,13 +131,13 @@ export default function ModalHandoverSpkt({
                     padding: '2px 8px',
                     borderRadius: '9999px',
                     backgroundColor: '#FFFFFF',
-                    color: '#0E0C0A',
+                    color: '#0B0E14',
                     letterSpacing: '0.05em'
                   }}
                 >
                   CHAIN OF CUSTODY
                 </span>
-                <span style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.6)', fontFamily: 'JetBrains Mono, monospace' }}>
+                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.65)', fontFamily: 'JetBrains Mono, monospace' }}>
                   SPKT ➔ SATRESKRIM
                 </span>
               </div>
@@ -163,7 +163,7 @@ export default function ModalHandoverSpkt({
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#FBDBAF',
+              color: '#CBD5E1',
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
               padding: '6px',
               borderRadius: '6px'
@@ -181,9 +181,9 @@ export default function ModalHandoverSpkt({
               style={{
                 padding: '10px 14px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(224, 112, 32, 0.14)',
-                border: '1px solid #FF5A1F',
-                color: '#FBDBAF',
+                backgroundColor: 'rgba(255, 42, 42, 0.14)',
+                border: '1px solid #FF2A2A',
+                color: '#CBD5E1',
                 fontSize: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -200,15 +200,15 @@ export default function ModalHandoverSpkt({
             style={{
               padding: '12px 14px',
               borderRadius: '10px',
-              backgroundColor: '#0d1118',
-              border: '1px solid #1e293b',
+              backgroundColor: '#0B0E14',
+              border: '1px solid rgba(148, 163, 184, 0.2)',
               display: 'flex',
               flexDirection: 'column',
               gap: '6px'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '10px', color: '#64748B', fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '10px', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Nomor Register Dumas
               </span>
               <span
@@ -216,20 +216,20 @@ export default function ModalHandoverSpkt({
                   fontSize: '12px',
                   fontFamily: 'JetBrains Mono, monospace',
                   fontWeight: 700,
-                  color: '#FCD34D',
-                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                  color: '#FF3B3B',
+                  backgroundColor: 'rgba(255, 42, 42, 0.15)',
                   padding: '3px 10px',
                   borderRadius: '6px',
-                  border: '1px solid rgba(245, 158, 11, 0.35)'
+                  border: '1px solid rgba(255, 42, 42, 0.35)'
                 }}
               >
                 {dumasItem?.nomor_lp || dumasItem?.nomor_register || 'DUMAS-KOLTIM'}
               </span>
             </div>
 
-            <div style={{ fontSize: '12px', color: '#FAF6F0', display: 'flex', justifyContent: 'space-between', gap: '10px', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#F8FAFC', display: 'flex', justifyContent: 'space-between', gap: '10px', marginTop: '4px' }}>
               <span>Pelapor: <strong style={{ color: '#FFF' }}>{dumasItem?.pelapor_nama || dumasItem?.nama_pelapor || '-'}</strong></span>
-              <span style={{ color: 'rgba(251, 219, 175, 0.65)' }}>Perkara: <span style={{ color: '#FF7A33' }}>{dumasItem?.tindak_pidana || '-'}</span></span>
+              <span style={{ color: 'rgba(203, 213, 225, 0.65)' }}>Perkara: <span style={{ color: '#FF3B3B' }}>{dumasItem?.tindak_pidana || '-'}</span></span>
             </div>
           </div>
 
@@ -238,19 +238,19 @@ export default function ModalHandoverSpkt({
             style={{
               padding: '14px',
               borderRadius: '10px',
-              backgroundColor: 'rgba(224, 112, 32, 0.1)',
-              border: '1px solid rgba(255, 90, 31, 0.35)',
+              backgroundColor: 'rgba(255, 42, 42, 0.1)',
+              border: '1px solid rgba(255, 42, 42, 0.35)',
               display: 'flex',
               gap: '12px',
               alignItems: 'flex-start'
             }}
           >
-            <AlertTriangle size={20} color="#FF7A33" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <div style={{ fontSize: '12px', color: '#FAF6F0', lineHeight: 1.6 }}>
+            <AlertTriangle size={20} color="#FF3B3B" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ fontSize: '12px', color: '#F8FAFC', lineHeight: 1.6 }}>
               <p style={{ margin: 0 }}>
                 Apakah Anda yakin ingin menyerahkan berkas laporan ini ke Satreskrim?
               </p>
-              <p style={{ margin: '6px 0 0 0', color: '#FBDBAF', fontSize: '11px', fontWeight: 500 }}>
+              <p style={{ margin: '6px 0 0 0', color: '#CBD5E1', fontSize: '11px', fontWeight: 500 }}>
                 Setelah diserahkan, data administrasi berkas akan <strong>DIKUNCI secara permanen (read-only)</strong> demi menjaga keaslian <em>chain of custody</em>.
               </p>
             </div>
@@ -265,8 +265,8 @@ export default function ModalHandoverSpkt({
             justifyContent: 'flex-end',
             gap: '10px',
             padding: '14px 20px',
-            backgroundColor: '#0E0C0A',
-            borderTop: '1px solid rgba(251, 219, 175, 0.14)'
+            backgroundColor: '#0B0E14',
+            borderTop: '1px solid rgba(148, 163, 184, 0.16)'
           }}
         >
           <button
@@ -279,9 +279,9 @@ export default function ModalHandoverSpkt({
               fontSize: '12px',
               fontWeight: 600,
               fontFamily: 'JetBrains Mono, monospace',
-              color: '#FBDBAF',
-              backgroundColor: '#1E1915',
-              border: '1px solid rgba(251, 219, 175, 0.2)',
+              color: '#CBD5E1',
+              backgroundColor: '#161D2A',
+              border: '1px solid rgba(148, 163, 184, 0.2)',
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
               transition: 'all 0.15s ease'
             }}
@@ -300,13 +300,13 @@ export default function ModalHandoverSpkt({
               fontWeight: 700,
               fontFamily: 'JetBrains Mono, monospace',
               color: '#FFFFFF',
-              backgroundColor: '#E07020',
+              backgroundColor: '#FF2A2A',
               border: 'none',
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              boxShadow: '0 0 18px rgba(224, 112, 32, 0.45)',
+              boxShadow: '0 0 18px rgba(255, 42, 42, 0.45)',
               transition: 'all 0.15s ease'
             }}
           >

@@ -126,7 +126,8 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
     <div style={{
       minHeight: '100vh',
       width: '100vw',
-      background: 'radial-gradient(circle at 50% 15%, rgba(0, 212, 255, 0.1) 0%, rgba(6, 11, 24, 0.98) 75%, #030712 100%)',
+      background: 'radial-gradient(circle at 80% 12%, rgba(220, 38, 38, 0.22) 0%, rgba(255, 42, 42, 0.08) 35%, #0B0E14 75%)',
+      backgroundColor: '#0B0E14',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -143,8 +144,8 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
         right: 0,
         bottom: 0,
         backgroundImage: `
-          linear-gradient(to right, rgba(251, 219, 175, 0.03) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(251, 219, 175, 0.03) 1px, transparent 1px)
+          linear-gradient(to right, rgba(148, 163, 184, 0.025) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(148, 163, 184, 0.025) 1px, transparent 1px)
         `,
         backgroundSize: '40px 40px',
         pointerEvents: 'none',
@@ -153,11 +154,11 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
       <div style={{
         maxWidth: '560px',
         width: '100%',
-        background: 'rgba(18, 14, 11, 0.88)',
+        background: 'rgba(17, 22, 31, 0.88)',
         backdropFilter: 'blur(18px)',
-        border: '1px solid rgba(251, 219, 175, 0.16)',
+        border: '1px solid rgba(148, 163, 184, 0.16)',
         borderRadius: '18px',
-        boxShadow: '0 24px 55px rgba(0, 0, 0, 0.85), 0 0 32px rgba(224, 112, 32, 0.14)',
+        boxShadow: '0 24px 55px rgba(0, 0, 0, 0.85), 0 0 32px rgba(255, 42, 42, 0.14)',
         padding: '36px 32px',
         position: 'relative',
         zIndex: 10,
@@ -173,9 +174,9 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, rgba(224, 112, 32, 0.18), rgba(255, 90, 31, 0.12))',
-            border: '2px solid rgba(255, 90, 31, 0.6)',
-            boxShadow: '0 0 20px rgba(224, 112, 32, 0.28)'
+            background: 'linear-gradient(135deg, rgba(255, 42, 42, 0.18), rgba(185, 28, 28, 0.14))',
+            border: '2px solid rgba(255, 42, 42, 0.6)',
+            boxShadow: '0 0 20px rgba(255, 42, 42, 0.28)'
           }}>
             <img 
               src={logoImg} 
@@ -194,9 +195,9 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid #0E0C0A'
+              border: '2px solid #0B0E14'
             }}>
-              <Clock size={14} color="#FF5A1F" />
+              <Clock size={14} color="#FF2A2A" />
             </div>
           </div>
         </div>
@@ -214,7 +215,7 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
         <p style={{
           margin: '0 0 20px',
           fontSize: '12.5px',
-          color: 'rgba(251, 219, 175, 0.65)',
+          color: '#94A3B8',
           letterSpacing: '0.5px'
         }}>
           Satuan Reserse Kriminal Kepolisian Resor Kolaka Timur
@@ -222,8 +223,8 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
 
         {/* Status Banner */}
         <div style={{
-          background: 'rgba(224, 112, 32, 0.12)',
-          border: '1px solid rgba(255, 90, 31, 0.45)',
+          background: 'rgba(255, 42, 42, 0.12)',
+          border: '1px solid rgba(255, 42, 42, 0.42)',
           borderRadius: '12px',
           padding: '14px 16px',
           marginBottom: '24px',
@@ -232,12 +233,12 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
           gap: '12px',
           textAlign: 'left'
         }}>
-          <ShieldAlert size={26} color="#FF5A1F" style={{ flexShrink: 0 }} />
+          <ShieldAlert size={26} color="#FF2A2A" style={{ flexShrink: 0 }} />
           <div>
             <div style={{ color: '#FFFFFF', fontWeight: 700, fontSize: '13px' }}>
               Status: Menunggu Persetujuan Kasat Reskrim / Super Admin
             </div>
-            <div style={{ color: '#FBDBAF', fontSize: '11.5px', marginTop: '3px', lineHeight: 1.4 }}>
+            <div style={{ color: '#CBD5E1', fontSize: '11.5px', marginTop: '3px', lineHeight: 1.4 }}>
               Pendaftaran Anda telah berhasil dicatat. Seluruh modul penyidikan & generator berkas dikunci demi keamanan hingga diverifikasi oleh Kasat Reskrim / Super Admin.
             </div>
           </div>
@@ -245,8 +246,8 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
 
         {/* Officer Card Info */}
         <div style={{
-          background: '#161310',
-          border: '1px solid rgba(251, 219, 175, 0.14)',
+          background: '#131924',
+          border: '1px solid rgba(148, 163, 184, 0.16)',
           borderRadius: '14px',
           padding: '16px',
           marginBottom: '24px',
@@ -257,7 +258,7 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
             fontWeight: 700,
             letterSpacing: '1px',
             textTransform: 'uppercase',
-            color: '#FF5A1F',
+            color: '#FF3B3B',
             marginBottom: '12px',
             display: 'flex',
             alignItems: 'center',
@@ -269,28 +270,28 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
             <div>
-              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Nama Personel:</span>
+              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Nama Personel:</span>
               <strong style={{ color: '#FFFFFF' }}>{pangkat} {nama}</strong>
             </div>
             <div>
-              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>NRP Kedinasan:</span>
-              <span className="mono" style={{ color: '#FF7A33', fontWeight: 600 }}>{nrp}</span>
+              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>NRP Kedinasan:</span>
+              <span className="mono" style={{ color: '#FF3B3B', fontWeight: 600 }}>{nrp}</span>
             </div>
             <div>
-              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Jabatan & Unit:</span>
-              <span style={{ color: '#FBDBAF' }}>{jabatan} {unit && `(${unit})`}</span>
+              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Jabatan & Unit:</span>
+              <span style={{ color: '#CBD5E1' }}>{jabatan} {unit && `(${unit})`}</span>
             </div>
             <div>
-              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Satuan Kerja:</span>
-              <span style={{ color: '#FBDBAF' }}>{satker}</span>
+              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Satuan Kerja:</span>
+              <span style={{ color: '#CBD5E1' }}>{satker}</span>
             </div>
             <div>
-              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Email:</span>
-              <span style={{ color: '#FBDBAF' }}>{email}</span>
+              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Email:</span>
+              <span style={{ color: '#CBD5E1' }}>{email}</span>
             </div>
             <div>
-              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>No. Handphone / WA:</span>
-              <span style={{ color: '#FBDBAF' }}>{phone}</span>
+              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>No. Handphone / WA:</span>
+              <span style={{ color: '#CBD5E1' }}>{phone}</span>
             </div>
           </div>
         </div>
@@ -306,11 +307,11 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
             alignItems: 'center',
             gap: '8px',
             textAlign: 'left',
-            background: checkMsg.type === 'success' ? 'rgba(224, 112, 32, 0.14)' : checkMsg.type === 'error' ? 'rgba(255, 90, 31, 0.18)' : 'rgba(251, 219, 175, 0.1)',
-            border: `1px solid ${checkMsg.type === 'success' ? 'rgba(224, 112, 32, 0.5)' : checkMsg.type === 'error' ? '#FF5A1F' : 'rgba(251, 219, 175, 0.35)'}`,
+            background: checkMsg.type === 'success' ? 'rgba(255, 42, 42, 0.14)' : checkMsg.type === 'error' ? 'rgba(255, 42, 42, 0.18)' : 'rgba(148, 163, 184, 0.12)',
+            border: `1px solid ${checkMsg.type === 'success' ? 'rgba(255, 42, 42, 0.5)' : checkMsg.type === 'error' ? '#FF2A2A' : 'rgba(148, 163, 184, 0.35)'}`,
             color: '#FFFFFF'
           }}>
-            {checkMsg.type === 'success' ? <CheckCircle2 size={16} color="#FF5A1F" /> : checkMsg.type === 'error' ? <AlertCircle size={16} color="#FF5A1F" /> : <Clock size={16} color="#FBDBAF" />}
+            {checkMsg.type === 'success' ? <CheckCircle2 size={16} color="#FF2A2A" /> : checkMsg.type === 'error' ? <AlertCircle size={16} color="#FF2A2A" /> : <Clock size={16} color="#CBD5E1" />}
             <span>{checkMsg.text}</span>
           </div>
         )}
@@ -322,9 +323,9 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
             onClick={handleCheckStatus}
             disabled={checking}
             style={{
-              background: '#E07020',
+              background: 'linear-gradient(135deg, #E61919 0%, #FF2A2A 100%)',
               color: '#FFFFFF',
-              border: 'none',
+              border: '1px solid #FF5252',
               borderRadius: '9999px',
               padding: '12px 20px',
               fontWeight: 700,
@@ -334,7 +335,7 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              boxShadow: '0 4px 15px rgba(0, 212, 255, 0.3)',
+              boxShadow: '0 4px 20px rgba(255, 42, 42, 0.38)',
               transition: 'all 0.2s ease'
             }}
           >

@@ -21,7 +21,7 @@ import './ExpandingSidebar.css';
 /**
  * ExpandingSidebar Component
  * Adaptasi presisi dari spesifikasi CSS & JS modern:
- * - Skema Warna: Background #1b2229, Sidebar #ff352d, Hover #ff5740
+ * - Skema Warna: 01 // MIDNIGHT CRIMSON (#0D1117 / #0B0E14, Crimson #FF2A2A, Titanium Silver #CBD5E1)
  * - Dimensi Rail: 94px (tertutup) -> 290px (mengembang)
  * - Transisi: width 760ms cubic-bezier(0.2, 0.74, 0.18, 1)
  * - Hairline divider & Visual cutout pada ikon SVG

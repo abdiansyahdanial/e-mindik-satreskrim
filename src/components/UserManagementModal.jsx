@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ShieldAlert, 
-  ShieldCheck, 
-  UserCheck, 
-  Users, 
-  X, 
-  Check, 
-  RefreshCw, 
+import {
+  ShieldAlert,
+  ShieldCheck,
+  UserCheck,
+  Users,
+  X,
+  Check,
+  RefreshCw,
   AlertCircle,
   Shield,
   Key,
@@ -21,16 +21,16 @@ import { supabase } from '../supabaseClient';
 import { sendAccountApprovedEmail } from '../services/emailService';
 
 const PANGKAT_OPTIONS = [
-  'BRIPDA', 
-  'BRIPTU', 
-  'BRIGADIR', 
-  'BRIPKA', 
-  'AIPDA', 
-  'AIPTU', 
-  'IPDA', 
-  'IPTU', 
-  'AKP', 
-  'KOMPOL', 
+  'BRIPDA',
+  'BRIPTU',
+  'BRIGADIR',
+  'BRIPKA',
+  'AIPDA',
+  'AIPTU',
+  'IPDA',
+  'IPTU',
+  'AKP',
+  'KOMPOL',
   'AKBP'
 ];
 
@@ -44,7 +44,7 @@ const cleanOfficerName = (nama) => {
 const resolvePangkat = (prof) => {
   if (prof?.pangkat && prof.pangkat.trim() && prof.pangkat !== '-') return prof.pangkat.trim();
   if (prof?.rank && prof.rank.trim() && prof.rank !== '-') return prof.rank.trim();
-  
+
   const textToScan = `${prof?.full_name || ''} ${prof?.nama || ''}`.toUpperCase();
   for (const pkt of PANGKAT_OPTIONS) {
     if (textToScan.startsWith(pkt) || textToScan.includes(` ${pkt} `) || textToScan.includes(`${pkt} `)) {
@@ -64,7 +64,7 @@ const resolveNrp = (prof) => {
   if (prof?.no_nrp && String(prof.no_nrp).trim() && String(prof.no_nrp).trim() !== '-') {
     return String(prof.no_nrp).trim();
   }
-  
+
   const meta = prof?.user_metadata || prof?.raw_user_meta_data || {};
   if (meta?.rank_nrp && String(meta.rank_nrp).trim() && String(meta.rank_nrp).trim() !== '-') {
     return String(meta.rank_nrp).trim();
@@ -116,9 +116,9 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
   }, [isOpen]);
 
   // Separate pending from active profiles
-  const pendingProfiles = profiles.filter(p => 
-    p.status === 'pending' || 
-    p.role === 'pending' || 
+  const pendingProfiles = profiles.filter(p =>
+    p.status === 'pending' ||
+    p.role === 'pending' ||
     (!p.status && p.role === 'penyidik' && p.role !== 'super_admin' && p.role !== 'admin' && p.role !== 'anggota')
   );
 
@@ -146,8 +146,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
       const cleanName = cleanOfficerName(profile.nama || profile.full_name) || 'Penyidik Satreskrim';
 
       // 1. Update status & role di tabel public.profiles (menggunakan rank_nrp & position yang ada di schema)
-      const updatePayload = { 
-        role: 'anggota', 
+      const updatePayload = {
+        role: 'anggota',
         status: 'active',
         full_name: `${resolvedPangkat} ${cleanName}`
       };
@@ -169,9 +169,9 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
       }
 
       // Update in-memory profiles state
-      setProfiles(prev => prev.map(p => p.id === profile.id ? { 
-        ...p, 
-        role: 'anggota', 
+      setProfiles(prev => prev.map(p => p.id === profile.id ? {
+        ...p,
+        role: 'anggota',
         status: 'active',
         full_name: `${resolvedPangkat} ${cleanName}`,
         rank_nrp: resolvedNrp || p.rank_nrp
@@ -240,9 +240,9 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
       // 5. Kirim email notifikasi aktivasi resmi ke penyidik via Resend (asynchronous non-blocking)
       sendAccountApprovedEmail(officerData);
 
-      setMessage({ 
-        type: 'success', 
-        text: `Akun ${officerData.pangkat} ${officerData.nama} (NRP: ${officerData.nrp}) berhasil disetujui & disinkronkan ke daftar personel!` 
+      setMessage({
+        type: 'success',
+        text: `Akun ${officerData.pangkat} ${officerData.nama} (NRP: ${officerData.nrp}) berhasil disetujui & disinkronkan ke daftar personel!`
       });
     } catch (err) {
       console.error('Error approving user:', err);
@@ -333,8 +333,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div 
-        className="modal-content" 
+      <div
+        className="modal-content"
         style={{ maxWidth: '720px', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -345,18 +345,18 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               width: '40px',
               height: '40px',
               borderRadius: '10px',
-              background: 'rgba(224, 112, 32, 0.14)',
-              border: '1px solid rgba(255, 90, 31, 0.45)',
+              background: 'rgba(255, 42, 42, 0.14)',
+              border: '1px solid rgba(255, 42, 42, 0.45)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <ShieldAlert size={22} color="#FF5A1F" />
+              <ShieldAlert size={22} color="#FF2A2A" />
             </div>
             <div>
               <h3 className="heading-font" style={{ fontSize: '15px', margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>Manajemen Personel & Verifikasi Kedinasan</span>
-                <span className="badge" style={{ background: '#E07020', color: '#FFFFFF', fontSize: '9px', borderRadius: '9999px' }}>SUPER ADMIN</span>
+                <span className="badge" style={{ background: '#FF2A2A', color: '#FFFFFF', fontSize: '9px', borderRadius: '9999px' }}>SUPER ADMIN</span>
               </h3>
               <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
                 Verifikasi pendaftar baru dan kelola hak akses peran RBAC Satreskrim
@@ -365,16 +365,16 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button 
-              type="button" 
-              onClick={fetchProfiles} 
+            <button
+              type="button"
+              onClick={fetchProfiles}
               disabled={loading}
               className="btn btn-secondary btn-sm"
               title="Segarkan data pendaftar"
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
-            <button 
+            <button
               onClick={onClose}
               style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
             >
@@ -386,8 +386,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
         {/* Tab Switcher: Pending Approval vs RBAC Management */}
         <div style={{
           display: 'flex',
-          borderBottom: '1px solid rgba(251, 219, 175, 0.12)',
-          background: '#161310',
+          borderBottom: '1px solid rgba(148, 163, 184, 0.14)',
+          background: '#10151E',
           padding: '0 20px'
         }}>
           <button
@@ -397,7 +397,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               padding: '12px 18px',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'pending' ? '2px solid #FF5A1F' : '2px solid transparent',
+              borderBottom: activeTab === 'pending' ? '2px solid #FF2A2A' : '2px solid transparent',
               color: activeTab === 'pending' ? '#FFFFFF' : 'var(--text-secondary)',
               fontWeight: activeTab === 'pending' ? 700 : 500,
               fontSize: '12.5px',
@@ -408,12 +408,12 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               transition: 'all 0.2s ease'
             }}
           >
-            <Clock size={15} color={activeTab === 'pending' ? '#FF5A1F' : 'currentColor'} />
+            <Clock size={15} color={activeTab === 'pending' ? '#FF2A2A' : 'currentColor'} />
             <span>Verifikasi Pendaftar Baru</span>
             {pendingProfiles.length > 0 && (
               <span style={{
                 background: '#FFFFFF',
-                color: '#0E0C0A',
+                color: '#0B0E14',
                 borderRadius: '9999px',
                 padding: '2px 7px',
                 fontSize: '10px',
@@ -431,8 +431,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               padding: '12px 18px',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'rbac' ? '2px solid #FF5A1F' : '2px solid transparent',
-              color: activeTab === 'rbac' ? '#FF5A1F' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'rbac' ? '2px solid #FF2A2A' : '2px solid transparent',
+              color: activeTab === 'rbac' ? '#FF2A2A' : 'var(--text-secondary)',
               fontWeight: activeTab === 'rbac' ? 700 : 500,
               fontSize: '12.5px',
               cursor: 'pointer',
@@ -442,7 +442,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               transition: 'all 0.2s ease'
             }}
           >
-            <ShieldCheck size={15} color={activeTab === 'rbac' ? '#FF5A1F' : 'currentColor'} />
+            <ShieldCheck size={15} color={activeTab === 'rbac' ? '#FF2A2A' : 'currentColor'} />
             <span>Hak Akses Akun Aktif (RBAC)</span>
             <span style={{
               background: 'rgba(255, 255, 255, 0.1)',
@@ -603,12 +603,12 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                             onChange={(e) => setNrpInputs(prev => ({ ...prev, [p.id]: e.target.value }))}
                             placeholder="Ketik NRP..."
                             className="form-input mono"
-                            style={{ 
-                              padding: '1px 6px', 
-                              fontSize: '11px', 
-                              width: '120px', 
-                              height: '22px', 
-                              borderColor: !(nrpInputs[p.id] || resolveNrp(p)) ? 'var(--accent-yellow)' : 'rgba(255,255,255,0.2)' 
+                            style={{
+                              padding: '1px 6px',
+                              fontSize: '11px',
+                              width: '120px',
+                              height: '22px',
+                              borderColor: !(nrpInputs[p.id] || resolveNrp(p)) ? 'var(--accent-yellow)' : 'rgba(255,255,255,0.2)'
                             }}
                             title="Nomor Registrasi (NRP) Personel"
                           />
@@ -641,9 +641,9 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               {/* Role Explainer Card */}
               <div style={{
                 padding: '12px 14px',
-                background: '#1E1915',
+                background: '#131924',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(251, 219, 175, 0.14)',
+                border: '1px solid rgba(148, 163, 184, 0.14)',
                 fontSize: '11px',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr',
@@ -688,7 +688,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                           padding: '14px',
                           borderRadius: 'var(--radius-lg)',
                           background: 'var(--bg-secondary)',
-                          border: isSelf ? '1px solid rgba(255, 90, 31, 0.55)' : '1px solid var(--border-glass)',
+                          border: isSelf ? '1px solid rgba(255, 42, 42, 0.55)' : '1px solid var(--border-glass)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -702,14 +702,14 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                               {p.full_name || p.nama || 'Personel Satreskrim'}
                             </span>
                             {isSelf && (
-                              <span className="badge" style={{ background: 'rgba(224, 112, 32, 0.15)', border: '1px solid rgba(255, 90, 31, 0.45)', color: '#FF5A1F', fontSize: '9px' }}>
+                              <span className="badge" style={{ background: 'rgba(255, 42, 42, 0.15)', border: '1px solid rgba(255, 42, 42, 0.45)', color: '#FF2A2A', fontSize: '9px' }}>
                                 AKUN ANDA
                               </span>
                             )}
                             <span className="badge" style={{
-                              background: isSuper ? '#E07020' : isAdmin ? '#FFFFFF' : '#1E1915',
-                              border: isSuper ? '1px solid #FF5A1F' : isAdmin ? '1px solid #FFFFFF' : '1px solid rgba(251, 219, 175, 0.2)',
-                              color: isAdmin ? '#0E0C0A' : '#FFFFFF',
+                              background: isSuper ? '#FF2A2A' : isAdmin ? '#FFFFFF' : '#131924',
+                              border: isSuper ? '1px solid #FF2A2A' : isAdmin ? '1px solid #FFFFFF' : '1px solid rgba(148, 163, 184, 0.2)',
+                              color: isAdmin ? '#0B0E14' : '#FFFFFF',
                               fontSize: '9.5px',
                               borderRadius: '9999px'
                             }}>
@@ -769,7 +769,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                           </select>
 
                           {savingId === p.id && (
-                            <RefreshCw size={14} className="animate-spin" color="#FF5A1F" />
+                            <RefreshCw size={14} className="animate-spin" color="#FF2A2A" />
                           )}
                         </div>
                       </div>
@@ -783,9 +783,9 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
 
         {/* Footer */}
         <div className="modal-footer" style={{ borderTop: '1px solid var(--border-glass)', padding: '12px 20px' }}>
-          <button 
-            type="button" 
-            onClick={onClose} 
+          <button
+            type="button"
+            onClick={onClose}
             className="btn btn-secondary btn-sm"
           >
             Tutup

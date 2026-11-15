@@ -18,7 +18,7 @@ export function CaseFilePanel({ cases = [], onSelectCase }: { cases?: any[], onS
         title="Berkas Perkara Berjalan"
         icon={FolderLock}
         meta={
-          <span className="shrink-0 rounded-full border border-[#FBDBAF]/25 bg-[#181411] px-3 py-1 font-mono text-[10px] font-semibold tracking-[0.2em] text-[#FBDBAF]">
+          <span className="shrink-0 rounded-full border border-[rgba(148,163,184,0.22)] bg-[#131924] px-3 py-1 font-mono text-[10px] font-semibold tracking-[0.2em] text-[#CBD5E1]">
             {count.toString().padStart(2, '0')} PERKARA
           </span>
         }
@@ -27,7 +27,7 @@ export function CaseFilePanel({ cases = [], onSelectCase }: { cases?: any[], onS
       {displayCase ? (
         <CaseArticle caseData={displayCase} onSelectCase={onSelectCase} />
       ) : (
-        <div className="p-4 text-center text-[#FBDBAF]/60 font-mono text-sm">Tidak ada perkara berjalan</div>
+        <div className="p-4 text-center text-[#94A3B8] font-mono text-sm">Tidak ada perkara berjalan</div>
       )}
     </HudCard>
   )
@@ -44,10 +44,10 @@ function CaseArticle({ caseData, onSelectCase }: { caseData: any, onSelectCase?:
   if (s.includes('tahap 1') || s.includes('p21') || s.includes('selesai')) currentStep = 3;
 
   return (
-    <article className="flex flex-col gap-5 rounded-2xl border border-[#FBDBAF]/14 bg-[#161310]/85 p-4 md:p-5">
+    <article className="flex flex-col gap-5 rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[#10151E]/90 p-4 md:p-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-mono text-base font-semibold tracking-wide text-[#FF5A1F] md:text-lg">{caseData.no_lp}</h3>
-        <span className="inline-flex items-center gap-2 rounded-full border border-white bg-white px-3 py-1 font-mono text-[10px] font-bold tracking-[0.18em] text-[#0E0C0A]">
+        <h3 className="font-mono text-base font-semibold tracking-wide text-[#FF3B3B] md:text-lg">{caseData.no_lp}</h3>
+        <span className="inline-flex items-center gap-2 rounded-full border border-white bg-white px-3 py-1 font-mono text-[10px] font-bold tracking-[0.18em] text-[#0B0E14]">
           {caseData.status === 'active' && <PulseDot />}
           {(caseData.status || 'ACTIVE').toUpperCase()}
         </span>
@@ -59,9 +59,9 @@ function CaseArticle({ caseData, onSelectCase }: { caseData: any, onSelectCase?:
         <Detail label="Pelapor" value={caseData.pelapor_name || '-'} mono />
       </dl>
 
-      <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#FBDBAF]/20 bg-[#181411] px-3 py-2.5">
-        <AlertTriangle className="size-4 shrink-0 text-[#E07020]" aria-hidden="true" />
-        <p className="text-sm text-[#FBDBAF]/80">
+      <div className="flex items-center gap-3 rounded-xl border border-dashed border-[rgba(148,163,184,0.22)] bg-[#131924] px-3 py-2.5">
+        <AlertTriangle className="size-4 shrink-0 text-[#FF2A2A]" aria-hidden="true" />
+        <p className="text-sm text-[#CBD5E1]/85">
           <span className="font-semibold text-white">Penyidik:</span> {invName}
         </p>
         {!leadInv && <BracketTag className="ml-auto hidden sm:inline-flex">Perlu Tindakan</BracketTag>}
@@ -80,8 +80,8 @@ function CaseArticle({ caseData, onSelectCase }: { caseData: any, onSelectCase?:
 function Detail({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#FBDBAF]/50">{label}</dt>
-      <dd className={cn('mt-1 truncate text-sm font-medium text-white', mono && 'font-mono tracking-wide text-[#FBDBAF]')}>{value}</dd>
+      <dt className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#64748B]">{label}</dt>
+      <dd className={cn('mt-1 truncate text-sm font-medium text-white', mono && 'font-mono tracking-wide text-[#CBD5E1]')}>{value}</dd>
     </div>
   )
 }
@@ -89,7 +89,7 @@ function Detail({ label, value, mono = false }: { label: string; value: string; 
 function Milestones({ currentStep }: { currentStep: number }) {
   return (
     <div>
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#FBDBAF]/50">Progres Penyidikan</p>
+      <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#64748B]">Progres Penyidikan</p>
       <ol className="grid grid-cols-4" aria-label="Tahapan penyidikan">
         {MILESTONES.map((step, index) => {
           const done = index < currentStep
@@ -105,26 +105,26 @@ function Milestones({ currentStep }: { currentStep: number }) {
                   aria-hidden="true"
                   className={cn(
                     'absolute left-5 right-0 top-[9px] h-px',
-                    done ? 'bg-[#FF5A1F] shadow-[0_0_8px_rgba(255,90,31,0.65)]' : 'bg-[repeating-linear-gradient(90deg,rgba(251,219,175,0.22)_0_4px,transparent_4px_8px)]',
+                    done ? 'bg-[#FF2A2A] shadow-[0_0_8px_rgba(255,42,42,0.65)]' : 'bg-[repeating-linear-gradient(90deg,rgba(148,163,184,0.25)_0_4px,transparent_4px_8px)]',
                   )}
                 />
               )}
               <span
                 className={cn(
                   'relative grid size-5 place-items-center rounded-full border',
-                  done && 'border-white bg-white text-[#0E0C0A]',
-                  current && 'border-[#FF5A1F] bg-[#181411] shadow-[0_0_14px_rgba(255,90,31,0.65)]',
-                  !done && !current && 'border-[#FBDBAF]/25 bg-[#181411]',
+                  done && 'border-white bg-white text-[#0B0E14]',
+                  current && 'border-[#FF2A2A] bg-[#131924] shadow-[0_0_14px_rgba(255,42,42,0.65)]',
+                  !done && !current && 'border-[rgba(148,163,184,0.28)] bg-[#131924]',
                 )}
               >
                 {done && <Check className="size-3" strokeWidth={3} aria-hidden="true" />}
-                {current && <span className="absolute inset-0 animate-radar rounded-full border border-[#FF5A1F]" aria-hidden="true" />}
-                {current && <span className="size-1.5 rounded-full bg-[#FF5A1F]" aria-hidden="true" />}
+                {current && <span className="absolute inset-0 animate-radar rounded-full border border-[#FF2A2A]" aria-hidden="true" />}
+                {current && <span className="size-1.5 rounded-full bg-[#FF2A2A]" aria-hidden="true" />}
               </span>
               <span
                 className={cn(
                   'font-mono text-[10px] uppercase tracking-[0.12em] md:text-[11px]',
-                  done || current ? 'text-white font-semibold' : 'text-[#FBDBAF]/50',
+                  done || current ? 'text-white font-semibold' : 'text-[#64748B]',
                 )}
               >
                 {step}

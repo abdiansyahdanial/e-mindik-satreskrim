@@ -4,9 +4,9 @@ import DumasFormView from '../components/dumas/DumasFormView';
 import DumasDetailView from '../components/dumas/DumasDetailView';
 import DumasModeSelectModal from '../components/dumas/DumasModeSelectModal';
 import DumasErrorBoundary from '../components/dumas/DumasErrorBoundary';
-import { 
-  saveDumasRecord, 
-  deleteDumasRecord, 
+import {
+  saveDumasRecord,
+  deleteDumasRecord,
   convertDumasToCase,
   hasDumasDraft
 } from '../services/dumasService';
@@ -37,7 +37,7 @@ export default function DumasView({
           return savedSubView;
         }
       }
-    } catch {}
+    } catch { }
     return 'list';
   });
 
@@ -46,7 +46,7 @@ export default function DumasView({
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('emindik_dumas_subview', subView);
       }
-    } catch {}
+    } catch { }
   }, [subView]);
 
   const [formMode, setFormMode] = useState('manual');
@@ -62,7 +62,7 @@ export default function DumasView({
         const saved = sessionStorage.getItem('emindik_active_dumas_item');
         if (saved) return JSON.parse(saved);
       }
-    } catch {}
+    } catch { }
     return null;
   });
 
@@ -76,7 +76,7 @@ export default function DumasView({
           sessionStorage.removeItem('emindik_active_dumas_item');
         }
       }
-    } catch {}
+    } catch { }
   }, [selectedDumas]);
   const [formMountKey, setFormMountKey] = useState(() => `form-${Date.now()}`);
 
@@ -93,13 +93,13 @@ export default function DumasView({
       localStorage.removeItem('emindik_temp_draft_bb');
       sessionStorage.removeItem('emindik_current_draft_session_id');
       sessionStorage.removeItem('temp_dumas_token');
-    } catch {}
+    } catch { }
 
     setSelectedDumas(null);
     setFormMountKey(`form-new-${Date.now()}`);
     setFormMode(mode);
-    const normalizedFiles = files 
-      ? (Array.isArray(files) ? files : [files]) 
+    const normalizedFiles = files
+      ? (Array.isArray(files) ? files : [files])
       : [];
     setInitialOcrFiles(normalizedFiles);
     setInitialOcrFile(normalizedFiles[0] || null);
@@ -131,7 +131,7 @@ export default function DumasView({
         try {
           localStorage.removeItem('emindik_active_dumas_form_draft');
           localStorage.removeItem('emindik_draft_form_perkara_v1');
-        } catch {}
+        } catch { }
         setDumasList(prev => {
           const exists = prev.some(d => d.id === result.record.id || (result.record.nomor_lp && d.nomor_lp === result.record.nomor_lp));
           if (exists) {
@@ -164,7 +164,7 @@ export default function DumasView({
         alert(`Gagal menghapus berkas dumas dari server: ${res?.error || 'Terjadi kesalahan sistem'}`);
         return;
       }
-      
+
       setDumasList(prev => prev.filter(d => d.id !== id));
       if (selectedDumas?.id === id) {
         setSelectedDumas(null);
@@ -172,7 +172,7 @@ export default function DumasView({
         try {
           sessionStorage.removeItem('emindik_active_dumas_item');
           sessionStorage.setItem('emindik_dumas_subview', 'list');
-        } catch {}
+        } catch { }
       }
       if (onShowToast) {
         onShowToast('Berkas aduan masyarakat berhasil dihapus.');
@@ -241,7 +241,7 @@ export default function DumasView({
             />
           ) : (
             <div className="p-6 text-white">
-              <div className="p-4 bg-[#E07020]/15 border border-[#FF5A1F]/40 rounded-xl text-[#FBDBAF] font-mono text-sm">
+              <div className="p-4 bg-[#FF2A2A]/14 border border-[#FF2A2A]/40 rounded-xl text-[#CBD5E1] font-mono text-sm">
                 Komponen DumasFormView tidak terdefinisi (undefined component). Periksa file import di DumasView.jsx.
               </div>
             </div>
@@ -259,7 +259,7 @@ export default function DumasView({
             try {
               sessionStorage.removeItem('emindik_active_dumas_item');
               sessionStorage.setItem('emindik_dumas_subview', 'list');
-            } catch {}
+            } catch { }
           }}
           onOpenGeneratorForDumas={handleHandoverSprin}
           onUpdateDumas={(updatedRecord) => {
@@ -273,7 +273,7 @@ export default function DumasView({
             try {
               sessionStorage.setItem('emindik_active_dumas_item', JSON.stringify(item));
               sessionStorage.setItem('emindik_dumas_subview', 'form');
-            } catch {}
+            } catch { }
           }}
         />
       )}

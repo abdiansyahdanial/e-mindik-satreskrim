@@ -1,3 +1,39 @@
+/* ============================================================
+   01 // MIDNIGHT CRIMSON (TAKTIS TEMPUR) — App Tokens
+   ============================================================ */
+:root {
+  --white: #FFFFFF;
+  --white-soft: #F8FAFC;
+  --cream: #CBD5E1;
+  --silver: #CBD5E1;
+  --muted: rgba(203, 213, 225, 0.72);
+  --label: rgba(148, 163, 184, 0.58);
+
+  --crimson: #FF2A2A;
+  --crimson-bright: #FF3B3B;
+  --crimson-deep: #B91C1C;
+  --crimson-glow: rgba(255, 42, 42, 0.28);
+  --orange: #FF2A2A;
+  --orange-bright: #FF3B3B;
+  --orange-burnt: #991B1B;
+
+  --black-base: #0B0E14;
+  --black-elevated: #11161F;
+  --card: rgba(17, 22, 31, 0.78);
+  --card-solid: #11161F;
+  --card-hover: #171E2B;
+
+  --bg-primary: #0B0E14;
+  --bg-secondary: #10151E;
+  --bg-tertiary: #161D2A;
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --accent: #FF2A2A;
+  --accent-bg: rgba(255, 42, 42, 0.14);
+  --accent-border: rgba(255, 42, 42, 0.40);
+  --border: rgba(148, 163, 184, 0.14);
+}
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;

@@ -514,16 +514,16 @@ export default function DumasFormView({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto py-6 px-4 space-y-6 text-[#FAF6F0]">
+    <div className="w-full max-w-6xl mx-auto py-6 px-4 space-y-6 text-[#F8FAFC]">
       {/* Header Navigasi & Status */}
-      <div className="relative group/card bg-[#161310]/85 backdrop-blur-xl border border-[#FBDBAF]/15 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="relative group/card bg-[#11161F]/90 backdrop-blur-xl border border-[#94A3B8]/20 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.55)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <HudCorners size="md" />
         <div className="flex items-center gap-3.5">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 hover:bg-[#E07020]/15 text-[#FAF6F0] border border-[#FBDBAF]/15 cursor-pointer shrink-0 transition-all font-mono"
+              className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 hover:bg-[#FF2A2A]/15 text-[#F8FAFC] border border-[#94A3B8]/20 cursor-pointer shrink-0 transition-all font-mono"
               title="Kembali ke Daftar Dumas"
             >
               <ArrowLeft size={16} />
@@ -532,23 +532,23 @@ export default function DumasFormView({
 
           <div>
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#E07020]/15 border border-[#E07020]/35 shrink-0">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#FF2A2A]/15 border border-[#FF2A2A]/40 shrink-0">
                 {isSubmitting ? (
-                  <Loader2 size={18} className="text-[#FF5A1F] animate-spin" />
+                  <Loader2 size={18} className="text-[#FF2A2A] animate-spin" />
                 ) : (
-                  <Shield size={18} className="text-[#FF5A1F]" />
+                  <Shield size={18} className="text-[#FF2A2A]" />
                 )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="heading-font text-base sm:text-lg font-bold tracking-wider text-white m-0">
                   FORMULIR PENGADUAN MASYARAKAT (DUMAS)
                 </h2>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[#E07020]/15 border border-[#E07020]/35 text-[#FF7A33] font-bold">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[#FF2A2A]/15 border border-[#FF2A2A]/40 text-[#FF3B3B] font-bold">
                   {mode === 'edit' ? 'MODE EDIT' : 'MODE BARU'}
                 </span>
               </div>
             </div>
-            <p className="text-xs text-[#FBDBAF]/65 mt-1 pl-[48px]">
+            <p className="text-xs text-[#94A3B8] mt-1 pl-[48px]">
               Modul formulir terpadu SAT RESKRIM POLRES KOLAKA TIMUR
             </p>
           </div>
@@ -558,7 +558,7 @@ export default function DumasFormView({
           <button
             type="button"
             onClick={handleClearEvidence}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-[#E07020]/15 hover:bg-[#E07020]/25 text-[#FF7A33] border border-[#E07020]/35 cursor-pointer transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-[#FF2A2A]/15 hover:bg-[#FF2A2A]/25 text-[#FF3B3B] border border-[#FF2A2A]/40 cursor-pointer transition-all"
             title="Kosongkan Berkas Bukti"
           >
             <RotateCcw size={12} />
@@ -568,30 +568,30 @@ export default function DumasFormView({
       </div>
 
       {/* Bagian Informasi Registrasi & Nomor Dumas */}
-      <div className="relative group/card bg-[#161310]/85 backdrop-blur-xl border border-[#FBDBAF]/15 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] mb-6">
+      <div className="relative group/card bg-[#11161F]/90 backdrop-blur-xl border border-[#94A3B8]/20 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.55)] mb-6">
         <HudCorners size="md" />
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <FileText size={15} className="text-[#FF7A33]" />
-            <span className="text-xs font-semibold font-mono tracking-wider uppercase text-[#FAF6F0]">
+            <FileText size={15} className="text-[#FF3B3B]" />
+            <span className="text-xs font-semibold font-mono tracking-wider uppercase text-[#F8FAFC]">
               Nomor Registrasi Dumas
             </span>
-            <span className="text-[#FF5A1F]">*</span>
-            <span className="text-[10px] font-mono bg-[#E07020]/15 text-[#FF7A33] border border-[#E07020]/35 rounded px-2 py-0.5">
+            <span className="text-[#FF2A2A]">*</span>
+            <span className="text-[10px] font-mono bg-[#FF2A2A]/15 text-[#FF3B3B] border border-[#FF2A2A]/40 rounded px-2 py-0.5">
               Otomatis Sistem / Bisa Diedit Manual
             </span>
           </div>
 
           {ocrNomorSurat && (
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-[#FBDBAF]/65">Scan OCR:</span>
+              <span className="text-[11px] font-mono text-[#94A3B8]">Scan OCR:</span>
               <button
                 type="button"
                 onClick={() => setNomorDumas(ocrNomorSurat)}
                 className={`text-[11px] font-mono px-2 py-0.5 rounded cursor-pointer transition-all ${
                   nomorDumas === ocrNomorSurat
-                    ? 'bg-[#E07020]/20 text-[#FF7A33] border border-[#FF5A1F]/45 font-bold'
-                    : 'bg-white/5 text-[#FAF6F0] border border-[#FBDBAF]/15 hover:bg-white/10'
+                    ? 'bg-[#FF2A2A]/20 text-[#FF3B3B] border border-[#FF2A2A]/50 font-bold'
+                    : 'bg-white/5 text-[#F8FAFC] border border-[#94A3B8]/20 hover:bg-white/10'
                 }`}
                 title="Gunakan nomor surat hasil scan dokumen OCR"
               >
@@ -603,7 +603,7 @@ export default function DumasFormView({
 
         <div className="flex items-center gap-2 w-full">
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#FBDBAF]/50">
+            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#94A3B8]">
               <Hash size={15} />
             </div>
             <input
@@ -611,7 +611,7 @@ export default function DumasFormView({
               value={nomorDumas}
               onChange={(e) => setNomorDumas(e.target.value)}
               placeholder="B/DUMAS/01/IX/2026/SPKT/Polres Koltim/Polda Sultra"
-              className="w-full bg-[#0E0C0A]/75 backdrop-blur-sm border border-[#FBDBAF]/15 text-white placeholder-[#FBDBAF]/40 rounded-lg pl-9 pr-3.5 py-2.5 text-xs font-mono focus:border-[#FF5A1F]/80 focus:ring-1 focus:ring-[#FF5A1F]/50 outline-none transition-all"
+              className="w-full bg-[#0B0E14]/80 backdrop-blur-sm border border-[#94A3B8]/20 text-white placeholder-[#94A3B8]/50 rounded-lg pl-9 pr-3.5 py-2.5 text-xs font-mono focus:border-[#FF2A2A]/80 focus:ring-1 focus:ring-[#FF2A2A]/50 outline-none transition-all"
             />
           </div>
           
@@ -619,13 +619,13 @@ export default function DumasFormView({
             type="button"
             onClick={handleResetNomorOtomatis}
             disabled={isGeneratingNo}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-mono font-medium bg-white/5 hover:bg-[#E07020]/15 text-[#FAF6F0] border border-[#FBDBAF]/15 hover:border-[#E07020]/40 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-mono font-medium bg-white/5 hover:bg-[#FF2A2A]/15 text-[#F8FAFC] border border-[#94A3B8]/20 hover:border-[#FF2A2A]/45 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
             title="Kembalikan ke nomor registrasi rekomendasi sistem dinas"
           >
             {isGeneratingNo ? (
-              <Loader2 size={13} className="animate-spin text-[#FF7A33]" />
+              <Loader2 size={13} className="animate-spin text-[#FF3B3B]" />
             ) : (
-              <RotateCcw size={13} className="text-[#FBDBAF]/65" />
+              <RotateCcw size={13} className="text-[#94A3B8]" />
             )}
             <span>Reset Nomor Otomatis</span>
           </button>
@@ -660,12 +660,12 @@ export default function DumasFormView({
       />
 
       {/* Sticky Bottom Action Bar */}
-      <div className="sticky bottom-0 z-30 p-3.5 md:px-5 relative group/card bg-[#161310]/95 backdrop-blur-xl border border-[#FBDBAF]/15 rounded-xl shadow-[0_-8px_25px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.06)] flex items-center justify-between gap-3">
+      <div className="sticky bottom-0 z-30 p-3.5 md:px-5 relative group/card bg-[#11161F]/95 backdrop-blur-xl border border-[#94A3B8]/20 rounded-xl shadow-[0_-8px_25px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.06)] flex items-center justify-between gap-3">
         <HudCorners size="md" />
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono font-medium bg-white/5 hover:bg-[#E07020]/15 text-[#FAF6F0] border border-[#FBDBAF]/15 transition-all cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono font-medium bg-white/5 hover:bg-[#FF2A2A]/15 text-[#F8FAFC] border border-[#94A3B8]/20 transition-all cursor-pointer"
         >
           <ArrowLeft size={14} />
           Batal
@@ -710,7 +710,7 @@ export default function DumasFormView({
               };
               printSuratPengaduan(currentFormData);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-semibold text-[#FF7A33] bg-[#E07020]/15 hover:bg-[#E07020]/25 border border-[#E07020]/35 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-semibold text-[#FF3B3B] bg-[#FF2A2A]/15 hover:bg-[#FF2A2A]/25 border border-[#FF2A2A]/40 transition-all cursor-pointer"
             title="Cetak Surat Laporan Pengaduan (Dumas)"
           >
             <Printer size={14} />
@@ -756,10 +756,10 @@ export default function DumasFormView({
               setTempFormDataForPrint(currentFormData);
               setIsPamaptaModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-semibold text-[#FAF6F0] bg-[#161310] hover:bg-[#221C17] border border-[#FBDBAF]/25 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-semibold text-[#F8FAFC] bg-[#11161F] hover:bg-[#171E2B] border border-[#94A3B8]/25 transition-all cursor-pointer"
             title="Cetak Surat Tanda Penerimaan Laporan (STTLP)"
           >
-            <FileText size={14} className="text-[#FF7A33]" />
+            <FileText size={14} className="text-[#FF3B3B]" />
             <span>Cetak Tanda Terima</span>
           </button>
 
@@ -767,7 +767,7 @@ export default function DumasFormView({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-mono bg-gradient-to-r from-[#E07020] to-[#FF5A1F] hover:from-[#FF5A1F] hover:to-[#FF7A33] text-white shadow-[0_0_20px_-4px_rgba(224,112,32,0.5)] border border-[#FF5A1F]/40 transition-all cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-mono bg-gradient-to-r from-[#E61919] to-[#FF2A2A] hover:from-[#FF2A2A] hover:to-[#FF3B3B] text-white shadow-[0_0_20px_-4px_rgba(255,42,42,0.5)] border border-[#FF5252]/50 transition-all cursor-pointer disabled:opacity-50"
           >
             {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             {isSubmitting

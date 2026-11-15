@@ -26,7 +26,7 @@ export default function App() {
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!spotlightRef.current) return;
-      spotlightRef.current.style.background = `radial-gradient(circle 260px at ${e.clientX}px ${e.clientY}px, rgba(255, 90, 31, 0.18) 0%, rgba(224, 112, 32, 0.08) 50%, transparent 100%)`;
+      spotlightRef.current.style.background = `radial-gradient(circle 260px at ${e.clientX}px ${e.clientY}px, rgba(255, 42, 42, 0.16) 0%, rgba(220, 38, 38, 0.06) 50%, transparent 100%)`;
     };
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     return () => window.removeEventListener('mousemove', handleMouseMove);
@@ -949,18 +949,18 @@ export default function App() {
       <div style={{
         height: '100vh',
         width: '100vw',
-        backgroundColor: '#0E0C0A',
-        backgroundImage: 'radial-gradient(circle at 80% 12%, rgba(196, 90, 24, 0.28) 0%, rgba(224, 112, 32, 0.10) 35%, #0E0C0A 75%)',
+        backgroundColor: '#0B0E14',
+        backgroundImage: 'radial-gradient(circle at 80% 12%, rgba(220, 38, 38, 0.22) 0%, rgba(255, 42, 42, 0.08) 35%, #0B0E14 75%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         gap: '16px',
-        color: '#FF5A1F',
+        color: '#FF2A2A',
         fontFamily: 'Orbitron, Inter, sans-serif',
       }}>
         <RefreshCw size={32} className="animate-spin" />
-        <div style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, color: '#FBDBAF' }}>
+        <div style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, color: '#CBD5E1' }}>
           Memeriksa Kredensial E-Mindik Polri...
         </div>
       </div>
@@ -981,12 +981,12 @@ export default function App() {
         position: 'relative',
         minHeight: '100vh',
         display: 'flex',
-        backgroundColor: '#0E0C0A',
-        backgroundImage: 'radial-gradient(circle at 80% 12%, rgba(196, 90, 24, 0.28) 0%, rgba(224, 112, 32, 0.10) 35%, #0E0C0A 75%)',
+        backgroundColor: '#0B0E14',
+        backgroundImage: 'radial-gradient(circle at 80% 12%, rgba(220, 38, 38, 0.22) 0%, rgba(255, 42, 42, 0.08) 35%, #0B0E14 75%)',
         backgroundAttachment: 'fixed',
       }}
     >
-      {/* Interactive Cursor Spotlight Overlay (Cyber Ronin Radial Bloom) */}
+      {/* Interactive Cursor Spotlight Overlay (01 // Midnight Crimson Radial Bloom) */}
       <div
         ref={spotlightRef}
         aria-hidden="true"
@@ -1040,9 +1040,9 @@ export default function App() {
           bottom: '24px',
           right: '24px',
           zIndex: 9999,
-          background: '#181411',
-          border: '1px solid #FF5A1F',
-          boxShadow: '0 8px 28px rgba(224, 112, 32, 0.3)',
+          background: '#11161F',
+          border: '1px solid #FF2A2A',
+          boxShadow: '0 8px 28px rgba(255, 42, 42, 0.32)',
           borderRadius: '9999px',
           padding: '12px 22px',
           display: 'flex',
@@ -1053,7 +1053,7 @@ export default function App() {
           fontWeight: 600,
           animation: 'slideInRight 250ms ease-out',
         }}>
-          <CheckCircle2 size={18} color="#FF5A1F" />
+          <CheckCircle2 size={18} color="#FF2A2A" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -1124,7 +1124,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="w-full h-full p-6 text-white overflow-y-auto">
-                  <div style={{ padding: '16px', background: 'rgba(224, 112, 32, 0.14)', border: '1px solid #FF5A1F', borderRadius: '12px', color: '#FBDBAF' }}>
+                  <div style={{ padding: '16px', background: 'rgba(255, 42, 42, 0.14)', border: '1px solid #FF2A2A', borderRadius: '12px', color: '#CBD5E1' }}>
                     Komponen DumasFormView tidak terdefinisi (undefined component). Periksa file import di App.jsx.
                   </div>
                 </div>

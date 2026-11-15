@@ -410,14 +410,14 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                 width: '38px',
                 height: '38px',
                 borderRadius: '8px',
-                background: 'rgba(0, 212, 255, 0.1)',
-                border: '1px solid var(--accent-cyan)',
+                background: 'rgba(255, 42, 42, 0.12)',
+                border: '1px solid rgba(255, 42, 42, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <FolderPlus size={20} color="var(--accent-cyan)" />
+              <FolderPlus size={20} color="#FF2A2A" />
             </div>
             <div>
               <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>
@@ -469,7 +469,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                 gap: '10px',
               }}
             >
-              <Shield size={16} color="#60A5FA" style={{ flexShrink: 0 }} />
+              <Shield size={16} color="#FF3B3B" style={{ flexShrink: 0 }} />
               <span>
                 Data Kasat Reskrim dan Tim Penyidik akan diotomatisasi ke seluruh template dokumen kedinasan (Surat Perintah, Surat Biasa, Berita Acara) tanpa perlu pengetikan ulang.
               </span>
@@ -477,7 +477,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
 
             {/* SECTION 1: DATA LAPORAN POLISI */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--accent-cyan)', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FF3B3B', letterSpacing: '0.5px' }}>
                 1. IDENTITAS DASAR LAPORAN POLISI
               </div>
 
@@ -622,8 +622,8 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Users size={18} color="#FF7A33" />
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FF7A33' }}>
+                  <Users size={18} color="#FF2A2A" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FF3B3B' }}>
                     2. DAFTAR TERLAPOR ({terlaporList.length})
                   </span>
                   <span
@@ -631,9 +631,9 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                       fontSize: '11px',
                       padding: '2px 8px',
                       borderRadius: '12px',
-                      background: 'rgba(224, 112, 32, 0.16)',
-                      color: '#FBDBAF',
-                      border: '1px solid rgba(255, 90, 31, 0.35)',
+                      background: 'rgba(255, 42, 42, 0.14)',
+                      color: '#CBD5E1',
+                      border: '1px solid rgba(255, 42, 42, 0.35)',
                       fontWeight: 600,
                     }}
                   >
@@ -651,9 +651,9 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                     padding: '6px 12px',
                     fontSize: '12px',
                     fontWeight: 600,
-                    background: 'rgba(224, 112, 32, 0.2)',
-                    color: '#FBDBAF',
-                    border: '1px solid rgba(255, 90, 31, 0.4)',
+                    background: 'rgba(255, 42, 42, 0.16)',
+                    color: '#CBD5E1',
+                    border: '1px solid rgba(255, 42, 42, 0.4)',
                     borderRadius: 'var(--radius-md)',
                     cursor: 'pointer',
                   }}
@@ -667,17 +667,17 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
               <div
                 style={{
                   padding: '10px 12px',
-                  background: 'rgba(224, 112, 32, 0.08)',
-                  border: '1px dashed rgba(255, 90, 31, 0.35)',
+                  background: 'rgba(255, 42, 42, 0.08)',
+                  border: '1px dashed rgba(255, 42, 42, 0.35)',
                   borderRadius: 'var(--radius-md)',
                   fontSize: '11.5px',
-                  color: '#FBDBAF',
+                  color: '#CBD5E1',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                 }}
               >
-                <Info size={15} color="#FF7A33" style={{ flexShrink: 0 }} />
+                <Info size={15} color="#FF2A2A" style={{ flexShrink: 0 }} />
                 <span>
                   Status awal seluruh subjek pada Berkas Perkara murni sebagai <strong>Terlapor</strong>. Penetapan status Tersangka beserta penomoran resmi <strong>SP.Tap Tsk</strong> diterbitkan saat dokumen penetapan dibuat di Modul Generate Dokumen.
                 </span>
@@ -730,7 +730,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                             alignItems: 'center',
                             gap: '4px',
                             cursor: 'pointer',
-                            color: '#FF5A1F',
+                            color: '#FF2A2A',
                             background: 'transparent',
                             border: 'none',
                           }}
@@ -986,7 +986,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                             alignItems: 'center',
                             gap: '4px',
                             background: 'transparent',
-                            color: '#FF5A1F',
+                            color: '#FF2A2A',
                             border: 'none',
                             cursor: 'pointer',
                           }}
@@ -1134,9 +1134,9 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
             <div
               style={{
                 padding: '16px',
-                background: 'rgba(15, 23, 42, 0.65)',
+                background: 'rgba(17, 22, 31, 0.80)',
                 borderRadius: 'var(--radius-lg)',
-                border: '1px solid rgba(0, 212, 255, 0.25)',
+                border: '1px solid rgba(148, 163, 184, 0.2)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
@@ -1144,8 +1144,8 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Award size={18} color="var(--accent-cyan)" />
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                  <Award size={18} color="#FF2A2A" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
                     4. PEJABAT & TIM PENYIDIK PENANDATANGAN MINDIK
                   </span>
                 </div>
@@ -1158,9 +1158,9 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
               <div
                 style={{
                   padding: '14px',
-                  background: 'rgba(0, 212, 255, 0.04)',
+                  background: '#131924',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(0, 212, 255, 0.18)',
+                  border: '1px solid rgba(148, 163, 184, 0.16)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '10px',
@@ -1236,7 +1236,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                 </div>
 
                 <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Info size={12} color="var(--accent-cyan)" />
+                  <Info size={12} color="#FF3B3B" />
                   <span>
                     Teks jabatan <em>"KASAT RESKRIM"</em> sudah tercetak permanen di template surat kedinasan.
                   </span>
@@ -1288,7 +1288,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                           >
                             Slot {slotIndex}
                           </span>
-                          <span style={{ fontSize: '11.5px', fontWeight: 600, color: slotIndex === 1 ? '#FBDBAF' : 'var(--text-primary)' }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: 600, color: slotIndex === 1 ? '#CBD5E1' : 'var(--text-primary)' }}>
                             {slotTitle}
                           </span>
 
@@ -1301,10 +1301,10 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                               cursor: 'pointer',
                               padding: '2px 8px',
                               borderRadius: '4px',
-                              background: Number(selectedPenangan) === slotIndex ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                              border: Number(selectedPenangan) === slotIndex ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                              background: Number(selectedPenangan) === slotIndex ? 'rgba(255, 42, 42, 0.16)' : 'rgba(255, 255, 255, 0.04)',
+                              border: Number(selectedPenangan) === slotIndex ? '1px solid #FF2A2A' : '1px solid var(--border-glass)',
                               fontSize: '10.5px',
-                              color: Number(selectedPenangan) === slotIndex ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                              color: Number(selectedPenangan) === slotIndex ? '#FF3B3B' : 'var(--text-secondary)',
                               fontWeight: Number(selectedPenangan) === slotIndex ? 700 : 400,
                               userSelect: 'none',
                               transition: 'all 0.15s ease'
@@ -1320,7 +1320,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                                 setSelectedPenangan(slotIndex);
                                 setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }));
                               }}
-                              style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+                              style={{ accentColor: '#FF2A2A', cursor: 'pointer' }}
                             />
                             <span>Penyidik Penangan</span>
                           </label>
@@ -1435,7 +1435,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                       border: '1px dashed var(--border-glass)',
                     }}
                   >
-                    <Plus size={13} color="var(--accent-cyan)" />
+                    <Plus size={13} color="#FF3B3B" />
                     <span>+ Tampilkan Slot Penyidik {activeSlotsCount + 1} (Opsional)</span>
                   </button>
                 )}
