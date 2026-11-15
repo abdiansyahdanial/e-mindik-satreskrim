@@ -11,12 +11,23 @@ export default {
     extend: {
       colors: {
         obsidian: {
-          DEFAULT: '#05070a',
-          raised: '#07090e',
+          DEFAULT: '#0E0C0A',
+          raised: '#161310',
+          solid: '#181411',
+          hover: '#221C17',
         },
         crimson: {
-          DEFAULT: '#ef4444',
-          deep: '#dc2626',
+          DEFAULT: '#E07020',
+          deep: '#C45A18',
+        },
+        solar: {
+          DEFAULT: '#E07020',
+          bright: '#FF5A1F',
+          burnt: '#C45A18',
+        },
+        cream: {
+          DEFAULT: '#FBDBAF',
+          soft: '#FAF6F0',
         },
       },
       animation: {

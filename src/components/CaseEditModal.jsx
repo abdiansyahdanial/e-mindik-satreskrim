@@ -435,28 +435,28 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal-content"
-        style={{ maxWidth: '850px', width: '95%', background: '#1b2229', border: '1px solid rgba(255, 53, 45, 0.28)' }}
+        style={{ maxWidth: '850px', width: '95%', background: '#161310', border: '1px solid rgba(251, 219, 175, 0.18)', borderRadius: '18px' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="modal-header" style={{ background: '#222b34', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+        <div className="modal-header" style={{ background: '#1E1915', borderBottom: '1px solid rgba(251, 219, 175, 0.14)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
                 width: '38px',
                 height: '38px',
-                borderRadius: '8px',
-                background: 'rgba(255, 53, 45, 0.12)',
-                border: '1px solid #ff352d',
+                borderRadius: '10px',
+                background: 'rgba(224, 112, 32, 0.14)',
+                border: '1px solid #FF5A1F',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Edit3 size={20} color="#ff352d" />
+              <Edit3 size={20} color="#FF5A1F" />
             </div>
             <div>
-              <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>Edit Data Berkas Perkara</h3>
+              <h3 className="heading-font" style={{ fontSize: '15px', margin: 0, fontWeight: 700, color: '#FFFFFF' }}>Edit Data Berkas Perkara</h3>
               <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                 Perbarui data administrasi LP dan Tim Penandatangan Mindik
               </div>
@@ -489,15 +489,15 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
               maxHeight: '75vh',
               overflowY: 'auto',
               paddingRight: '6px',
-              background: '#1b2229',
+              background: '#161310',
             }}
           >
             {errorMessage && (
               <div
                 style={{
                   padding: '10px 14px',
-                  background: 'rgba(255, 53, 45, 0.15)',
-                  border: '1px solid #ff352d',
+                  background: 'rgba(255, 90, 31, 0.16)',
+                  border: '1px solid #FF5A1F',
                   borderRadius: 'var(--radius-md)',
                   fontSize: '12.5px',
                   color: '#FFF',
@@ -506,7 +506,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                   gap: '8px',
                 }}
               >
-                <AlertCircle size={16} color="#ff352d" style={{ flexShrink: 0 }} />
+                <AlertCircle size={16} color="#FF5A1F" style={{ flexShrink: 0 }} />
                 <span>{errorMessage}</span>
               </div>
             )}
@@ -515,25 +515,25 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
             <div
               style={{
                 padding: '10px 14px',
-                background: 'rgba(255, 53, 45, 0.08)',
-                border: '1px solid rgba(255, 53, 45, 0.28)',
+                background: 'rgba(224, 112, 32, 0.1)',
+                border: '1px solid rgba(255, 90, 31, 0.3)',
                 borderRadius: 'var(--radius-md)',
                 fontSize: '12px',
-                color: '#ff352d',
+                color: '#FF5A1F',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
               }}
             >
-              <Shield size={16} color="#ff352d" style={{ flexShrink: 0 }} />
-              <span style={{ color: '#F1F5F9' }}>
+              <Shield size={16} color="#FF5A1F" style={{ flexShrink: 0 }} />
+              <span style={{ color: '#FBDBAF' }}>
                 Perubahan data perkara akan tersimpan langsung di database Supabase dan otomatis tersinkronisasi pada pembuatan dokumen mindik berikutnya.
               </span>
             </div>
 
             {/* SECTION 1: DATA LAPORAN POLISI */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#ff352d', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FF5A1F', letterSpacing: '0.5px' }}>
                 1. IDENTITAS DASAR LAPORAN POLISI
               </div>
 
@@ -680,9 +680,9 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
             <div
               style={{
                 padding: '16px',
-                background: '#222b34',
+                background: '#1E1915',
                 borderRadius: 'var(--radius-lg)',
-                border: '1px solid rgba(255, 53, 45, 0.28)',
+                border: '1px solid rgba(251, 219, 175, 0.14)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
@@ -690,18 +690,18 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <UserCheck size={18} color="#ff352d" />
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#ff352d' }}>
+                  <UserCheck size={18} color="#FF5A1F" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FF5A1F' }}>
                     2. IDENTITAS KORBAN / SAKSI KORBAN ({victims.length})
                   </span>
                   <span
                     style={{
                       fontSize: '11px',
                       padding: '2px 8px',
-                      borderRadius: '12px',
-                      background: 'rgba(255, 53, 45, 0.15)',
-                      color: '#FCA5A5',
-                      border: '1px solid rgba(255, 53, 45, 0.35)',
+                      borderRadius: '9999px',
+                      background: 'rgba(224, 112, 32, 0.15)',
+                      color: '#FBDBAF',
+                      border: '1px solid rgba(255, 90, 31, 0.4)',
                     }}
                   >
                     10 Field Standar Mindik
@@ -718,10 +718,10 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                     padding: '6px 12px',
                     fontSize: '12px',
                     fontWeight: 600,
-                    background: 'rgba(255, 53, 45, 0.18)',
+                    background: 'rgba(224, 112, 32, 0.18)',
                     color: '#FFFFFF',
-                    border: '1px solid rgba(255, 53, 45, 0.45)',
-                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(255, 90, 31, 0.45)',
+                    borderRadius: '9999px',
                     cursor: 'pointer',
                   }}
                 >
@@ -734,8 +734,8 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                 <div
                   style={{
                     padding: '12px 14px',
-                    background: '#1b2229',
-                    border: '1px dashed rgba(255, 53, 45, 0.35)',
+                    background: '#161310',
+                    border: '1px dashed rgba(255, 90, 31, 0.38)',
                     borderRadius: 'var(--radius-md)',
                     fontSize: '12px',
                     color: 'var(--text-secondary)',
@@ -744,7 +744,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                     gap: '10px',
                   }}
                 >
-                  <Info size={16} color="#ff352d" style={{ flexShrink: 0 }} />
+                  <Info size={16} color="#FF5A1F" style={{ flexShrink: 0 }} />
                   <span>
                     Belum ada data korban spesifik yang ditambahkan. Generator mindik otomatis merujuk ke data <strong>Nama Pelapor</strong> sebagai korban default. Klik <strong>+ Tambah Korban</strong> jika korban berbeda atau memerlukan data identitas lengkap (VER / Hak Korban).
                   </span>
@@ -756,8 +756,8 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                       key={v.id || idx}
                       style={{
                         padding: '14px',
-                        background: '#1b2229',
-                        border: '1px solid rgba(255, 53, 45, 0.25)',
+                        background: '#161310',
+                        border: '1px solid rgba(251, 219, 175, 0.16)',
                         borderRadius: 'var(--radius-md)',
                         display: 'flex',
                         flexDirection: 'column',
@@ -795,7 +795,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                             alignItems: 'center',
                             gap: '4px',
                             background: 'transparent',
-                            color: '#F87171',
+                            color: '#FF5A1F',
                             border: 'none',
                             cursor: 'pointer',
                           }}
@@ -943,9 +943,9 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
             <div
               style={{
                 padding: '16px',
-                background: '#222b34',
+                background: '#1E1915',
                 borderRadius: 'var(--radius-lg)',
-                border: '1px solid rgba(255, 53, 45, 0.28)',
+                border: '1px solid rgba(251, 219, 175, 0.14)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
@@ -953,8 +953,8 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Award size={18} color="#ff352d" />
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#ff352d' }}>
+                  <Award size={18} color="#FF5A1F" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FF5A1F' }}>
                     3. PEJABAT & TIM PENYIDIK PENANDATANGAN MINDIK
                   </span>
                 </div>
@@ -967,9 +967,9 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
               <div
                 style={{
                   padding: '14px',
-                  background: '#1b2229',
+                  background: '#161310',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(255, 53, 45, 0.22)',
+                  border: '1px solid rgba(251, 219, 175, 0.14)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '10px',
@@ -1045,7 +1045,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                 </div>
 
                 <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Info size={12} color="#ff352d" />
+                  <Info size={12} color="#FF5A1F" />
                   <span>
                     Teks jabatan <em>"KASAT RESKRIM"</em> sudah tercetak permanen di template surat kedinasan.
                   </span>
@@ -1082,8 +1082,8 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                       key={slotIndex}
                       style={{
                         padding: '12px 14px',
-                        background: slotIndex === 1 ? 'rgba(255, 53, 45, 0.08)' : '#1b2229',
-                        border: slotIndex === 1 ? '1px solid rgba(255, 53, 45, 0.4)' : '1px solid var(--border-glass)',
+                        background: slotIndex === 1 ? 'rgba(224, 112, 32, 0.08)' : '#161310',
+                        border: slotIndex === 1 ? '1px solid rgba(255, 90, 31, 0.42)' : '1px solid var(--border-glass)',
                         borderRadius: 'var(--radius-md)',
                         display: 'flex',
                         flexDirection: 'column',
@@ -1096,14 +1096,14 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                             className="badge"
                             style={{
                               fontSize: '10px',
-                              background: slotIndex === 1 ? 'rgba(255, 53, 45, 0.18)' : 'rgba(255, 255, 255, 0.08)',
-                              color: slotIndex === 1 ? '#ff352d' : '#CBD5E1',
-                              border: slotIndex === 1 ? '1px solid rgba(255, 53, 45, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
+                              background: slotIndex === 1 ? '#FFFFFF' : 'rgba(251, 219, 175, 0.08)',
+                              color: slotIndex === 1 ? '#0E0C0A' : '#FBDBAF',
+                              border: slotIndex === 1 ? '1px solid #FFFFFF' : '1px solid rgba(251, 219, 175, 0.2)',
                             }}
                           >
                             Slot {slotIndex}
                           </span>
-                          <span style={{ fontSize: '11.5px', fontWeight: 600, color: slotIndex === 1 ? '#FCA5A5' : 'var(--text-primary)' }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: 600, color: slotIndex === 1 ? '#FBDBAF' : 'var(--text-primary)' }}>
                             {slotTitle}
                           </span>
 
@@ -1115,11 +1115,11 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                               gap: '5px',
                               cursor: 'pointer',
                               padding: '2px 8px',
-                              borderRadius: '4px',
-                              background: isPenanganChecked ? 'rgba(255, 53, 45, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                              border: isPenanganChecked ? '1px solid #ff352d' : '1px solid var(--border-glass)',
+                              borderRadius: '9999px',
+                              background: isPenanganChecked ? 'rgba(224, 112, 32, 0.16)' : 'rgba(255, 255, 255, 0.04)',
+                              border: isPenanganChecked ? '1px solid #FF5A1F' : '1px solid var(--border-glass)',
                               fontSize: '10.5px',
-                              color: isPenanganChecked ? '#ff352d' : 'var(--text-secondary)',
+                              color: isPenanganChecked ? '#FF5A1F' : 'var(--text-secondary)',
                               fontWeight: isPenanganChecked ? 700 : 400,
                               userSelect: 'none',
                               transition: 'all 0.15s ease'
@@ -1135,7 +1135,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                                 setSelectedPenangan(slotIndex);
                                 setFormData((prev) => ({ ...prev, penyidik_penangan_index: slotIndex }));
                               }}
-                              style={{ accentColor: '#ff352d', cursor: 'pointer' }}
+                              style={{ accentColor: '#FF5A1F', cursor: 'pointer' }}
                             />
                             <span>Penyidik Penangan</span>
                           </label>
@@ -1247,10 +1247,10 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                       gap: '6px',
                       fontSize: '11px',
                       marginTop: '4px',
-                      border: '1px dashed rgba(255, 53, 45, 0.4)',
+                      border: '1px dashed rgba(255, 90, 31, 0.45)',
                     }}
                   >
-                    <Plus size={13} color="#ff352d" />
+                    <Plus size={13} color="#FF5A1F" />
                     <span>+ Tampilkan Slot Penyidik {activeSlotsCount + 1} (Opsional)</span>
                   </button>
                 )}
@@ -1259,7 +1259,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
           </div>
 
           {/* Modal Footer */}
-          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#222b34', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#1E1915', borderTop: '1px solid rgba(251, 219, 175, 0.14)' }}>
             <button
               type="button"
               onClick={onClose}

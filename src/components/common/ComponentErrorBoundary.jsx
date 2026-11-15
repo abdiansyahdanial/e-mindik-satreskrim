@@ -45,9 +45,9 @@ export class ComponentErrorBoundary extends React.Component {
         <div
           style={{
             minHeight: '400px',
-            backgroundColor: '#080B10',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            borderRadius: '12px',
+            backgroundColor: '#161310',
+            border: '1px solid rgba(255, 90, 31, 0.45)',
+            borderRadius: '14px',
             padding: '36px 24px',
             display: 'flex',
             flexDirection: 'column',
@@ -162,10 +162,10 @@ export class ComponentErrorBoundary extends React.Component {
               onClick={this.handleReset}
               style={{
                 padding: '9px 16px',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                color: '#F87171',
-                borderRadius: '8px',
+                backgroundColor: 'rgba(224, 112, 32, 0.16)',
+                border: '1px solid rgba(255, 90, 31, 0.45)',
+                color: '#FF5A1F',
+                borderRadius: '9999px',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace',
                 cursor: 'pointer',
@@ -182,9 +182,9 @@ export class ComponentErrorBoundary extends React.Component {
                 style={{
                   padding: '9px 16px',
                   backgroundColor: 'transparent',
-                  border: '1px solid #292F42',
-                  color: '#94A3B8',
-                  borderRadius: '8px',
+                  border: '1px solid rgba(251, 219, 175, 0.22)',
+                  color: '#FBDBAF',
+                  borderRadius: '9999px',
                   fontSize: '12px',
                   fontFamily: 'JetBrains Mono, monospace',
                   cursor: 'pointer',

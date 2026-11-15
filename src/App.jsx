@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import LoginPage from './views/LoginPage';
 import ExpandingSidebar from './components/layout/ExpandingSidebar';
@@ -21,6 +21,17 @@ import { fetchDumasRecords } from './services/dumasService';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
 
 export default function App() {
+  const spotlightRef = useRef(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!spotlightRef.current) return;
+      spotlightRef.current.style.background = `radial-gradient(circle 260px at ${e.clientX}px ${e.clientY}px, rgba(255, 90, 31, 0.18) 0%, rgba(224, 112, 32, 0.08) 50%, transparent 100%)`;
+    };
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   // Authentication & Role State (3-tier: 'super_admin' | 'admin' | 'anggota')
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -938,17 +949,18 @@ export default function App() {
       <div style={{
         height: '100vh',
         width: '100vw',
-        background: '#1b2229',
+        backgroundColor: '#0E0C0A',
+        backgroundImage: 'radial-gradient(circle at 80% 12%, rgba(196, 90, 24, 0.28) 0%, rgba(224, 112, 32, 0.10) 35%, #0E0C0A 75%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         gap: '16px',
-        color: '#ff352d',
-        fontFamily: 'Inter, sans-serif',
+        color: '#FF5A1F',
+        fontFamily: 'Orbitron, Inter, sans-serif',
       }}>
         <RefreshCw size={32} className="animate-spin" />
-        <div style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
+        <div style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, color: '#FBDBAF' }}>
           Memeriksa Kredensial E-Mindik Polri...
         </div>
       </div>
@@ -969,9 +981,25 @@ export default function App() {
         position: 'relative',
         minHeight: '100vh',
         display: 'flex',
-        backgroundColor: '#05070a'
+        backgroundColor: '#0E0C0A',
+        backgroundImage: 'radial-gradient(circle at 80% 12%, rgba(196, 90, 24, 0.28) 0%, rgba(224, 112, 32, 0.10) 35%, #0E0C0A 75%)',
+        backgroundAttachment: 'fixed',
       }}
     >
+      {/* Interactive Cursor Spotlight Overlay (Cyber Ronin Radial Bloom) */}
+      <div
+        ref={spotlightRef}
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          transition: 'background 0.08s linear',
+        }}
+      />
+
       {/* Watermark Insignia Satreskrim */}
       <div 
         aria-hidden="true"
@@ -993,11 +1021,11 @@ export default function App() {
         <img
           src="/logo-satreskrim-koltim.png"
           alt="Watermark Satreskrim"
-          className="w-[480px] md:w-[560px] opacity-[0.04] grayscale filter select-none pointer-events-none"
+          className="w-[480px] md:w-[560px] opacity-[0.05] grayscale filter select-none pointer-events-none"
           style={{
             width: '520px',
             maxWidth: '65vw',
-            opacity: 0.04,
+            opacity: 0.05,
             filter: 'grayscale(100%)',
             userSelect: 'none',
             pointerEvents: 'none'
@@ -1012,11 +1040,11 @@ export default function App() {
           bottom: '24px',
           right: '24px',
           zIndex: 9999,
-          background: '#222b34',
-          border: '1px solid #ff352d',
-          boxShadow: '0 8px 28px rgba(255, 53, 45, 0.25)',
-          borderRadius: 'var(--radius-md)',
-          padding: '12px 20px',
+          background: '#181411',
+          border: '1px solid #FF5A1F',
+          boxShadow: '0 8px 28px rgba(224, 112, 32, 0.3)',
+          borderRadius: '9999px',
+          padding: '12px 22px',
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
@@ -1025,7 +1053,7 @@ export default function App() {
           fontWeight: 600,
           animation: 'slideInRight 250ms ease-out',
         }}>
-          <CheckCircle2 size={18} color="#ff352d" />
+          <CheckCircle2 size={18} color="#FF5A1F" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -1096,7 +1124,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="w-full h-full p-6 text-white overflow-y-auto">
-                  <div className="p-4 bg-red-900/50 border border-red-500 rounded text-red-200">
+                  <div style={{ padding: '16px', background: 'rgba(224, 112, 32, 0.14)', border: '1px solid #FF5A1F', borderRadius: '12px', color: '#FBDBAF' }}>
                     Komponen DumasFormView tidak terdefinisi (undefined component). Periksa file import di App.jsx.
                   </div>
                 </div>

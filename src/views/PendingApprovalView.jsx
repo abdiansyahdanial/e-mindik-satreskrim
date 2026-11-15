@@ -143,8 +143,8 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
         right: 0,
         bottom: 0,
         backgroundImage: `
-          linear-gradient(to right, rgba(0, 212, 255, 0.03) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(0, 212, 255, 0.03) 1px, transparent 1px)
+          linear-gradient(to right, rgba(251, 219, 175, 0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(251, 219, 175, 0.03) 1px, transparent 1px)
         `,
         backgroundSize: '40px 40px',
         pointerEvents: 'none',
@@ -153,11 +153,11 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
       <div style={{
         maxWidth: '560px',
         width: '100%',
-        background: 'rgba(13, 21, 38, 0.92)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(0, 212, 255, 0.25)',
-        borderRadius: '16px',
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 212, 255, 0.15)',
+        background: 'rgba(18, 14, 11, 0.88)',
+        backdropFilter: 'blur(18px)',
+        border: '1px solid rgba(251, 219, 175, 0.16)',
+        borderRadius: '18px',
+        boxShadow: '0 24px 55px rgba(0, 0, 0, 0.85), 0 0 32px rgba(224, 112, 32, 0.14)',
         padding: '36px 32px',
         position: 'relative',
         zIndex: 10,
@@ -173,9 +173,9 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(245, 158, 11, 0.15))',
-            border: '2px solid rgba(245, 158, 11, 0.6)',
-            boxShadow: '0 0 20px rgba(245, 158, 11, 0.25)'
+            background: 'linear-gradient(135deg, rgba(224, 112, 32, 0.18), rgba(255, 90, 31, 0.12))',
+            border: '2px solid rgba(255, 90, 31, 0.6)',
+            boxShadow: '0 0 20px rgba(224, 112, 32, 0.28)'
           }}>
             <img 
               src={logoImg} 
@@ -190,22 +190,22 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
               width: '26px',
               height: '26px',
               borderRadius: '50%',
-              background: '#F59E0B',
+              background: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid #0D1526'
+              border: '2px solid #0E0C0A'
             }}>
-              <Clock size={14} color="#000" />
+              <Clock size={14} color="#FF5A1F" />
             </div>
           </div>
         </div>
 
-        <h2 style={{
+        <h2 className="heading-font" style={{
           margin: '0 0 4px',
           fontSize: '19px',
           fontWeight: 800,
-          letterSpacing: '1px',
+          letterSpacing: '0.04em',
           color: '#FFFFFF',
           textTransform: 'uppercase'
         }}>
@@ -214,7 +214,7 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
         <p style={{
           margin: '0 0 20px',
           fontSize: '12.5px',
-          color: 'var(--text-secondary, #94A3B8)',
+          color: 'rgba(251, 219, 175, 0.65)',
           letterSpacing: '0.5px'
         }}>
           Satuan Reserse Kriminal Kepolisian Resor Kolaka Timur
@@ -222,9 +222,9 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
 
         {/* Status Banner */}
         <div style={{
-          background: 'rgba(245, 158, 11, 0.12)',
-          border: '1px solid rgba(245, 158, 11, 0.4)',
-          borderRadius: '10px',
+          background: 'rgba(224, 112, 32, 0.12)',
+          border: '1px solid rgba(255, 90, 31, 0.45)',
+          borderRadius: '12px',
           padding: '14px 16px',
           marginBottom: '24px',
           display: 'flex',
@@ -232,12 +232,12 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
           gap: '12px',
           textAlign: 'left'
         }}>
-          <ShieldAlert size={26} color="#F59E0B" style={{ flexShrink: 0 }} />
+          <ShieldAlert size={26} color="#FF5A1F" style={{ flexShrink: 0 }} />
           <div>
-            <div style={{ color: '#FCD34D', fontWeight: 700, fontSize: '13px' }}>
+            <div style={{ color: '#FFFFFF', fontWeight: 700, fontSize: '13px' }}>
               Status: Menunggu Persetujuan Kasat Reskrim / Super Admin
             </div>
-            <div style={{ color: '#CBD5E1', fontSize: '11.5px', marginTop: '3px', lineHeight: 1.4 }}>
+            <div style={{ color: '#FBDBAF', fontSize: '11.5px', marginTop: '3px', lineHeight: 1.4 }}>
               Pendaftaran Anda telah berhasil dicatat. Seluruh modul penyidikan & generator berkas dikunci demi keamanan hingga diverifikasi oleh Kasat Reskrim / Super Admin.
             </div>
           </div>
@@ -245,9 +245,9 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
 
         {/* Officer Card Info */}
         <div style={{
-          background: 'rgba(6, 11, 24, 0.75)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '12px',
+          background: '#161310',
+          border: '1px solid rgba(251, 219, 175, 0.14)',
+          borderRadius: '14px',
           padding: '16px',
           marginBottom: '24px',
           textAlign: 'left'
@@ -257,7 +257,7 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
             fontWeight: 700,
             letterSpacing: '1px',
             textTransform: 'uppercase',
-            color: 'var(--accent-cyan, #00D4FF)',
+            color: '#FF5A1F',
             marginBottom: '12px',
             display: 'flex',
             alignItems: 'center',
@@ -269,28 +269,28 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
             <div>
-              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Nama Personel:</span>
-              <strong style={{ color: '#F8FAFC' }}>{pangkat} {nama}</strong>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Nama Personel:</span>
+              <strong style={{ color: '#FFFFFF' }}>{pangkat} {nama}</strong>
             </div>
             <div>
-              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>NRP Kedinasan:</span>
-              <span className="mono" style={{ color: 'var(--accent-cyan, #00D4FF)', fontWeight: 600 }}>{nrp}</span>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>NRP Kedinasan:</span>
+              <span className="mono" style={{ color: '#FF7A33', fontWeight: 600 }}>{nrp}</span>
             </div>
             <div>
-              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Jabatan & Unit:</span>
-              <span style={{ color: '#CBD5E1' }}>{jabatan} {unit && `(${unit})`}</span>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Jabatan & Unit:</span>
+              <span style={{ color: '#FBDBAF' }}>{jabatan} {unit && `(${unit})`}</span>
             </div>
             <div>
-              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Satuan Kerja:</span>
-              <span style={{ color: '#CBD5E1' }}>{satker}</span>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Satuan Kerja:</span>
+              <span style={{ color: '#FBDBAF' }}>{satker}</span>
             </div>
             <div>
-              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>Email:</span>
-              <span style={{ color: '#CBD5E1' }}>{email}</span>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Email:</span>
+              <span style={{ color: '#FBDBAF' }}>{email}</span>
             </div>
             <div>
-              <span style={{ color: '#64748B', display: 'block', fontSize: '10.5px' }}>No. Handphone / WA:</span>
-              <span style={{ color: '#CBD5E1' }}>{phone}</span>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>No. Handphone / WA:</span>
+              <span style={{ color: '#FBDBAF' }}>{phone}</span>
             </div>
           </div>
         </div>
@@ -299,18 +299,18 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
         {checkMsg && (
           <div style={{
             padding: '10px 14px',
-            borderRadius: '8px',
+            borderRadius: '10px',
             marginBottom: '20px',
             fontSize: '12px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             textAlign: 'left',
-            background: checkMsg.type === 'success' ? 'rgba(34, 197, 94, 0.15)' : checkMsg.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0, 212, 255, 0.12)',
-            border: `1px solid ${checkMsg.type === 'success' ? 'var(--accent-green, #22C55E)' : checkMsg.type === 'error' ? 'var(--accent-red, #EF4444)' : 'var(--accent-cyan, #00D4FF)'}`,
+            background: checkMsg.type === 'success' ? 'rgba(224, 112, 32, 0.14)' : checkMsg.type === 'error' ? 'rgba(255, 90, 31, 0.18)' : 'rgba(251, 219, 175, 0.1)',
+            border: `1px solid ${checkMsg.type === 'success' ? 'rgba(224, 112, 32, 0.5)' : checkMsg.type === 'error' ? '#FF5A1F' : 'rgba(251, 219, 175, 0.35)'}`,
             color: '#FFFFFF'
           }}>
-            {checkMsg.type === 'success' ? <CheckCircle2 size={16} color="#22C55E" /> : checkMsg.type === 'error' ? <AlertCircle size={16} color="#EF4444" /> : <Clock size={16} color="#00D4FF" />}
+            {checkMsg.type === 'success' ? <CheckCircle2 size={16} color="#FF5A1F" /> : checkMsg.type === 'error' ? <AlertCircle size={16} color="#FF5A1F" /> : <Clock size={16} color="#FBDBAF" />}
             <span>{checkMsg.text}</span>
           </div>
         )}
@@ -322,10 +322,10 @@ export default function PendingApprovalView({ currentUserProfile, user, onStatus
             onClick={handleCheckStatus}
             disabled={checking}
             style={{
-              background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.9) 0%, rgba(0, 150, 255, 0.9) 100%)',
-              color: '#030712',
+              background: '#E07020',
+              color: '#FFFFFF',
               border: 'none',
-              borderRadius: '10px',
+              borderRadius: '9999px',
               padding: '12px 20px',
               fontWeight: 700,
               fontSize: '13px',

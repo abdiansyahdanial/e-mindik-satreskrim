@@ -241,7 +241,7 @@ export default function DumasView({
             />
           ) : (
             <div className="p-6 text-white">
-              <div className="p-4 bg-red-900/50 border border-red-500 rounded text-red-200 font-mono text-sm">
+              <div className="p-4 bg-[#E07020]/15 border border-[#FF5A1F]/40 rounded-xl text-[#FBDBAF] font-mono text-sm">
                 Komponen DumasFormView tidak terdefinisi (undefined component). Periksa file import di DumasView.jsx.
               </div>
             </div>

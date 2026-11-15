@@ -348,7 +348,7 @@ export default function MobileUploadView() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#080B10',
+      backgroundColor: '#0E0C0A',
       color: '#FFFFFF',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
       display: 'flex',
@@ -360,18 +360,18 @@ export default function MobileUploadView() {
       <div style={{
         width: '100%',
         maxWidth: '440px',
-        backgroundColor: '#121721',
-        border: '1px solid #292F42',
-        borderRadius: '16px',
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
+        backgroundColor: '#161310',
+        border: '1px solid rgba(251, 219, 175, 0.16)',
+        borderRadius: '18px',
+        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column'
       }}>
         {/* Header */}
         <div style={{
-          backgroundColor: '#0B0D13',
-          borderBottom: '1px solid #292F42',
+          backgroundColor: '#0E0C0A',
+          borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
           padding: '18px 20px',
           display: 'flex',
           alignItems: 'center',
@@ -381,20 +381,20 @@ export default function MobileUploadView() {
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            backgroundColor: isExpired ? 'rgba(239, 68, 68, 0.15)' : 'rgba(229, 46, 46, 0.15)',
-            border: isExpired ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(229, 46, 46, 0.4)',
+            backgroundColor: 'rgba(224, 112, 32, 0.16)',
+            border: '1px solid rgba(255, 90, 31, 0.45)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: isExpired ? '#EF4444' : '#FF352D'
+            color: '#FF5A1F'
           }}>
             {isExpired ? <Lock size={20} /> : <Smartphone size={22} />}
           </div>
           <div>
-            <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#FF352D', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#FF5A1F', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               SATRESKRIM POLRES KOLAKA TIMUR
             </span>
-            <h1 style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', margin: 0, fontFamily: 'JetBrains Mono, monospace' }}>
+            <h1 className="heading-font" style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
               Live Mobile Upload Bridge
             </h1>
           </div>
@@ -405,18 +405,18 @@ export default function MobileUploadView() {
           
           {/* Token Info Pill */}
           <div style={{
-            backgroundColor: '#0B0D13',
-            border: isExpired ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid #1E293B',
-            borderRadius: '10px',
+            backgroundColor: '#1E1915',
+            border: isExpired ? '1px solid rgba(255, 90, 31, 0.45)' : '1px solid rgba(251, 219, 175, 0.16)',
+            borderRadius: '12px',
             padding: '10px 14px',
             display: 'flex',
             flexDirection: 'column',
             gap: '4px'
           }}>
-            <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>
+            <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: 'rgba(251, 219, 175, 0.6)' }}>
               TOKEN SINKRONISASI AKTIF:
             </span>
-            <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: isExpired ? '#EF4444' : '#38BDF8', wordBreak: 'break-all' }}>
+            <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: isExpired ? '#FF5A1F' : '#FF7A33', wordBreak: 'break-all' }}>
               {token}
             </span>
           </div>
@@ -424,8 +424,8 @@ export default function MobileUploadView() {
           {/* BAGIAN 3: TAMPILAN SESI BERAKHIR (POLICE DARK MODE EXPIRED SCREEN) */}
           {isExpired ? (
             <div style={{
-              backgroundColor: 'rgba(239, 68, 68, 0.08)',
-              border: '1.5px solid rgba(239, 68, 68, 0.4)',
+              backgroundColor: 'rgba(255, 90, 31, 0.08)',
+              border: '1.5px solid rgba(255, 90, 31, 0.45)',
               borderRadius: '16px',
               padding: '30px 18px',
               textAlign: 'center',
@@ -433,20 +433,20 @@ export default function MobileUploadView() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '16px',
-              boxShadow: '0 8px 30px rgba(239, 68, 68, 0.12)'
+              boxShadow: '0 8px 30px rgba(255, 90, 31, 0.14)'
             }}>
-              {/* Ikon Gembok Terkunci Merah/Amber */}
+              {/* Ikon Gembok Terkunci Solar Orange */}
               <div style={{
                 width: '68px',
                 height: '68px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                border: '2px solid rgba(239, 68, 68, 0.5)',
+                backgroundColor: 'rgba(255, 90, 31, 0.16)',
+                border: '2px solid rgba(255, 90, 31, 0.5)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#EF4444',
-                boxShadow: '0 0 24px rgba(239, 68, 68, 0.3)'
+                color: '#FF5A1F',
+                boxShadow: '0 0 24px rgba(255, 90, 31, 0.3)'
               }}>
                 <Lock size={32} />
               </div>
@@ -455,7 +455,7 @@ export default function MobileUploadView() {
                 <span style={{
                   fontSize: '10px',
                   fontFamily: 'JetBrains Mono, monospace',
-                  color: '#EF4444',
+                  color: '#FF5A1F',
                   fontWeight: 800,
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
@@ -475,7 +475,7 @@ export default function MobileUploadView() {
                 </h2>
                 <p style={{
                   fontSize: '12px',
-                  color: '#CBD5E1',
+                  color: '#FAF6F0',
                   margin: 0,
                   lineHeight: 1.6
                 }}>
@@ -485,8 +485,8 @@ export default function MobileUploadView() {
 
               <div style={{
                 width: '100%',
-                backgroundColor: '#0B0D13',
-                border: '1px solid #1E293B',
+                backgroundColor: '#0E0C0A',
+                border: '1px solid rgba(251, 219, 175, 0.16)',
                 borderRadius: '10px',
                 padding: '12px',
                 display: 'flex',
@@ -495,9 +495,9 @@ export default function MobileUploadView() {
                 gap: '8px',
                 fontSize: '11px',
                 fontFamily: 'JetBrains Mono, monospace',
-                color: '#64748B'
+                color: 'rgba(251, 219, 175, 0.65)'
               }}>
-                <ShieldAlert size={15} color="#EF4444" />
+                <ShieldAlert size={15} color="#FF5A1F" />
                 <span>Protokol Keamanan Siber Satreskrim Polri</span>
               </div>
             </div>
@@ -505,8 +505,8 @@ export default function MobileUploadView() {
             <>
               {/* Active Countdown Timer Bar (120 Detik / 2 Menit Akses HP) */}
               <div style={{
-                backgroundColor: '#0B0D13',
-                border: remainingSeconds <= 30 ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid #1E293B',
+                backgroundColor: '#0E0C0A',
+                border: remainingSeconds <= 30 ? '1px solid rgba(255, 90, 31, 0.65)' : '1px solid rgba(251, 219, 175, 0.18)',
                 borderRadius: '10px',
                 padding: '10px 14px',
                 display: 'flex',
@@ -515,27 +515,27 @@ export default function MobileUploadView() {
                 transition: 'border-color 0.3s ease'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: remainingSeconds <= 30 ? '#F87171' : '#CBD5E1' }}>
-                    <Clock size={13} color={remainingSeconds <= 30 ? '#EF4444' : '#F59E0B'} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: remainingSeconds <= 30 ? '#FF7A33' : '#FAF6F0' }}>
+                    <Clock size={13} color={remainingSeconds <= 30 ? '#FF5A1F' : '#E07020'} />
                     <span>Sisa Waktu Unggah HP:</span>
                   </div>
                   <span style={{
                     fontSize: '13px',
                     fontFamily: 'JetBrains Mono, monospace',
                     fontWeight: 800,
-                    color: remainingSeconds <= 30 ? '#EF4444' : '#F59E0B'
+                    color: remainingSeconds <= 30 ? '#FF5A1F' : '#FBDBAF'
                   }}>
                     {formatMinutesSeconds(remainingSeconds)}
                   </span>
                 </div>
 
                 {/* Progress Bar 120s */}
-                <div style={{ width: '100%', height: '4px', backgroundColor: '#1E293B', borderRadius: '9999px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '4px', backgroundColor: 'rgba(251, 219, 175, 0.12)', borderRadius: '9999px', overflow: 'hidden' }}>
                   <div 
                     style={{
                       height: '100%',
                       width: `${Math.min(100, Math.max(0, (remainingSeconds / 120) * 100))}%`,
-                      backgroundColor: remainingSeconds <= 30 ? '#EF4444' : (remainingSeconds <= 60 ? '#F59E0B' : '#10B981'),
+                      backgroundColor: remainingSeconds <= 30 ? '#FF5A1F' : '#E07020',
                       transition: 'width 1s linear, background-color 0.3s ease'
                     }}
                   />
@@ -545,9 +545,9 @@ export default function MobileUploadView() {
               {/* Success Notification */}
               {isSuccess ? (
                 <div style={{
-                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
-                  borderRadius: '12px',
+                  backgroundColor: 'rgba(224, 112, 32, 0.14)',
+                  border: '1px solid rgba(255, 90, 31, 0.45)',
+                  borderRadius: '14px',
                   padding: '20px',
                   textAlign: 'center',
                   display: 'flex',
@@ -555,11 +555,11 @@ export default function MobileUploadView() {
                   alignItems: 'center',
                   gap: '10px'
                 }}>
-                  <CheckCircle2 size={36} color="#10B981" />
+                  <CheckCircle2 size={36} color="#FF5A1F" />
                   <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
                     Foto Bukti Berhasil Terkirim!
                   </h3>
-                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: '11px', color: '#FBDBAF', margin: 0, lineHeight: 1.5 }}>
                     Berkas telah terkirim ke monitor penyidik. Anda dapat mengambil foto bukti lainnya jika diperlukan.
                   </p>
                   <button
@@ -567,14 +567,14 @@ export default function MobileUploadView() {
                     onClick={handleResetCapture}
                     style={{
                       marginTop: '8px',
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      backgroundColor: '#1E293B',
-                      border: '1px solid #334155',
-                      color: '#FFFFFF',
+                      padding: '8px 18px',
+                      borderRadius: '9999px',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #FFFFFF',
+                      color: '#0E0C0A',
                       fontSize: '11px',
                       fontFamily: 'JetBrains Mono, monospace',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       cursor: 'pointer'
                     }}
                   >
@@ -590,10 +590,10 @@ export default function MobileUploadView() {
                       onClick={() => { setCaptureMode('single'); handleResetCapture(); }}
                       style={{
                         padding: '10px 8px',
-                        borderRadius: '8px',
-                        border: captureMode === 'single' ? '1px solid #3B82F6' : '1px solid #334155',
-                        backgroundColor: captureMode === 'single' ? 'rgba(59, 130, 246, 0.15)' : '#0B0D13',
-                        color: captureMode === 'single' ? '#60A5FA' : '#94A3B8',
+                        borderRadius: '9999px',
+                        border: captureMode === 'single' ? '1px solid #FF5A1F' : '1px solid rgba(251, 219, 175, 0.18)',
+                        backgroundColor: captureMode === 'single' ? 'rgba(224, 112, 32, 0.18)' : '#0E0C0A',
+                        color: captureMode === 'single' ? '#FFFFFF' : '#FBDBAF',
                         fontSize: '11px',
                         fontFamily: 'JetBrains Mono, monospace',
                         fontWeight: 700,
@@ -612,10 +612,10 @@ export default function MobileUploadView() {
                       onClick={() => { setCaptureMode('doc'); handleResetCapture(); }}
                       style={{
                         padding: '10px 8px',
-                        borderRadius: '8px',
-                        border: captureMode === 'doc' ? '1px solid #10B981' : '1px solid #334155',
-                        backgroundColor: captureMode === 'doc' ? 'rgba(16, 185, 129, 0.15)' : '#0B0D13',
-                        color: captureMode === 'doc' ? '#34D399' : '#94A3B8',
+                        borderRadius: '9999px',
+                        border: captureMode === 'doc' ? '1px solid #FFFFFF' : '1px solid rgba(251, 219, 175, 0.18)',
+                        backgroundColor: captureMode === 'doc' ? '#FFFFFF' : '#0E0C0A',
+                        color: captureMode === 'doc' ? '#0E0C0A' : '#FBDBAF',
                         fontSize: '11px',
                         fontFamily: 'JetBrains Mono, monospace',
                         fontWeight: 700,
@@ -656,9 +656,9 @@ export default function MobileUploadView() {
                               height: '90px',
                               borderRadius: '6px',
                               overflow: 'hidden',
-                              border: '1px solid #334155',
+                              border: '1px solid rgba(251, 219, 175, 0.2)',
                               flexShrink: 0,
-                              backgroundColor: '#0B0D13'
+                              backgroundColor: '#0E0C0A'
                             }}
                           >
                             <img
@@ -687,7 +687,7 @@ export default function MobileUploadView() {
                                 position: 'absolute',
                                 top: 2,
                                 right: 2,
-                                backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                                backgroundColor: 'rgba(224, 112, 32, 0.9)',
                                 border: 'none',
                                 borderRadius: '3px',
                                 color: '#FFF',
@@ -708,8 +708,8 @@ export default function MobileUploadView() {
                   <label 
                     htmlFor="mobile-camera-input"
                     style={{
-                      border: '2px dashed #334155',
-                      backgroundColor: '#0B0D13',
+                      border: '2px dashed rgba(251, 219, 175, 0.25)',
+                      backgroundColor: '#0E0C0A',
                       borderRadius: '14px',
                       padding: previewUrl && captureMode === 'single' ? '12px' : '32px 20px',
                       display: 'flex',
@@ -735,12 +735,12 @@ export default function MobileUploadView() {
 
                     {isProcessingDoc ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <RefreshCw size={28} color="#10B981" className="animate-spin" />
+                        <RefreshCw size={28} color="#FF5A1F" className="animate-spin" />
                         <div>
-                          <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#10B981' }}>
+                          <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FF5A1F' }}>
                             Mengompres &amp; Menata Lembar...
                           </div>
-                          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+                          <div style={{ fontSize: '11px', color: '#FBDBAF', marginTop: '4px' }}>
                             Sedang menyatukan dokumen ke format PDF
                           </div>
                         </div>
@@ -751,12 +751,12 @@ export default function MobileUploadView() {
                           width: '56px',
                           height: '56px',
                           borderRadius: '14px',
-                          backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          backgroundColor: 'rgba(224, 112, 32, 0.16)',
+                          border: '1px solid rgba(255, 90, 31, 0.45)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#10B981'
+                          color: '#FF5A1F'
                         }}>
                           <Plus size={28} />
                         </div>
@@ -764,7 +764,7 @@ export default function MobileUploadView() {
                           <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF' }}>
                             + Foto Lembar Berikutnya
                           </div>
-                          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+                          <div style={{ fontSize: '11px', color: '#FBDBAF', marginTop: '4px' }}>
                             Ketuk untuk memotret halaman ke-{docPages.length + 1}
                           </div>
                         </div>
@@ -776,7 +776,7 @@ export default function MobileUploadView() {
                           alt="Preview" 
                           style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', borderRadius: '8px' }}
                         />
-                        <span style={{ fontSize: '10px', color: '#38BDF8', fontFamily: 'JetBrains Mono, monospace' }}>
+                        <span style={{ fontSize: '10px', color: '#FF7A33', fontFamily: 'JetBrains Mono, monospace' }}>
                           Ketuk untuk mengganti foto
                         </span>
                       </div>
@@ -786,12 +786,12 @@ export default function MobileUploadView() {
                           width: '56px',
                           height: '56px',
                           borderRadius: '14px',
-                          backgroundColor: captureMode === 'doc' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(229, 46, 46, 0.15)',
-                          border: captureMode === 'doc' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(229, 46, 46, 0.4)',
+                          backgroundColor: 'rgba(224, 112, 32, 0.16)',
+                          border: '1px solid rgba(255, 90, 31, 0.45)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: captureMode === 'doc' ? '#10B981' : '#FF352D'
+                          color: '#FF5A1F'
                         }}>
                           <Camera size={28} />
                         </div>
@@ -799,7 +799,7 @@ export default function MobileUploadView() {
                           <div style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF' }}>
                             {captureMode === 'doc' ? 'Buka Kamera HP (Lembar #1)' : 'Buka Kamera HP'}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+                          <div style={{ fontSize: '11px', color: '#FBDBAF', marginTop: '4px' }}>
                             {captureMode === 'doc' 
                               ? 'Ketuk di sini untuk mengambil foto lembar pertama dokumen'
                               : 'Ketuk di sini untuk mengambil foto bukti fisik langsung'}
@@ -812,8 +812,8 @@ export default function MobileUploadView() {
                   {/* Selected file summary */}
                   {selectedFile && (
                     <div style={{
-                      backgroundColor: '#0B0D13',
-                      border: '1px solid #292F42',
+                      backgroundColor: '#0E0C0A',
+                      border: '1px solid rgba(251, 219, 175, 0.16)',
                       borderRadius: '10px',
                       padding: '10px 14px',
                       display: 'flex',
@@ -825,7 +825,7 @@ export default function MobileUploadView() {
                       <span style={{ color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
                         {selectedFile.name}
                       </span>
-                      <span style={{ color: '#10B981', fontWeight: 700 }}>
+                      <span style={{ color: '#FF5A1F', fontWeight: 700 }}>
                         {(selectedFile.size / 1024).toFixed(0)} KB
                       </span>
                     </div>
@@ -834,9 +834,9 @@ export default function MobileUploadView() {
                   {/* Error Message */}
                   {errorMsg && (
                     <div style={{
-                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                      border: '1px solid #EF4444',
-                      color: '#F87171',
+                      backgroundColor: 'rgba(224, 112, 32, 0.14)',
+                      border: '1px solid #FF5A1F',
+                      color: '#FBDBAF',
                       borderRadius: '8px',
                       padding: '10px 14px',
                       fontSize: '11px',
@@ -857,9 +857,9 @@ export default function MobileUploadView() {
                     style={{
                       width: '100%',
                       padding: '14px',
-                      borderRadius: '10px',
-                      backgroundColor: !selectedFile || isUploading || isExpired ? '#1E293B' : '#E52E2E',
-                      color: !selectedFile || isUploading || isExpired ? '#64748B' : '#FFFFFF',
+                      borderRadius: '9999px',
+                      backgroundColor: !selectedFile || isUploading || isExpired ? '#1E1915' : '#E07020',
+                      color: !selectedFile || isUploading || isExpired ? 'rgba(251, 219, 175, 0.45)' : '#FFFFFF',
                       fontSize: '13px',
                       fontFamily: 'JetBrains Mono, monospace',
                       fontWeight: 800,
@@ -869,7 +869,7 @@ export default function MobileUploadView() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      boxShadow: selectedFile && !isUploading && !isExpired ? '0 4px 16px rgba(229, 46, 46, 0.4)' : 'none',
+                      boxShadow: selectedFile && !isUploading && !isExpired ? '0 4px 18px rgba(224, 112, 32, 0.4)' : 'none',
                       transition: 'all 0.2s'
                     }}
                   >
@@ -894,17 +894,17 @@ export default function MobileUploadView() {
 
         {/* Footer */}
         <div style={{
-          backgroundColor: '#0B0D13',
-          borderTop: '1px solid #292F42',
+          backgroundColor: '#0E0C0A',
+          borderTop: '1px solid rgba(251, 219, 175, 0.14)',
           padding: '14px 20px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: '10px',
           fontFamily: 'JetBrains Mono, monospace',
-          color: '#64748B'
+          color: 'rgba(251, 219, 175, 0.55)'
         }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#10B981' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#FF5A1F' }}>
             <ShieldCheck size={12} />
             Koneksi Resmi POLRI
           </span>

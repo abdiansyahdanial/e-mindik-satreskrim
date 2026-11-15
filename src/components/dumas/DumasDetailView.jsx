@@ -122,23 +122,23 @@ export default function DumasDetailView({
   if (!perkara) {
     return (
       <div
-        className="max-w-7xl mx-auto px-4 py-12 text-center text-slate-400 font-mono"
-        style={{ padding: '48px 24px', textAlign: 'center', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace' }}
+        className="max-w-7xl mx-auto px-4 py-12 text-center text-[#FBDBAF]/65 font-mono"
+        style={{ padding: '48px 24px', textAlign: 'center', color: 'rgba(251, 219, 175, 0.65)', fontFamily: 'JetBrains Mono, monospace' }}
       >
-        <AlertCircle size={36} color="#EF4444" style={{ margin: '0 auto 12px auto' }} />
+        <AlertCircle size={36} color="#FF5A1F" style={{ margin: '0 auto 12px auto' }} />
         <p className="text-sm">Data Laporan Dumas tidak ditemukan.</p>
         <button
           type="button"
           onClick={onBack}
-          className="mt-4 px-4 py-2 rounded-lg bg-[#121721] hover:bg-[#1B1F2C] border border-[#292F42] text-xs text-slate-300 font-mono transition-colors cursor-pointer"
+          className="mt-4 px-4 py-2 rounded-lg bg-[#161310] hover:bg-[#221C17] border border-[#FBDBAF]/15 text-xs text-[#FAF6F0] font-mono transition-colors cursor-pointer"
           style={{
             marginTop: '16px',
             padding: '8px 16px',
             borderRadius: '8px',
-            backgroundColor: '#121721',
-            border: '1px solid #292F42',
+            backgroundColor: '#161310',
+            border: '1px solid rgba(251, 219, 175, 0.16)',
             fontSize: '12px',
-            color: '#CBD5E1',
+            color: '#FAF6F0',
             cursor: 'pointer'
           }}
         >
@@ -232,13 +232,13 @@ export default function DumasDetailView({
 
   return (
     <div
-      className="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-6 bg-[#080B10] text-slate-200 font-sans dumas-detail-wrapper"
+      className="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-6 bg-[#0E0C0A] text-[#FAF6F0] font-sans dumas-detail-wrapper"
       style={{
         maxWidth: '80rem',
         margin: '0 auto',
         padding: '24px 16px',
-        backgroundColor: '#080B10',
-        color: '#E2E8F0',
+        backgroundColor: '#0E0C0A',
+        color: '#FAF6F0',
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
         minHeight: '100%',
         display: 'flex',
@@ -251,7 +251,7 @@ export default function DumasDetailView({
       {/* 1. COMMAND BAR ATAS */}
       {/* ========================================================= */}
       <header
-        className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-[#292F42] dumas-command-bar"
+        className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-[#FBDBAF]/15 dumas-command-bar"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -259,7 +259,7 @@ export default function DumasDetailView({
           flexWrap: 'wrap',
           gap: '16px',
           paddingBottom: '12px',
-          borderBottom: '1px solid #292F42'
+          borderBottom: '1px solid rgba(251, 219, 175, 0.15)'
         }}
       >
         {/* Tombol Kembali Kiri */}
@@ -267,61 +267,61 @@ export default function DumasDetailView({
           <button
             type="button"
             onClick={onBack}
-            className="bg-[#121721] hover:bg-[#1B1F2C] border border-[#292F42] px-3.5 py-2 rounded-lg text-xs font-mono text-slate-300 flex items-center gap-2 transition-colors cursor-pointer dumas-btn-back"
+            className="bg-[#161310] hover:bg-[#221C17] border border-[#FBDBAF]/15 px-3.5 py-2 rounded-lg text-xs font-mono text-[#FAF6F0] flex items-center gap-2 transition-colors cursor-pointer dumas-btn-back"
             style={{
-              backgroundColor: '#121721',
-              border: '1px solid #292F42',
+              backgroundColor: '#161310',
+              border: '1px solid rgba(251, 219, 175, 0.16)',
               padding: '8px 14px',
               borderRadius: '8px',
               fontSize: '12px',
               fontFamily: 'JetBrains Mono, monospace',
-              color: '#CBD5E1',
+              color: '#FAF6F0',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
               cursor: 'pointer'
             }}
           >
-            <ArrowLeft size={14} color="#FF352D" />
+            <ArrowLeft size={14} color="#FF5A1F" />
             <span>&lt;- Daftar Dumas</span>
           </button>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-slate-400" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#94A3B8' }}>
-            <span className="w-2 h-2 rounded-full bg-[#E52E2E]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E52E2E' }}></span>
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[#FBDBAF]/65" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: 'rgba(251, 219, 175, 0.65)' }}>
+            <span className="w-2 h-2 rounded-full bg-[#FF5A1F]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#FF5A1F' }}></span>
             <span className="uppercase tracking-wider">E-Mindik Satreskrim Koltim</span>
           </div>
         </div>
 
         {/* Box Nomor Register Tengah */}
         <div
-          className="bg-[#0B0D13] border border-[#292F42] px-3 py-1 rounded-md text-xs font-mono font-bold text-slate-100 flex items-center gap-2 shadow-inner dumas-reg-box"
+          className="bg-[#181411] border border-[#FBDBAF]/15 px-3 py-1 rounded-md text-xs font-mono font-bold text-white flex items-center gap-2 shadow-inner dumas-reg-box"
           style={{
-            backgroundColor: '#0B0D13',
-            border: '1px solid #292F42',
+            backgroundColor: '#181411',
+            border: '1px solid rgba(251, 219, 175, 0.16)',
             padding: '6px 12px',
             borderRadius: '6px',
             fontSize: '12px',
             fontFamily: 'JetBrains Mono, monospace',
             fontWeight: 700,
-            color: '#F1F5F9',
+            color: '#FFFFFF',
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
             boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)'
           }}
         >
-          <span className="text-amber-400" style={{ color: '#F59E0B', fontSize: '10px' }}>NO. DUMAS:</span>
-          <code className="text-slate-100 font-bold" style={{ color: '#F1F5F9' }}>
+          <span className="text-[#FF7A33]" style={{ color: '#FF7A33', fontSize: '10px' }}>NO. DUMAS:</span>
+          <code className="text-white font-bold" style={{ color: '#FFFFFF' }}>
             {perkara?.nomor_lp || 'DUMAS/B/01/SPKT/Polres Kolaka Timur/Polda Sultra'}
           </code>
           <button
             type="button"
             onClick={handleCopyNo}
-            className="p-1 text-slate-400 hover:text-slate-200 cursor-pointer"
-            style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+            className="p-1 text-[#FBDBAF]/65 hover:text-white cursor-pointer"
+            style={{ background: 'none', border: 'none', color: 'rgba(251, 219, 175, 0.65)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
             title="Salin Nomor Dumas"
           >
-            {copied ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+            {copied ? <Check size={14} color="#FF7A33" /> : <Copy size={14} />}
           </button>
         </div>
 
@@ -341,13 +341,13 @@ export default function DumasDetailView({
                 alignItems: 'center',
                 gap: '6px',
                 padding: '8px 14px',
-                borderRadius: '12px',
+                borderRadius: '9999px',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 600,
-                backgroundColor: perkara?.is_locked_spkt ? '#181C25' : '#121721',
-                border: `1px solid ${perkara?.is_locked_spkt ? '#292F42' : '#334155'}`,
-                color: perkara?.is_locked_spkt ? '#64748B' : '#CBD5E1',
+                backgroundColor: perkara?.is_locked_spkt ? '#181411' : '#161310',
+                border: `1px solid ${perkara?.is_locked_spkt ? 'rgba(251, 219, 175, 0.12)' : 'rgba(251, 219, 175, 0.22)'}`,
+                color: perkara?.is_locked_spkt ? 'rgba(251, 219, 175, 0.45)' : '#FAF6F0',
                 cursor: perkara?.is_locked_spkt ? 'not-allowed' : 'pointer',
                 opacity: perkara?.is_locked_spkt ? 0.6 : 1
               }}
@@ -361,20 +361,20 @@ export default function DumasDetailView({
           <button
             type="button"
             onClick={() => onOpenGeneratorForDumas && onOpenGeneratorForDumas(perkara)}
-            className="bg-[#E52E2E] hover:bg-[#C82323] text-white font-mono font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer dumas-btn-sprin-accent"
+            className="bg-[#E07020] hover:bg-[#FF5A1F] text-white font-mono font-bold px-4 py-2 rounded-full text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer dumas-btn-sprin-accent"
             style={{
-              backgroundColor: '#E52E2E',
+              backgroundColor: '#E07020',
               color: '#FFFFFF',
               fontFamily: 'JetBrains Mono, monospace',
               fontWeight: 700,
               padding: '8px 16px',
-              borderRadius: '12px',
+              borderRadius: '9999px',
               fontSize: '12px',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
               border: 'none',
-              boxShadow: '0 10px 25px -5px rgba(229, 46, 46, 0.5), 0 0 15px rgba(229, 46, 46, 0.3)',
+              boxShadow: '0 8px 24px -5px rgba(224, 112, 32, 0.5)',
               cursor: 'pointer'
             }}
           >
@@ -389,16 +389,16 @@ export default function DumasDetailView({
       {/* 2. BANNER STATUS BERKAS (QUICK STATUS BAR) */}
       {/* ========================================================= */}
       <section
-        className="bg-[#121721] border border-[#292F42] rounded-xl p-4 flex flex-col gap-3 shadow-md dumas-quick-status-bar"
+        className="bg-[#161310] border border-[#FBDBAF]/15 rounded-xl p-4 flex flex-col gap-3 shadow-md dumas-quick-status-bar"
         style={{
-          backgroundColor: '#121721',
-          border: '1px solid #292F42',
+          backgroundColor: '#161310',
+          border: '1px solid rgba(251, 219, 175, 0.16)',
           borderRadius: '12px',
           padding: '16px',
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -409,12 +409,12 @@ export default function DumasDetailView({
                 width: '40px',
                 height: '40px',
                 borderRadius: '8px',
-                backgroundColor: perkara?.is_locked_spkt ? 'rgba(6, 78, 59, 0.4)' : 'rgba(127, 29, 29, 0.5)',
-                border: perkara?.is_locked_spkt ? '1px solid #059669' : '1px solid #991B1B',
+                backgroundColor: perkara?.is_locked_spkt ? 'rgba(224, 112, 32, 0.18)' : 'rgba(255, 90, 31, 0.16)',
+                border: perkara?.is_locked_spkt ? '1px solid rgba(224, 112, 32, 0.45)' : '1px solid rgba(255, 90, 31, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: perkara?.is_locked_spkt ? '#34D399' : '#F87171',
+                color: '#FF7A33',
                 fontWeight: 700,
                 fontSize: '16px',
                 fontFamily: 'JetBrains Mono, monospace'
@@ -423,13 +423,13 @@ export default function DumasDetailView({
               {perkara?.is_locked_spkt ? <Lock size={18} /> : '01'}
             </div>
             <div>
-              <div className="text-[11px] font-mono tracking-wider text-slate-400 uppercase" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.06em', color: '#94A3B8', textTransform: 'uppercase' }}>
+              <div className="text-[11px] font-mono tracking-wider text-[#FBDBAF]/60 uppercase" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.06em', color: 'rgba(251, 219, 175, 0.6)', textTransform: 'uppercase' }}>
                 Status Administrasi Berkas
               </div>
               <div className="flex items-center gap-2.5 mt-1" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
                 {perkara?.is_locked_spkt ? (
                   <span
-                    className="bg-emerald-950/80 text-emerald-300 border border-emerald-700/80 px-2.5 py-1 rounded text-xs font-mono font-bold inline-flex items-center gap-1.5"
+                    className="bg-[#E07020]/15 text-[#FAF6F0] border border-[#E07020]/40 px-2.5 py-1 rounded text-xs font-mono font-bold inline-flex items-center gap-1.5"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -439,17 +439,17 @@ export default function DumasDetailView({
                       fontSize: '11px',
                       fontFamily: 'JetBrains Mono, monospace',
                       fontWeight: 700,
-                      backgroundColor: 'rgba(6, 78, 59, 0.8)',
-                      color: '#6EE7B7',
-                      border: '1px solid #059669'
+                      backgroundColor: 'rgba(224, 112, 32, 0.18)',
+                      color: '#FAF6F0',
+                      border: '1px solid rgba(224, 112, 32, 0.45)'
                     }}
                   >
-                    <Lock size={12} />
+                    <Lock size={12} color="#FF7A33" />
                     <span>🔒 BERKAS TELAH DISERAHKAN KE SATRESKRIM</span>
                   </span>
                 ) : (
                   <span
-                    className="bg-amber-950/70 text-amber-300 border border-amber-800/80 px-2.5 py-1 rounded text-xs font-mono font-bold inline-flex items-center gap-1.5 dumas-badge-status-tahap"
+                    className="bg-[#E07020]/15 text-[#FF7A33] border border-[#E07020]/40 px-2.5 py-1 rounded text-xs font-mono font-bold inline-flex items-center gap-1.5 dumas-badge-status-tahap"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -458,16 +458,16 @@ export default function DumasDetailView({
                       fontSize: '11px',
                       fontFamily: 'JetBrains Mono, monospace',
                       fontWeight: 700,
-                      backgroundColor: 'rgba(69, 26, 3, 0.7)',
-                      color: '#FCD34D',
-                      border: '1px solid #92400E'
+                      backgroundColor: 'rgba(224, 112, 32, 0.15)',
+                      color: '#FF7A33',
+                      border: '1px solid rgba(224, 112, 32, 0.4)'
                     }}
                   >
                     ● {perkara?.status_berkas || 'TAHAP PENYELIDIKAN (SP.LIDIK)'}
                   </span>
                 )}
 
-                <span className="text-xs text-slate-400 font-sans hidden sm:inline" style={{ fontSize: '12px', color: '#94A3B8' }}>
+                <span className="text-xs text-[#FBDBAF]/65 font-sans hidden sm:inline" style={{ fontSize: '12px', color: 'rgba(251, 219, 175, 0.65)' }}>
                   {perkara?.is_locked_spkt ? 'Data Terkunci (Chain-of-Custody Terjaga)' : 'Tinjauan Resume & Digital Evidence'}
                 </span>
               </div>
@@ -479,21 +479,21 @@ export default function DumasDetailView({
               <button
                 type="button"
                 onClick={() => setIsHandoverModalOpen(true)}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-2 cursor-pointer transition-all shadow-md"
+                className="bg-[#E07020] hover:bg-[#FF5A1F] text-white font-mono font-bold px-3.5 py-1.5 rounded-full text-xs flex items-center gap-2 cursor-pointer transition-all shadow-md"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
                   padding: '7px 14px',
-                  borderRadius: '8px',
-                  backgroundColor: '#F59E0B',
-                  color: '#0F172A',
+                  borderRadius: '9999px',
+                  backgroundColor: '#E07020',
+                  color: '#FFFFFF',
                   border: 'none',
                   fontSize: '12px',
                   fontFamily: 'JetBrains Mono, monospace',
                   fontWeight: 800,
                   cursor: 'pointer',
-                  boxShadow: '0 0 16px rgba(245, 158, 11, 0.35)'
+                  boxShadow: '0 0 16px rgba(224, 112, 32, 0.4)'
                 }}
                 title="Serahkan berkas fisik dan digital dari SPKT ke Satreskrim"
               >
@@ -503,19 +503,19 @@ export default function DumasDetailView({
             )}
 
             <div
-              className="bg-[#0B0D13] px-3 py-1.5 rounded-md border border-[#292F42]"
+              className="bg-[#181411] px-3 py-1.5 rounded-md border border-[#FBDBAF]/15"
               style={{
-                backgroundColor: '#0B0D13',
+                backgroundColor: '#181411',
                 padding: '6px 12px',
                 borderRadius: '6px',
-                border: '1px solid #292F42'
+                border: '1px solid rgba(251, 219, 175, 0.16)'
               }}
             >
-              <span className="text-slate-500" style={{ color: '#64748B' }}>PENYIDIK PENERIMA:</span>
-              <span className="text-slate-100 font-semibold ml-2" style={{ color: '#F1F5F9', fontWeight: 600, marginLeft: '6px' }}>
+              <span className="text-[#FBDBAF]/55" style={{ color: 'rgba(251, 219, 175, 0.55)' }}>PENYIDIK PENERIMA:</span>
+              <span className="text-white font-semibold ml-2" style={{ color: '#FFFFFF', fontWeight: 600, marginLeft: '6px' }}>
                 {perkara?.penyidik_nama || 'Bripka Andi Pratama, S.H.'}
               </span>
-              <span className="text-[#FF352D] text-[11px] ml-1.5" style={{ color: '#FF352D', fontSize: '11px', marginLeft: '6px' }}>
+              <span className="text-[#FF7A33] text-[11px] ml-1.5" style={{ color: '#FF7A33', fontSize: '11px', marginLeft: '6px' }}>
                 [{perkara?.penyidik_nrp || 'NRP: 89040112'}]
               </span>
             </div>
@@ -523,22 +523,22 @@ export default function DumasDetailView({
             <button
               type="button"
               onClick={() => setIsSchemaModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1F2C] hover:bg-[#252B3B] text-slate-300 border border-[#292F42] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#181411] hover:bg-[#221C17] text-[#FAF6F0] border border-[#FBDBAF]/15 transition-colors cursor-pointer"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 padding: '6px 12px',
                 borderRadius: '6px',
-                backgroundColor: '#1B1F2C',
-                color: '#CBD5E1',
-                border: '1px solid #292F42',
+                backgroundColor: '#181411',
+                color: '#FAF6F0',
+                border: '1px solid rgba(251, 219, 175, 0.16)',
                 cursor: 'pointer',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace'
               }}
             >
-              <Database size={13} color="#FF352D" />
+              <Database size={13} color="#FF5A1F" />
               <span>Skema DB</span>
             </button>
           </div>
@@ -554,49 +554,49 @@ export default function DumasDetailView({
               gap: '12px',
               padding: '8px 14px',
               borderRadius: '8px',
-              backgroundColor: '#0B0D13',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
+              backgroundColor: '#181411',
+              border: '1px solid rgba(224, 112, 32, 0.35)',
               fontSize: '11px',
               fontFamily: 'JetBrains Mono, monospace'
             }}
           >
             <div>
-              <span style={{ color: '#64748B' }}>TANGGAL SERAH TERIMA: </span>
-              <span style={{ color: '#34D399', fontWeight: 700 }}>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)' }}>TANGGAL SERAH TERIMA: </span>
+              <span style={{ color: '#FF7A33', fontWeight: 700 }}>
                 {formatTanggalSerahTerima(perkara?.tanggal_serah_terima)}
               </span>
             </div>
 
-            <span style={{ color: '#334155' }}>|</span>
+            <span style={{ color: 'rgba(251, 219, 175, 0.25)' }}>|</span>
 
             <div>
-              <span style={{ color: '#64748B' }}>PENYERAH (SPKT): </span>
-              <span style={{ color: '#F1F5F9', fontWeight: 600 }}>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)' }}>PENYERAH (SPKT): </span>
+              <span style={{ color: '#FFFFFF', fontWeight: 600 }}>
                 {perkara?.penyerah_nama || '-'}
               </span>
               {perkara?.penyerah_pangkat_nrp && (
-                <span style={{ color: '#94A3B8', marginLeft: '4px' }}>({perkara.penyerah_pangkat_nrp})</span>
+                <span style={{ color: 'rgba(251, 219, 175, 0.65)', marginLeft: '4px' }}>({perkara.penyerah_pangkat_nrp})</span>
               )}
             </div>
 
-            <span style={{ color: '#334155' }}>|</span>
+            <span style={{ color: 'rgba(251, 219, 175, 0.25)' }}>|</span>
 
             <div>
-              <span style={{ color: '#64748B' }}>PENERIMA (SATRESKRIM): </span>
-              <span style={{ color: '#38BDF8', fontWeight: 600 }}>
+              <span style={{ color: 'rgba(251, 219, 175, 0.55)' }}>PENERIMA (SATRESKRIM): </span>
+              <span style={{ color: '#FBDBAF', fontWeight: 600 }}>
                 {perkara?.penerima_nama || perkara?.penyidik_nama || '-'}
               </span>
               {perkara?.penerima_pangkat_nrp && (
-                <span style={{ color: '#94A3B8', marginLeft: '4px' }}>({perkara.penerima_pangkat_nrp})</span>
+                <span style={{ color: 'rgba(251, 219, 175, 0.65)', marginLeft: '4px' }}>({perkara.penerima_pangkat_nrp})</span>
               )}
             </div>
 
             {perkara?.catatan_ekspedisi && (
               <>
-                <span style={{ color: '#334155' }}>|</span>
-                <div style={{ flex: '1 1 100%', marginTop: '2px', color: '#94A3B8' }}>
-                  <span style={{ color: '#64748B' }}>CATATAN EKSPEDISI: </span>
-                  <span style={{ color: '#CBD5E1' }}>{perkara.catatan_ekspedisi}</span>
+                <span style={{ color: 'rgba(251, 219, 175, 0.25)' }}>|</span>
+                <div style={{ flex: '1 1 100%', marginTop: '2px', color: 'rgba(251, 219, 175, 0.65)' }}>
+                  <span style={{ color: 'rgba(251, 219, 175, 0.55)' }}>CATATAN EKSPEDISI: </span>
+                  <span style={{ color: '#FAF6F0' }}>{perkara.catatan_ekspedisi}</span>
                 </div>
               </>
             )}
@@ -608,17 +608,17 @@ export default function DumasDetailView({
       {/* 3. BAGIAN A: DATA RESUME PERKARA & PIHAK TERKAIT */}
       {/* ========================================================= */}
       <section className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div className="flex items-center justify-between border-b border-[#292F42] pb-2.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #292F42', paddingBottom: '10px' }}>
+        <div className="flex items-center justify-between border-b border-[#FBDBAF]/15 pb-2.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(251, 219, 175, 0.15)', paddingBottom: '10px' }}>
           <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="text-[11px] font-mono font-bold bg-[#1B1F2C] text-[#FF352D] px-2 py-0.5 rounded border border-[#292F42]" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, backgroundColor: '#1B1F2C', color: '#FF352D', padding: '2px 8px', borderRadius: '4px', border: '1px solid #292F42' }}>
+            <span className="text-[11px] font-mono font-bold bg-[#181411] text-[#FF7A33] px-2 py-0.5 rounded border border-[#E07020]/35" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, backgroundColor: '#181411', color: '#FF7A33', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(224, 112, 32, 0.35)' }}>
               BAGIAN A
             </span>
-            <h2 className="text-xs uppercase tracking-wider font-bold text-white font-mono m-0" style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, color: '#FFFFFF', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+            <h2 className="heading-font text-xs uppercase tracking-wider font-bold text-white m-0" style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
               Data Resume Perkara &amp; Pihak Terkait (Card Grid)
             </h2>
           </div>
-          <span className="text-xs font-mono text-slate-500" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B' }}>
-            No. Registrasi: <span className="text-[#FF352D] font-bold" style={{ color: '#FF352D', fontWeight: 700 }}>{perkara?.nomor_lp || '-'}</span>
+          <span className="text-xs font-mono text-[#FBDBAF]/55" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', color: 'rgba(251, 219, 175, 0.55)' }}>
+            No. Registrasi: <span className="text-[#FF7A33] font-bold" style={{ color: '#FF7A33', fontWeight: 700 }}>{perkara?.nomor_lp || '-'}</span>
           </span>
         </div>
 
@@ -627,21 +627,21 @@ export default function DumasDetailView({
 
           {/* Card 01: Identitas Pelapor / Korban */}
           <article
-            className="border-l-4 border-l-emerald-500 rounded-xl bg-[#121721] border border-[#292F42] overflow-hidden mb-4 shadow-sm dumas-dossier-card card-pelapor"
+            className="border-l-4 border-l-[#FBDBAF] rounded-xl bg-[#161310] border border-[#FBDBAF]/15 overflow-hidden mb-4 shadow-sm dumas-dossier-card card-pelapor"
             style={{
-              backgroundColor: '#121721',
-              border: '1px solid #292F42',
-              borderLeft: '4px solid #10B981',
+              backgroundColor: '#161310',
+              border: '1px solid rgba(251, 219, 175, 0.16)',
+              borderLeft: '4px solid #FBDBAF',
               borderRadius: '12px',
               overflow: 'hidden',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+              boxShadow: '0 4px 16px rgba(0,0,0,0.35)'
             }}
           >
             <div
-              className="bg-[#10141D] border-b border-[#292F42] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
+              className="bg-[#181411] border-b border-[#FBDBAF]/12 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
               style={{
-                backgroundColor: '#10141D',
-                borderBottom: '1px solid #292F42',
+                backgroundColor: '#181411',
+                borderBottom: '1px solid rgba(251, 219, 175, 0.12)',
                 padding: '10px 16px',
                 display: 'flex',
                 alignItems: 'center',
@@ -651,12 +651,12 @@ export default function DumasDetailView({
               }}
             >
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#10B981' }}>
+                <span className="w-2 h-2 rounded-full bg-[#FBDBAF]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#FBDBAF' }}></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#FAF6F0]" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#FAF6F0' }}>
                   Identitas Pelapor / Korban
                 </span>
               </div>
-              <span className="text-[10px] bg-emerald-950/70 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(6, 78, 59, 0.7)', color: '#6EE7B7', border: '1px solid #059669', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+              <span className="text-[10px] bg-[#E07020]/15 text-[#FBDBAF] border border-[#E07020]/35 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(224, 112, 32, 0.15)', color: '#FBDBAF', border: '1px solid rgba(224, 112, 32, 0.35)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                 PELAPOR RESMI
               </span>
             </div>
@@ -671,35 +671,35 @@ export default function DumasDetailView({
                 padding: '16px'
               }}
             >
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Nama Lengkap</span>
-                <span className="font-bold text-slate-100 text-sm">{perkara?.pelapor_nama || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Nama Lengkap</span>
+                <span className="font-bold text-white text-sm">{perkara?.pelapor_nama || '-'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">NIK KTP</span>
-                <span className="text-slate-200 text-xs">{perkara?.pelapor_nik || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">NIK KTP</span>
+                <span className="text-[#FAF6F0] text-xs">{perkara?.pelapor_nik || '-'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Kontak / WA</span>
-                <span className="text-emerald-400 font-semibold text-xs">{perkara?.pelapor_kontak || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Kontak / WA</span>
+                <span className="text-[#FF7A33] font-semibold text-xs">{perkara?.pelapor_kontak || '-'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">TTL / Pekerjaan</span>
-                <span className="text-slate-200 text-xs">
-                  {perkara?.pelapor_ttl || '-'} <span className="text-slate-600">|</span> {perkara?.pelapor_pekerjaan || '-'}
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">TTL / Pekerjaan</span>
+                <span className="text-[#FAF6F0] text-xs">
+                  {perkara?.pelapor_ttl || '-'} <span className="text-[#FBDBAF]/35">|</span> {perkara?.pelapor_pekerjaan || '-'}
                 </span>
               </div>
 
               {/* Baris Penuh Alamat Domisili */}
               <div className="col-span-full dumas-dossier-field-full" style={{ gridColumn: '1 / -1' }}>
-                <div className="bg-[#0B0D13] p-3 rounded-lg border border-[#292F42] flex flex-wrap items-center justify-between gap-2" style={{ backgroundColor: '#0B0D13', padding: '10px 14px', borderRadius: '8px', border: '1px solid #292F42', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div className="bg-[#0E0C0A] p-3 rounded-lg border border-[#FBDBAF]/12 flex flex-wrap items-center justify-between gap-2" style={{ backgroundColor: '#0E0C0A', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(251, 219, 175, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <div>
-                    <span className="text-[10px] text-slate-500 block uppercase tracking-wider">Alamat Domisili KTP</span>
-                    <span className="text-slate-300 font-sans text-xs">{perkara?.pelapor_alamat || '-'}</span>
+                    <span className="text-[10px] text-[#FBDBAF]/55 block uppercase tracking-wider">Alamat Domisili KTP</span>
+                    <span className="text-[#FAF6F0] font-sans text-xs">{perkara?.pelapor_alamat || '-'}</span>
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-[#FBDBAF]/55">
                     <span>Kelayakan Status: </span>
-                    <span className="text-slate-200 font-semibold">Pelapor Sah &amp; Beritikad Baik</span>
+                    <span className="text-white font-semibold">Pelapor Sah &amp; Beritikad Baik</span>
                   </div>
                 </div>
               </div>
@@ -708,21 +708,21 @@ export default function DumasDetailView({
 
           {/* Card 02: Data Pihak Terlapor */}
           <article
-            className="border-l-4 border-l-[#E52E2E] rounded-xl bg-[#121721] border border-[#292F42] overflow-hidden mb-4 shadow-sm dumas-dossier-card card-terlapor"
+            className="border-l-4 border-l-[#FF5A1F] rounded-xl bg-[#161310] border border-[#FBDBAF]/15 overflow-hidden mb-4 shadow-sm dumas-dossier-card card-terlapor"
             style={{
-              backgroundColor: '#121721',
-              border: '1px solid #292F42',
-              borderLeft: '4px solid #E52E2E',
+              backgroundColor: '#161310',
+              border: '1px solid rgba(251, 219, 175, 0.16)',
+              borderLeft: '4px solid #FF5A1F',
               borderRadius: '12px',
               overflow: 'hidden',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+              boxShadow: '0 4px 16px rgba(0,0,0,0.35)'
             }}
           >
             <div
-              className="bg-[#10141D] border-b border-[#292F42] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
+              className="bg-[#181411] border-b border-[#FBDBAF]/12 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
               style={{
-                backgroundColor: '#10141D',
-                borderBottom: '1px solid #292F42',
+                backgroundColor: '#181411',
+                borderBottom: '1px solid rgba(251, 219, 175, 0.12)',
                 padding: '10px 16px',
                 display: 'flex',
                 alignItems: 'center',
@@ -732,16 +732,16 @@ export default function DumasDetailView({
               }}
             >
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="w-2 h-2 rounded-full bg-[#E52E2E]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E52E2E' }}></span>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#FF352D]" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#FF352D' }}>
+                <span className="w-2 h-2 rounded-full bg-[#FF5A1F]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#FF5A1F' }}></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#FF7A33]" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#FF7A33' }}>
                   Data Pihak Terlapor
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] bg-red-950/70 text-red-300 border border-red-800 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(127, 29, 29, 0.7)', color: '#FCA5A5', border: '1px solid #991B1B', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                <span className="text-[10px] bg-[#E07020]/15 text-[#FF7A33] border border-[#E07020]/40 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(224, 112, 32, 0.16)', color: '#FF7A33', border: '1px solid rgba(224, 112, 32, 0.4)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                   {perkara?.terlapor_status || 'TERLAPOR UTAMA'}
                 </span>
-                <span className="text-xs text-amber-400 hidden sm:inline" style={{ fontSize: '11px', color: '#FBBF24' }}>
+                <span className="text-xs text-[#FBDBAF] hidden sm:inline" style={{ fontSize: '11px', color: '#FBDBAF' }}>
                   Draft Klarifikasi / Panggilan #1
                 </span>
               </div>
@@ -756,33 +756,33 @@ export default function DumasDetailView({
                 padding: '16px'
               }}
             >
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Nama Terlapor</span>
-                <span className="font-bold text-red-300 text-sm">{perkara?.terlapor_nama || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Nama Terlapor</span>
+                <span className="font-bold text-white text-sm">{perkara?.terlapor_nama || '-'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Status Subjek</span>
-                <span className="text-red-400 font-semibold text-xs">{perkara?.terlapor_status || 'Saksi Terlapor'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Status Subjek</span>
+                <span className="text-[#FF7A33] font-semibold text-xs">{perkara?.terlapor_status || 'Saksi Terlapor'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Kontak / No HP</span>
-                <span className="text-slate-200 text-xs">{perkara?.terlapor_kontak || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Kontak / No HP</span>
+                <span className="text-[#FAF6F0] text-xs">{perkara?.terlapor_kontak || '-'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Domisili / Wilayah</span>
-                <span className="text-slate-200 text-xs font-sans">{perkara?.terlapor_domisili || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Domisili / Wilayah</span>
+                <span className="text-[#FAF6F0] text-xs font-sans">{perkara?.terlapor_domisili || '-'}</span>
               </div>
 
               {/* Baris Penuh Catatan Residivis */}
               <div className="col-span-full dumas-dossier-field-full" style={{ gridColumn: '1 / -1' }}>
-                <div className="bg-[#0B0D13] p-3 rounded-lg border border-[#292F42] flex flex-wrap items-center justify-between gap-2" style={{ backgroundColor: '#0B0D13', padding: '10px 14px', borderRadius: '8px', border: '1px solid #292F42', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div className="bg-[#0E0C0A] p-3 rounded-lg border border-[#FBDBAF]/12 flex flex-wrap items-center justify-between gap-2" style={{ backgroundColor: '#0E0C0A', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(251, 219, 175, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <div>
-                    <span className="text-[10px] text-slate-500 block uppercase tracking-wider">Catatan Residivis / Atensi Kepolisian</span>
-                    <span className="text-slate-300 text-xs">Belum ada catatan kriminal sebelumnya (Nihil SKCK Hitam / Bukan DPO)</span>
+                    <span className="text-[10px] text-[#FBDBAF]/55 block uppercase tracking-wider">Catatan Residivis / Atensi Kepolisian</span>
+                    <span className="text-[#FAF6F0] text-xs">Belum ada catatan kriminal sebelumnya (Nihil SKCK Hitam / Bukan DPO)</span>
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-[#FBDBAF]/55">
                     <span>Status Tindakan: </span>
-                    <span className="text-amber-400 font-semibold">Pemeriksaan Klarifikasi Terjadwal</span>
+                    <span className="text-[#FF7A33] font-semibold">Pemeriksaan Klarifikasi Terjadwal</span>
                   </div>
                 </div>
               </div>
@@ -791,17 +791,17 @@ export default function DumasDetailView({
             {/* Terlapor Tambahan (Jika Lebih Dari 1) */}
             {Array.isArray(perkara?.terlapor_list) && perkara.terlapor_list.length > 1 && (
               <div style={{ padding: '0 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+                <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'rgba(251, 219, 175, 0.65)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
                   Terlapor Tambahan ({perkara.terlapor_list.length - 1} Pihak):
                 </span>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
                   {perkara.terlapor_list.slice(1).map((t, i) => (
-                    <div key={t.id || i} style={{ backgroundColor: '#0B0D13', border: '1px solid #292F42', borderRadius: '6px', padding: '8px 12px' }}>
+                    <div key={t.id || i} style={{ backgroundColor: '#0E0C0A', border: '1px solid rgba(251, 219, 175, 0.14)', borderRadius: '6px', padding: '8px 12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ color: '#FCA5A5', fontWeight: 700, fontSize: '11px' }}>{t.nama || '-'}</span>
-                        <span style={{ fontSize: '9px', color: '#94A3B8' }}>{t.role_label || `Terlapor ${i + 2}`}</span>
+                        <span style={{ color: '#FF7A33', fontWeight: 700, fontSize: '11px' }}>{t.nama || '-'}</span>
+                        <span style={{ fontSize: '9px', color: 'rgba(251, 219, 175, 0.6)' }}>{t.role_label || `Terlapor ${i + 2}`}</span>
                       </div>
-                      <div style={{ fontSize: '10px', color: '#64748B' }}>
+                      <div style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)' }}>
                         {t.pekerjaan ? `${t.pekerjaan} | ` : ''}{t.alamat || t.kontak || '-'}
                       </div>
                     </div>
@@ -813,21 +813,21 @@ export default function DumasDetailView({
 
           {/* Card Saksi: Data Saksi-Saksi (Daftar Saksi Terkait) */}
           <article
-            className="border-l-4 border-l-blue-500 rounded-xl bg-[#121721] border border-[#292F42] overflow-hidden mb-4 shadow-sm dumas-dossier-card card-saksi"
+            className="border-l-4 border-l-[#E07020] rounded-xl bg-[#161310] border border-[#FBDBAF]/15 overflow-hidden mb-4 shadow-sm dumas-dossier-card card-saksi"
             style={{
-              backgroundColor: '#121721',
-              border: '1px solid #292F42',
-              borderLeft: '4px solid #3B82F6',
+              backgroundColor: '#161310',
+              border: '1px solid rgba(251, 219, 175, 0.16)',
+              borderLeft: '4px solid #E07020',
               borderRadius: '12px',
               overflow: 'hidden',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+              boxShadow: '0 4px 16px rgba(0,0,0,0.35)'
             }}
           >
             <div
-              className="bg-[#10141D] border-b border-[#292F42] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
+              className="bg-[#181411] border-b border-[#FBDBAF]/12 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
               style={{
-                backgroundColor: '#10141D',
-                borderBottom: '1px solid #292F42',
+                backgroundColor: '#181411',
+                borderBottom: '1px solid rgba(251, 219, 175, 0.12)',
                 padding: '10px 16px',
                 display: 'flex',
                 alignItems: 'center',
@@ -837,12 +837,12 @@ export default function DumasDetailView({
               }}
             >
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="w-2 h-2 rounded-full bg-blue-500" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3B82F6' }}></span>
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-400" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#60A5FA' }}>
+                <span className="w-2 h-2 rounded-full bg-[#E07020]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E07020' }}></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#FF7A33]" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#FF7A33' }}>
                   Data Saksi-Saksi Perkara
                 </span>
               </div>
-              <span className="text-[10px] bg-blue-950/70 text-blue-300 border border-blue-800 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(30, 58, 138, 0.7)', color: '#93C5FD', border: '1px solid #1D4ED8', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+              <span className="text-[10px] bg-[#E07020]/15 text-[#FBDBAF] border border-[#E07020]/35 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(224, 112, 32, 0.15)', color: '#FBDBAF', border: '1px solid rgba(224, 112, 32, 0.35)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                 {Array.isArray(perkara?.saksi_list) && perkara.saksi_list.length > 0 
                   ? `${perkara.saksi_list.length} SAKSI TERDAFTAR` 
                   : 'BELUM ADA SAKSI'}
@@ -855,8 +855,8 @@ export default function DumasDetailView({
                   <div 
                     key={saksi.id || idx}
                     style={{
-                      backgroundColor: '#0B0D13',
-                      border: '1px solid #292F42',
+                      backgroundColor: '#0E0C0A',
+                      border: '1px solid rgba(251, 219, 175, 0.14)',
                       borderRadius: '8px',
                       padding: '12px',
                       display: 'flex',
@@ -864,50 +864,50 @@ export default function DumasDetailView({
                       gap: '10px'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(41, 47, 66, 0.5)', paddingBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(251, 219, 175, 0.1)', paddingBottom: '6px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#3B82F6' }}></span>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#FF7A33' }}></span>
                         <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', fontFamily: 'JetBrains Mono, monospace' }}>
                           SAKSI {idx + 1}: {saksi.nama || 'Tanpa Nama'}
                         </span>
                       </div>
-                      <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#93C5FD', border: '1px solid rgba(59, 130, 246, 0.4)', fontWeight: 600 }}>
+                      <span style={{ fontSize: '9px', fontFamily: 'JetBrains Mono, monospace', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(224, 112, 32, 0.15)', color: '#FBDBAF', border: '1px solid rgba(224, 112, 32, 0.35)', fontWeight: 600 }}>
                         {saksi.role_label || (idx === 0 ? 'Saksi Fakta' : idx === 1 ? 'Saksi Terkait' : `Saksi ${idx + 1}`)}
                       </span>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                      <div className="bg-[#121721] p-2 rounded border border-[#292F42]">
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">NIK KTP</span>
-                        <span className="text-slate-200 text-xs font-semibold">{saksi.nik || '-'}</span>
+                      <div className="bg-[#161310] p-2 rounded border border-[#FBDBAF]/12">
+                        <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider block">NIK KTP</span>
+                        <span className="text-[#FAF6F0] text-xs font-semibold">{saksi.nik || '-'}</span>
                       </div>
-                      <div className="bg-[#121721] p-2 rounded border border-[#292F42]">
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Kontak / HP</span>
-                        <span className="text-blue-400 text-xs font-semibold">{saksi.kontak || '-'}</span>
+                      <div className="bg-[#161310] p-2 rounded border border-[#FBDBAF]/12">
+                        <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider block">Kontak / HP</span>
+                        <span className="text-[#FF7A33] text-xs font-semibold">{saksi.kontak || '-'}</span>
                       </div>
-                      <div className="bg-[#121721] p-2 rounded border border-[#292F42]">
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">TTL / Pekerjaan</span>
-                        <span className="text-slate-200 text-xs">
-                          {saksi.ttl || '-'} <span className="text-slate-600">|</span> {saksi.pekerjaan || '-'}
+                      <div className="bg-[#161310] p-2 rounded border border-[#FBDBAF]/12">
+                        <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider block">TTL / Pekerjaan</span>
+                        <span className="text-[#FAF6F0] text-xs">
+                          {saksi.ttl || '-'} <span className="text-[#FBDBAF]/35">|</span> {saksi.pekerjaan || '-'}
                         </span>
                       </div>
-                      <div className="bg-[#121721] p-2 rounded border border-[#292F42]">
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Agama</span>
-                        <span className="text-slate-200 text-xs">{saksi.agama || 'Islam'}</span>
+                      <div className="bg-[#161310] p-2 rounded border border-[#FBDBAF]/12">
+                        <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider block">Agama</span>
+                        <span className="text-[#FAF6F0] text-xs">{saksi.agama || 'Islam'}</span>
                       </div>
                     </div>
 
                     {saksi.alamat && (
-                      <div style={{ backgroundColor: '#121721', padding: '8px 12px', borderRadius: '6px', border: '1px solid #292F42' }}>
-                        <span className="text-[10px] text-slate-500 block uppercase tracking-wider">Alamat Domisili</span>
-                        <span className="text-slate-300 font-sans text-xs">{saksi.alamat}</span>
+                      <div style={{ backgroundColor: '#161310', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(251, 219, 175, 0.12)' }}>
+                        <span className="text-[10px] text-[#FBDBAF]/55 block uppercase tracking-wider">Alamat Domisili</span>
+                        <span className="text-[#FAF6F0] font-sans text-xs">{saksi.alamat}</span>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
+              <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(251, 219, 175, 0.5)', fontSize: '12px' }}>
                 Nihil saksi yang tercatat pada laporan pengaduan ini.
               </div>
             )}
@@ -915,21 +915,21 @@ export default function DumasDetailView({
 
           {/* Card 03: Delik & Dugaan Pidana */}
           <article
-            className="border-l-4 border-l-amber-500 rounded-xl bg-[#121721] border border-[#292F42] overflow-hidden mb-4 shadow-sm dumas-dossier-card card-delik"
+            className="border-l-4 border-l-[#E07020] rounded-xl bg-[#161310] border border-[#FBDBAF]/15 overflow-hidden mb-4 shadow-sm dumas-dossier-card card-delik"
             style={{
-              backgroundColor: '#121721',
-              border: '1px solid #292F42',
-              borderLeft: '4px solid #F59E0B',
+              backgroundColor: '#161310',
+              border: '1px solid rgba(251, 219, 175, 0.16)',
+              borderLeft: '4px solid #E07020',
               borderRadius: '12px',
               overflow: 'hidden',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+              boxShadow: '0 4px 16px rgba(0,0,0,0.35)'
             }}
           >
             <div
-              className="bg-[#10141D] border-b border-[#292F42] px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
+              className="bg-[#181411] border-b border-[#FBDBAF]/12 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2 dumas-dossier-header"
               style={{
-                backgroundColor: '#10141D',
-                borderBottom: '1px solid #292F42',
+                backgroundColor: '#181411',
+                borderBottom: '1px solid rgba(251, 219, 175, 0.12)',
                 padding: '10px 16px',
                 display: 'flex',
                 alignItems: 'center',
@@ -939,12 +939,12 @@ export default function DumasDetailView({
               }}
             >
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="w-2 h-2 rounded-full bg-amber-500" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#F59E0B' }}></span>
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#F59E0B' }}>
+                <span className="w-2 h-2 rounded-full bg-[#FF5A1F]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#FF5A1F' }}></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#FF7A33]" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#FF7A33' }}>
                   Delik &amp; Dugaan Pidana
                 </span>
               </div>
-              <span className="text-[10px] bg-amber-950/70 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(120, 53, 15, 0.7)', color: '#FDE68A', border: '1px solid #B45309', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+              <span className="text-[10px] bg-[#E07020]/15 text-[#FBDBAF] border border-[#E07020]/35 px-2 py-0.5 rounded font-bold" style={{ fontSize: '10px', backgroundColor: 'rgba(224, 112, 32, 0.15)', color: '#FBDBAF', border: '1px solid rgba(224, 112, 32, 0.35)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                 SATRESKRIM POLRES KOLAKA TIMUR
               </span>
             </div>
@@ -958,60 +958,60 @@ export default function DumasDetailView({
                 padding: '16px'
               }}
             >
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Tindak Pidana</span>
-                <span className="font-bold text-slate-100 text-xs font-sans">{perkara?.tindak_pidana || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Tindak Pidana</span>
+                <span className="font-bold text-white text-xs font-sans">{perkara?.tindak_pidana || '-'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Pasal yang Disangkakan</span>
-                <span className="text-[#FF352D] font-bold text-xs">{perkara?.pasal_disangkakan || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Pasal yang Disangkakan</span>
+                <span className="text-[#FF7A33] font-bold text-xs">{perkara?.pasal_disangkakan || '-'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Tempus Delicti (Waktu)</span>
-                <span className="text-slate-200 text-xs">{perkara?.tempus_delicti || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Tempus Delicti (Waktu)</span>
+                <span className="text-[#FAF6F0] text-xs">{perkara?.tempus_delicti || '-'}</span>
               </div>
-              <div className="bg-[#0B0D13] border border-[#292F42] rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">Locus Delicti (Tempat)</span>
-                <span className="text-slate-200 text-xs font-sans">{perkara?.locus_delicti || '-'}</span>
+              <div className="bg-[#0E0C0A] border border-[#FBDBAF]/12 rounded-lg p-2.5 flex flex-col gap-1 dumas-dossier-field">
+                <span className="text-[10px] text-[#FBDBAF]/55 uppercase tracking-wider">Locus Delicti (Tempat)</span>
+                <span className="text-[#FAF6F0] text-xs font-sans">{perkara?.locus_delicti || '-'}</span>
               </div>
             </div>
           </article>
 
           {/* Card 04: Ringkasan Kronologi Kasus */}
           <article
-            className="rounded-xl bg-[#121721] border border-[#292F42] p-4 shadow-sm space-y-2.5"
+            className="rounded-xl bg-[#161310] border border-[#FBDBAF]/15 p-4 shadow-sm space-y-2.5"
             style={{
-              backgroundColor: '#121721',
+              backgroundColor: '#161310',
               borderRadius: '12px',
-              border: '1px solid #292F42',
+              border: '1px solid rgba(251, 219, 175, 0.16)',
               padding: '16px 20px',
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+              boxShadow: '0 4px 16px rgba(0,0,0,0.35)'
             }}
           >
             <div className="flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="w-2 h-2 rounded-full bg-[#E52E2E]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#E52E2E' }}></span>
+                <span className="w-2 h-2 rounded-full bg-[#FF5A1F]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#FF5A1F' }}></span>
                 <span className="text-xs font-bold uppercase tracking-wider text-white" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#FFFFFF' }}>
                   Ringkasan Kronologi Kasus
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-slate-500 bg-[#0B0D13] border border-[#292F42] px-2 py-0.5 rounded" style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: '#64748B', backgroundColor: '#0B0D13', border: '1px solid #292F42', padding: '2px 8px', borderRadius: '4px' }}>
+              <span className="text-[10px] font-mono text-[#FBDBAF]/60 bg-[#0E0C0A] border border-[#FBDBAF]/12 px-2 py-0.5 rounded" style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: 'rgba(251, 219, 175, 0.6)', backgroundColor: '#0E0C0A', border: '1px solid rgba(251, 219, 175, 0.12)', padding: '2px 8px', borderRadius: '4px' }}>
                 Sumber: Form Aduan SPKT Satreskrim
               </span>
             </div>
 
             {/* Kotak Terminal Narasi */}
             <div
-              className="bg-[#0B0D13] p-4 rounded-lg border border-[#292F42] text-xs font-mono text-slate-300 leading-relaxed dumas-terminal-narrative"
+              className="bg-[#0E0C0A] p-4 rounded-lg border border-[#FBDBAF]/12 text-xs font-mono text-[#FAF6F0] leading-relaxed dumas-terminal-narrative"
               style={{
-                backgroundColor: '#0B0D13',
+                backgroundColor: '#0E0C0A',
                 padding: '16px',
                 borderRadius: '8px',
-                border: '1px solid #292F42',
-                color: '#CBD5E1',
+                border: '1px solid rgba(251, 219, 175, 0.12)',
+                color: '#FAF6F0',
                 fontSize: '12px',
                 lineHeight: 1.625,
                 fontFamily: 'JetBrains Mono, monospace'
@@ -1028,15 +1028,15 @@ export default function DumasDetailView({
       {/* 4. BAGIAN D: DAFTAR BUKTI DIGITAL (GRID KARTU PDF & JPG) */}
       {/* ========================================================= */}
       <section className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div className="flex items-center justify-between border-b border-[#292F42] pb-2.5 flex-wrap gap-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #292F42', paddingBottom: '10px', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="flex items-center justify-between border-b border-[#FBDBAF]/15 pb-2.5 flex-wrap gap-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(251, 219, 175, 0.15)', paddingBottom: '10px', flexWrap: 'wrap', gap: '12px' }}>
           <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="text-[11px] font-mono font-bold bg-[#1B1F2C] text-[#FF352D] px-2 py-0.5 rounded border border-[#292F42]" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, backgroundColor: '#1B1F2C', color: '#FF352D', padding: '2px 8px', borderRadius: '4px', border: '1px solid #292F42' }}>
+            <span className="text-[11px] font-mono font-bold bg-[#181411] text-[#FF7A33] px-2 py-0.5 rounded border border-[#E07020]/35" style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, backgroundColor: '#181411', color: '#FF7A33', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(224, 112, 32, 0.35)' }}>
               BAGIAN D
             </span>
-            <h2 className="text-xs uppercase tracking-wider font-bold text-white font-mono m-0" style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, color: '#FFFFFF', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+            <h2 className="heading-font text-xs uppercase tracking-wider font-bold text-white m-0" style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
               Daftar Bukti Digital
             </h2>
-            <span className="ml-2 text-xs font-mono px-2 py-0.5 rounded-full bg-[#1B1F2C] text-slate-300 border border-[#292F42]" style={{ marginLeft: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#1B1F2C', color: '#CBD5E1', border: '1px solid #292F42' }}>
+            <span className="ml-2 text-xs font-mono px-2 py-0.5 rounded-full bg-[#181411] text-[#FBDBAF] border border-[#FBDBAF]/15" style={{ marginLeft: '8px', fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#181411', color: '#FBDBAF', border: '1px solid rgba(251, 219, 175, 0.16)' }}>
               {(perkara?.lampiran_barang_bukti || []).length} Bukti Terdaftar
             </span>
           </div>
@@ -1051,16 +1051,16 @@ export default function DumasDetailView({
                 alignItems: 'center',
                 gap: '6px',
                 padding: '6px 14px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(229, 46, 46, 0.15)',
-                border: '1px solid #E52E2E',
-                color: '#FF6B6B',
+                borderRadius: '9999px',
+                backgroundColor: 'rgba(224, 112, 32, 0.16)',
+                border: '1px solid #FF5A1F',
+                color: '#FF7A33',
                 fontSize: '11px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                boxShadow: '0 0 12px rgba(229, 46, 46, 0.25)'
+                boxShadow: '0 0 12px rgba(224, 112, 32, 0.28)'
               }}
             >
               <Plus size={13} />
@@ -1068,16 +1068,16 @@ export default function DumasDetailView({
             </button>
           ) : (
             <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-emerald-400 text-xs font-mono"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E07020]/15 border border-[#E07020]/40 text-[#FF7A33] text-xs font-mono"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
                 padding: '6px 14px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(6, 78, 59, 0.4)',
-                border: '1px solid rgba(6, 95, 70, 0.6)',
-                color: '#34D399',
+                backgroundColor: 'rgba(224, 112, 32, 0.15)',
+                border: '1px solid rgba(224, 112, 32, 0.4)',
+                color: '#FF7A33',
                 fontSize: '11px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 600
@@ -1107,10 +1107,10 @@ export default function DumasDetailView({
               return (
                 <div
                   key={bb?.id || idx}
-                  className="bg-[#1b2229] border border-white/[0.08] rounded-xl p-4 flex flex-col justify-between shadow-sm hover:border-white/[0.18] transition-all duration-150 dumas-evidence-card-box"
+                  className="bg-[#161310] border border-[#FBDBAF]/15 rounded-xl p-4 flex flex-col justify-between shadow-sm hover:border-[#E07020]/45 transition-all duration-150 dumas-evidence-card-box"
                   style={{
-                    backgroundColor: '#1b2229',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    backgroundColor: '#161310',
+                    border: '1px solid rgba(251, 219, 175, 0.16)',
                     borderRadius: '12px',
                     padding: '16px',
                     display: 'flex',
@@ -1125,17 +1125,17 @@ export default function DumasDetailView({
                       <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div
                           onClick={() => openEvidencePreview(bb)}
-                          className="w-10 h-10 rounded-lg bg-red-950/70 border border-red-800 flex items-center justify-center text-red-400 shrink-0 cursor-pointer"
+                          className="w-10 h-10 rounded-lg bg-[#E07020]/15 border border-[#E07020]/40 flex items-center justify-center text-[#FF7A33] shrink-0 cursor-pointer"
                           style={{
                             width: '40px',
                             height: '40px',
                             borderRadius: '8px',
-                            backgroundColor: isPdf ? 'rgba(56, 189, 248, 0.15)' : 'rgba(127, 29, 29, 0.7)',
-                            border: isPdf ? '1px solid #0284C7' : '1px solid #991B1B',
+                            backgroundColor: isPdf ? 'rgba(251, 219, 175, 0.12)' : 'rgba(224, 112, 32, 0.18)',
+                            border: isPdf ? '1px solid rgba(251, 219, 175, 0.35)' : '1px solid rgba(255, 90, 31, 0.45)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: isPdf ? '#38BDF8' : '#F87171',
+                            color: isPdf ? '#FBDBAF' : '#FF7A33',
                             flexShrink: 0,
                             cursor: 'pointer'
                           }}
@@ -1144,15 +1144,15 @@ export default function DumasDetailView({
                           {isPdf ? <FileText size={20} /> : <ImageIcon size={20} />}
                         </div>
                         <div>
-                          <span className="text-[10px] font-mono uppercase text-[#FF352D] font-bold block" style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', color: isPdf ? '#38BDF8' : '#FF352D', fontWeight: 700, display: 'block' }}>
+                          <span className="text-[10px] font-mono uppercase text-[#FF7A33] font-bold block" style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', color: isPdf ? '#FBDBAF' : '#FF7A33', fontWeight: 700, display: 'block' }}>
                             {bb?.kategori_bukti || (isPdf ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG')}
                           </span>
-                          <h3 className="text-xs font-bold text-slate-100 mt-0.5 truncate max-w-[170px]" style={{ fontSize: '12px', fontWeight: 700, color: '#F1F5F9', margin: '2px 0 0 0', maxWidth: '170px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={bb?.nama_file}>
+                          <h3 className="text-xs font-bold text-white mt-0.5 truncate max-w-[170px]" style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF', margin: '2px 0 0 0', maxWidth: '170px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={bb?.nama_file}>
                             {bb?.nama_file || 'Berkas_Bukti'}
                           </h3>
                         </div>
                       </div>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#0B0D13] text-slate-400 border border-[#292F42]" style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', backgroundColor: '#0B0D13', color: '#94A3B8', border: '1px solid #292F42' }}>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#0E0C0A] text-[#FBDBAF]/70 border border-[#FBDBAF]/15" style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', backgroundColor: '#0E0C0A', color: 'rgba(251, 219, 175, 0.7)', border: '1px solid rgba(251, 219, 175, 0.16)' }}>
                         {bb?.file_size_formatted || '150 KB'}
                       </span>
                     </div>
@@ -1161,18 +1161,18 @@ export default function DumasDetailView({
                     {!isPdf && (
                       <div
                         onClick={() => openEvidencePreview(bb)}
-                        className="mt-3 w-full h-24 rounded-lg bg-[#0B0D13] border border-[#292F42] flex items-center justify-center text-slate-500 text-xs font-mono overflow-hidden cursor-pointer hover:border-slate-500 transition-colors"
+                        className="mt-3 w-full h-24 rounded-lg bg-[#0E0C0A] border border-[#FBDBAF]/15 flex items-center justify-center text-[#FBDBAF]/50 text-xs font-mono overflow-hidden cursor-pointer hover:border-[#E07020]/50 transition-colors"
                         style={{
                           marginTop: '12px',
                           width: '100%',
                           height: '96px',
                           borderRadius: '8px',
-                          backgroundColor: '#0B0D13',
-                          border: '1px solid #292F42',
+                          backgroundColor: '#0E0C0A',
+                          border: '1px solid rgba(251, 219, 175, 0.16)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#64748B',
+                          color: 'rgba(251, 219, 175, 0.5)',
                           fontSize: '11px',
                           fontFamily: 'JetBrains Mono, monospace',
                           cursor: 'pointer',
@@ -1185,7 +1185,7 @@ export default function DumasDetailView({
                             src={previewSrc} 
                             alt={bb?.nama_file || 'Barang Bukti'} 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            className="w-full max-h-64 object-contain bg-zinc-950 rounded border border-zinc-800"
+                            className="w-full max-h-64 object-contain bg-[#0E0C0A] rounded border border-[#FBDBAF]/15"
                             onLoad={() => {
                               console.log("Rendering Bukti URL:", bb?.url || previewSrc);
                             }}
@@ -1199,8 +1199,8 @@ export default function DumasDetailView({
                           />
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px' }}>
-                            <ImageIcon size={20} color="#F87171" />
-                            <span style={{ fontSize: '10px', color: '#94A3B8', textAlign: 'center' }}>
+                            <ImageIcon size={20} color="#FF7A33" />
+                            <span style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.65)', textAlign: 'center' }}>
                               [ Pratinjau Foto: {bb?.nama_file || 'Foto'} ]
                             </span>
                           </div>
@@ -1210,34 +1210,34 @@ export default function DumasDetailView({
 
                     {/* Metadata Box */}
                     <div
-                      className="mt-3.5 p-2.5 rounded-lg bg-[#0B0D13] border border-[#292F42] flex flex-col gap-1.5 text-[11px] font-mono text-slate-400"
+                      className="mt-3.5 p-2.5 rounded-lg bg-[#0E0C0A] border border-[#FBDBAF]/12 flex flex-col gap-1.5 text-[11px] font-mono text-[#FBDBAF]/65"
                       style={{
                         marginTop: '14px',
                         padding: '10px 12px',
                         borderRadius: '8px',
-                        backgroundColor: '#0B0D13',
-                        border: '1px solid #292F42',
+                        backgroundColor: '#0E0C0A',
+                        border: '1px solid rgba(251, 219, 175, 0.14)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '6px',
                         fontSize: '11px',
                         fontFamily: 'JetBrains Mono, monospace',
-                        color: '#94A3B8'
+                        color: 'rgba(251, 219, 175, 0.65)'
                       }}
                     >
                       <div className="flex justify-between" style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Keterangan:</span>
-                        <span className="text-slate-300 truncate max-w-[140px]">{bb?.keterangan || 'Lampiran Bukti Resmi'}</span>
+                        <span className="text-[#FAF6F0] truncate max-w-[140px]">{bb?.keterangan || 'Lampiran Bukti Resmi'}</span>
                       </div>
                       <div className="flex justify-between" style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Diunggah:</span>
-                        <span className="text-slate-300">
+                        <span className="text-[#FAF6F0]">
                           {bb?.diunggah_pada ? new Date(bb.diunggah_pada).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '14 Sep 2026'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>Integritas:</span>
-                        <span className="text-emerald-400 flex items-center gap-1 text-[10px]" style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px' }}>
+                        <span className="text-[#FF7A33] flex items-center gap-1 text-[10px]" style={{ color: '#FF7A33', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px' }}>
                           <ShieldCheck size={12} />
                           {bb?.hash_sha256 ? `${bb.hash_sha256.substring(0, 10)}...` : 'SHA-256 Valid'}
                         </span>
@@ -1246,18 +1246,18 @@ export default function DumasDetailView({
                   </div>
 
                   {/* Tombol Aksi: Lihat/Perbesar, Unduh, & Hapus Bukti */}
-                  <div className="mt-3.5 pt-3 border-t border-[#292F42] flex items-center gap-2" style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #292F42', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="mt-3.5 pt-3 border-t border-[#FBDBAF]/12 flex items-center gap-2" style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(251, 219, 175, 0.12)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
                       onClick={() => openEvidencePreview(bb)}
-                      className="flex-1 py-2 px-3 rounded-lg bg-[#1B1F2C] hover:bg-[#252B3B] border border-[#292F42] text-slate-100 text-xs font-mono font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                      className="flex-1 py-2 px-3 rounded-lg bg-[#181411] hover:bg-[#221C17] border border-[#FBDBAF]/15 text-white text-xs font-mono font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                       style={{
                         flex: 1,
                         padding: '8px 10px',
                         borderRadius: '8px',
-                        backgroundColor: '#1B1F2C',
-                        border: '1px solid #292F42',
-                        color: '#F1F5F9',
+                        backgroundColor: '#181411',
+                        border: '1px solid rgba(251, 219, 175, 0.16)',
+                        color: '#FFFFFF',
                         fontSize: '11px',
                         fontFamily: 'JetBrains Mono, monospace',
                         fontWeight: 600,
@@ -1275,13 +1275,13 @@ export default function DumasDetailView({
                     <button
                       type="button"
                       onClick={() => handleDownloadEvidence(bb)}
-                      className="p-2 rounded-lg bg-[#121721] hover:bg-[#1B1F2C] border border-[#292F42] text-slate-300 hover:text-white cursor-pointer transition-colors"
+                      className="p-2 rounded-lg bg-[#161310] hover:bg-[#221C17] border border-[#FBDBAF]/15 text-[#FAF6F0] hover:text-white cursor-pointer transition-colors"
                       style={{
                         padding: '8px 10px',
                         borderRadius: '8px',
-                        backgroundColor: '#121721',
-                        border: '1px solid #292F42',
-                        color: '#CBD5E1',
+                        backgroundColor: '#161310',
+                        border: '1px solid rgba(251, 219, 175, 0.16)',
+                        color: '#FAF6F0',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1299,9 +1299,9 @@ export default function DumasDetailView({
                         style={{
                           padding: '8px 10px',
                           borderRadius: '8px',
-                          backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                          border: '1px solid rgba(239, 68, 68, 0.35)',
-                          color: '#F87171',
+                          backgroundColor: 'rgba(224, 112, 32, 0.14)',
+                          border: '1px solid rgba(255, 90, 31, 0.4)',
+                          color: '#FF7A33',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -1323,15 +1323,15 @@ export default function DumasDetailView({
             })
           ) : (
             <div
-              className="col-span-full py-8 text-center bg-[#121721] rounded-xl border border-[#292F42] text-slate-500 text-xs font-mono"
+              className="col-span-full py-8 text-center bg-[#161310] rounded-xl border border-[#FBDBAF]/15 text-[#FBDBAF]/55 text-xs font-mono"
               style={{
                 gridColumn: '1 / -1',
                 padding: '32px',
                 textAlign: 'center',
-                backgroundColor: '#121721',
+                backgroundColor: '#161310',
                 borderRadius: '12px',
-                border: '1px solid #292F42',
-                color: '#64748B',
+                border: '1px solid rgba(251, 219, 175, 0.16)',
+                color: 'rgba(251, 219, 175, 0.55)',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace'
               }}
@@ -1346,11 +1346,11 @@ export default function DumasDetailView({
       {/* 5. BAGIAN C: AKSI KEDINASAN (CETAK BERKAS) */}
       {/* ========================================================= */}
       <section
-        className="bg-[#121721] border border-[#292F42] border-l-4 border-l-[#E52E2E] rounded-xl p-5 flex flex-col gap-4 shadow-lg dumas-action-banner"
+        className="bg-[#161310] border border-[#FBDBAF]/15 border-l-4 border-l-[#FF5A1F] rounded-xl p-5 flex flex-col gap-4 shadow-lg dumas-action-banner"
         style={{
-          backgroundColor: '#121721',
-          border: '1px solid #292F42',
-          borderLeft: '4px solid #E52E2E',
+          backgroundColor: '#161310',
+          border: '1px solid rgba(251, 219, 175, 0.16)',
+          borderLeft: '4px solid #FF5A1F',
           borderRadius: '12px',
           padding: '20px',
           display: 'flex',
@@ -1358,52 +1358,52 @@ export default function DumasDetailView({
           gap: '16px'
         }}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#292F42] pb-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #292F42', paddingBottom: '12px' }}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#FBDBAF]/12 pb-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid rgba(251, 219, 175, 0.12)', paddingBottom: '12px' }}>
           <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
-              className="w-9 h-9 rounded-lg bg-red-950/60 border border-red-800 flex items-center justify-center text-red-400"
+              className="w-9 h-9 rounded-lg bg-[#E07020]/15 border border-[#E07020]/40 flex items-center justify-center text-[#FF7A33]"
               style={{
                 width: '38px',
                 height: '38px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(127, 29, 29, 0.6)',
-                border: '1px solid #991B1B',
+                backgroundColor: 'rgba(224, 112, 32, 0.18)',
+                border: '1px solid rgba(255, 90, 31, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#F87171'
+                color: '#FF7A33'
               }}
             >
               <Printer size={18} />
             </div>
             <div>
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="text-xs font-bold uppercase text-white font-mono" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#FFFFFF', fontFamily: 'JetBrains Mono, monospace' }}>
+                <span className="heading-font text-xs font-bold uppercase text-white" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#FFFFFF' }}>
                   AKSI KEDINASAN : CETAK BERKAS DUMAS RESMI
                 </span>
-                <span className="text-[10px] bg-emerald-950/70 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded font-bold font-mono" style={{ fontSize: '10px', backgroundColor: 'rgba(6, 78, 59, 0.7)', color: '#6EE7B7', border: '1px solid #059669', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>
+                <span className="text-[10px] bg-[#E07020]/15 text-[#FBDBAF] border border-[#E07020]/40 px-2 py-0.5 rounded font-bold font-mono" style={{ fontSize: '10px', backgroundColor: 'rgba(224, 112, 32, 0.16)', color: '#FBDBAF', border: '1px solid rgba(224, 112, 32, 0.4)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>
                   TEREGISTER RESMI
                 </span>
               </div>
-              <p className="text-slate-400 text-xs mt-0.5 font-sans m-0" style={{ color: '#94A3B8', fontSize: '12px', margin: '3px 0 0 0' }}>
+              <p className="text-[#FBDBAF]/65 text-xs mt-0.5 font-sans m-0" style={{ color: 'rgba(251, 219, 175, 0.65)', fontSize: '12px', margin: '3px 0 0 0' }}>
                 Dokumentasi Administrasi Penyelidikan &amp; Surat Tanda Penerimaan Laporan Pengaduan Masyarakat
               </p>
             </div>
           </div>
 
           <div className="text-right font-mono" style={{ textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
-            <span className="text-[10px] text-slate-500 block uppercase" style={{ fontSize: '10px', color: '#64748B', display: 'block', textTransform: 'uppercase' }}>Nomor Register Resmi</span>
-            <code className="text-xs text-[#FF352D] font-bold" style={{ fontSize: '12px', color: '#FF352D', fontWeight: 700 }}>{perkara?.nomor_lp}</code>
+            <span className="text-[10px] text-[#FBDBAF]/55 block uppercase" style={{ fontSize: '10px', color: 'rgba(251, 219, 175, 0.55)', display: 'block', textTransform: 'uppercase' }}>Nomor Register Resmi</span>
+            <code className="text-xs text-[#FF7A33] font-bold" style={{ fontSize: '12px', color: '#FF7A33', fontWeight: 700 }}>{perkara?.nomor_lp}</code>
           </div>
         </div>
 
         <div
-          className="bg-[#0B0D13] p-4 rounded-lg border border-[#292F42] flex flex-wrap items-center justify-between gap-3.5"
+          className="bg-[#0E0C0A] p-4 rounded-lg border border-[#FBDBAF]/12 flex flex-wrap items-center justify-between gap-3.5"
           style={{
-            backgroundColor: '#0B0D13',
+            backgroundColor: '#0E0C0A',
             padding: '16px 20px',
             borderRadius: '10px',
-            border: '1px solid #292F42',
+            border: '1px solid rgba(251, 219, 175, 0.14)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -1411,8 +1411,8 @@ export default function DumasDetailView({
             gap: '14px'
           }}
         >
-          <div className="flex items-center gap-2 text-xs text-slate-300 font-sans" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#CBD5E1' }}>
-            <span className="w-2 h-2 rounded-full bg-emerald-500" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
+          <div className="flex items-center gap-2 text-xs text-[#FAF6F0] font-sans" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#FAF6F0' }}>
+            <span className="w-2 h-2 rounded-full bg-[#FF5A1F]" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#FF5A1F' }}></span>
             <span>Siap dicetak standar dinas Satreskrim Presisi dilengkapi QR-Code Verifikasi &amp; SHA-256</span>
           </div>
 
@@ -1421,21 +1421,21 @@ export default function DumasDetailView({
             <button
               type="button"
               onClick={() => printSuratPengaduan(perkara || dumasItem)}
-              className="bg-[#E52E2E] hover:bg-[#C82323] text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors shadow-md dumas-btn-cetak-primary"
+              className="bg-[#E07020] hover:bg-[#FF5A1F] text-white text-xs font-bold px-4 py-2.5 rounded-full flex items-center gap-2 cursor-pointer transition-colors shadow-md dumas-btn-cetak-primary"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '10px 18px',
-                borderRadius: '8px',
-                backgroundColor: '#E52E2E',
+                borderRadius: '9999px',
+                backgroundColor: '#E07020',
                 color: '#FFFFFF',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 700,
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(229, 46, 46, 0.4)'
+                boxShadow: '0 4px 14px rgba(224, 112, 32, 0.4)'
               }}
             >
               <Printer size={15} />
@@ -1446,16 +1446,16 @@ export default function DumasDetailView({
             <button
               type="button"
               onClick={() => setIsPamaptaModalOpen(true)}
-              className="bg-[#121721] hover:bg-[#1B1F2C] border border-[#E52E2E]/60 text-red-400 hover:text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer transition-colors dumas-btn-cetak-secondary"
+              className="bg-[#181411] hover:bg-[#221C17] border border-[#E07020]/55 text-[#FF7A33] hover:text-white text-xs font-bold px-4 py-2.5 rounded-full flex items-center gap-2 cursor-pointer transition-colors dumas-btn-cetak-secondary"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '10px 18px',
-                borderRadius: '8px',
-                backgroundColor: '#121721',
-                border: '1px solid rgba(229, 46, 46, 0.6)',
-                color: '#F87171',
+                borderRadius: '9999px',
+                backgroundColor: '#181411',
+                border: '1px solid rgba(224, 112, 32, 0.55)',
+                color: '#FF7A33',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 700,
@@ -1470,16 +1470,16 @@ export default function DumasDetailView({
             <button
               type="button"
               onClick={() => onOpenGeneratorForDumas && onOpenGeneratorForDumas(perkara)}
-              className="bg-[#E52E2E]/20 hover:bg-[#E52E2E]/30 text-red-400 border border-red-800/80 px-4 py-2.5 rounded-lg text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-colors"
+              className="bg-[#E07020]/20 hover:bg-[#E07020]/30 text-[#FF7A33] border border-[#FF5A1F]/45 px-4 py-2.5 rounded-full text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-colors"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '10px 18px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(127, 29, 29, 0.7)',
-                border: '1px solid #991B1B',
-                color: '#FF352D',
+                borderRadius: '9999px',
+                backgroundColor: 'rgba(224, 112, 32, 0.18)',
+                border: '1px solid rgba(255, 90, 31, 0.45)',
+                color: '#FF7A33',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 700,
@@ -1533,13 +1533,13 @@ export default function DumasDetailView({
           }}
         >
           <div
-            className="relative w-full max-w-4xl bg-[#0E1118] border border-[#292F42] rounded-2xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden dumas-modal-container"
+            className="relative w-full max-w-4xl bg-[#161310] border border-[#FBDBAF]/15 rounded-2xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden dumas-modal-container"
             style={{
               position: 'relative',
               width: '100%',
               maxWidth: '880px',
-              backgroundColor: '#0E1118',
-              border: '1px solid #292F42',
+              backgroundColor: '#161310',
+              border: '1px solid rgba(251, 219, 175, 0.16)',
               borderRadius: '16px',
               boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95)',
               maxHeight: '85vh',
@@ -1549,48 +1549,48 @@ export default function DumasDetailView({
             }}
           >
             <div
-              className="p-3.5 px-5 bg-[#0B0D13] border-b border-[#292F42] flex items-center justify-between"
+              className="p-3.5 px-5 bg-[#0E0C0A] border-b border-[#FBDBAF]/15 flex items-center justify-between"
               style={{
                 padding: '14px 20px',
-                backgroundColor: '#0B0D13',
-                borderBottom: '1px solid #292F42',
+                backgroundColor: '#0E0C0A',
+                borderBottom: '1px solid rgba(251, 219, 175, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
               }}
             >
               <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Database size={16} color="#FF352D" />
-                <h3 className="text-xs font-mono font-bold text-white m-0" style={{ fontSize: '13px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                <Database size={16} color="#FF5A1F" />
+                <h3 className="heading-font text-xs font-bold text-white m-0" style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
                   SKEMA DATABASE SUPABASE (POSTGRESQL SCHEMA DUMAS)
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsSchemaModalOpen(false)}
-                className="text-slate-400 hover:text-white cursor-pointer bg-transparent border-0"
-                style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '14px', cursor: 'pointer' }}
+                className="text-[#FBDBAF]/65 hover:text-white cursor-pointer bg-transparent border-0"
+                style={{ background: 'none', border: 'none', color: 'rgba(251, 219, 175, 0.65)', fontSize: '14px', cursor: 'pointer' }}
               >
                 ✕
               </button>
             </div>
 
             <div
-              className="p-5 overflow-y-auto font-mono text-xs text-slate-300 flex flex-col gap-4"
-              style={{ padding: '20px', overflowY: 'auto', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '16px' }}
+              className="p-5 overflow-y-auto font-mono text-xs text-[#FAF6F0] flex flex-col gap-4"
+              style={{ padding: '20px', overflowY: 'auto', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color: '#FAF6F0', display: 'flex', flexDirection: 'column', gap: '16px' }}
             >
               <div>
-                <span className="text-amber-400 font-bold" style={{ color: '#F59E0B', fontWeight: 700 }}>-- 1. TABEL UTAMA: LAPORAN PENGADUAN (DUMAS)</span>
+                <span className="text-[#FF7A33] font-bold" style={{ color: '#FF7A33', fontWeight: 700 }}>-- 1. TABEL UTAMA: LAPORAN PENGADUAN (DUMAS)</span>
                 <pre
-                  className="mt-1.5 p-3.5 bg-[#121721] rounded-lg border border-[#292F42] overflow-x-auto text-slate-200 leading-relaxed"
+                  className="mt-1.5 p-3.5 bg-[#0E0C0A] rounded-lg border border-[#FBDBAF]/15 overflow-x-auto text-[#FAF6F0] leading-relaxed"
                   style={{
                     marginTop: '6px',
                     padding: '14px',
-                    backgroundColor: '#121721',
+                    backgroundColor: '#0E0C0A',
                     borderRadius: '8px',
-                    border: '1px solid #292F42',
+                    border: '1px solid rgba(251, 219, 175, 0.15)',
                     overflowX: 'auto',
-                    color: '#E2E8F0',
+                    color: '#FAF6F0',
                     lineHeight: 1.5
                   }}
                 >
@@ -1632,17 +1632,17 @@ export default function DumasDetailView({
               </div>
 
               <div>
-                <span className="text-amber-400 font-bold" style={{ color: '#F59E0B', fontWeight: 700 }}>-- 2. TABEL RELASI: LAMPIRAN BARANG BUKTI DIGITAL</span>
+                <span className="text-[#FF7A33] font-bold" style={{ color: '#FF7A33', fontWeight: 700 }}>-- 2. TABEL RELASI: LAMPIRAN BARANG BUKTI DIGITAL</span>
                 <pre
-                  className="mt-1.5 p-3.5 bg-[#121721] rounded-lg border border-[#292F42] overflow-x-auto text-slate-200 leading-relaxed"
+                  className="mt-1.5 p-3.5 bg-[#0E0C0A] rounded-lg border border-[#FBDBAF]/15 overflow-x-auto text-[#FAF6F0] leading-relaxed"
                   style={{
                     marginTop: '6px',
                     padding: '14px',
-                    backgroundColor: '#121721',
+                    backgroundColor: '#0E0C0A',
                     borderRadius: '8px',
-                    border: '1px solid #292F42',
+                    border: '1px solid rgba(251, 219, 175, 0.15)',
                     overflowX: 'auto',
-                    color: '#E2E8F0',
+                    color: '#FAF6F0',
                     lineHeight: 1.5
                   }}
                 >
@@ -1663,11 +1663,11 @@ export default function DumasDetailView({
             </div>
 
             <div
-              className="p-3.5 px-5 bg-[#0B0D13] border-t border-[#292F42] flex justify-end"
+              className="p-3.5 px-5 bg-[#0E0C0A] border-t border-[#FBDBAF]/15 flex justify-end"
               style={{
                 padding: '14px 20px',
-                backgroundColor: '#0B0D13',
-                borderTop: '1px solid #292F42',
+                backgroundColor: '#0E0C0A',
+                borderTop: '1px solid rgba(251, 219, 175, 0.15)',
                 display: 'flex',
                 justifyContent: 'flex-end'
               }}
@@ -1675,15 +1675,15 @@ export default function DumasDetailView({
               <button
                 type="button"
                 onClick={() => setIsSchemaModalOpen(false)}
-                className="px-4 py-1.5 rounded-md bg-[#1B1F2C] hover:bg-[#252B3B] text-slate-300 text-xs font-mono border border-[#292F42] cursor-pointer transition-colors"
+                className="px-4 py-1.5 rounded-full bg-[#181411] hover:bg-[#221C17] text-[#FAF6F0] text-xs font-mono border border-[#FBDBAF]/20 cursor-pointer transition-colors"
                 style={{
                   padding: '6px 16px',
-                  borderRadius: '6px',
-                  backgroundColor: '#1B1F2C',
-                  color: '#CBD5E1',
+                  borderRadius: '9999px',
+                  backgroundColor: '#181411',
+                  color: '#FAF6F0',
                   fontSize: '12px',
                   fontFamily: 'JetBrains Mono, monospace',
-                  border: '1px solid #292F42',
+                  border: '1px solid rgba(251, 219, 175, 0.2)',
                   cursor: 'pointer'
                 }}
               >

@@ -12,28 +12,28 @@ export default function TerlaporSection({
   onUpdateSaksi,
   onRemoveSaksi
 }) {
-  const inputClass = "w-full bg-black/40 backdrop-blur-sm border border-white/10 text-white placeholder-zinc-500 rounded-lg px-3 py-2 text-xs focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none transition-all";
-  const labelClass = "block text-[10px] font-mono font-semibold text-zinc-400 mb-1 uppercase tracking-wider";
+  const inputClass = "w-full bg-[#0E0C0A]/75 backdrop-blur-sm border border-[#FBDBAF]/15 text-white placeholder-[#FBDBAF]/40 rounded-lg px-3 py-2 text-xs focus:border-[#FF5A1F]/80 focus:ring-1 focus:ring-[#FF5A1F]/50 outline-none transition-all";
+  const labelClass = "block text-[10px] font-mono font-semibold text-[#FBDBAF]/70 mb-1 uppercase tracking-wider";
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 text-zinc-100">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 text-[#FAF6F0]">
       {/* ============================================================ */}
       {/* KOLOM 02: DATA SAKSI-SAKSI */}
       {/* ============================================================ */}
-      <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] flex flex-col gap-4">
+      <div className="relative group/card bg-[#161310]/85 backdrop-blur-xl border border-[#FBDBAF]/15 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] flex flex-col gap-4">
         <HudCorners size="md" />
 
         {/* Header Bagian Saksi */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="flex items-center justify-between border-b border-[#FBDBAF]/12 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-md bg-sky-950/40 border border-sky-500/30 text-sky-400 flex items-center justify-center font-mono font-bold text-xs">
+            <div className="w-6 h-6 rounded-md bg-[#E07020]/15 border border-[#E07020]/35 text-[#FF7A33] flex items-center justify-center font-mono font-bold text-xs">
               02
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider font-mono m-0">
+              <h3 className="heading-font text-xs sm:text-sm font-bold text-white uppercase tracking-wider m-0">
                 DATA SAKSI-SAKSI
               </h3>
-              <p className="text-[11px] text-zinc-400 mt-0.5 mb-0">
+              <p className="text-[11px] text-[#FBDBAF]/65 mt-0.5 mb-0">
                 Keterangan saksi fakta atau pendukung ({saksiList.length})
               </p>
             </div>
@@ -42,7 +42,7 @@ export default function TerlaporSection({
           <button
             type="button"
             onClick={onAddSaksi}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold text-sky-400 bg-sky-950/30 hover:bg-sky-900/50 border border-sky-500/30 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold text-[#FF7A33] bg-[#E07020]/15 hover:bg-[#E07020]/25 border border-[#E07020]/35 transition-all cursor-pointer"
           >
             <Plus size={12} />
             <span>Tambah Saksi</span>
@@ -54,18 +54,18 @@ export default function TerlaporSection({
           {saksiList.map((saksi, idx) => (
             <div
               key={saksi.id || idx}
-              className="relative group/card bg-black/40 backdrop-blur-sm border border-white/10 rounded-xl p-3.5 flex flex-col gap-3 transition-all hover:border-white/20"
+              className="relative group/card bg-[#0E0C0A]/65 backdrop-blur-sm border border-[#FBDBAF]/15 rounded-xl p-3.5 flex flex-col gap-3 transition-all hover:border-[#E07020]/40"
             >
               <HudCorners size="sm" />
 
               {/* Header Subcard Saksi */}
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <div className="flex items-center justify-between border-b border-[#FBDBAF]/10 pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
+                  <span className="w-2 h-2 rounded-full bg-[#FF7A33] inline-block" />
                   <span className="font-mono font-bold text-white text-[11px] uppercase">
                     SAKSI {idx + 1}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-sky-950/40 text-sky-300 border border-sky-500/30">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#E07020]/15 text-[#FBDBAF] border border-[#E07020]/35">
                     {saksi.role_label || 'Saksi Fakta'}
                   </span>
                 </div>
@@ -74,7 +74,7 @@ export default function TerlaporSection({
                   <button
                     type="button"
                     onClick={() => onRemoveSaksi(idx)}
-                    className="text-rose-400 hover:text-rose-300 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 text-[11px] font-mono px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer transition-all"
+                    className="text-[#FF7A33] hover:text-white bg-[#E07020]/15 hover:bg-[#E07020]/30 border border-[#E07020]/35 text-[11px] font-mono px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer transition-all"
                     title="Hapus Saksi"
                   >
                     <Trash2 size={11} /> Hapus
@@ -86,7 +86,7 @@ export default function TerlaporSection({
               <div className="flex flex-col gap-2.5">
                 <div>
                   <label htmlFor={`saksi_nama_${idx}`} className={labelClass}>
-                    NAMA LENGKAP <span className="text-red-500">*</span>
+                    NAMA LENGKAP <span className="text-[#FF5A1F]">*</span>
                   </label>
                   <input
                     id={`saksi_nama_${idx}`}
@@ -186,20 +186,20 @@ export default function TerlaporSection({
       {/* ============================================================ */}
       {/* KOLOM 03: PIHAK TERLAPOR */}
       {/* ============================================================ */}
-      <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] flex flex-col gap-4">
+      <div className="relative group/card bg-[#161310]/85 backdrop-blur-xl border border-[#FBDBAF]/15 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] flex flex-col gap-4">
         <HudCorners size="md" />
 
         {/* Header Bagian Terlapor */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="flex items-center justify-between border-b border-[#FBDBAF]/12 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-md bg-red-950/40 border border-red-500/30 text-red-400 flex items-center justify-center font-mono font-bold text-xs">
+            <div className="w-6 h-6 rounded-md bg-[#E07020]/15 border border-[#E07020]/35 text-[#FF7A33] flex items-center justify-center font-mono font-bold text-xs">
               03
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider font-mono m-0">
+              <h3 className="heading-font text-xs sm:text-sm font-bold text-white uppercase tracking-wider m-0">
                 PIHAK TERLAPOR
               </h3>
-              <p className="text-[11px] text-zinc-400 mt-0.5 mb-0">
+              <p className="text-[11px] text-[#FBDBAF]/65 mt-0.5 mb-0">
                 Pihak yang dilaporkan / terlapor ({terlaporList.length})
               </p>
             </div>
@@ -208,7 +208,7 @@ export default function TerlaporSection({
           <button
             type="button"
             onClick={onAddTerlapor}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold text-red-400 bg-red-950/30 hover:bg-red-900/50 border border-red-500/30 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold text-[#FF7A33] bg-[#E07020]/15 hover:bg-[#E07020]/25 border border-[#E07020]/35 transition-all cursor-pointer"
           >
             <Plus size={12} />
             <span>Tambah Terlapor</span>
@@ -220,18 +220,18 @@ export default function TerlaporSection({
           {terlaporList.map((terlapor, idx) => (
             <div
               key={terlapor.id || idx}
-              className="relative group/card bg-black/40 backdrop-blur-sm border border-red-500/30 rounded-xl p-3.5 flex flex-col gap-3 transition-all hover:border-red-500/50"
+              className="relative group/card bg-[#0E0C0A]/65 backdrop-blur-sm border border-[#E07020]/35 rounded-xl p-3.5 flex flex-col gap-3 transition-all hover:border-[#FF5A1F]/55"
             >
               <HudCorners size="sm" />
 
               {/* Header Subcard Terlapor */}
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <div className="flex items-center justify-between border-b border-[#FBDBAF]/10 pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+                  <span className="w-2 h-2 rounded-full bg-[#FF5A1F] inline-block" />
                   <span className="font-mono font-bold text-white text-[11px] uppercase">
                     TERLAPOR {idx + 1}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-red-950/40 text-red-400 border border-red-500/30">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#E07020]/15 text-[#FF7A33] border border-[#E07020]/35">
                     {terlapor.role_label || 'Terlapor Utama'}
                   </span>
                 </div>
@@ -240,7 +240,7 @@ export default function TerlaporSection({
                   <button
                     type="button"
                     onClick={() => onRemoveTerlapor(idx)}
-                    className="text-rose-400 hover:text-rose-300 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 text-[11px] font-mono px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer transition-all"
+                    className="text-[#FF7A33] hover:text-white bg-[#E07020]/15 hover:bg-[#E07020]/30 border border-[#E07020]/35 text-[11px] font-mono px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer transition-all"
                     title="Hapus Terlapor"
                   >
                     <Trash2 size={11} /> Hapus
@@ -252,7 +252,7 @@ export default function TerlaporSection({
               <div className="flex flex-col gap-2.5">
                 <div>
                   <label htmlFor={`terlapor_nama_${idx}`} className={labelClass}>
-                    NAMA LENGKAP <span className="text-red-500">*</span>
+                    NAMA LENGKAP <span className="text-[#FF5A1F]">*</span>
                   </label>
                   <input
                     id={`terlapor_nama_${idx}`}
@@ -260,7 +260,7 @@ export default function TerlaporSection({
                     value={terlapor.nama || ''}
                     onChange={(e) => onUpdateTerlapor(idx, 'nama', e.target.value)}
                     placeholder="Nama lengkap pihak terlapor"
-                    className={`${inputClass} border-red-500/30 focus:border-red-500`}
+                    className={`${inputClass} border-[#E07020]/35 focus:border-[#FF5A1F]`}
                   />
                 </div>
 

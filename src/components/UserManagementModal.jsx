@@ -345,18 +345,18 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               width: '40px',
               height: '40px',
               borderRadius: '10px',
-              background: '#222b34',
-              border: '1px solid rgba(255, 53, 45, 0.4)',
+              background: 'rgba(224, 112, 32, 0.14)',
+              border: '1px solid rgba(255, 90, 31, 0.45)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <ShieldAlert size={22} color="#ff352d" />
+              <ShieldAlert size={22} color="#FF5A1F" />
             </div>
             <div>
-              <h3 style={{ fontSize: '16px', margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 className="heading-font" style={{ fontSize: '15px', margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>Manajemen Personel & Verifikasi Kedinasan</span>
-                <span className="badge" style={{ background: 'linear-gradient(135deg, #b81d18, #ff352d)', color: '#ffffff', fontSize: '9px' }}>SUPER ADMIN</span>
+                <span className="badge" style={{ background: '#E07020', color: '#FFFFFF', fontSize: '9px', borderRadius: '9999px' }}>SUPER ADMIN</span>
               </h3>
               <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
                 Verifikasi pendaftar baru dan kelola hak akses peran RBAC Satreskrim
@@ -386,8 +386,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
         {/* Tab Switcher: Pending Approval vs RBAC Management */}
         <div style={{
           display: 'flex',
-          borderBottom: '1px solid var(--border-glass)',
-          background: '#1e262e',
+          borderBottom: '1px solid rgba(251, 219, 175, 0.12)',
+          background: '#161310',
           padding: '0 20px'
         }}>
           <button
@@ -397,8 +397,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               padding: '12px 18px',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'pending' ? '2px solid #F59E0B' : '2px solid transparent',
-              color: activeTab === 'pending' ? '#FCD34D' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'pending' ? '2px solid #FF5A1F' : '2px solid transparent',
+              color: activeTab === 'pending' ? '#FFFFFF' : 'var(--text-secondary)',
               fontWeight: activeTab === 'pending' ? 700 : 500,
               fontSize: '12.5px',
               cursor: 'pointer',
@@ -408,13 +408,13 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               transition: 'all 0.2s ease'
             }}
           >
-            <Clock size={15} color={activeTab === 'pending' ? '#F59E0B' : 'currentColor'} />
+            <Clock size={15} color={activeTab === 'pending' ? '#FF5A1F' : 'currentColor'} />
             <span>Verifikasi Pendaftar Baru</span>
             {pendingProfiles.length > 0 && (
               <span style={{
-                background: '#F59E0B',
-                color: '#000',
-                borderRadius: '12px',
+                background: '#FFFFFF',
+                color: '#0E0C0A',
+                borderRadius: '9999px',
                 padding: '2px 7px',
                 fontSize: '10px',
                 fontWeight: 800
@@ -431,8 +431,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               padding: '12px 18px',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 'rbac' ? '2px solid #ff352d' : '2px solid transparent',
-              color: activeTab === 'rbac' ? '#ff352d' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'rbac' ? '2px solid #FF5A1F' : '2px solid transparent',
+              color: activeTab === 'rbac' ? '#FF5A1F' : 'var(--text-secondary)',
               fontWeight: activeTab === 'rbac' ? 700 : 500,
               fontSize: '12.5px',
               cursor: 'pointer',
@@ -442,7 +442,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               transition: 'all 0.2s ease'
             }}
           >
-            <ShieldCheck size={15} color={activeTab === 'rbac' ? '#ff352d' : 'currentColor'} />
+            <ShieldCheck size={15} color={activeTab === 'rbac' ? '#FF5A1F' : 'currentColor'} />
             <span>Hak Akses Akun Aktif (RBAC)</span>
             <span style={{
               background: 'rgba(255, 255, 255, 0.1)',
@@ -641,9 +641,9 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
               {/* Role Explainer Card */}
               <div style={{
                 padding: '12px 14px',
-                background: '#222b34',
+                background: '#1E1915',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid #2d3748',
+                border: '1px solid rgba(251, 219, 175, 0.14)',
                 fontSize: '11px',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr',
@@ -688,7 +688,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                           padding: '14px',
                           borderRadius: 'var(--radius-lg)',
                           background: 'var(--bg-secondary)',
-                          border: isSelf ? '1px solid rgba(255, 53, 45, 0.5)' : '1px solid var(--border-glass)',
+                          border: isSelf ? '1px solid rgba(255, 90, 31, 0.55)' : '1px solid var(--border-glass)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -702,15 +702,16 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                               {p.full_name || p.nama || 'Personel Satreskrim'}
                             </span>
                             {isSelf && (
-                              <span className="badge" style={{ background: '#252f38', border: '1px solid rgba(255, 53, 45, 0.4)', color: '#ffffff', fontSize: '9px' }}>
+                              <span className="badge" style={{ background: 'rgba(224, 112, 32, 0.15)', border: '1px solid rgba(255, 90, 31, 0.45)', color: '#FF5A1F', fontSize: '9px' }}>
                                 AKUN ANDA
                               </span>
                             )}
                             <span className="badge" style={{
-                              background: isSuper ? 'linear-gradient(135deg, #b81d18, #ff352d)' : isAdmin ? '#2d3748' : '#252f38',
-                              border: isSuper ? '1px solid rgba(255, 53, 45, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
-                              color: '#ffffff',
-                              fontSize: '9.5px'
+                              background: isSuper ? '#E07020' : isAdmin ? '#FFFFFF' : '#1E1915',
+                              border: isSuper ? '1px solid #FF5A1F' : isAdmin ? '1px solid #FFFFFF' : '1px solid rgba(251, 219, 175, 0.2)',
+                              color: isAdmin ? '#0E0C0A' : '#FFFFFF',
+                              fontSize: '9.5px',
+                              borderRadius: '9999px'
                             }}>
                               {isSuper ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
                             </span>
@@ -768,7 +769,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                           </select>
 
                           {savingId === p.id && (
-                            <RefreshCw size={14} className="animate-spin" color="#ff352d" />
+                            <RefreshCw size={14} className="animate-spin" color="#FF5A1F" />
                           )}
                         </div>
                       </div>

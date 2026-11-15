@@ -58,27 +58,35 @@ export default function Navbar({
   const officerInitials = officerName ? officerName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'P';
 
   return (
-    <header className="sticky top-0 z-[90] h-14 w-full border-b border-white/10 bg-[#05070a]/90 backdrop-blur-md px-4 flex items-center justify-between gap-4 shrink-0 no-print">
+    <header
+      className="sticky top-0 z-[90] h-14 w-full px-4 flex items-center justify-between gap-4 shrink-0 no-print"
+      style={{
+        backgroundColor: 'rgba(14, 12, 10, 0.78)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
+      }}
+    >
       {/* Left (Search) */}
       <div className="relative w-72 md:w-80 flex items-center">
-        <Search size={15} className="absolute left-3 text-slate-500 pointer-events-none" />
+        <Search size={15} className="absolute left-3.5 text-[#FBDBAF]/60 pointer-events-none" />
         <input
           type="text"
           value={searchQuery || ''}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Cari No. LP, Tersangka, Pasal, Saksi..."
-          className="h-9 w-full bg-black/40 border border-white/10 rounded px-3 pl-9 text-xs text-white placeholder-zinc-500 font-mono outline-none focus:border-red-500/50"
+          className="h-9 w-full bg-[#181411] border border-[#FBDBAF]/20 rounded-full px-4 pl-9 text-xs text-white placeholder-[#FBDBAF]/45 font-mono outline-none focus:border-[#FF5A1F] transition-colors"
         />
-        <span className="absolute right-2 rounded-sm border border-white/10 bg-zinc-950 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500 pointer-events-none">
+        <span className="absolute right-2.5 rounded-full border border-[#FBDBAF]/20 bg-[#0E0C0A] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#FBDBAF]/70 pointer-events-none">
           Ctrl + K
         </span>
       </div>
 
       {/* Tengah (Widget Waktu Taktis) */}
-      <div className="flex items-center gap-2.5 px-3 py-1.5 bg-black/40 border border-white/10 rounded font-mono text-xs text-zinc-300">
+      <div className="flex items-center gap-2.5 px-3.5 py-1.5 bg-[#181411] border border-[#FBDBAF]/20 rounded-full font-mono text-xs text-[#FBDBAF]">
         <PulseDot />
         <div className="flex items-center gap-2">
-          <span className="uppercase tracking-widest text-zinc-400">{timeStr.date || 'Memuat...'}</span>
+          <span className="uppercase tracking-widest text-[#FBDBAF]/65">{timeStr.date || 'Memuat...'}</span>
           <span className="font-bold text-white">{timeStr.time || '--:--:-- WITA'}</span>
         </div>
       </div>
@@ -90,20 +98,20 @@ export default function Navbar({
           label="Buat Mindik"
           icon={FileText}
           variant="crimson-glow"
-          className="h-9 px-3.5 font-mono text-xs rounded"
+          className="h-9 px-4 font-mono text-xs rounded-full bg-[#E07020] text-white border-[#FF5A1F] hover:!bg-white hover:!text-[#0E0C0A] hover:!border-white shadow-[0_0_20px_rgba(224,112,32,0.35)]"
           onClick={onNewDoc}
         />
 
         {/* Kartu Profil */}
-        <div className="flex items-center gap-2.5 px-2.5 py-1 bg-black/40 border border-white/10 rounded text-left">
-          <div className="w-7 h-7 flex items-center justify-center bg-zinc-900 border border-white/20 text-white font-mono text-[11px] rounded shrink-0">
+        <div className="flex items-center gap-2.5 px-3 py-1 bg-[#181411] border border-[#FBDBAF]/20 rounded-full text-left">
+          <div className="w-7 h-7 flex items-center justify-center bg-[#0E0C0A] border border-[#E07020]/50 text-[#FF5A1F] font-mono text-[11px] font-bold rounded-full shrink-0">
             {officerInitials || 'P'}
           </div>
-          <div className="flex flex-col justify-center leading-tight">
+          <div className="flex flex-col justify-center leading-tight pr-1">
             <span className="text-xs font-medium text-white line-clamp-1">
               {officerName}
             </span>
-            <span className="text-[10px] font-mono text-zinc-400">
+            <span className="text-[10px] font-mono text-[#FBDBAF]/65">
               {officerJabatan}
             </span>
           </div>
@@ -114,7 +122,7 @@ export default function Navbar({
           <button
             type="button"
             onClick={() => setIsLogoutModalOpen(true)}
-            className="h-9 px-3 flex items-center gap-1.5 border border-white/10 bg-black/40 hover:bg-white/5 rounded text-xs font-mono text-zinc-300 transition-colors"
+            className="h-9 px-3.5 flex items-center gap-1.5 border border-[#FBDBAF]/25 bg-transparent hover:bg-[#FFFFFF] hover:text-[#0E0C0A] hover:border-white rounded-full text-xs font-mono text-[#FBDBAF] transition-colors"
             title="Keluar dari Sesi E-Mindik"
           >
             [<LogOut size={13} className="ml-0.5" />
@@ -125,25 +133,25 @@ export default function Navbar({
 
       {/* Logout Confirmation Modal */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setIsLogoutModalOpen(false)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm" onClick={() => setIsLogoutModalOpen(false)}>
           <div 
-            className="w-full max-w-md rounded-md border border-white/10 bg-zinc-950 p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-[#FBDBAF]/20 bg-[#161310] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-              <LogOut size={20} className="text-red-500" />
-              <h3 className="text-lg font-semibold text-white m-0">Konfirmasi Keluar Sesi</h3>
+            <div className="flex items-center gap-3 border-b border-[#FBDBAF]/15 pb-4">
+              <LogOut size={20} className="text-[#FF5A1F]" />
+              <h3 className="heading-font text-lg font-semibold text-white m-0">Konfirmasi Keluar Sesi</h3>
             </div>
 
-            <div className="py-6 text-sm text-slate-400">
+            <div className="py-6 text-sm text-[#FBDBAF]/80">
               Apakah Anda ingin mengakhiri sesi dinas aktif di sistem E-Mindik Satreskrim?
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#FBDBAF]/15">
               <button 
                 type="button" 
                 onClick={() => setIsLogoutModalOpen(false)} 
-                className="rounded-md border border-white/20 bg-transparent px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                className="rounded-full border border-[#FBDBAF]/25 bg-transparent px-4 py-2 text-sm font-medium text-[#FBDBAF] hover:bg-white/5 hover:text-white transition-colors"
               >
                 Batal
               </button>
@@ -153,7 +161,7 @@ export default function Navbar({
                   setIsLogoutModalOpen(false);
                   onLogout();
                 }} 
-                className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+                className="flex items-center gap-2 rounded-full bg-[#E07020] px-4 py-2 text-sm font-semibold text-white hover:bg-white hover:text-[#0E0C0A] transition-colors"
               >
                 <LogOut size={16} />
                 <span>Ya, Keluar Sesi</span>

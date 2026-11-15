@@ -8,17 +8,17 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
     }
   };
 
-  const inputClass = "w-full bg-black/40 backdrop-blur-sm border border-white/10 text-white placeholder-zinc-500 rounded-lg px-3.5 py-2.5 text-xs focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none transition-all";
-  const labelClass = "block text-[11px] font-mono font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider";
+  const inputClass = "w-full bg-[#0E0C0A]/75 backdrop-blur-sm border border-[#FBDBAF]/15 text-white placeholder-[#FBDBAF]/40 rounded-lg px-3.5 py-2.5 text-xs focus:border-[#FF5A1F]/80 focus:ring-1 focus:ring-[#FF5A1F]/50 outline-none transition-all";
+  const labelClass = "block text-[11px] font-mono font-semibold text-[#FBDBAF]/70 mb-1.5 uppercase tracking-wider";
 
   return (
-    <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] text-zinc-100">
+    <div className="relative group/card bg-[#161310]/85 backdrop-blur-xl border border-[#FBDBAF]/15 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] text-[#FAF6F0]">
       <HudCorners size="md" />
 
       {/* Header Bagian 04 */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-3.5 mb-4">
+      <div className="flex items-center justify-between border-b border-[#FBDBAF]/12 pb-3.5 mb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded-md bg-red-950/40 border border-red-500/30 text-red-400 flex items-center justify-center font-mono font-bold text-xs">
+          <div className="w-6 h-6 rounded-md bg-[#E07020]/15 border border-[#E07020]/35 text-[#FF7A33] flex items-center justify-center font-mono font-bold text-xs">
             04
           </div>
           <div>
@@ -41,7 +41,7 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="dumas_tindak_pidana" className={labelClass}>
-              DUGAAN TINDAK PIDANA <span className="text-red-500">*</span>
+              DUGAAN TINDAK PIDANA <span className="text-[#FF5A1F]">*</span>
             </label>
             <input
               id="dumas_tindak_pidana"
@@ -106,7 +106,7 @@ export default function UraianPerkaraSection({ caseInfo = {}, onChange }) {
         {/* Baris 3: Narasi Kronologi Kejadian Lengkap */}
         <div>
           <label htmlFor="dumas_uraian" className={labelClass}>
-            RINGKASAN POSISI KASUS / URAIAN KRONOLOGIS KEJADIAN LENGKAP <span className="text-red-500">*</span>
+            RINGKASAN POSISI KASUS / URAIAN KRONOLOGIS KEJADIAN LENGKAP <span className="text-[#FF5A1F]">*</span>
           </label>
           <textarea
             id="dumas_uraian"

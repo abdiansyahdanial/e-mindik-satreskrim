@@ -8,21 +8,21 @@ export default function PelaporSection({ data = {}, onChange }) {
     }
   };
 
-  const inputClass = "w-full bg-black/40 backdrop-blur-sm border border-white/10 text-white placeholder-zinc-500 rounded-lg px-3.5 py-2.5 text-xs focus:border-red-500/80 focus:ring-1 focus:ring-red-500/50 outline-none transition-all";
-  const labelClass = "block text-[11px] font-mono font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider";
+  const inputClass = "w-full bg-[#0E0C0A]/75 backdrop-blur-sm border border-[#FBDBAF]/15 text-white placeholder-[#FBDBAF]/40 rounded-lg px-3.5 py-2.5 text-xs focus:border-[#FF5A1F]/80 focus:ring-1 focus:ring-[#FF5A1F]/50 outline-none transition-all";
+  const labelClass = "block text-[11px] font-mono font-semibold text-[#FBDBAF]/70 mb-1.5 uppercase tracking-wider";
 
   return (
-    <div className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] text-zinc-100">
+    <div className="relative group/card bg-[#161310]/85 backdrop-blur-xl border border-[#FBDBAF]/15 rounded-xl p-4 sm:p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] text-[#FAF6F0]">
       <HudCorners size="md" />
 
       {/* Header Bagian 01 */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-3.5 mb-4">
+      <div className="flex items-center justify-between border-b border-[#FBDBAF]/12 pb-3.5 mb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded-md bg-red-950/40 border border-red-500/30 text-red-400 flex items-center justify-center font-mono font-bold text-xs">
+          <div className="w-6 h-6 rounded-md bg-[#E07020]/15 border border-[#E07020]/35 text-[#FF7A33] flex items-center justify-center font-mono font-bold text-xs">
             01
           </div>
           <div>
-            <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider font-mono m-0">
+            <h3 className="heading-font text-xs sm:text-sm font-bold text-white uppercase tracking-wider m-0">
               IDENTITAS PELAPOR / KORBAN
             </h3>
             <p className="text-[11px] text-zinc-400 mt-0.5 mb-0">
@@ -41,7 +41,7 @@ export default function PelaporSection({ data = {}, onChange }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="pelapor_nik" className={labelClass}>
-              NIK (NOMOR INDUK KEPENDUDUKAN) <span className="text-red-500">*</span>
+              NIK (NOMOR INDUK KEPENDUDUKAN) <span className="text-[#FF5A1F]">*</span>
             </label>
             <input
               id="pelapor_nik"
@@ -57,7 +57,7 @@ export default function PelaporSection({ data = {}, onChange }) {
 
           <div>
             <label htmlFor="pelapor_nama" className={labelClass}>
-              NAMA LENGKAP <span className="text-red-500">*</span>
+              NAMA LENGKAP <span className="text-[#FF5A1F]">*</span>
             </label>
             <input
               id="pelapor_nama"
@@ -164,7 +164,7 @@ export default function PelaporSection({ data = {}, onChange }) {
 
           <div>
             <label htmlFor="pelapor_telepon" className={labelClass}>
-              NO. TELEPON / WHATSAPP <span className="text-red-500">*</span>
+              NO. TELEPON / WHATSAPP <span className="text-[#FF5A1F]">*</span>
             </label>
             <input
               id="pelapor_telepon"

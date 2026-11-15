@@ -269,9 +269,9 @@ export default function DumasModeSelectModal({
               gap: '8px',
               padding: '4px 14px',
               borderRadius: '9999px',
-              backgroundColor: 'rgba(229, 46, 46, 0.15)',
-              border: '1px solid rgba(229, 46, 46, 0.4)',
-              color: '#FF352D',
+              backgroundColor: 'rgba(224, 112, 32, 0.16)',
+              border: '1px solid rgba(255, 90, 31, 0.45)',
+              color: '#FF5A1F',
               fontSize: '11px',
               fontFamily: 'JetBrains Mono, monospace',
               fontWeight: 700,
@@ -288,14 +288,14 @@ export default function DumasModeSelectModal({
                 position: 'absolute',
                 inset: 0,
                 borderRadius: '50%',
-                border: '2px dashed rgba(229, 46, 46, 0.4)',
+                border: '2px dashed rgba(255, 90, 31, 0.45)',
                 animation: 'hudSpin 8s linear infinite'
               }}></div>
               <div style={{
                 position: 'absolute',
                 inset: '10px',
                 borderRadius: '50%',
-                border: '2px solid rgba(229, 46, 46, 0.7)',
+                border: '2px solid rgba(224, 112, 32, 0.75)',
                 animation: 'hudSpin 3s linear infinite reverse'
               }}></div>
               <div style={{
@@ -304,19 +304,18 @@ export default function DumasModeSelectModal({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#FF352D'
+                color: '#FF5A1F'
               }}>
                 <ScanLine size={36} className="hud-radar-pulse" />
               </div>
             </div>
 
             {/* Main HUD Status */}
-            <h3 style={{
+            <h3 className="heading-font" style={{
               fontSize: '18px',
               fontWeight: 800,
               color: '#FFFFFF',
-              fontFamily: 'JetBrains Mono, monospace',
-              letterSpacing: '-0.01em',
+              letterSpacing: '0.04em',
               margin: '0 0 8px 0',
               textTransform: 'uppercase'
             }}>
@@ -325,7 +324,7 @@ export default function DumasModeSelectModal({
 
             {/* Sub-step indicator */}
             <p style={{
-              color: '#F87171',
+              color: '#FF7A33',
               fontSize: '13px',
               fontFamily: 'JetBrains Mono, monospace',
               margin: '0 0 20px 0',
@@ -347,9 +346,9 @@ export default function DumasModeSelectModal({
             }}>
               {selectedFiles.map((f, i) => (
                 <span key={f.id} style={{
-                  backgroundColor: '#151822',
-                  border: '1px solid #292F42',
-                  color: '#CBD5E1',
+                  backgroundColor: '#1E1915',
+                  border: '1px solid rgba(251, 219, 175, 0.16)',
+                  color: '#FBDBAF',
                   fontSize: '10px',
                   fontFamily: 'JetBrains Mono, monospace',
                   padding: '2px 8px',
@@ -364,10 +363,10 @@ export default function DumasModeSelectModal({
             <div style={{
               width: '100%',
               height: '6px',
-              backgroundColor: '#151822',
+              backgroundColor: '#1E1915',
               borderRadius: '9999px',
               overflow: 'hidden',
-              border: '1px solid #292F42',
+              border: '1px solid rgba(251, 219, 175, 0.2)',
               position: 'relative'
             }}>
               <div style={{
@@ -376,9 +375,9 @@ export default function DumasModeSelectModal({
                 bottom: 0,
                 left: 0,
                 width: '70%',
-                background: 'linear-gradient(90deg, #E52E2E 0%, #FF352D 50%, #FFFFFF 100%)',
+                background: 'linear-gradient(90deg, #E07020 0%, #FF5A1F 50%, #FFFFFF 100%)',
                 borderRadius: '9999px',
-                boxShadow: '0 0 12px #FF352D',
+                boxShadow: '0 0 12px #FF5A1F',
                 animation: 'hudPulse 1.5s ease-in-out infinite'
               }}></div>
             </div>
@@ -388,7 +387,7 @@ export default function DumasModeSelectModal({
               justifyContent: 'space-between',
               marginTop: '10px',
               fontSize: '10px',
-              color: '#64748B',
+              color: 'rgba(251, 219, 175, 0.55)',
               fontFamily: 'JetBrains Mono, monospace'
             }}>
               <span>MULTIMODAL PARALLEL INLINE DATA</span>
@@ -400,14 +399,14 @@ export default function DumasModeSelectModal({
 
       {/* MODAL CONTAINER UTAMA */}
       <div 
-        className="dumas-modal-container relative group/card bg-[#05070a]/90 backdrop-blur-2xl border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.5)] rounded-xl w-full max-w-[920px] max-h-[90vh] overflow-y-auto"
+        className="dumas-modal-container relative group/card bg-[#161310]/95 backdrop-blur-2xl border border-[#FBDBAF]/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.55)] rounded-xl w-full max-w-[920px] max-h-[90vh] overflow-y-auto"
         style={{
           animation: 'dumasFadeIn 0.2s ease-out',
         }}
       >
         <HudCorners size="lg" />
         {/* Top Header Decorator Bar */}
-        <div style={{ height: '4px', width: '100%', background: 'linear-gradient(90deg, #E52E2E 0%, #FF352D 50%, #C82323 100%)' }}></div>
+        <div style={{ height: '4px', width: '100%', background: 'linear-gradient(90deg, #E07020 0%, #FF5A1F 50%, #C45A18 100%)' }}></div>
 
         {/* Modal Close Button */}
         {onClose && (
@@ -420,9 +419,9 @@ export default function DumasModeSelectModal({
               right: '16px',
               padding: '6px',
               borderRadius: '8px',
-              color: '#94A3B8',
-              backgroundColor: '#151822',
-              border: '1px solid #292F42',
+              color: '#FBDBAF',
+              backgroundColor: '#1E1915',
+              border: '1px solid rgba(251, 219, 175, 0.2)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -445,16 +444,16 @@ export default function DumasModeSelectModal({
               gap: '8px',
               padding: '4px 12px',
               borderRadius: '9999px',
-              backgroundColor: 'rgba(229, 46, 46, 0.1)',
-              border: '1px solid rgba(229, 46, 46, 0.3)',
-              color: '#FF352D',
+              backgroundColor: 'rgba(224, 112, 32, 0.14)',
+              border: '1px solid rgba(255, 90, 31, 0.35)',
+              color: '#FF7A33',
               fontSize: '11px',
               fontFamily: 'JetBrains Mono, monospace',
               fontWeight: 600,
               letterSpacing: '0.08em',
               marginBottom: '12px'
             }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#FF352D' }}></span>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#FF5A1F' }}></span>
               STANDAR ADMINISTRASI PENYIDIKAN PRESISI
             </div>
             <h2 style={{
@@ -468,7 +467,7 @@ export default function DumasModeSelectModal({
             }}>
               REGISTRASI LAPORAN BARU
             </h2>
-            <p style={{ color: '#94A3B8', fontSize: '13px', marginTop: '8px', maxWidth: '640px', marginLeft: 'auto', marginRight: 'auto', fontFamily: 'Inter, sans-serif' }}>
+            <p style={{ color: 'rgba(251, 219, 175, 0.72)', fontSize: '13px', marginTop: '8px', maxWidth: '640px', marginLeft: 'auto', marginRight: 'auto', fontFamily: 'Inter, sans-serif' }}>
               Pilih metode input administrasi sesuai ketersediaan berkas perkara. Dukungan Smart Scan Multi-Halaman memungkinkan pemindaian lembar formulir pengaduan berseri secara terpadu.
             </p>
           </div>
@@ -477,31 +476,31 @@ export default function DumasModeSelectModal({
           {ocrError && (
             <div style={{
               marginBottom: '20px',
-              backgroundColor: ocrError.isRateLimit ? 'rgba(245, 158, 11, 0.12)' : 'rgba(239, 68, 68, 0.1)',
-              border: ocrError.isRateLimit ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(239, 68, 68, 0.4)',
+              backgroundColor: ocrError.isRateLimit ? 'rgba(224, 112, 32, 0.14)' : 'rgba(255, 90, 31, 0.12)',
+              border: ocrError.isRateLimit ? '1px solid rgba(255, 90, 31, 0.5)' : '1px solid rgba(255, 90, 31, 0.45)',
               borderRadius: '12px',
               padding: '16px 20px',
               display: 'flex',
               alignItems: 'flex-start',
               gap: '14px',
-              boxShadow: ocrError.isRateLimit ? '0 0 20px rgba(245, 158, 11, 0.15)' : 'none'
+              boxShadow: ocrError.isRateLimit ? '0 0 20px rgba(224, 112, 32, 0.18)' : 'none'
             }}>
               {ocrError.isRateLimit ? (
-                <Clock size={22} color="#F59E0B" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <Clock size={22} color="#FF7A33" style={{ flexShrink: 0, marginTop: '2px' }} />
               ) : (
-                <AlertTriangle size={20} color="#EF4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <AlertTriangle size={20} color="#FF5A1F" style={{ flexShrink: 0, marginTop: '2px' }} />
               )}
               <div style={{ flex: 1 }}>
                 <h4 style={{
                   margin: '0 0 6px 0',
                   fontSize: '13px',
                   fontWeight: 700,
-                  color: ocrError.isRateLimit ? '#FBBF24' : '#F87171',
+                  color: ocrError.isRateLimit ? '#FBDBAF' : '#FF7A33',
                   fontFamily: 'JetBrains Mono, monospace'
                 }}>
                   {ocrError.isRateLimit ? 'BATAS KUOTA AI TERCAPAI (RATE LIMIT 429)' : 'PEMINDAIAN DOKUMEN BELUM BERHASIL'}
                 </h4>
-                <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#E2E8F0', lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}>
+                <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#FAF6F0', lineHeight: 1.6, fontFamily: 'Inter, sans-serif' }}>
                   {typeof ocrError === 'string' ? ocrError : ocrError.message}
                 </p>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -514,9 +513,9 @@ export default function DumasModeSelectModal({
                           if (onSelectMode) onSelectMode('manual');
                         }}
                         style={{
-                          background: 'linear-gradient(90deg, #F59E0B 0%, #D97706 100%)',
+                          background: 'linear-gradient(90deg, #E07020 0%, #FF5A1F 100%)',
                           border: 'none',
-                          color: '#000000',
+                          color: '#FFFFFF',
                           borderRadius: '6px',
                           padding: '6px 14px',
                           fontSize: '11px',
@@ -526,7 +525,7 @@ export default function DumasModeSelectModal({
                           display: 'flex',
                           alignItems: 'center',
                           gap: '6px',
-                          boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)'
+                          boxShadow: '0 0 12px rgba(224, 112, 32, 0.45)'
                         }}
                       >
                         <span>Lanjutkan Input Manual</span>
@@ -537,9 +536,9 @@ export default function DumasModeSelectModal({
                         disabled={retryCountdown > 0}
                         onClick={handleExecuteScan}
                         style={{
-                          background: retryCountdown > 0 ? 'rgba(255, 255, 255, 0.05)' : 'rgba(245, 158, 11, 0.2)',
-                          border: retryCountdown > 0 ? '1px solid #475569' : '1px solid #F59E0B',
-                          color: retryCountdown > 0 ? '#94A3B8' : '#FBBF24',
+                          background: retryCountdown > 0 ? 'rgba(255, 255, 255, 0.05)' : 'rgba(224, 112, 32, 0.2)',
+                          border: retryCountdown > 0 ? '1px solid rgba(251, 219, 175, 0.25)' : '1px solid #FF5A1F',
+                          color: retryCountdown > 0 ? 'rgba(251, 219, 175, 0.5)' : '#FBDBAF',
                           borderRadius: '6px',
                           padding: '6px 14px',
                           fontSize: '11px',
@@ -563,9 +562,9 @@ export default function DumasModeSelectModal({
                         type="button"
                         onClick={triggerFileInput}
                         style={{
-                          background: 'rgba(229, 46, 46, 0.2)',
-                          border: '1px solid #E52E2E',
-                          color: '#FF6B6B',
+                          background: 'rgba(224, 112, 32, 0.2)',
+                          border: '1px solid #FF5A1F',
+                          color: '#FF7A33',
                           borderRadius: '6px',
                           padding: '5px 12px',
                           fontSize: '11px',
@@ -622,16 +621,16 @@ export default function DumasModeSelectModal({
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
-              className={`relative group/card bg-[#05070a]/70 backdrop-blur-xl border ${
-                dragActive ? 'border-red-500 bg-red-950/20' : 'border-red-500/30 hover:border-red-500/60'
-              } shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] rounded-xl p-6 flex flex-col justify-between transition-all duration-300`}
+              className={`relative group/card bg-[#161310]/85 backdrop-blur-xl border ${
+                dragActive ? 'border-[#FF5A1F] bg-[#E07020]/15' : 'border-[#E07020]/40 hover:border-[#FF5A1F]/70'
+              } shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] rounded-xl p-6 flex flex-col justify-between transition-all duration-300`}
             >
               <HudCorners size="md" />
 
               {/* Category Badge */}
               <div style={{ position: 'absolute', top: '-14px', left: '20px', zIndex: 10 }}>
                 <span style={{
-                  background: 'linear-gradient(90deg, #E52E2E 0%, #B81D18 100%)',
+                  background: 'linear-gradient(90deg, #E07020 0%, #FF5A1F 100%)',
                   color: '#FFFFFF',
                   fontFamily: 'JetBrains Mono, monospace',
                   fontSize: '10px',
@@ -640,7 +639,7 @@ export default function DumasModeSelectModal({
                   fontWeight: 800,
                   padding: '3px 10px',
                   borderRadius: '9999px',
-                  boxShadow: '0 0 10px rgba(229, 46, 46, 0.5)',
+                  boxShadow: '0 0 12px rgba(224, 112, 32, 0.5)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
@@ -657,12 +656,12 @@ export default function DumasModeSelectModal({
                     width: '52px',
                     height: '52px',
                     borderRadius: '12px',
-                    backgroundColor: 'rgba(127, 29, 29, 0.4)',
-                    border: '1px solid rgba(229, 46, 46, 0.5)',
+                    backgroundColor: 'rgba(224, 112, 32, 0.16)',
+                    border: '1px solid rgba(255, 90, 31, 0.45)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#FF352D'
+                    color: '#FF5A1F'
                   }}>
                     <ScanLine size={26} />
                   </div>
@@ -670,11 +669,11 @@ export default function DumasModeSelectModal({
                     fontFamily: 'JetBrains Mono, monospace',
                     fontSize: '11px',
                     fontWeight: 700,
-                    color: '#F87171',
-                    backgroundColor: 'rgba(127, 29, 29, 0.5)',
+                    color: '#FF7A33',
+                    backgroundColor: 'rgba(224, 112, 32, 0.16)',
                     padding: '3px 8px',
                     borderRadius: '6px',
-                    border: '1px solid rgba(153, 27, 27, 0.6)',
+                    border: '1px solid rgba(224, 112, 32, 0.4)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px'
@@ -685,10 +684,10 @@ export default function DumasModeSelectModal({
                 </div>
 
                 {/* Title & Description */}
-                <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', fontFamily: 'JetBrains Mono, monospace', margin: '0 0 8px 0' }}>
+                <h3 className="heading-font" style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 8px 0' }}>
                   OPSI A: PINDAI BERKAS FISIK (MULTI-PAGE)
                 </h3>
-                <p style={{ color: '#CBD5E1', fontSize: '12px', lineHeight: 1.5, margin: 0, fontFamily: 'Inter, sans-serif' }}>
+                <p style={{ color: 'rgba(251, 219, 175, 0.78)', fontSize: '12px', lineHeight: 1.5, margin: 0, fontFamily: 'Inter, sans-serif' }}>
                   Unggah atau seret satu atau beberapa lembar berkas pengaduan (Halaman 1, Halaman 2, dst). AI akan mengekstrak otomatis Pelapor, Saksi (klausul &amp; kronologis), Terlapor, dan Pasal.
                 </p>
 
@@ -698,22 +697,22 @@ export default function DumasModeSelectModal({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '6px',
-                  backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                  backgroundColor: 'rgba(14, 12, 10, 0.65)',
                   backdropFilter: 'blur(8px)',
                   padding: '10px 12px',
                   borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                  border: '1px solid rgba(251, 219, 175, 0.14)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#CBD5E1', fontFamily: 'JetBrains Mono, monospace' }}>
-                    <CheckCircle2 size={13} color="#FF352D" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#FAF6F0', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <CheckCircle2 size={13} color="#FF5A1F" />
                     <span>Dukungan multi-lembar sekaligus (multi-page)</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#CBD5E1', fontFamily: 'JetBrains Mono, monospace' }}>
-                    <CheckCircle2 size={13} color="#FF352D" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#FAF6F0', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <CheckCircle2 size={13} color="#FF5A1F" />
                     <span>Pembersih tanda strip (-) otomatis pada kolom NIK/TTL</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#CBD5E1', fontFamily: 'JetBrains Mono, monospace' }}>
-                    <CheckCircle2 size={13} color="#FF352D" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#FAF6F0', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <CheckCircle2 size={13} color="#FF5A1F" />
                     <span>Ekstraksi saksi &amp; terlapor dari narasi kronologis</span>
                   </div>
                 </div>
@@ -731,7 +730,7 @@ export default function DumasModeSelectModal({
                         fontSize: '11px',
                         fontFamily: 'JetBrains Mono, monospace',
                         fontWeight: 700,
-                        color: '#F87171'
+                        color: '#FF7A33'
                       }}>
                         LEMBAR BERKAS TERPILIH ({selectedFiles.length}):
                       </span>
@@ -741,7 +740,7 @@ export default function DumasModeSelectModal({
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#94A3B8',
+                          color: '#FBDBAF',
                           fontSize: '11px',
                           cursor: 'pointer',
                           fontFamily: 'JetBrains Mono, monospace',
@@ -760,17 +759,17 @@ export default function DumasModeSelectModal({
                       maxHeight: '180px',
                       overflowY: 'auto',
                       padding: '4px',
-                      backgroundColor: '#0A0C11',
+                      backgroundColor: '#0E0C0A',
                       borderRadius: '10px',
-                      border: '1px solid #292F42'
+                      border: '1px solid rgba(251, 219, 175, 0.14)'
                     }}>
                       {selectedFiles.map((item, index) => (
                         <div 
                           key={item.id}
                           style={{
                             position: 'relative',
-                            backgroundColor: '#151822',
-                            border: '1px solid #334155',
+                            backgroundColor: '#161310',
+                            border: '1px solid rgba(251, 219, 175, 0.16)',
                             borderRadius: '8px',
                             padding: '8px',
                             display: 'flex',
@@ -784,7 +783,7 @@ export default function DumasModeSelectModal({
                             position: 'absolute',
                             top: '4px',
                             left: '4px',
-                            backgroundColor: '#E52E2E',
+                            backgroundColor: '#E07020',
                             color: '#FFFFFF',
                             fontSize: '9px',
                             fontWeight: 800,
@@ -804,9 +803,9 @@ export default function DumasModeSelectModal({
                               position: 'absolute',
                               top: '4px',
                               right: '4px',
-                              backgroundColor: 'rgba(0,0,0,0.6)',
+                              backgroundColor: 'rgba(14, 12, 10, 0.78)',
                               border: 'none',
-                              color: '#F87171',
+                              color: '#FF5A1F',
                               borderRadius: '4px',
                               width: '18px',
                               height: '18px',
@@ -825,7 +824,7 @@ export default function DumasModeSelectModal({
                           <div style={{
                             width: '100%',
                             height: '70px',
-                            backgroundColor: '#0B0D13',
+                            backgroundColor: '#0E0C0A',
                             borderRadius: '6px',
                             overflow: 'hidden',
                             display: 'flex',
@@ -873,12 +872,12 @@ export default function DumasModeSelectModal({
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
-                          backgroundColor: 'rgba(21, 24, 34, 0.4)',
-                          color: '#94A3B8',
+                          backgroundColor: 'rgba(22, 19, 16, 0.72)',
+                          color: '#FBDBAF',
                           transition: 'all 0.2s'
                         }}
                       >
-                        <Plus size={20} color="#FF352D" />
+                        <Plus size={20} color="#FF5A1F" />
                         <span style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', marginTop: '4px' }}>
                           + Lembar
                         </span>
@@ -891,21 +890,21 @@ export default function DumasModeSelectModal({
                     onClick={triggerFileInput}
                     style={{
                       marginTop: '14px',
-                      border: '1px dashed rgba(255, 255, 255, 0.15)',
-                      borderRadius: '8px',
+                      border: '1px dashed rgba(251, 219, 175, 0.22)',
+                      borderRadius: '10px',
                       padding: '16px',
                       textAlign: 'center',
                       cursor: 'pointer',
-                      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                      backgroundColor: 'rgba(14, 12, 10, 0.55)',
                       backdropFilter: 'blur(8px)',
                       transition: 'all 0.2s'
                     }}
                   >
-                    <UploadCloud size={24} color="#FF352D" style={{ margin: '0 auto 6px auto', display: 'block' }} />
+                    <UploadCloud size={24} color="#FF5A1F" style={{ margin: '0 auto 6px auto', display: 'block' }} />
                     <span style={{ fontSize: '12px', fontWeight: 600, color: '#FFFFFF', fontFamily: 'JetBrains Mono, monospace', display: 'block', marginBottom: '2px' }}>
                       Klik untuk Pilih Berkas (Bisa Multi-Lembar)
                     </span>
-                    <span style={{ fontSize: '11px', color: '#94A3B8', fontFamily: 'Inter, sans-serif' }}>
+                    <span style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.65)', fontFamily: 'Inter, sans-serif' }}>
                       atau seret foto berkas lembar 1, lembar 2, dst ke sini
                     </span>
                   </div>
@@ -913,16 +912,14 @@ export default function DumasModeSelectModal({
               </div>
 
               {/* Action Button OPSI A */}
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(251, 219, 175, 0.14)' }}>
                 <button 
                   type="button"
                   disabled={isScanning}
                   onClick={handleExecuteScan}
                   style={{
                     width: '100%',
-                    background: selectedFiles.length > 0
-                      ? 'linear-gradient(135deg, #FF352D 0%, #B81D18 100%)'
-                      : 'linear-gradient(135deg, #E52E2E 0%, #B81D18 100%)',
+                    background: '#E07020',
                     color: '#FFFFFF',
                     fontFamily: 'JetBrains Mono, monospace',
                     fontWeight: 700,
@@ -930,13 +927,13 @@ export default function DumasModeSelectModal({
                     letterSpacing: '0.05em',
                     textTransform: 'uppercase',
                     padding: '12px 16px',
-                    borderRadius: '10px',
+                    borderRadius: '9999px',
                     border: 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 0 16px rgba(229, 46, 46, 0.4)',
+                    boxShadow: '0 0 18px rgba(224, 112, 32, 0.45)',
                     cursor: 'pointer'
                   }}
                 >
@@ -952,7 +949,7 @@ export default function DumasModeSelectModal({
 
             {/* OPSI B: INPUT MANUAL LANGSUNG */}
             <div 
-              className="relative group/card bg-[#05070a]/70 backdrop-blur-xl border border-white/10 hover:border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.37)] rounded-xl p-6 flex flex-col justify-between transition-all duration-300"
+              className="relative group/card bg-[#161310]/85 backdrop-blur-xl border border-[#FBDBAF]/15 hover:border-[#E07020]/45 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06),0_8px_32px_0_rgba(0,0,0,0.45)] rounded-xl p-6 flex flex-col justify-between transition-all duration-300"
             >
               <HudCorners size="md" />
 
@@ -960,7 +957,7 @@ export default function DumasModeSelectModal({
               <div style={{ position: 'absolute', top: '-14px', left: '20px', zIndex: 10 }}>
                 <span style={{
                   background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#CBD5E1',
+                  color: '#FBDBAF',
                   fontFamily: 'JetBrains Mono, monospace',
                   fontSize: '10px',
                   letterSpacing: '0.05em',
@@ -968,12 +965,12 @@ export default function DumasModeSelectModal({
                   fontWeight: 700,
                   padding: '3px 10px',
                   borderRadius: '9999px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(251, 219, 175, 0.18)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
                 }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#94A3B8' }}></span>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#FBDBAF' }}></span>
                   FORMULIR TERSTRUKTUR • BERKAS BARU
                 </span>
               </div>
@@ -986,11 +983,11 @@ export default function DumasModeSelectModal({
                     height: '52px',
                     borderRadius: '12px',
                     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(251, 219, 175, 0.16)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#94A3B8'
+                    color: '#FBDBAF'
                   }}>
                     <FileText size={26} />
                   </div>
@@ -998,21 +995,21 @@ export default function DumasModeSelectModal({
                     fontFamily: 'JetBrains Mono, monospace',
                     fontSize: '11px',
                     fontWeight: 700,
-                    color: '#94A3B8',
+                    color: '#FBDBAF',
                     backgroundColor: 'rgba(255, 255, 255, 0.05)',
                     padding: '3px 8px',
                     borderRadius: '6px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                    border: '1px solid rgba(251, 219, 175, 0.16)'
                   }}>
                     STANDAR INPUT SPKT
                   </span>
                 </div>
 
                 {/* Title & Description */}
-                <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', fontFamily: 'JetBrains Mono, monospace', margin: '0 0 8px 0' }}>
+                <h3 className="heading-font" style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 8px 0' }}>
                   OPSI B: INPUT MANUAL LANGSUNG
                 </h3>
-                <p style={{ color: '#94A3B8', fontSize: '12px', lineHeight: 1.5, margin: 0, fontFamily: 'Inter, sans-serif' }}>
+                <p style={{ color: 'rgba(251, 219, 175, 0.72)', fontSize: '12px', lineHeight: 1.5, margin: 0, fontFamily: 'Inter, sans-serif' }}>
                   Ketikkan secara manual identitas pelapor, multi-saksi, terlapor, pasal, dan uraian kejadian menggunakan formulir 3 kolom presisi standar Satreskrim.
                 </p>
 
@@ -1022,44 +1019,44 @@ export default function DumasModeSelectModal({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
-                  backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                  backgroundColor: 'rgba(14, 12, 10, 0.65)',
                   backdropFilter: 'blur(8px)',
                   padding: '12px 14px',
                   borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                  border: '1px solid rgba(251, 219, 175, 0.14)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace' }}>
-                    <Shield size={13} color="#64748B" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'rgba(251, 219, 175, 0.78)', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <Shield size={13} color="#E07020" />
                     <span>Input bertahap 3 kolom (Pelapor, Saksi/Terlapor, Perkara)</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace' }}>
-                    <Shield size={13} color="#64748B" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'rgba(251, 219, 175, 0.78)', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <Shield size={13} color="#E07020" />
                     <span>Dukungan multi-saksi &amp; multi-terlapor dinamis</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#94A3B8', fontFamily: 'JetBrains Mono, monospace' }}>
-                    <Shield size={13} color="#64748B" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'rgba(251, 219, 175, 0.78)', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <Shield size={13} color="#E07020" />
                     <span>Otomatisasi nomor LP &amp; registrasi SPKT resmi</span>
                   </div>
                 </div>
               </div>
 
               {/* Action Button OPSI B */}
-              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(251, 219, 175, 0.14)' }}>
                 <button 
                   type="button"
                   onClick={() => onSelectMode && onSelectMode('manual')}
                   style={{
                     width: '100%',
                     background: 'rgba(255, 255, 255, 0.06)',
-                    color: '#E2E8F0',
+                    color: '#FAF6F0',
                     fontFamily: 'JetBrains Mono, monospace',
                     fontWeight: 700,
                     fontSize: '12px',
                     letterSpacing: '0.05em',
                     textTransform: 'uppercase',
                     padding: '12px 16px',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '9999px',
+                    border: '1px solid rgba(251, 219, 175, 0.2)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

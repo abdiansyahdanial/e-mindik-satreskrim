@@ -49,9 +49,9 @@ export default class DumasErrorBoundary extends React.Component {
         <div
           style={{
             minHeight: '600px',
-            backgroundColor: '#080B10',
-            border: '1px solid #292F42',
-            borderRadius: '12px',
+            backgroundColor: '#161310',
+            border: '1px solid rgba(251, 219, 175, 0.16)',
+            borderRadius: '14px',
             padding: '36px 24px',
             display: 'flex',
             flexDirection: 'column',
@@ -170,10 +170,10 @@ export default class DumasErrorBoundary extends React.Component {
               onClick={this.handleClearCacheAndReload}
               style={{
                 padding: '10px 18px',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                color: '#F87171',
-                borderRadius: '8px',
+                backgroundColor: 'rgba(224, 112, 32, 0.16)',
+                border: '1px solid rgba(255, 90, 31, 0.45)',
+                color: '#FF5A1F',
+                borderRadius: '9999px',
                 fontSize: '12px',
                 fontFamily: 'JetBrains Mono, monospace',
                 cursor: 'pointer',
@@ -194,9 +194,9 @@ export default class DumasErrorBoundary extends React.Component {
                 style={{
                   padding: '10px 18px',
                   backgroundColor: 'transparent',
-                  border: '1px solid #292F42',
-                  color: '#94A3B8',
-                  borderRadius: '8px',
+                  border: '1px solid rgba(251, 219, 175, 0.22)',
+                  color: '#FBDBAF',
+                  borderRadius: '9999px',
                   fontSize: '12px',
                   fontFamily: 'JetBrains Mono, monospace',
                   cursor: 'pointer',

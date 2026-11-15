@@ -150,22 +150,24 @@ export default function DocPreviewModal({ docItem, cases = [], onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: '880px', background: '#1b2229', border: '1px solid rgba(255, 53, 45, 0.28)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" style={{ maxWidth: '880px', background: '#161310', border: '1px solid rgba(251, 219, 175, 0.22)' }} onClick={(e) => e.stopPropagation()}>
          {/* Header */}
-         <div className="modal-header" style={{ background: '#222b34', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+         <div className="modal-header" style={{ background: '#181411', borderBottom: '1px solid rgba(251, 219, 175, 0.14)' }}>
             <div>
                <span
                  className="badge mono"
                  style={{
                    fontSize: '10px',
-                   background: 'rgba(255, 53, 45, 0.15)',
-                   color: '#ff352d',
-                   border: '1px solid rgba(255, 53, 45, 0.4)',
+                   background: '#FFFFFF',
+                   color: '#0E0C0A',
+                   border: '1px solid #FFFFFF',
+                   borderRadius: '9999px',
+                   fontWeight: 800,
                  }}
                >
                  {docItem.template_code}
                </span>
-               <h3 style={{ fontSize: '16px', margin: '4px 0 0' }}>{docItem.doc_title}</h3>
+               <h3 className="heading-font" style={{ fontSize: '16px', margin: '6px 0 0' }}>{docItem.doc_title}</h3>
             </div>
             <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px' }}>
                <X size={20} />
@@ -173,11 +175,11 @@ export default function DocPreviewModal({ docItem, cases = [], onClose }) {
          </div>
 
          {/* Body */}
-         <div className="modal-body" style={{ background: '#1b2229', position: 'relative' }}>
+         <div className="modal-body" style={{ background: '#0E0C0A', position: 'relative' }}>
             {isLoading ? (
-               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', color: '#f1f5f9' }}>
-                  <RefreshCw className="animate-spin" size={32} color="#ff352d" style={{ marginBottom: '12px' }} />
-                  <div style={{ fontSize: '13px', fontWeight: 600 }}>Sinkronisasi Data Master Perkara...</div>
+               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', color: '#FFFFFF' }}>
+                  <RefreshCw className="animate-spin" size={32} color="#FF5A1F" style={{ marginBottom: '12px' }} />
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#FBDBAF' }}>Sinkronisasi Data Master Perkara...</div>
                </div>
             ) : previewProps ? (
                <OfficialDocPreview 
@@ -193,7 +195,7 @@ export default function DocPreviewModal({ docItem, cases = [], onClose }) {
          </div>
 
          {/* Footer */}
-         <div className="modal-footer" style={{ background: '#222b34', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+         <div className="modal-footer" style={{ background: '#181411', borderTop: '1px solid rgba(251, 219, 175, 0.14)' }}>
             <button onClick={onClose} className="btn btn-secondary btn-sm">Tutup</button>
             <button onClick={() => window.print()} className="btn btn-primary btn-sm" disabled={isLoading || !previewProps}>
                <Printer size={14} />

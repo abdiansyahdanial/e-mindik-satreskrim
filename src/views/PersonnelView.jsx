@@ -169,9 +169,9 @@ export default function PersonnelView({
           alignItems: 'center',
           gap: '8px',
           padding: '4px',
-          backgroundColor: '#121721',
-          border: '1px solid #1E293B',
-          borderRadius: '10px',
+          backgroundColor: 'rgba(18, 14, 11, 0.72)',
+          border: '1px solid rgba(251, 219, 175, 0.16)',
+          borderRadius: '9999px',
           width: 'fit-content'
         }}
       >
@@ -182,27 +182,27 @@ export default function PersonnelView({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: activeTabSub === 'penyidik' ? '1px solid rgba(255, 53, 45, 0.4)' : '1px solid transparent',
-            backgroundColor: activeTabSub === 'penyidik' ? 'rgba(255, 53, 45, 0.12)' : 'transparent',
-            color: activeTabSub === 'penyidik' ? '#FF574D' : '#94A3B8',
+            padding: '8px 18px',
+            borderRadius: '9999px',
+            border: activeTabSub === 'penyidik' ? '1px solid #FFFFFF' : '1px solid transparent',
+            backgroundColor: activeTabSub === 'penyidik' ? '#FFFFFF' : 'transparent',
+            color: activeTabSub === 'penyidik' ? '#0E0C0A' : 'rgba(251, 219, 175, 0.72)',
             fontSize: '13px',
             fontWeight: activeTabSub === 'penyidik' ? 700 : 500,
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <Shield size={16} color={activeTabSub === 'penyidik' ? '#FF574D' : 'currentColor'} />
+          <Shield size={16} color={activeTabSub === 'penyidik' ? '#FF5A1F' : 'currentColor'} />
           <span>Personel Penyidik Satreskrim</span>
           <span
             style={{
               padding: '2px 8px',
-              borderRadius: '10px',
+              borderRadius: '9999px',
               fontSize: '11px',
               fontWeight: 700,
-              backgroundColor: activeTabSub === 'penyidik' ? 'rgba(255, 53, 45, 0.25)' : 'rgba(255, 255, 255, 0.06)',
-              color: activeTabSub === 'penyidik' ? '#FFF' : '#94A3B8'
+              backgroundColor: activeTabSub === 'penyidik' ? '#E07020' : 'rgba(251, 219, 175, 0.1)',
+              color: activeTabSub === 'penyidik' ? '#FFFFFF' : '#FBDBAF'
             }}
           >
             {personnel.length}
@@ -216,18 +216,18 @@ export default function PersonnelView({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: activeTabSub === 'spkt' ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid transparent',
-            backgroundColor: activeTabSub === 'spkt' ? 'rgba(52, 211, 153, 0.12)' : 'transparent',
-            color: activeTabSub === 'spkt' ? '#34D399' : '#94A3B8',
+            padding: '8px 18px',
+            borderRadius: '9999px',
+            border: activeTabSub === 'spkt' ? '1px solid #FFFFFF' : '1px solid transparent',
+            backgroundColor: activeTabSub === 'spkt' ? '#FFFFFF' : 'transparent',
+            color: activeTabSub === 'spkt' ? '#0E0C0A' : 'rgba(251, 219, 175, 0.72)',
             fontSize: '13px',
             fontWeight: activeTabSub === 'spkt' ? 700 : 500,
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <BadgeCheck size={16} color={activeTabSub === 'spkt' ? '#34D399' : 'currentColor'} />
+          <BadgeCheck size={16} color={activeTabSub === 'spkt' ? '#FF5A1F' : 'currentColor'} />
           <span>Personel SPKT (Piket / STTL)</span>
         </button>
       </div>
@@ -246,8 +246,8 @@ export default function PersonnelView({
         gap: '16px',
       }}>
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Users size={22} color="#ff352d" />
+          <h2 className="heading-font" style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Users size={22} color="#FF5A1F" />
             <span>Direktori Personel Penyidik Satreskrim</span>
           </h2>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -300,13 +300,13 @@ export default function PersonnelView({
                   position: 'absolute',
                   top: 0,
                   right: 0,
-                  background: 'linear-gradient(135deg, #b81d18, #ff352d)',
-                  color: '#ffffff',
+                  background: '#E07020',
+                  color: '#FFFFFF',
                   fontSize: '9px',
                   fontWeight: 800,
                   padding: '3px 14px',
-                  borderBottomLeftRadius: '8px',
-                  letterSpacing: '0.05em',
+                  borderBottomLeftRadius: '10px',
+                  letterSpacing: '0.06em',
                 }}>
                   KOMANDO
                 </div>
@@ -316,15 +316,15 @@ export default function PersonnelView({
                 <div style={{
                   width: '46px',
                   height: '46px',
-                  borderRadius: '12px',
-                  background: '#2a343f',
-                  border: '1px solid rgba(255, 53, 45, 0.3)',
+                  borderRadius: '9999px',
+                  background: '#181411',
+                  border: '1px solid rgba(255, 90, 31, 0.45)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#ffffff',
+                  color: '#FF5A1F',
                   fontWeight: 700,
-                  fontSize: '13px',
+                  fontSize: '12px',
                 }}>
                   {p.pangkat || p.rank || '-'}
                 </div>
@@ -340,7 +340,7 @@ export default function PersonnelView({
                   }}>
                     {cleanOfficerName(p.nama)}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, marginTop: '2px' }}>
+                  <div style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.7)', fontWeight: 600, marginTop: '2px' }}>
                     {p.jabatan}
                   </div>
                 </div>
@@ -348,8 +348,9 @@ export default function PersonnelView({
 
               <div style={{
                 padding: '10px 12px',
-                background: 'var(--bg-secondary)',
-                borderRadius: 'var(--radius-md)',
+                background: '#181411',
+                borderRadius: '12px',
+                border: '1px solid rgba(251, 219, 175, 0.14)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '6px',
@@ -357,23 +358,23 @@ export default function PersonnelView({
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Nomor Registrasi (NRP):</span>
-                  <span className="mono" style={{ fontWeight: 600, color: (!p.nrp || p.nrp === '-') ? 'var(--accent-yellow)' : 'inherit' }}>
+                  <span className="mono" style={{ fontWeight: 600, color: (!p.nrp || p.nrp === '-') ? 'rgba(251, 219, 175, 0.5)' : '#FFFFFF' }}>
                     {p.nrp && p.nrp !== '-' ? p.nrp : (p.rank_nrp && p.rank_nrp !== '-' ? p.rank_nrp : '-')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Kontak Telepon:</span>
-                  <span className="mono" style={{ color: '#e2e8f0' }}>{p.phone || '-'}</span>
+                  <span className="mono" style={{ color: '#FBDBAF' }}>{p.phone || '-'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Status Penugasan:</span>
-                  <span className={`badge ${p.status === 'active' ? 'badge-green' : p.status === 'standby' ? 'badge-yellow' : 'badge-red'}`} style={{ fontSize: '10px' }}>
+                  <span className="badge" style={{ background: '#FFFFFF', border: '1px solid #FFFFFF', color: '#0E0C0A', fontSize: '10px', borderRadius: '9999px', fontWeight: 800 }}>
                     {p.status === 'active' ? 'SIAGA / AKTIF' : p.status === 'standby' ? 'STANDBY' : 'NON-AKTIF'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px', borderTop: '1px solid var(--border-subtle)' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Perkara Ditangani:</span>
-                  <span className="badge" style={{ background: '#252f38', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#e2e8f0', fontSize: '10px' }}>
+                  <span className="badge" style={{ background: 'rgba(224, 112, 32, 0.16)', border: '1px solid rgba(224, 112, 32, 0.4)', color: '#FF5A1F', fontSize: '10px', borderRadius: '9999px' }}>
                     {assignedCasesCount} Perkara
                   </span>
                 </div>
@@ -422,14 +423,14 @@ export default function PersonnelView({
                 <div style={{
                   width: '36px',
                   height: '36px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 53, 45, 0.12)',
-                  border: '1px solid rgba(255, 53, 45, 0.4)',
+                  borderRadius: '10px',
+                  background: 'rgba(224, 112, 32, 0.14)',
+                  border: '1px solid rgba(255, 90, 31, 0.45)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <UserPlus size={18} color="#ff352d" />
+                  <UserPlus size={18} color="#FF5A1F" />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: 0 }}>Registrasi Personel Penyidik Baru</h3>
@@ -683,17 +684,17 @@ export default function PersonnelView({
                 <div style={{
                   width: '36px',
                   height: '36px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 53, 45, 0.12)',
-                  border: '1px solid rgba(255, 53, 45, 0.4)',
+                  borderRadius: '10px',
+                  background: 'rgba(224, 112, 32, 0.14)',
+                  border: '1px solid rgba(255, 90, 31, 0.45)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Edit3 size={18} color="#ff352d" />
+                  <Edit3 size={18} color="#FF5A1F" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '15px', margin: 0, color: '#FFFFFF' }}>Edit Data Personel Penyidik</h3>
+                  <h3 className="heading-font" style={{ fontSize: '15px', margin: 0, color: '#FFFFFF' }}>Edit Data Personel Penyidik</h3>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                     Perbarui nama, pangkat, nomor registrasi (NRP), dan jabatan
                   </div>

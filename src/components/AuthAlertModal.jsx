@@ -50,13 +50,13 @@ export default function AuthAlertModal({
     >
       <div
         style={{
-          background: 'linear-gradient(145deg, #1b2229 0%, #222b34 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'linear-gradient(145deg, #161310 0%, #1E1915 100%)',
+          border: '1px solid rgba(251, 219, 175, 0.16)',
           borderRadius: '20px',
           maxWidth: '440px',
           width: '100%',
           padding: '32px 28px 24px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px rgba(255, 53, 45, 0.2)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 38px rgba(224, 112, 32, 0.22)',
           textAlign: 'center',
           position: 'relative',
           overflow: 'hidden',
@@ -71,8 +71,8 @@ export default function AuthAlertModal({
             left: 0,
             right: 0,
             height: '3px',
-            background: 'linear-gradient(90deg, #b81d18 0%, #ff352d 50%, #b81d18 100%)',
-            boxShadow: '0 0 12px rgba(255, 53, 45, 0.6)'
+            background: 'linear-gradient(90deg, #C45A18 0%, #FF5A1F 50%, #C45A18 100%)',
+            boxShadow: '0 0 12px rgba(255, 90, 31, 0.6)'
           }}
         />
 
@@ -102,7 +102,7 @@ export default function AuthAlertModal({
               e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#94a3b8';
+              e.currentTarget.style.color = 'rgba(251, 219, 175, 0.65)';
               e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
             }}
           >
@@ -116,9 +116,9 @@ export default function AuthAlertModal({
             width: '68px',
             height: '68px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255, 53, 45, 0.22) 0%, rgba(184, 29, 24, 0.08) 100%)',
-            border: '2px solid rgba(255, 53, 45, 0.5)',
-            boxShadow: '0 0 25px rgba(255, 53, 45, 0.35)',
+            background: 'radial-gradient(circle, rgba(224, 112, 32, 0.24) 0%, rgba(196, 90, 24, 0.08) 100%)',
+            border: '2px solid rgba(255, 90, 31, 0.55)',
+            boxShadow: '0 0 25px rgba(224, 112, 32, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -127,22 +127,22 @@ export default function AuthAlertModal({
           }}
         >
           {isPending ? (
-            <ShieldAlert size={36} color="#ff352d" />
+            <ShieldAlert size={36} color="#FF5A1F" />
           ) : (
-            <Clock size={36} color="#ff352d" />
+            <Clock size={36} color="#FF5A1F" />
           )}
         </div>
 
         {/* Modal Title */}
         <h3
+          className="heading-font"
           style={{
             color: '#FFFFFF',
             fontSize: '18px',
             fontWeight: 700,
             margin: '0 0 12px',
-            letterSpacing: '0.2px',
+            letterSpacing: '0.04em',
             lineHeight: 1.35,
-            fontFamily: 'Inter, sans-serif'
           }}
         >
           {title}
@@ -151,7 +151,7 @@ export default function AuthAlertModal({
         {/* Modal Body Message */}
         <p
           style={{
-            color: '#cbd5e1',
+            color: '#FBDBAF',
             fontSize: '13.5px',
             lineHeight: 1.65,
             margin: '0 0 24px',
@@ -176,10 +176,10 @@ export default function AuthAlertModal({
             <div
               style={{
                 height: '100%',
-                background: 'linear-gradient(90deg, #b81d18, #ff352d)',
+                background: 'linear-gradient(90deg, #C45A18, #FF5A1F)',
                 width: '100%',
                 animation: `authCountdown ${duration}ms linear forwards`,
-                boxShadow: '0 0 8px rgba(255, 53, 45, 0.5)'
+                boxShadow: '0 0 8px rgba(255, 90, 31, 0.55)'
               }}
             />
           </div>
@@ -193,24 +193,26 @@ export default function AuthAlertModal({
             style={{
               width: '100%',
               padding: '12px 20px',
-              background: 'linear-gradient(135deg, #b81d18 0%, #ff352d 100%)',
+              background: '#E07020',
               border: 'none',
-              borderRadius: '12px',
+              borderRadius: '9999px',
               color: '#FFFFFF',
-              fontWeight: 600,
+              fontWeight: 700,
               fontSize: '14px',
               letterSpacing: '0.3px',
               cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(255, 53, 45, 0.3)',
+              boxShadow: '0 4px 18px rgba(224, 112, 32, 0.35)',
               transition: 'all 0.2s ease',
               fontFamily: 'Inter, sans-serif'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.filter = 'brightness(1.1)';
+              e.currentTarget.style.background = '#FFFFFF';
+              e.currentTarget.style.color = '#0E0C0A';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.filter = 'none';
+              e.currentTarget.style.background = '#E07020';
+              e.currentTarget.style.color = '#FFFFFF';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >

@@ -115,24 +115,24 @@ export default function ModalSelectPamapta({
       }}
     >
       <div
-        className="w-full max-w-lg bg-[#121721] border border-slate-700 rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        className="w-full max-w-lg bg-[#161310] border border-[rgba(251,219,175,0.18)] rounded-xl shadow-2xl overflow-hidden flex flex-col"
         style={{
           width: '100%',
           maxWidth: '520px',
-          backgroundColor: '#121721',
-          border: '1px solid #334155',
-          borderRadius: '12px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(52, 211, 153, 0.1)',
+          backgroundColor: '#161310',
+          border: '1px solid rgba(251, 219, 175, 0.18)',
+          borderRadius: '18px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 32px rgba(224, 112, 32, 0.14)',
           overflow: 'hidden'
         }}
       >
         {/* Header */}
         <div
-          className="px-5 py-4 bg-[#0d1118] border-b border-slate-800 flex items-center justify-between"
+          className="px-5 py-4 bg-[#0E0C0A] border-b border-[rgba(251,219,175,0.14)] flex items-center justify-between"
           style={{
             padding: '16px 20px',
-            backgroundColor: '#0d1118',
-            borderBottom: '1px solid #1e293b',
+            backgroundColor: '#0E0C0A',
+            borderBottom: '1px solid rgba(251, 219, 175, 0.14)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -143,13 +143,13 @@ export default function ModalSelectPamapta({
               style={{
                 width: '36px',
                 height: '36px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(52, 211, 153, 0.12)',
-                border: '1px solid rgba(52, 211, 153, 0.3)',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(224, 112, 32, 0.16)',
+                border: '1px solid rgba(255, 90, 31, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#34D399'
+                color: '#FF5A1F'
               }}
             >
               <ShieldCheck size={20} />
@@ -208,7 +208,7 @@ export default function ModalSelectPamapta({
           >
             <span>Daftar Perwira Jaga / Pamapta Aktif</span>
             {isLoading && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#38BDF8' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#FF7A33' }}>
                 <Loader2 size={12} className="animate-spin" /> Memuat data...
               </span>
             )}
@@ -232,9 +232,9 @@ export default function ModalSelectPamapta({
                     borderRadius: '10px',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
-                    backgroundColor: isSelected ? 'rgba(52, 211, 153, 0.08)' : '#0d1118',
-                    border: isSelected ? '1.5px solid #34D399' : '1px solid #1e293b',
-                    boxShadow: isSelected ? '0 0 16px rgba(52, 211, 153, 0.15)' : 'none'
+                    backgroundColor: isSelected ? 'rgba(224, 112, 32, 0.14)' : '#0E0C0A',
+                    border: isSelected ? '1.5px solid #FF5A1F' : '1px solid rgba(251, 219, 175, 0.14)',
+                    boxShadow: isSelected ? '0 0 18px rgba(224, 112, 32, 0.2)' : 'none'
                   }}
                 >
                   {/* Radio Indicator */}
@@ -243,8 +243,8 @@ export default function ModalSelectPamapta({
                       width: '20px',
                       height: '20px',
                       borderRadius: '50%',
-                      border: isSelected ? '2px solid #34D399' : '2px solid #475569',
-                      backgroundColor: isSelected ? '#34D399' : 'transparent',
+                      border: isSelected ? '2px solid #FF5A1F' : '2px solid rgba(251, 219, 175, 0.35)',
+                      backgroundColor: isSelected ? '#FF5A1F' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -258,7 +258,7 @@ export default function ModalSelectPamapta({
                           width: '8px',
                           height: '8px',
                           borderRadius: '50%',
-                          backgroundColor: '#0F172A'
+                          backgroundColor: '#0E0C0A'
                         }}
                       />
                     )}
@@ -272,10 +272,10 @@ export default function ModalSelectPamapta({
                           fontSize: '10px',
                           fontFamily: 'JetBrains Mono, monospace',
                           fontWeight: 700,
-                          padding: '2px 7px',
-                          borderRadius: '4px',
-                          backgroundColor: isSelected ? 'rgba(52, 211, 153, 0.2)' : '#1e293b',
-                          color: isSelected ? '#34D399' : '#94A3B8',
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
+                          backgroundColor: isSelected ? '#FFFFFF' : 'rgba(251, 219, 175, 0.08)',
+                          color: isSelected ? '#0E0C0A' : '#FBDBAF',
                           letterSpacing: '0.04em'
                         }}
                       >
@@ -287,7 +287,7 @@ export default function ModalSelectPamapta({
                       style={{
                         fontSize: '13px',
                         fontWeight: 700,
-                        color: isSelected ? '#FFFFFF' : '#E2E8F0',
+                        color: isSelected ? '#FFFFFF' : '#FAF6F0',
                         fontFamily: 'JetBrains Mono, monospace',
                         letterSpacing: '0.02em',
                         whiteSpace: 'nowrap',
@@ -301,7 +301,7 @@ export default function ModalSelectPamapta({
                     <div
                       style={{
                         fontSize: '11px',
-                        color: isSelected ? '#34D399' : '#64748B',
+                        color: isSelected ? '#FF7A33' : 'rgba(251, 219, 175, 0.55)',
                         fontFamily: 'JetBrains Mono, monospace',
                         marginTop: '2px'
                       }}
@@ -311,7 +311,7 @@ export default function ModalSelectPamapta({
                   </div>
 
                   {isSelected && (
-                    <CheckCircle2 size={18} style={{ color: '#34D399', flexShrink: 0 }} />
+                    <CheckCircle2 size={18} style={{ color: '#FF5A1F', flexShrink: 0 }} />
                   )}
                 </div>
               );
@@ -332,7 +332,7 @@ export default function ModalSelectPamapta({
               marginTop: '4px'
             }}
           >
-            <UserCheck size={14} style={{ color: '#38BDF8', flexShrink: 0 }} />
+            <UserCheck size={14} style={{ color: '#FF7A33', flexShrink: 0 }} />
             <span>Pejabat yang dipilih akan tercetak pada kolom Tanda Tangan Penerima Laporan (Kanit / Pamapta SPKT).</span>
           </div>
         </div>
@@ -374,18 +374,18 @@ export default function ModalSelectPamapta({
             disabled={!selectedPamapta}
             style={{
               padding: '8px 18px',
-              borderRadius: '8px',
+              borderRadius: '9999px',
               fontSize: '12px',
               fontWeight: 700,
               fontFamily: 'JetBrains Mono, monospace',
-              color: '#0F172A',
-              backgroundColor: '#34D399',
+              color: '#FFFFFF',
+              backgroundColor: '#E07020',
               border: 'none',
               cursor: !selectedPamapta ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 0 15px rgba(52, 211, 153, 0.4)',
+              boxShadow: '0 0 18px rgba(224, 112, 32, 0.45)',
               transition: 'all 0.15s ease'
             }}
           >

@@ -183,8 +183,8 @@ export default function ArchivesView({
           {/* Header & Title */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Archive size={22} color="#ff352d" />
+              <h2 className="heading-font" style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Archive size={22} color="#FF5A1F" />
                 <span>Arsip Mindik Berbasis Laporan Polisi (LP)</span>
               </h2>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -194,19 +194,19 @@ export default function ArchivesView({
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
-                background: 'rgba(30, 41, 59, 0.7)',
+                background: 'rgba(18, 14, 11, 0.72)',
                 padding: '6px 14px',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '9999px',
+                border: '1px solid rgba(251, 219, 175, 0.18)',
                 fontSize: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                <Briefcase size={14} color="var(--accent-red)" />
+                <Briefcase size={14} color="#FF5A1F" />
                 <span>Total Perkara: <strong>{safeCases.length}</strong></span>
-                <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>|</span>
-                <FileCheck size={14} color="var(--accent-cyan)" />
+                <span style={{ color: 'rgba(251, 219, 175, 0.25)' }}>|</span>
+                <FileCheck size={14} color="#E07020" />
                 <span>Total Arsip: <strong>{safeDocs.length}</strong> Dokumen</span>
               </div>
             </div>
@@ -229,7 +229,7 @@ export default function ArchivesView({
                 value={lpSearchTerm}
                 onChange={(e) => setLpSearchTerm(e.target.value)}
                 className="form-input"
-                style={{ paddingLeft: '36px' }}
+                style={{ paddingLeft: '36px', borderRadius: '9999px' }}
               />
             </div>
 
@@ -239,7 +239,7 @@ export default function ArchivesView({
                 type="button"
                 onClick={() => setLpFilterStatus('all')}
                 className={`btn btn-sm ${lpFilterStatus === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-                style={lpFilterStatus !== 'all' ? { background: '#1e262e', borderColor: 'rgba(255, 255, 255, 0.1)' } : {}}
+                style={lpFilterStatus !== 'all' ? { background: '#181411', borderColor: 'rgba(251, 219, 175, 0.2)' } : {}}
               >
                 Semua LP ({safeCases.length})
               </button>
@@ -247,7 +247,7 @@ export default function ArchivesView({
                 type="button"
                 onClick={() => setLpFilterStatus('has_docs')}
                 className={`btn btn-sm ${lpFilterStatus === 'has_docs' ? 'btn-primary' : 'btn-secondary'}`}
-                style={lpFilterStatus !== 'has_docs' ? { background: '#1e262e', borderColor: 'rgba(255, 255, 255, 0.1)' } : {}}
+                style={lpFilterStatus !== 'has_docs' ? { background: '#181411', borderColor: 'rgba(251, 219, 175, 0.2)' } : {}}
               >
                 Memiliki Arsip
               </button>
@@ -255,7 +255,7 @@ export default function ArchivesView({
                 type="button"
                 onClick={() => setLpFilterStatus('no_docs')}
                 className={`btn btn-sm ${lpFilterStatus === 'no_docs' ? 'btn-primary' : 'btn-secondary'}`}
-                style={lpFilterStatus !== 'no_docs' ? { background: '#1e262e', borderColor: 'rgba(255, 255, 255, 0.1)' } : {}}
+                style={lpFilterStatus !== 'no_docs' ? { background: '#181411', borderColor: 'rgba(251, 219, 175, 0.2)' } : {}}
               >
                 Belum Ada Mindik
               </button>
@@ -265,7 +265,7 @@ export default function ArchivesView({
           {/* Grid / Kartu Berkas Perkara (LP) */}
           {filteredCases.length === 0 ? (
             <div className="glass" style={{ textAlign: 'center', padding: '56px 20px', color: 'var(--text-secondary)' }}>
-              <FolderOpen size={44} color="#ff352d" style={{ opacity: 0.6, margin: '0 auto 12px' }} />
+              <FolderOpen size={44} color="#FF5A1F" style={{ opacity: 0.75, margin: '0 auto 12px' }} />
               <div style={{ fontWeight: 700, fontSize: '15px', color: '#FFFFFF', marginBottom: '6px' }}>
                 Tidak Ada Laporan Polisi Ditemukan
               </div>
@@ -292,7 +292,7 @@ export default function ArchivesView({
                       setDocSearchTerm('');
                       setDocCategoryFilter('all');
                     }}
-                    className="glass"
+                    className="glass cyber-card"
                     style={{
                       padding: '18px 20px',
                       display: 'flex',
@@ -300,19 +300,21 @@ export default function ArchivesView({
                       gap: '12px',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
-                      border: hasDocs ? '1px solid rgba(255, 53, 45, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: '12px',
+                      border: hasDocs ? '1px solid rgba(255, 90, 31, 0.35)' : '1px solid rgba(251, 219, 175, 0.15)',
+                      borderRadius: '18px',
                       position: 'relative',
                       overflow: 'hidden',
-                      backgroundColor: '#111827'
+                      backgroundColor: 'rgba(18, 14, 11, 0.68)'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--accent-red)';
+                      e.currentTarget.style.borderColor = '#FF5A1F';
+                      e.currentTarget.style.backgroundColor = '#221C17';
                       e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.4)';
+                      e.currentTarget.style.boxShadow = '0 10px 28px rgba(224, 112, 32, 0.18)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = hasDocs ? 'rgba(255, 53, 45, 0.3)' : 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.borderColor = hasDocs ? 'rgba(255, 90, 31, 0.35)' : 'rgba(251, 219, 175, 0.15)';
+                      e.currentTarget.style.backgroundColor = 'rgba(18, 14, 11, 0.68)';
                       e.currentTarget.style.transform = 'translateY(0)';
                       e.currentTarget.style.boxShadow = 'none';
                     }}
@@ -320,10 +322,10 @@ export default function ArchivesView({
                     {/* Header Baris LP & Badge Dokumen */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#ff352d', fontWeight: 800 }}>
+                        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#E07020', fontWeight: 800 }}>
                           BERKAS LAPORAN POLISI
                         </span>
-                        <div className="mono" style={{ fontSize: '13.5px', fontWeight: 800, color: '#FFFFFF' }}>
+                        <div className="mono" style={{ fontSize: '13.5px', fontWeight: 800, color: '#FF7A33' }}>
                           {c.nomor_lp || c.no_lp || '-'}
                         </div>
                       </div>
@@ -333,11 +335,11 @@ export default function ArchivesView({
                         display: 'flex',
                         alignItems: 'center',
                         gap: '5px',
-                        padding: '4px 9px',
-                        borderRadius: '6px',
-                        background: hasDocs ? 'rgba(34, 197, 94, 0.15)' : 'rgba(148, 163, 184, 0.12)',
-                        border: hasDocs ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(148, 163, 184, 0.25)',
-                        color: hasDocs ? 'var(--accent-green)' : '#94A3B8',
+                        padding: '4px 10px',
+                        borderRadius: '9999px',
+                        background: hasDocs ? '#FFFFFF' : '#181411',
+                        border: hasDocs ? '1px solid #FFFFFF' : '1px solid rgba(251, 219, 175, 0.22)',
+                        color: hasDocs ? '#0E0C0A' : '#FBDBAF',
                         fontSize: '11px',
                         fontWeight: 700
                       }}>
@@ -349,13 +351,13 @@ export default function ArchivesView({
                     {/* Tindak Pidana */}
                     <div style={{
                       fontSize: '12.5px',
-                      color: '#E2E8F0',
+                      color: '#FFFFFF',
                       fontWeight: 600,
                       lineHeight: 1.4,
-                      background: 'rgba(255, 255, 255, 0.03)',
+                      background: 'rgba(251, 219, 175, 0.04)',
                       padding: '8px 10px',
-                      borderRadius: '6px',
-                      borderLeft: '3px solid var(--accent-red)'
+                      borderRadius: '10px',
+                      borderLeft: '3px solid #FF5A1F'
                     }}>
                       {c.tindak_pidana || c.perkara || 'Tindak Pidana Umum'}
                     </div>
@@ -369,12 +371,12 @@ export default function ArchivesView({
                       color: 'var(--text-secondary)'
                     }}>
                       <div>
-                        <span style={{ color: '#94A3B8', display: 'block', fontSize: '10.5px' }}>Pelapor:</span>
+                        <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Pelapor:</span>
                         <strong style={{ color: '#FFFFFF' }}>{c.nama_pelapor || c.pelapor_name || '-'}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#94A3B8', display: 'block', fontSize: '10.5px' }}>Terlapor:</span>
-                        <strong style={{ color: '#FFFFFF' }}>{c.nama_terlapor || c.terlapor_name || c.person?.nama || '-'}</strong>
+                        <span style={{ color: 'rgba(251, 219, 175, 0.55)', display: 'block', fontSize: '10.5px' }}>Terlapor:</span>
+                        <strong style={{ color: '#FBDBAF' }}>{c.nama_terlapor || c.terlapor_name || c.person?.nama || '-'}</strong>
                       </div>
                     </div>
 
@@ -383,17 +385,17 @@ export default function ArchivesView({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderTop: '1px solid rgba(251, 219, 175, 0.12)',
                       paddingTop: '10px',
                       marginTop: '4px',
                       fontSize: '11px'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94A3B8' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'rgba(251, 219, 175, 0.65)' }}>
                         <Calendar size={12} />
                         <span>{formattedDate}</span>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#ff352d', fontWeight: 700 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#FF5A1F', fontWeight: 700 }}>
                         <span>Buka Arsip LP</span>
                         <ChevronRight size={14} />
                       </div>
@@ -449,19 +451,19 @@ export default function ArchivesView({
           {/* Dossier Banner LP Terpilih */}
           <div className="glass" style={{
             padding: '18px 22px',
-            borderRadius: '12px',
-            backgroundColor: '#0F172A',
-            border: '1px solid rgba(255, 53, 45, 0.35)',
+            borderRadius: '18px',
+            backgroundColor: 'rgba(18, 14, 11, 0.68)',
+            border: '1px solid rgba(251, 219, 175, 0.16)',
             display: 'flex',
             flexDirection: 'column',
             gap: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#ff352d', fontWeight: 800 }}>
+                <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#E07020', fontWeight: 800 }}>
                   ARSIP DOKUMEN LAPORAN POLISI AKTIF
                 </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: '4px 0 0' }}>
+                <h3 className="heading-font" style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: '4px 0 0' }}>
                   {selectedCaseForArchive.nomor_lp || selectedCaseForArchive.no_lp || '-'}
                 </h3>
               </div>
@@ -470,13 +472,13 @@ export default function ArchivesView({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: 'rgba(34, 197, 94, 0.12)',
-                border: '1px solid rgba(34, 197, 94, 0.3)',
-                padding: '6px 12px',
-                borderRadius: '8px'
+                background: '#FFFFFF',
+                border: '1px solid #FFFFFF',
+                padding: '6px 14px',
+                borderRadius: '9999px'
               }}>
-                <FileCheck size={16} color="var(--accent-green)" />
-                <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
+                <FileCheck size={16} color="#FF5A1F" />
+                <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0E0C0A' }}>
                   {getDocsForCase(selectedCaseForArchive).length} Dokumen Diterbitkan
                 </span>
               </div>
@@ -488,27 +490,27 @@ export default function ArchivesView({
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
               gap: '12px',
               padding: '12px 14px',
-              background: 'rgba(15, 23, 42, 0.6)',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
+              background: '#181411',
+              borderRadius: '12px',
+              border: '1px solid rgba(251, 219, 175, 0.14)',
               fontSize: '12px'
             }}>
               <div>
-                <span style={{ color: '#94A3B8', fontSize: '11px', display: 'block' }}>Tindak Pidana / Pasal:</span>
+                <span style={{ color: 'rgba(251, 219, 175, 0.65)', fontSize: '11px', display: 'block' }}>Tindak Pidana / Pasal:</span>
                 <strong style={{ color: '#FFFFFF' }}>
                   {selectedCaseForArchive.tindak_pidana || '-'} {selectedCaseForArchive.pasal_uu ? `(${selectedCaseForArchive.pasal_uu})` : ''}
                 </strong>
               </div>
               <div>
-                <span style={{ color: '#94A3B8', fontSize: '11px', display: 'block' }}>Pelapor:</span>
+                <span style={{ color: 'rgba(251, 219, 175, 0.65)', fontSize: '11px', display: 'block' }}>Pelapor:</span>
                 <strong style={{ color: '#FFFFFF' }}>{selectedCaseForArchive.nama_pelapor || selectedCaseForArchive.pelapor_name || '-'}</strong>
               </div>
               <div>
-                <span style={{ color: '#94A3B8', fontSize: '11px', display: 'block' }}>Terlapor:</span>
-                <strong style={{ color: '#FFFFFF' }}>{selectedCaseForArchive.nama_terlapor || selectedCaseForArchive.terlapor_name || selectedCaseForArchive.person?.nama || '-'}</strong>
+                <span style={{ color: 'rgba(251, 219, 175, 0.65)', fontSize: '11px', display: 'block' }}>Terlapor:</span>
+                <strong style={{ color: '#FBDBAF' }}>{selectedCaseForArchive.nama_terlapor || selectedCaseForArchive.terlapor_name || selectedCaseForArchive.person?.nama || '-'}</strong>
               </div>
               <div>
-                <span style={{ color: '#94A3B8', fontSize: '11px', display: 'block' }}>Tanggal Laporan:</span>
+                <span style={{ color: 'rgba(251, 219, 175, 0.65)', fontSize: '11px', display: 'block' }}>Tanggal Laporan:</span>
                 <strong style={{ color: '#FFFFFF' }}>
                   {formatTanggalIndonesia(selectedCaseForArchive.tanggal_lp || selectedCaseForArchive.sprin_date || selectedCaseForArchive.created_at) || '-'}
                 </strong>
@@ -533,7 +535,7 @@ export default function ArchivesView({
                 value={docSearchTerm}
                 onChange={(e) => setDocSearchTerm(e.target.value)}
                 className="form-input"
-                style={{ paddingLeft: '34px', fontSize: '12.5px' }}
+                style={{ paddingLeft: '34px', fontSize: '12.5px', borderRadius: '9999px' }}
               />
             </div>
 
@@ -547,8 +549,8 @@ export default function ArchivesView({
                   className={`btn btn-sm ${docCategoryFilter === cat ? 'btn-primary' : 'btn-secondary'}`}
                   style={{
                     fontSize: '11px',
-                    padding: '4px 10px',
-                    ...(docCategoryFilter !== cat ? { background: '#1e262e', borderColor: 'rgba(255, 255, 255, 0.1)' } : {})
+                    padding: '4px 12px',
+                    ...(docCategoryFilter !== cat ? { background: '#181411', borderColor: 'rgba(251, 219, 175, 0.2)' } : {})
                   }}
                 >
                   {cat === 'all' ? 'Semua' : cat}
@@ -574,11 +576,11 @@ export default function ArchivesView({
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-secondary)' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <FolderOpen size={44} color="#ff352d" style={{ opacity: 0.6 }} />
+                        <FolderOpen size={44} color="#FF5A1F" style={{ opacity: 0.7 }} />
                         <div style={{ fontWeight: 700, fontSize: '14.5px', color: '#FFFFFF' }}>
                           Belum ada dokumen Mindik yang diterbitkan untuk Laporan Polisi ini.
                         </div>
-                        <p style={{ fontSize: '12px', margin: 0, maxWidth: '420px', lineHeight: 1.5, color: '#94A3B8' }}>
+                        <p style={{ fontSize: '12px', margin: 0, maxWidth: '420px', lineHeight: 1.5, color: 'rgba(251, 219, 175, 0.65)' }}>
                           Seluruh dokumen administrasi penyidikan (SP.Sidik, SPDP, SP.Tap TSK, SP.Han, dll.) yang di-generate untuk LP ini akan otomatis tersimpan di sini.
                         </p>
                         {onOpenGenerator && (
@@ -608,9 +610,10 @@ export default function ArchivesView({
                       <tr key={doc?.id || `case-doc-${idx}`}>
                         <td>
                           <span className="badge mono" style={{
-                            background: '#1E293B',
-                            color: '#38BDF8',
-                            border: '1px solid rgba(56, 189, 248, 0.3)',
+                            background: 'rgba(224, 112, 32, 0.14)',
+                            color: '#FF5A1F',
+                            border: '1px solid rgba(224, 112, 32, 0.35)',
+                            borderRadius: '9999px',
                             fontSize: '10.5px'
                           }}>
                             {docCode}
@@ -621,18 +624,18 @@ export default function ArchivesView({
                             {doc?.doc_title || doc?.title || doc?.nama_dokumen || 'Dokumen Administrasi Penyidikan'}
                           </div>
                           {doc?.metadata?.NAMA_TERSANGKA && (
-                            <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
-                              Tersangka: <strong style={{ color: '#E2E8F0' }}>{doc.metadata.NAMA_TERSANGKA}</strong>
+                            <div style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.65)', marginTop: '2px' }}>
+                              Tersangka: <strong style={{ color: '#FBDBAF' }}>{doc.metadata.NAMA_TERSANGKA}</strong>
                             </div>
                           )}
                         </td>
                         <td>
-                          <span className="mono" style={{ fontSize: '12px', color: '#F1F5F9', fontWeight: 600 }}>
+                          <span className="mono" style={{ fontSize: '12px', color: '#FF7A33', fontWeight: 600 }}>
                             {docNum}
                           </span>
                         </td>
                         <td>
-                          <span className="mono" style={{ fontSize: '11.5px', color: '#94A3B8' }}>
+                          <span className="mono" style={{ fontSize: '11.5px', color: 'rgba(251, 219, 175, 0.65)' }}>
                             {displayDate}
                           </span>
                         </td>
@@ -643,7 +646,7 @@ export default function ArchivesView({
                               type="button"
                               onClick={() => onPreviewDoc && onPreviewDoc(doc)}
                               className="btn btn-secondary btn-sm"
-                              style={{ fontSize: '11px', padding: '4px 8px', gap: '4px' }}
+                              style={{ fontSize: '11px', padding: '4px 10px', gap: '4px' }}
                               title="Buka / Pratinjau Dokumen Naskah Dinas Resmi"
                             >
                               <Eye size={13} />
@@ -658,10 +661,10 @@ export default function ArchivesView({
                               className="btn btn-secondary btn-sm"
                               style={{
                                 fontSize: '11px',
-                                padding: '4px 8px',
+                                padding: '4px 10px',
                                 gap: '4px',
-                                color: 'var(--accent-cyan)',
-                                borderColor: 'rgba(56, 189, 248, 0.3)'
+                                color: '#FBDBAF',
+                                borderColor: 'rgba(251, 219, 175, 0.28)'
                               }}
                               title="Unduh File Master Microsoft Word (.docx)"
                             >
@@ -677,10 +680,10 @@ export default function ArchivesView({
                                 className="btn btn-secondary btn-sm"
                                 style={{
                                   fontSize: '11px',
-                                  padding: '4px 8px',
+                                  padding: '4px 10px',
                                   gap: '4px',
-                                  color: 'var(--accent-red)',
-                                  borderColor: 'rgba(239, 68, 68, 0.3)'
+                                  color: '#FF5A1F',
+                                  borderColor: 'rgba(224, 112, 32, 0.4)'
                                 }}
                                 title="Hapus Dokumen dari Arsip Perkara"
                               >
@@ -709,7 +712,7 @@ export default function ArchivesView({
         >
           <div 
             className="modal-content" 
-            style={{ maxWidth: '480px', border: '1px solid var(--accent-red)' }} 
+            style={{ maxWidth: '480px', border: '1px solid rgba(255, 90, 31, 0.55)' }} 
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -717,16 +720,16 @@ export default function ArchivesView({
                 <div style={{
                   width: '36px',
                   height: '36px',
-                  borderRadius: '8px',
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid var(--accent-red)',
+                  borderRadius: '9999px',
+                  background: 'rgba(224, 112, 32, 0.16)',
+                  border: '1px solid #FF5A1F',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <AlertTriangle size={18} color="var(--accent-red)" />
+                  <AlertTriangle size={18} color="#FF5A1F" />
                 </div>
-                <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700, color: 'var(--accent-red)' }}>
+                <h3 className="heading-font" style={{ fontSize: '16px', margin: 0, fontWeight: 700, color: '#FF5A1F' }}>
                   Konfirmasi Hapus Arsip Mindik
                 </h3>
               </div>
@@ -737,18 +740,18 @@ export default function ArchivesView({
                 Apakah Anda yakin ingin menghapus arsip dokumen mindik berikut dari perkara ini?
               </p>
               <div style={{
-                background: 'rgba(15, 23, 42, 0.8)',
+                background: '#181411',
                 padding: '10px 14px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(255, 255, 255, 0.08)'
+                borderRadius: '12px',
+                border: '1px solid rgba(251, 219, 175, 0.16)'
               }}>
-                <div style={{ fontWeight: 700, color: '#FFF' }}>
+                <div style={{ fontWeight: 700, color: '#FFFFFF' }}>
                   {docToDelete.doc_title || docToDelete.title || 'Dokumen Administrasi Penyidikan'}
                 </div>
-                <div className="mono" style={{ fontSize: '11.5px', color: 'var(--accent-cyan)', marginTop: '4px' }}>
+                <div className="mono" style={{ fontSize: '11.5px', color: '#FBDBAF', marginTop: '4px' }}>
                   No: {docToDelete.doc_number || docToDelete.nomor_surat || '-'}
                 </div>
-                <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: 'rgba(251, 219, 175, 0.65)', marginTop: '2px' }}>
                   LP: {docToDelete.nomor_lp || docToDelete.no_lp || selectedCaseForArchive?.nomor_lp || '-'}
                 </div>
               </div>
@@ -783,7 +786,7 @@ export default function ArchivesView({
                 }} 
                 disabled={isDeleting}
                 className="btn btn-primary btn-sm" 
-                style={{ background: 'var(--accent-red)' }}
+                style={{ background: '#E07020', borderColor: '#FF5A1F', color: '#FFFFFF' }}
               >
                 <Trash2 size={14} />
                 <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus Dokumen'}</span>

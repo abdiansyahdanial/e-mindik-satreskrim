@@ -760,8 +760,8 @@ export default function CaseDetail({
                       }}
                       className="btn btn-secondary btn-sm"
                       style={{
-                        borderColor: 'rgba(245, 158, 11, 0.4)',
-                        color: '#F59E0B',
+                        borderColor: 'rgba(255, 90, 31, 0.4)',
+                        color: '#FF7A33',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px'
@@ -774,7 +774,7 @@ export default function CaseDetail({
                 </div>
 
                 {/* Filter Tabs Subjek */}
-                <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(251, 219, 175, 0.12)', paddingBottom: '8px' }}>
                   <button
                     type="button"
                     onClick={() => setSubjekTab('all')}
@@ -804,9 +804,9 @@ export default function CaseDetail({
                       fontSize: '11px', 
                       borderRadius: '20px', 
                       padding: '3px 10px',
-                      borderColor: subjekTab === 'terlapor' ? '#F59E0B' : undefined,
+                      borderColor: subjekTab === 'terlapor' ? '#FF5A1F' : undefined,
                       color: subjekTab === 'terlapor' ? '#FFF' : undefined,
-                      background: subjekTab === 'terlapor' ? '#D97706' : undefined
+                      background: subjekTab === 'terlapor' ? '#E07020' : undefined
                     }}
                   >
                     Terlapor ({terlaporCount})
@@ -879,9 +879,9 @@ export default function CaseDetail({
                                   onClick={() => handlePromoteToSuspect(s)}
                                   className="btn btn-xs"
                                   style={{
-                                    background: 'rgba(239, 68, 68, 0.15)',
-                                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                                    color: '#F87171',
+                                    background: 'rgba(224, 112, 32, 0.16)',
+                                    border: '1px solid rgba(255, 90, 31, 0.45)',
+                                    color: '#FF5A1F',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '4px',
@@ -1057,18 +1057,18 @@ export default function CaseDetail({
                 alignItems: 'center',
                 gap: '8px',
                 padding: '6px 12px',
-                background: 'rgba(0, 212, 255, 0.08)',
-                border: '1px solid rgba(0, 212, 255, 0.3)',
+                background: 'rgba(224, 112, 32, 0.12)',
+                border: '1px solid rgba(255, 90, 31, 0.4)',
                 borderRadius: 'var(--radius-md)',
               }}>
-                <span className="badge badge-blue" style={{ fontSize: '10px' }}>
+                <span className="badge badge-neutral" style={{ fontSize: '10px', background: '#FFFFFF', color: '#0E0C0A', fontWeight: 700 }}>
                   KASAT RESKRIM
                 </span>
                 <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFF' }}>
                   {caseItem.kasat_nama || 'Belum diisi'}
                 </span>
                 {caseItem.kasat_pangkat && (
-                  <span className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>
+                  <span className="mono" style={{ fontSize: '11px', color: '#FF7A33' }}>
                     ({caseItem.kasat_pangkat} / NRP: {caseItem.kasat_nrp || '-'})
                   </span>
                 )}
@@ -1110,15 +1110,15 @@ export default function CaseDetail({
                     alignItems: 'center',
                     gap: '8px',
                     padding: '6px 12px',
-                    background: slot === 1 ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-elevated)',
-                    border: slot === 1 ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border-glass)',
+                    background: slot === 1 ? 'rgba(224, 112, 32, 0.1)' : 'var(--bg-elevated)',
+                    border: slot === 1 ? '1px solid rgba(255, 90, 31, 0.4)' : '1px solid var(--border-glass)',
                     borderRadius: 'var(--radius-md)',
                   }}>
                     <span className={slot === 1 ? 'badge badge-green' : 'badge badge-gray'} style={{ fontSize: '10px' }}>
                       {slot === 1 ? 'Kanit / P1' : `Penyidik ${slot}`}
                     </span>
                     {isPenangan && (
-                      <span className="badge badge-cyan" style={{ fontSize: '9.5px', background: 'rgba(0, 212, 255, 0.2)', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}>
+                      <span className="badge" style={{ fontSize: '9.5px', background: 'rgba(224, 112, 32, 0.18)', border: '1px solid #FF5A1F', color: '#FF5A1F' }}>
                         Penyidik Penangan
                       </span>
                     )}
@@ -1229,7 +1229,7 @@ export default function CaseDetail({
             className="modal-content" 
             style={{ 
               maxWidth: '680px', 
-              border: suspectForm.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)' 
+              border: suspectForm.status === 'terlapor' ? '1px solid #FF5A1F' : '1px solid var(--accent-red)' 
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1239,13 +1239,13 @@ export default function CaseDetail({
                   width: '36px',
                   height: '36px',
                   borderRadius: '8px',
-                  background: suspectForm.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                  border: suspectForm.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)',
+                  background: suspectForm.status === 'terlapor' ? 'rgba(224, 112, 32, 0.16)' : 'rgba(255, 90, 31, 0.16)',
+                  border: suspectForm.status === 'terlapor' ? '1px solid #FF5A1F' : '1px solid var(--accent-red)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  {suspectForm.status === 'terlapor' ? <User size={18} color="#F59E0B" /> : <UserPlus size={18} color="var(--accent-red)" />}
+                  {suspectForm.status === 'terlapor' ? <User size={18} color="#FF7A33" /> : <UserPlus size={18} color="var(--accent-red)" />}
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>
@@ -1270,15 +1270,15 @@ export default function CaseDetail({
                 {/* Status Formil: Terlapor */}
                 <div style={{
                   padding: '10px 14px',
-                  background: 'rgba(245, 158, 11, 0.08)',
+                  background: 'rgba(224, 112, 32, 0.1)',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  border: '1px solid rgba(255, 90, 31, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px'
                 }}>
-                  <Info size={16} color="#F59E0B" style={{ flexShrink: 0 }} />
-                  <div style={{ fontSize: '12px', color: '#FDE68A' }}>
+                  <Info size={16} color="#FF7A33" style={{ flexShrink: 0 }} />
+                  <div style={{ fontSize: '12px', color: '#FBDBAF' }}>
                     Status awal pihak yang ditambahkan adalah <strong>Terlapor</strong>. Penerbitan status Tersangka dan penomoran resmi <strong>SP.Tap TSK</strong> diterbitkan melalui modul Generate Dokumen.
                   </div>
                 </div>
@@ -1489,7 +1489,7 @@ export default function CaseDetail({
             className="modal-content" 
             style={{ 
               maxWidth: '680px', 
-              border: formData.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)' 
+              border: formData.status === 'terlapor' ? '1px solid #FF5A1F' : '1px solid var(--accent-red)' 
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1499,13 +1499,13 @@ export default function CaseDetail({
                   width: '36px',
                   height: '36px',
                   borderRadius: '8px',
-                  background: formData.status === 'terlapor' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                  border: formData.status === 'terlapor' ? '1px solid #F59E0B' : '1px solid var(--accent-red)',
+                  background: formData.status === 'terlapor' ? 'rgba(224, 112, 32, 0.16)' : 'rgba(255, 90, 31, 0.16)',
+                  border: formData.status === 'terlapor' ? '1px solid #FF5A1F' : '1px solid var(--accent-red)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <Edit3 size={18} color={formData.status === 'terlapor' ? '#F59E0B' : 'var(--accent-red)'} />
+                  <Edit3 size={18} color={formData.status === 'terlapor' ? '#FF7A33' : 'var(--accent-red)'} />
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>
@@ -1537,9 +1537,9 @@ export default function CaseDetail({
                 {editingSuspect?.status === 'tersangka' || editingSuspect?.nomor_sp_tap || editingSuspect?.no_sp_tap_tsk ? (
                   <div style={{
                     padding: '12px 14px',
-                    background: 'rgba(239, 68, 68, 0.08)',
+                    background: 'rgba(224, 112, 32, 0.1)',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    border: '1px solid rgba(255, 90, 31, 0.3)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px'
@@ -1562,15 +1562,15 @@ export default function CaseDetail({
                 ) : (
                   <div style={{
                     padding: '10px 14px',
-                    background: 'rgba(245, 158, 11, 0.08)',
+                    background: 'rgba(224, 112, 32, 0.1)',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    border: '1px solid rgba(255, 90, 31, 0.3)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px'
                   }}>
-                    <Info size={16} color="#F59E0B" style={{ flexShrink: 0 }} />
-                    <div style={{ fontSize: '12px', color: '#FDE68A' }}>
+                    <Info size={16} color="#FF7A33" style={{ flexShrink: 0 }} />
+                    <div style={{ fontSize: '12px', color: '#FBDBAF' }}>
                       Status Formil: <strong>Terlapor</strong>. Penetapan status Tersangka beserta penomoran resmi dilakukan melalui modul <strong>Generate Dokumen (SP.Tap TSK)</strong>.
                     </div>
                   </div>

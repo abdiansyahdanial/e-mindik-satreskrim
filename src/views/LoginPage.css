@@ -1,19 +1,19 @@
 /* ============================================================
    Split Panel Auth Component Styles
-   Satreskrim Polres Kolaka Timur - Merah Presisi & Dark Charcoal
+   Satreskrim Polres Kolaka Timur - CYBER RONIN (White - Solar Orange - Obsidian)
    ============================================================ */
 
 :root {
-  --auth-bg-page: #141a1f;
-  --auth-bg-surface: #1b2229;
-  --auth-bg-surface-elevated: #222b34;
-  --auth-border-subtle: rgba(255, 255, 255, 0.08);
-  --auth-border-hover: rgba(255, 255, 255, 0.16);
-  --auth-gradient-overlay: linear-gradient(145deg, #1b2229 0%, #2b1113 30%, #b81d18 70%, #ff352d 100%);
-  --auth-btn-primary: linear-gradient(135deg, #b81d18 0%, #ff352d 55%, #ff5740 100%);
-  --auth-glow-red: rgba(255, 53, 45, 0.35);
-  --auth-text-primary: #ffffff;
-  --auth-text-muted: #9ba3af;
+  --auth-bg-page: #0E0C0A;
+  --auth-bg-surface: rgba(18, 14, 11, 0.85);
+  --auth-bg-surface-elevated: #181411;
+  --auth-border-subtle: rgba(251, 219, 175, 0.16);
+  --auth-border-hover: rgba(251, 219, 175, 0.35);
+  --auth-gradient-overlay: linear-gradient(145deg, #0E0C0A 0%, #2B170A 32%, #C45A18 72%, #E07020 100%);
+  --auth-btn-primary: #E07020;
+  --auth-glow-red: rgba(224, 112, 32, 0.38);
+  --auth-text-primary: #FFFFFF;
+  --auth-text-muted: rgba(251, 219, 175, 0.72);
   --auth-easing: cubic-bezier(0.77, 0, 0.18, 1);
 }
 
@@ -21,12 +21,12 @@
 .split-auth-page {
   min-height: 100vh;
   width: 100vw;
-  background-color: var(--auth-bg-page);
+  background-color: #0E0C0A;
   background-image: 
-    radial-gradient(circle at 15% 20%, rgba(255, 53, 45, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 85% 80%, rgba(184, 29, 24, 0.08) 0%, transparent 45%),
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    radial-gradient(circle at 80% 12%, rgba(196, 90, 24, 0.28) 0%, rgba(224, 112, 32, 0.10) 35%, #0E0C0A 75%),
+    radial-gradient(circle at 15% 85%, rgba(255, 90, 31, 0.12) 0%, transparent 45%),
+    linear-gradient(rgba(251, 219, 175, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(251, 219, 175, 0.02) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
   display: flex;
   align-items: center;
@@ -49,7 +49,7 @@
     transparent 0%,
     rgba(255, 255, 255, 0.02) 20%,
     rgba(255, 255, 255, 0.22) 50%,
-    rgba(255, 87, 64, 0.35) 75%,
+    rgba(255, 90, 31, 0.35) 75%,
     transparent 100%
   );
   transform: skewX(-24deg);
@@ -96,22 +96,23 @@
   top: 20px;
   right: 24px;
   font-size: 10.5px;
-  color: #ff5740;
+  color: #FF5A1F;
   font-family: var(--font-mono, monospace);
   letter-spacing: 0.05em;
-  background: rgba(255, 53, 45, 0.08);
-  border: 1px solid rgba(255, 53, 45, 0.25);
-  padding: 3px 8px;
-  border-radius: 6px;
+  background: rgba(224, 112, 32, 0.12);
+  border: 1px solid rgba(255, 90, 31, 0.35);
+  padding: 4px 10px;
+  border-radius: 9999px;
   z-index: 5;
 }
 
 /* Main Split Card Container */
 .split-auth-card {
-  background-color: var(--auth-bg-surface);
+  background-color: #161310;
   border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65), 0 0 40px rgba(255, 53, 45, 0.12);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.78), 0 0 42px rgba(224, 112, 32, 0.14);
   border: 1px solid var(--auth-border-subtle);
+  backdrop-filter: blur(18px);
   position: relative;
   overflow: hidden;
   width: 100%;
@@ -193,11 +194,11 @@
   background: transparent;
 }
 .auth-form-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(251, 219, 175, 0.16);
   border-radius: 4px;
 }
 .auth-form-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 53, 45, 0.35);
+  background: rgba(255, 90, 31, 0.45);
 }
 
 /* Overlay Slider Container */
@@ -276,29 +277,31 @@
   gap: 6px;
   padding: 4px 12px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffe6e4;
+  background: #FFFFFF;
+  border: 1px solid #FFFFFF;
+  color: #0E0C0A;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 16px;
 }
 
 .overlay-title {
+  font-family: 'Orbitron-Medium', 'Orbitron', 'Arial Narrow', sans-serif;
   font-size: 24px;
   font-weight: 800;
   color: #ffffff;
   margin: 0 0 14px;
   line-height: 1.25;
-  letter-spacing: 0.02em;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .overlay-desc {
   font-size: 13px;
-  color: #f1f5f9;
+  color: #FAF6F0;
   line-height: 1.6;
   margin: 0 0 26px;
   opacity: 0.92;
@@ -306,14 +309,14 @@
 
 /* Overlay Action Ghost Button */
 .overlay-ghost-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
   color: #ffffff;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.04em;
-  padding: 11px 26px;
-  border-radius: 12px;
+  padding: 11px 28px;
+  border-radius: 9999px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -323,9 +326,10 @@
 }
 
 .overlay-ghost-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #ffffff;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  background: #FFFFFF;
+  color: #0E0C0A;
+  border-color: #FFFFFF;
+  box-shadow: 0 0 22px rgba(255, 255, 255, 0.35);
   transform: translateY(-2px);
 }
 
@@ -354,7 +358,7 @@
 .auth-input-icon {
   position: absolute;
   left: 12px;
-  color: #6b7280;
+  color: rgba(251, 219, 175, 0.5);
   pointer-events: none;
 }
 
@@ -373,9 +377,9 @@
 }
 
 .auth-input:focus {
-  border-color: #ff352d;
-  box-shadow: 0 0 0 2px rgba(255, 53, 45, 0.25);
-  background: #252f39;
+  border-color: #FF5A1F;
+  box-shadow: 0 0 0 2px rgba(224, 112, 32, 0.25);
+  background: #221C17;
 }
 
 .auth-select {
@@ -386,14 +390,14 @@
 /* Primary Action Button */
 .auth-btn-primary {
   width: 100%;
-  background: var(--auth-btn-primary);
+  background: #E07020;
   color: #ffffff;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.03em;
   padding: 12px 18px;
-  border-radius: 12px;
-  border: none;
+  border-radius: 9999px;
+  border: 1px solid #FF5A1F;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -405,9 +409,11 @@
 }
 
 .auth-btn-primary:hover:not(:disabled) {
-  filter: brightness(1.1);
+  background: #FFFFFF;
+  color: #0E0C0A;
+  border-color: #FFFFFF;
   transform: translateY(-2px);
-  box-shadow: 0 8px 26px rgba(255, 53, 45, 0.45);
+  box-shadow: 0 8px 26px rgba(255, 255, 255, 0.28);
 }
 
 .auth-btn-primary:disabled {
@@ -418,11 +424,11 @@
 
 /* Alert & Notice Banners */
 .auth-alert-error {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
+  background: rgba(196, 90, 24, 0.16);
+  border: 1px solid rgba(255, 90, 31, 0.45);
+  color: #FBDBAF;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 12px;
   display: flex;
   align-items: flex-start;
@@ -431,11 +437,11 @@
 }
 
 .auth-alert-status {
-  background: rgba(255, 53, 45, 0.08);
-  border: 1px solid rgba(255, 53, 45, 0.25);
-  color: #fecaca;
+  background: rgba(224, 112, 32, 0.12);
+  border: 1px solid rgba(255, 90, 31, 0.35);
+  color: #FBDBAF;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -445,9 +451,9 @@
 
 /* Password Validation Requirements */
 .password-check-box {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  background: rgba(14, 12, 10, 0.55);
+  border: 1px solid rgba(251, 219, 175, 0.12);
+  border-radius: 10px;
   padding: 10px 12px;
   margin-top: 6px;
   margin-bottom: 12px;
@@ -464,19 +470,19 @@
 }
 
 .check-item.valid {
-  color: #4ade80;
+  color: #FF5A1F;
 }
 
 .check-item.invalid {
-  color: #6b7280;
+  color: rgba(251, 219, 175, 0.45);
 }
 
 /* Mobile Toggle Bar (Visible under 760px) */
 .mobile-auth-switch {
   display: none;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(14, 12, 10, 0.65);
   border: 1px solid var(--auth-border-subtle);
-  border-radius: 12px;
+  border-radius: 9999px;
   padding: 4px;
   margin-bottom: 20px;
   gap: 4px;
@@ -485,7 +491,7 @@
 .mobile-switch-btn {
   flex: 1;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: 9999px;
   border: none;
   font-size: 12px;
   font-weight: 600;
@@ -496,9 +502,9 @@
 }
 
 .mobile-switch-btn.active {
-  background: var(--auth-btn-primary);
-  color: #ffffff;
-  box-shadow: 0 2px 10px rgba(255, 53, 45, 0.3);
+  background: #FFFFFF;
+  color: #0E0C0A;
+  box-shadow: 0 2px 12px rgba(255, 255, 255, 0.25);
 }
 
 /* ============================================================

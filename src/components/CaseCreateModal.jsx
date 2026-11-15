@@ -622,8 +622,8 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Users size={18} color="#F59E0B" />
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}>
+                  <Users size={18} color="#FF7A33" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FF7A33' }}>
                     2. DAFTAR TERLAPOR ({terlaporList.length})
                   </span>
                   <span
@@ -631,9 +631,9 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                       fontSize: '11px',
                       padding: '2px 8px',
                       borderRadius: '12px',
-                      background: 'rgba(245, 158, 11, 0.15)',
-                      color: '#FDE68A',
-                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      background: 'rgba(224, 112, 32, 0.16)',
+                      color: '#FBDBAF',
+                      border: '1px solid rgba(255, 90, 31, 0.35)',
                       fontWeight: 600,
                     }}
                   >
@@ -651,9 +651,9 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                     padding: '6px 12px',
                     fontSize: '12px',
                     fontWeight: 600,
-                    background: 'rgba(245, 158, 11, 0.2)',
-                    color: '#FDE68A',
-                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    background: 'rgba(224, 112, 32, 0.2)',
+                    color: '#FBDBAF',
+                    border: '1px solid rgba(255, 90, 31, 0.4)',
                     borderRadius: 'var(--radius-md)',
                     cursor: 'pointer',
                   }}
@@ -667,17 +667,17 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
               <div
                 style={{
                   padding: '10px 12px',
-                  background: 'rgba(245, 158, 11, 0.07)',
-                  border: '1px dashed rgba(245, 158, 11, 0.35)',
+                  background: 'rgba(224, 112, 32, 0.08)',
+                  border: '1px dashed rgba(255, 90, 31, 0.35)',
                   borderRadius: 'var(--radius-md)',
                   fontSize: '11.5px',
-                  color: '#FDE68A',
+                  color: '#FBDBAF',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                 }}
               >
-                <Info size={15} color="#F59E0B" style={{ flexShrink: 0 }} />
+                <Info size={15} color="#FF7A33" style={{ flexShrink: 0 }} />
                 <span>
                   Status awal seluruh subjek pada Berkas Perkara murni sebagai <strong>Terlapor</strong>. Penetapan status Tersangka beserta penomoran resmi <strong>SP.Tap Tsk</strong> diterbitkan saat dokumen penetapan dibuat di Modul Generate Dokumen.
                 </span>
@@ -730,7 +730,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                             alignItems: 'center',
                             gap: '4px',
                             cursor: 'pointer',
-                            color: '#F87171',
+                            color: '#FF5A1F',
                             background: 'transparent',
                             border: 'none',
                           }}
@@ -986,7 +986,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                             alignItems: 'center',
                             gap: '4px',
                             background: 'transparent',
-                            color: '#F87171',
+                            color: '#FF5A1F',
                             border: 'none',
                             cursor: 'pointer',
                           }}
@@ -1283,12 +1283,12 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span
-                            className={slotIndex === 1 ? 'badge badge-blue' : 'badge badge-gray'}
+                            className={slotIndex === 1 ? 'badge badge-amber' : 'badge badge-gray'}
                             style={{ fontSize: '10px' }}
                           >
                             Slot {slotIndex}
                           </span>
-                          <span style={{ fontSize: '11.5px', fontWeight: 600, color: slotIndex === 1 ? '#93C5FD' : 'var(--text-primary)' }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: 600, color: slotIndex === 1 ? '#FBDBAF' : 'var(--text-primary)' }}>
                             {slotTitle}
                           </span>
 
