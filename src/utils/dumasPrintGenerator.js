@@ -5,6 +5,38 @@ import logoTribrata from '../assets/LOGO TRIBRATA HITAM 2026.png';
  * Standar format resmi dinas kepolisian Satreskrim / SPKT Polres Kolaka Timur.
  */
 
+function sanitizeKronologi(data = {}) {
+  const rawKronologi = (
+    data.ringkasan_kronologi_kasus ||
+    data.ringkasan_kronologi ||
+    data.uraian_kejadian ||
+    data.kronologi ||
+    data.kronologis ||
+    data.chronology ||
+    data.uraian ||
+    data.ringkasan_posisi_kasus ||
+    data.perkara?.uraian ||
+    ''
+  ).toString().trim();
+
+  if (!rawKronologi) return '';
+
+  // Hapus hanya frasa pembuka standar jika ada, tanpa memotong berdasarkan tanda titik (.)
+  const introPattern = /^[\s\S]*?dengan\s+kronologis\s+kejadian(?:\s+yaitu|\s+sebagai\s+berikut)?\s*:?\s*/i;
+  let cleanKronologi = rawKronologi.replace(introPattern, '').trim();
+
+  // Hapus kalimat penutup redundan agar tidak terduplikasi pada template cetak
+  cleanKronologi = cleanKronologi
+    .replace(/sehingga\s+melaporkan\s+kejadian\s+tersebut\s+ke\s+kantor\s+Polres[\s\S]*$/gi, '')
+    .trim();
+  cleanKronologi = cleanKronologi
+    .replace(/Demikian\s+laporan\s+pengaduan\s+ini\s+saya\s+buat[\s\S]*$/gi, '')
+    .trim();
+  cleanKronologi = cleanKronologi.replace(/[\s.,]+$/, '').trim();
+
+  return cleanKronologi;
+}
+
 function formatIndoDate(dateStr) {
   if (!dateStr) {
     return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -136,16 +168,7 @@ export function generateSuratPengaduanHtml(data = {}) {
     : 'DALAM LIDIK';
 
   // 2 & 3. Hilangkan Duplikasi Pembuka dan Penutup Kronologi
-  let rawKronologi = (data.ringkasan_kronologi_kasus || data.uraian_kejadian || data.kronologis || data.uraian || data.ringkasan_posisi_kasus || data.perkara?.uraian || '').trim();
-
-  // Hapus paragraf pembuka redundan jika isi teks sudah mengulang kalimat "Bahwa telah terjadi..."
-  const duplicateIntroPattern = /^Bahwa\s+telah\s+terjadi[\s\S]*?(?:dilakukan\s+oleh\s+Terlapor[^.:]*|dengan\s+kronologis\s+kejadian)\s*[:.]?\s*/i;
-  let cleanKronologi = rawKronologi.replace(duplicateIntroPattern, '').trim();
-
-  // Hapus kalimat penutup redundan dari variabel kronologi sebelum dirender
-  cleanKronologi = cleanKronologi.replace(/sehingga\s+melaporkan\s+kejadian\s+tersebut\s+ke\s+kantor\s+Polres[\s\S]*$/gi, '').trim();
-  cleanKronologi = cleanKronologi.replace(/Demikian\s+laporan\s+pengaduan\s+ini\s+saya\s+buat[\s\S]*$/gi, '').trim();
-  cleanKronologi = cleanKronologi.replace(/[\s.,]+$/, '').trim();
+  const cleanKronologi = sanitizeKronologi(data);
 
   // HTML Render Blok Saksi Dinamis
   let renderSaksiHtml = '';
@@ -296,9 +319,7 @@ export function generateSuratPengaduanHtml(data = {}) {
     Bahwa telah terjadi dugaan Tindak Pidana <b>${cleanPidana}</b> dimaksud dalam Pasal <b>${cleanPasal}</b> yang terjadi di <b>${tkp}</b> pada <b>${waktu}</b> yang diduga dilakukan oleh Terlapor <b>${namaTerlaporStr}</b>, dengan kronologis kejadian:
   </p>
 
-  <p style="text-align: justify; text-indent: 35px; margin-top: 6px; margin-bottom: 6px;">
-    ${cleanKronologi} sehingga melaporkan kejadian tersebut ke kantor Polres Kolaka Timur untuk dilakukan proses hukum lebih lanjut.
-  </p>
+  <p style="text-align: justify; text-indent: 35px; margin-top: 6px; margin-bottom: 6px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; overflow: visible;">${cleanKronologi} sehingga melaporkan kejadian tersebut ke kantor Polres Kolaka Timur untuk dilakukan proses hukum lebih lanjut.</p>
 
   <p style="text-align: justify; text-indent: 35px; margin-top: 6px; margin-bottom: 12px;">
     Demikian laporan pengaduan ini saya buat dengan yang sebenar - benarnya dan memohon kepada bapak Kapolres Kolaka Timur untuk ditindak lanjuti. Atas terpenuhinya laporan / pengaduan ini saya ucapkan terima kasih.
@@ -376,12 +397,7 @@ export function generateTandaTerimaDumasHtml(data = {}, petugasPiket = null) {
     : 'DALAM LIDIK';
 
   // Bersihkan Teks Kronologi
-  let rawKronologi = (data.ringkasan_kronologi_kasus || data.uraian_kejadian || data.kronologis || data.uraian || data.ringkasan_posisi_kasus || data.perkara?.uraian || '').trim();
-  const duplicateIntroPattern = /^Bahwa\s+telah\s+terjadi[\s\S]*?(?:dilakukan\s+oleh\s+Terlapor[^.:]*|dengan\s+kronologis\s+kejadian)\s*[:.]?\s*/i;
-  let cleanKronologi = rawKronologi.replace(duplicateIntroPattern, '').trim();
-  cleanKronologi = cleanKronologi.replace(/sehingga\s+melaporkan\s+kejadian\s+tersebut\s+ke\s+kantor\s+Polres[\s\S]*$/gi, '').trim();
-  cleanKronologi = cleanKronologi.replace(/Demikian\s+laporan\s+pengaduan\s+ini\s+saya\s+buat[\s\S]*$/gi, '').trim();
-  cleanKronologi = cleanKronologi.replace(/[\s.,]+$/, '').trim();
+  const cleanKronologi = sanitizeKronologi(data);
 
   // Objek Petugas Piket Fallback
   const piket = {
@@ -522,9 +538,7 @@ export function generateTandaTerimaDumasHtml(data = {}, petugasPiket = null) {
     Telah melaporkan dugaan Tindak Pidana <b>${cleanPidana}</b> sebagaimana dimaksud dalam <b>${cleanPasal}</b>, yang terjadi di <b>${tkp}</b>, pada <b>${waktu}</b>, dengan Terlapor atas nama <b>${namaTerlapor}</b>.
   </p>
 
-  <div style="text-align: justify; text-indent: 30px; margin: 6px 0; line-height: 1.35;">
-    <b>Uraian Kejadian:</b> ${cleanKronologi}
-  </div>
+  <div style="text-align: justify; text-indent: 30px; margin: 6px 0; line-height: 1.35; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; overflow: visible;"><b>Uraian Kejadian:</b> ${cleanKronologi}</div>
 
   <p style="text-align: justify; margin-top: 6px; margin-bottom: 12px; line-height: 1.35;">
     Demikian Surat Tanda Terima dibuat dengan sebenarnya.
