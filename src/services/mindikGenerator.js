@@ -2,7 +2,6 @@ import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import fileSaver from 'file-saver';
 const saveAs = fileSaver.saveAs || fileSaver;
-import mammoth from 'mammoth';
 import { supabase } from '../supabaseClient.js';
 
 async function syncDataFromArchive(currentCase, suspectsList, formValues = {}) {
@@ -2207,102 +2206,8 @@ export async function generateAndDownloadDocx({
 }
 
 /**
- * Render physical .docx from Supabase Storage with dynamic case data,
- * and parse the output directly to HTML using Mammoth for live preview.
- */
-export async function renderDocxToHtml({
-  template,
-  caseData,
-  activeCase,
-  activeSuspect,
-  suspectsList = [],
-  activeVictim,
-  victimsList = [],
-  formValues = {},
-  personnelList = []
-}) {
-  if (!template) {
-    throw new Error('Template dokumen belum dipilih.');
-  }
-
-  // If no physical file on Supabase Storage
-  if (!template.file_path) {
-    return {
-      hasPhysicalFile: false,
-      html: null,
-      message: 'Template ini belum memiliki file master .docx di Supabase Storage.'
-    };
-  }
-
-  const currentCase = activeCase || caseData;
-
-  // 1. Fetch .docx ArrayBuffer
-  const arrayBuffer = await fetchDocxArrayBuffer(template.file_path);
-
-  // 2. Load into PizZip & clean delimiters
-  const zip = new PizZip(arrayBuffer);
-  normalizeDocxXml(zip);
-
-  // SISIPKAN BARIS INI:
-  await syncDataFromArchive(currentCase || caseData, suspectsList, formValues);
-
-  // 3. Build data map
-  const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
-    activeSuspect,
-    suspectsList,
-    activeVictim,
-    victimsList,
-    template
-  });
-
-  // 4. Render placeholders
-  const doc = new Docxtemplater(zip, {
-    paragraphLoop: true,
-    linebreaks: true,
-    nullGetter: () => ''
-  });
-
-  doc.render(dataMap);
-
-  // 5. Generate rendered ArrayBuffer
-  const renderedBuffer = doc.getZip().generate({
-    type: 'arraybuffer'
-  });
-
-  // 6. Convert to HTML using Mammoth
-  const mammothOptions = {
-    styleMap: [
-      "p[style-name='Title'] => h1.police-doc-title:fresh",
-      "p[style-name='Subtitle'] => h2.police-doc-subtitle:fresh",
-      "p[style-name='Heading 1'] => h2:fresh",
-      "p[style-name='Heading 2'] => h3:fresh",
-      "table => table.mammoth-doc-table:fresh"
-    ]
-  };
-
-  const mammothInput = {
-    arrayBuffer: renderedBuffer,
-    buffer: typeof Buffer !== 'undefined' ? Buffer.from(renderedBuffer) : renderedBuffer
-  };
-
-  const result = await mammoth.convertToHtml(mammothInput, mammothOptions);
-
-  const cleanTitle = (template.title || 'Dokumen_Mindik').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const cleanNoLp = (currentCase?.nomor_lp || currentCase?.no_lp || 'LP').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const filename = `${cleanTitle}_${cleanNoLp}.docx`;
-
-  return {
-    hasPhysicalFile: true,
-    html: result.value,
-    messages: result.messages,
-    filename,
-    dataMap
-  };
-}
-
-/**
  * Generate processed .docx Blob directly from Supabase Storage with dynamic data injected.
- * Used by docx-preview to render the document in its native Word layout.
+ * Used by docx-preview to render the document in its native Word layout and for direct .docx download.
  */
 export async function generateDocxBlob({
   template,
@@ -2339,7 +2244,7 @@ export async function generateDocxBlob({
   const zip = new PizZip(arrayBuffer);
   normalizeDocxXml(zip);
 
-  // SISIPKAN BARIS INI:
+  // 2b. Sinkronisasi rujukan dokumen induk dari arsip database
   await syncDataFromArchive(currentCase || caseData, suspectsList, formValues);
 
   // 3. Build data map
@@ -2378,137 +2283,5 @@ export async function generateDocxBlob({
   };
 }
 
-/**
- * Send DOCX blob to conversion endpoint /api/convert-docx-to-pdf and return PDF Blob.
- * Uses binary FormData with fallback to Supabase Storage path to prevent 413 Payload Too Large.
- */
-export async function convertDocxToPdf(docxBlob, options = {}) {
-  if (!docxBlob && !options.storagePath && !options.fileUrl) {
-    return null;
-  }
-
-  try {
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const res = reader.result;
-        resolve(typeof res === 'string' ? res.split(',')[1] : '');
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(docxBlob);
-    });
-
-    if (!base64) return null;
-
-    const controller = new AbortController();
-    // Beri waktu 30 detik untuk rendering PDF lokal yang berat
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-    const response = await fetch('/api/convert-docx-to-pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ docxBase64: base64 }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) return null;
-    return await response.blob();
-  } catch (err) {
-    console.warn('Backend konversi PDF lokal tidak tersedia, fallback aktif:', err.message);
-    return null;
-  }
-}
-
-/**
- * In-memory cache for rendered PDFs: (templateId_variablesHash) => Blob
- */
-const pdfRenderCache = new Map();
-
-/**
- * Clear rendered PDF cache if needed
- */
-export function clearPdfRenderCache() {
-  pdfRenderCache.clear();
-}
-
-/**
- * High level workflow: Injeksi template .docx master -> Konversi ke PDF -> Return PDF blob & blob URL
- * Includes instant render cache if variable values have not changed.
- */
-export async function generatePdfBlob({
-  template,
-  caseData,
-  activeCase,
-  activeSuspect,
-  suspectsList = [],
-  activeVictim,
-  victimsList = [],
-  formValues = {},
-  personnelList = [],
-  bypassCache = false
-}) {
-  const currentCase = activeCase || caseData;
-  const docxRes = await generateDocxBlob({
-    template,
-    caseData: currentCase,
-    activeCase: currentCase,
-    activeSuspect,
-    suspectsList,
-    activeVictim,
-    victimsList,
-    formValues,
-    personnelList
-  });
-
-  if (!docxRes.hasPhysicalFile || !docxRes.blob) {
-    return {
-      hasPhysicalFile: false,
-      pdfBlob: null,
-      pdfBlobUrl: null,
-      docxBlob: null,
-      filename: null,
-      isCached: false
-    };
-  }
-
-  // Check cache: key by template ID / path + JSON of variables & exact formValues
-  const sortedFormValues = Object.keys(formValues || {}).sort().reduce((acc, key) => {
-    acc[key] = formValues[key];
-    return acc;
-  }, {});
-  const cacheKey = `${template.id || template.file_path}_${JSON.stringify(docxRes.dataMap)}_${JSON.stringify(sortedFormValues)}`;
-  let pdfBlob = bypassCache ? null : pdfRenderCache.get(cacheKey);
-  let isCached = false;
-
-  if (pdfBlob) {
-    isCached = true;
-  } else {
-    // Perform true file-to-file conversion of the injected docx buffer
-    pdfBlob = await convertDocxToPdf(docxRes.blob);
-
-    // Save in cache (keep last 20 generated PDFs)
-    if (pdfBlob && !bypassCache) {
-      if (pdfRenderCache.size > 20) {
-        const firstKey = pdfRenderCache.keys().next().value;
-        pdfRenderCache.delete(firstKey);
-      }
-      pdfRenderCache.set(cacheKey, pdfBlob);
-    }
-  }
-
-  const pdfBlobUrl = pdfBlob ? URL.createObjectURL(pdfBlob) : null;
-
-  return {
-    hasPhysicalFile: true,
-    pdfBlob,
-    pdfBlobUrl,
-    docxBlob: docxRes.blob,
-    filename: docxRes.filename.replace(/\.docx$/i, '.pdf'),
-    dataMap: docxRes.dataMap,
-    isCached
-  };
-}
 
 
