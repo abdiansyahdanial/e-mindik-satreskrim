@@ -55,14 +55,58 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
   const [activeSlotsCount, setActiveSlotsCount] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [activeSubjectTab, setActiveSubjectTab] = useState('terlapor');
 
-  // State Daftar Korban (Array Objek Korban Standar 10 Field)
+  // 4 Kategori Subjek Hukum (13 Field KUHAP Lengkap)
   const [victims, setVictims] = useState([]);
+  const [saksiList, setSaksiList] = useState([]);
+  const [terlaporList, setTerlaporList] = useState([]);
+  const [tersangkaList, setTersangkaList] = useState([]);
+
+  const computeAgeFromDob = (dobStr) => {
+    if (!dobStr) return '';
+    const d = new Date(dobStr);
+    if (isNaN(d.getTime())) return '';
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+    return age >= 0 && age < 130 ? String(age) : '';
+  };
+
+  const normalizeLoadedSubject = (s = {}, idx = 0, prefix = 'sub') => {
+    let tempat_lahir = s.tempat_lahir || '';
+    let tanggal_lahir = s.tanggal_lahir || s.tgl_lahir || '';
+    if (!tempat_lahir && !tanggal_lahir && s.ttl) {
+      const parts = String(s.ttl).split(',');
+      tempat_lahir = (parts[0] || '').trim();
+      tanggal_lahir = parts.slice(1).join(',').trim();
+    }
+    return {
+      ...s,
+      id: s.id || `${prefix}-${idx + 1}`,
+      nama: s.nama || '',
+      alias: s.alias || '',
+      nik: s.nik || '',
+      tempat_lahir: tempat_lahir || 'Kolaka Timur',
+      tanggal_lahir,
+      tgl_lahir: tanggal_lahir,
+      ttl: s.ttl || (tempat_lahir && tanggal_lahir ? `${tempat_lahir}, ${tanggal_lahir}` : ''),
+      umur: s.umur ? String(s.umur).replace(/\s*tahun\s*/i, '').trim() : computeAgeFromDob(tanggal_lahir),
+      jenis_kelamin: s.jenis_kelamin || s.jk || 'Laki-laki',
+      kewarganegaraan: s.kewarganegaraan || 'Indonesia',
+      agama: s.agama || 'Islam',
+      pekerjaan: s.pekerjaan || '',
+      pendidikan: s.pendidikan || 'SMA',
+      alamat: s.alamat || '',
+      no_hp: s.no_hp || s.kontak || s.phone || '',
+      kontak: s.no_hp || s.kontak || s.phone || '',
+    };
+  };
 
   useEffect(() => {
     if (caseItem) {
       const activeCase = caseItem;
-      console.log("DATA PERKARA DITERIMA:", activeCase?.penyidik_penangan_index);
 
       // Determine initial date format (YYYY-MM-DD)
       let initialDate = caseItem.tanggal_lp || '';
@@ -176,11 +220,67 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
         penyidik_5_jabatan: s5.jabatan,
       });
 
-      // Hydrate daftar korban (support top-level victims atau references.victims)
-      const initialVictims = Array.isArray(activeCase.victims)
+      const refs = activeCase.references || {};
+
+      // 1. Hydrate Pelapor / Korban
+      const initialVictims = (Array.isArray(activeCase.victims) && activeCase.victims.length > 0
         ? activeCase.victims
-        : (Array.isArray(activeCase.references?.victims) ? activeCase.references.victims : []);
+        : (Array.isArray(refs.victims) ? refs.victims : (Array.isArray(refs.pelapor_list) ? refs.pelapor_list : []))
+      ).map((v, i) => normalizeLoadedSubject(v, i, 'vic'));
       setVictims(initialVictims);
+
+      // 2. Hydrate Saksi-Saksi
+      const initialSaksi = (Array.isArray(activeCase.saksi_list) && activeCase.saksi_list.length > 0
+        ? activeCase.saksi_list
+        : (Array.isArray(refs.saksi_list) ? refs.saksi_list : [])
+      ).map((s, i) => normalizeLoadedSubject(s, i, 'saksi'));
+      setSaksiList(initialSaksi);
+
+      // 3. Hydrate Terlapor & Tersangka (dari case object + sinkronisasi tabel case_suspects)
+      const localTerlapor = (Array.isArray(activeCase.terlapor_list) && activeCase.terlapor_list.length > 0
+        ? activeCase.terlapor_list
+        : (Array.isArray(refs.terlapor_list) ? refs.terlapor_list : [])
+      ).map((t, i) => normalizeLoadedSubject(t, i, 'ter'));
+
+      const localTersangka = (Array.isArray(activeCase.tersangka_list) && activeCase.tersangka_list.length > 0
+        ? activeCase.tersangka_list
+        : (Array.isArray(refs.tersangka_list) ? refs.tersangka_list : [])
+      ).map((t, i) => normalizeLoadedSubject(t, i, 'tsk'));
+
+      setTerlaporList(
+        localTerlapor.length > 0
+          ? localTerlapor
+          : (activeCase.nama_terlapor || activeCase.terlapor_name
+              ? [normalizeLoadedSubject({ nama: activeCase.nama_terlapor || activeCase.terlapor_name, alamat: activeCase.locus || '' }, 0, 'ter')]
+              : [])
+      );
+      setTersangkaList(localTersangka);
+
+      // Ambil juga data dari tabel case_suspects di Supabase agar sinkron
+      if (activeCase.id) {
+        supabase
+          .from('case_suspects')
+          .select('*')
+          .eq('case_id', activeCase.id)
+          .then(({ data }) => {
+            if (Array.isArray(data) && data.length > 0) {
+              const dbTerlapor = data
+                .filter((row) => row.status === 'terlapor')
+                .map((row, idx) => normalizeLoadedSubject(row, idx, 'ter'));
+              const dbTersangka = data
+                .filter((row) => row.status === 'tersangka' || !row.status)
+                .map((row, idx) => normalizeLoadedSubject(row, idx, 'tsk'));
+
+              if (dbTerlapor.length > 0 && localTerlapor.length === 0) {
+                setTerlaporList(dbTerlapor);
+              }
+              if (dbTersangka.length > 0 && localTersangka.length === 0) {
+                setTersangkaList(dbTersangka);
+              }
+            }
+          })
+          .catch(() => {});
+      }
 
       setErrorMessage(null);
     }
@@ -188,31 +288,95 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
 
   if (!isOpen || !caseItem) return null;
 
+  const createEmptySubject = (prefix, defaultName = '') => ({
+    id: `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    nama: defaultName,
+    alias: '',
+    nik: '',
+    tempat_lahir: 'Kolaka Timur',
+    tanggal_lahir: '',
+    tgl_lahir: '',
+    ttl: '',
+    umur: '',
+    jenis_kelamin: 'Laki-laki',
+    kewarganegaraan: 'Indonesia',
+    agama: 'Islam',
+    pekerjaan: '',
+    pendidikan: 'SMA',
+    alamat: formData.locus || '',
+    no_hp: '',
+    kontak: '',
+  });
+
+  const updateSubjectInState = (setter, index, prop, value) => {
+    setter((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const updated = { ...item, [prop]: value };
+        if (prop === 'tanggal_lahir' || prop === 'tgl_lahir') {
+          updated.tanggal_lahir = value;
+          updated.tgl_lahir = value;
+          const autoAge = computeAgeFromDob(value);
+          if (autoAge) updated.umur = autoAge;
+          if (updated.tempat_lahir && value) updated.ttl = `${updated.tempat_lahir}, ${value}`;
+        }
+        if (prop === 'tempat_lahir' && (updated.tanggal_lahir || updated.tgl_lahir)) {
+          updated.ttl = `${value}, ${updated.tanggal_lahir || updated.tgl_lahir}`;
+        }
+        if (prop === 'no_hp' || prop === 'kontak') {
+          updated.no_hp = value;
+          updated.kontak = value;
+        }
+        return updated;
+      })
+    );
+  };
+
+  // 1. Handlers Pelapor / Korban
   const handleAddVictim = () => {
     setVictims((prev) => [
       ...prev,
-      {
-        id: `vic-${Date.now()}-${prev.length + 1}`,
-        nama: prev.length === 0 && formData.nama_pelapor ? formData.nama_pelapor : '',
-        nik: '',
-        jenis_kelamin: 'Laki-laki',
-        ttl: '',
-        umur: '',
-        pekerjaan: '',
-        kewarganegaraan: 'Indonesia',
-        pendidikan: '',
-        agama: '',
-        alamat: formData.locus || '',
-      },
+      createEmptySubject('vic', prev.length === 0 && formData.nama_pelapor ? formData.nama_pelapor : ''),
     ]);
   };
+  const handleUpdateVictim = (idx, prop, val) => updateSubjectInState(setVictims, idx, prop, val);
+  const handleRemoveVictim = (idx) => setVictims((prev) => prev.filter((_, i) => i !== idx));
 
-  const handleUpdateVictim = (index, prop, value) => {
-    setVictims((prev) => prev.map((v, i) => (i === index ? { ...v, [prop]: value } : v)));
-  };
+  // 2. Handlers Saksi
+  const handleAddSaksi = () => setSaksiList((prev) => [...prev, createEmptySubject('saksi', '')]);
+  const handleUpdateSaksi = (idx, prop, val) => updateSubjectInState(setSaksiList, idx, prop, val);
+  const handleRemoveSaksi = (idx) => setSaksiList((prev) => prev.filter((_, i) => i !== idx));
 
-  const handleRemoveVictim = (index) => {
-    setVictims((prev) => prev.filter((_, i) => i !== index));
+  // 3. Handlers Terlapor (Calon Tersangka)
+  const handleAddTerlapor = () => setTerlaporList((prev) => [...prev, createEmptySubject('ter', '')]);
+  const handleUpdateTerlapor = (idx, prop, val) => updateSubjectInState(setTerlaporList, idx, prop, val);
+  const handleRemoveTerlapor = (idx) => setTerlaporList((prev) => prev.filter((_, i) => i !== idx));
+
+  // 4. Handlers Tersangka
+  const handleAddTersangka = () => setTersangkaList((prev) => [...prev, { ...createEmptySubject('tsk', ''), status: 'tersangka' }]);
+  const handleUpdateTersangka = (idx, prop, val) => updateSubjectInState(setTersangkaList, idx, prop, val);
+  const handleRemoveTersangka = (idx) => setTersangkaList((prev) => prev.filter((_, i) => i !== idx));
+
+  // Quick-Action: Tetapkan Terlapor menjadi Tersangka tanpa mengetik ulang
+  const handlePromoteTerlaporToTersangka = (terlaporItem) => {
+    if (!terlaporItem || !terlaporItem.nama?.trim()) {
+      setErrorMessage('Mohon isi Nama Lengkap Terlapor terlebih dahulu sebelum menetapkan sebagai Tersangka.');
+      return;
+    }
+    const alreadyExists = tersangkaList.some(
+      (tsk) => tsk.nama?.trim().toLowerCase() === terlaporItem.nama.trim().toLowerCase()
+    );
+    if (alreadyExists) {
+      setActiveSubjectTab('tersangka');
+      return;
+    }
+    const promoted = {
+      ...terlaporItem,
+      id: `tsk-${Date.now()}-${tersangkaList.length + 1}`,
+      status: 'tersangka',
+    };
+    setTersangkaList((prev) => [...prev, promoted]);
+    setActiveSubjectTab('tersangka');
   };
 
   const handleChange = (e) => {
@@ -319,11 +483,58 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
         is_penangan: num === penanganIdx,
       }));
 
+    const cleanSubject = (s, idx, defaultName, roleStatus) => ({
+      ...s,
+      nama: s.nama?.trim() || defaultName,
+      alias: s.alias?.trim() || '',
+      nik: s.nik?.trim() || '-',
+      tempat_lahir: s.tempat_lahir?.trim() || 'Kolaka Timur',
+      tanggal_lahir: s.tanggal_lahir || s.tgl_lahir || null,
+      tgl_lahir: s.tanggal_lahir || s.tgl_lahir || null,
+      ttl: s.ttl || ((s.tempat_lahir && (s.tanggal_lahir || s.tgl_lahir)) ? `${s.tempat_lahir}, ${s.tanggal_lahir || s.tgl_lahir}` : ''),
+      umur: s.umur ? String(s.umur).trim() : null,
+      jenis_kelamin: s.jenis_kelamin || 'Laki-laki',
+      kewarganegaraan: s.kewarganegaraan?.trim() || 'Indonesia',
+      pekerjaan: s.pekerjaan?.trim() || 'Wiraswasta',
+      pendidikan: s.pendidikan?.trim() || 'SMA',
+      agama: s.agama || 'Islam',
+      alamat: s.alamat?.trim() || formData.locus.trim(),
+      no_hp: s.no_hp?.trim() || s.kontak?.trim() || '',
+      kontak: s.no_hp?.trim() || s.kontak?.trim() || '',
+      status: roleStatus,
+      nomor_sp_tap: s.nomor_sp_tap || s.no_sp_tap_tsk || null,
+      no_sp_tap_tsk: s.no_sp_tap_tsk || s.nomor_sp_tap || null,
+      tanggal_sp_tap: s.tanggal_sp_tap || s.tgl_sp_tap_tsk || null,
+      tgl_sp_tap_tsk: s.tgl_sp_tap_tsk || s.tanggal_sp_tap || null,
+    });
+
+    const cleanedVictims = victims
+      .filter((v) => v && v.nama?.trim())
+      .map((v, idx) => cleanSubject(v, idx, formData.nama_pelapor.trim(), 'pelapor'));
+    const cleanedSaksi = saksiList
+      .filter((s) => s && s.nama?.trim())
+      .map((s, idx) => cleanSubject(s, idx, `Saksi ${idx + 1}`, 'saksi'));
+    const cleanedTerlapor = terlaporList
+      .filter((t) => t && t.nama?.trim())
+      .map((t, idx) => cleanSubject(t, idx, `Terlapor ${idx + 1}`, 'terlapor'));
+    const cleanedTersangka = tersangkaList
+      .filter((t) => t && t.nama?.trim())
+      .map((t, idx) => cleanSubject(t, idx, `Tersangka ${idx + 1}`, 'tersangka'));
+
+    const namaTerlaporJoined =
+      cleanedTerlapor.map((t) => t.nama).filter(Boolean).join(', ') ||
+      formData.nama_terlapor.trim() ||
+      'Dalam Penyelidikan';
+
     // Simpan ke references JSONB yang terbukti aman di Supabase
     const existingReferences = (caseItem.references && typeof caseItem.references === 'object') ? caseItem.references : {};
     const updatedReferences = {
       ...existingReferences,
-      victims: victims,
+      victims: cleanedVictims,
+      pelapor_list: cleanedVictims,
+      saksi_list: cleanedSaksi,
+      terlapor_list: cleanedTerlapor,
+      tersangka_list: cleanedTersangka,
       penyidik_penangan_index: penanganIdx,
       penyidik_penangan: {
         index: penanganIdx,
@@ -338,7 +549,7 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       nomor_lp: formData.nomor_lp.trim(),
       tanggal_lp: formData.tanggal_lp,
       nama_pelapor: formData.nama_pelapor.trim(),
-      nama_terlapor: formData.nama_terlapor.trim() || 'Dalam Penyelidikan',
+      nama_terlapor: namaTerlaporJoined,
       tindak_pidana: formData.tindak_pidana.trim(),
       dasar_pasal_uu: formData.dasar_pasal_uu.trim(),
       pasal: formData.pasal.trim() || formData.dasar_pasal_uu.trim(),
@@ -389,12 +600,10 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
       // Kompatibilitas skema lama
       no_lp: formData.nomor_lp.trim(),
       pelapor_name: formData.nama_pelapor.trim(),
-      terlapor_name: formData.nama_terlapor.trim() || 'Dalam Penyelidikan',
+      terlapor_name: namaTerlaporJoined,
       pasal_uu: formData.dasar_pasal_uu.trim(),
       updated_at: new Date().toISOString(),
     };
-
-    console.log("PAYLOAD KE SUPABASE:", payloadUpdate);
 
     try {
       const { error } = await supabase
@@ -404,10 +613,46 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
 
       if (error) throw error;
 
+      // Sinkronkan juga daftar Terlapor dan Tersangka ke tabel case_suspects
+      try {
+        await supabase.from('case_suspects').delete().eq('case_id', caseItem.id);
+        const allCaseSuspects = [...cleanedTerlapor, ...cleanedTersangka];
+        if (allCaseSuspects.length > 0) {
+          const suspectsRows = allCaseSuspects.map((s) => ({
+            case_id: caseItem.id,
+            nama: s.nama,
+            nik: s.nik || '-',
+            jenis_kelamin: s.jenis_kelamin || 'Laki-laki',
+            tempat_lahir: s.tempat_lahir || 'Kolaka Timur',
+            tgl_lahir: s.tanggal_lahir || s.tgl_lahir || null,
+            umur: s.umur ? String(s.umur) : null,
+            agama: s.agama || 'Islam',
+            pekerjaan: s.pekerjaan || 'Wiraswasta',
+            kewarganegaraan: s.kewarganegaraan || 'Indonesia',
+            pendidikan: s.pendidikan || 'SMA',
+            status_pernikahan: s.status_pernikahan || 'Kawin',
+            alamat: s.alamat || formData.locus.trim() || '',
+            status: s.status === 'tersangka' ? 'tersangka' : 'terlapor',
+            no_sp_tap_tsk: s.no_sp_tap_tsk || s.nomor_sp_tap || null,
+            nomor_sp_tap: s.nomor_sp_tap || s.no_sp_tap_tsk || null,
+            tanggal_sp_tap: s.tanggal_sp_tap || s.tgl_sp_tap_tsk || null,
+            tgl_sp_tap_tsk: s.tgl_sp_tap_tsk || s.tanggal_sp_tap || null,
+            created_at: new Date().toISOString(),
+          }));
+          await supabase.from('case_suspects').insert(suspectsRows);
+        }
+      } catch (syncErr) {
+        console.warn('Notice sinkronisasi case_suspects saat edit perkara:', syncErr);
+      }
+
       const mergedCase = {
         ...caseItem,
         ...payloadUpdate,
-        victims: victims,
+        victims: cleanedVictims,
+        pelapor_list: cleanedVictims,
+        saksi_list: cleanedSaksi,
+        terlapor_list: cleanedTerlapor,
+        tersangka_list: cleanedTersangka,
         penyidik_penangan: {
           index: Number(selectedPenangan),
           nama: selectedPenyidik.nama,
@@ -676,13 +921,13 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
               </div>
             </div>
 
-            {/* SECTION 2: IDENTITAS KORBAN / SAKSI KORBAN */}
+            {/* SECTION 2: MANAJEMEN SUBJEK HUKUM TERPADU (4 KATEGORI KUHAP LENGKAP) */}
             <div
               style={{
                 padding: '16px',
                 background: '#131924',
                 borderRadius: 'var(--radius-lg)',
-                border: '1px solid rgba(148, 163, 184, 0.14)',
+                border: '1px solid rgba(255, 42, 42, 0.35)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
@@ -690,9 +935,9 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <UserCheck size={18} color="#FF2A2A" />
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FF2A2A' }}>
-                    2. IDENTITAS KORBAN / SAKSI KORBAN ({victims.length})
+                  <Users size={18} color="#FF2A2A" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
+                    2. MANAJEMEN SUBJEK HUKUM TERPADU (PELAPOR, SAKSI, TERLAPOR, TERSANGKA)
                   </span>
                   <span
                     style={{
@@ -704,239 +949,389 @@ export default function CaseEditModal({ isOpen, caseItem, onClose, onSaveSuccess
                       border: '1px solid rgba(255, 42, 42, 0.4)',
                     }}
                   >
-                    10 Field Standar Mindik
+                    13 Atribut Biodata KUHAP
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddVictim}
-                  className="btn"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    background: 'rgba(255, 42, 42, 0.18)',
-                    color: '#FFFFFF',
-                    border: '1px solid rgba(255, 42, 42, 0.45)',
-                    borderRadius: '9999px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Plus size={14} />
-                  <span>+ Tambah Korban</span>
-                </button>
               </div>
 
-              {victims.length === 0 ? (
-                <div
-                  style={{
-                    padding: '12px 14px',
-                    background: '#11161F',
-                    border: '1px dashed rgba(255, 42, 42, 0.38)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '12px',
-                    color: 'var(--text-secondary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                  }}
-                >
-                  <Info size={16} color="#FF2A2A" style={{ flexShrink: 0 }} />
-                  <span>
-                    Belum ada data korban spesifik yang ditambahkan. Generator mindik otomatis merujuk ke data <strong>Nama Pelapor</strong> sebagai korban default. Klik <strong>+ Tambah Korban</strong> jika korban berbeda atau memerlukan data identitas lengkap (VER / Hak Korban).
-                  </span>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {victims.map((v, idx) => (
-                    <div
-                      key={v.id || idx}
+              {/* 4 Tab Kategori Subjek Hukum */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {[
+                  { key: 'pelapor', label: '1. Pelapor / Korban', count: victims.length },
+                  { key: 'saksi', label: '2. Saksi-Saksi', count: saksiList.length },
+                  { key: 'terlapor', label: '3. Terlapor (Calon Tsk)', count: terlaporList.length },
+                  { key: 'tersangka', label: '4. Tersangka', count: tersangkaList.length },
+                ].map((tab) => {
+                  const isActive = activeSubjectTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveSubjectTab(tab.key)}
                       style={{
-                        padding: '14px',
-                        background: '#11161F',
-                        border: '1px solid rgba(148, 163, 184, 0.16)',
-                        borderRadius: 'var(--radius-md)',
+                        padding: '8px 10px',
+                        borderRadius: '10px',
+                        fontSize: '11.5px',
+                        fontWeight: isActive ? 700 : 600,
+                        background: isActive ? 'rgba(255, 42, 42, 0.2)' : '#11161F',
+                        color: isActive ? '#FFFFFF' : '#94A3B8',
+                        border: isActive ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.18)',
+                        cursor: 'pointer',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#F3E8FF' }}>
-                            Korban #{idx + 1}
-                          </span>
-                          {idx === 0 && (
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                background: 'rgba(34, 197, 94, 0.15)',
-                                color: '#86EFAC',
-                                border: '1px solid rgba(34, 197, 94, 0.3)',
-                              }}
-                            >
-                              Utama / Terpilih
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveVictim(idx)}
-                          className="btn-danger-ghost"
-                          style={{
-                            padding: '4px 8px',
-                            fontSize: '11px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            background: 'transparent',
-                            color: '#FF2A2A',
-                            border: 'none',
-                            cursor: 'pointer',
-                          }}
-                          title="Hapus Korban Ini"
-                        >
-                          <Trash2 size={13} />
-                          <span>Hapus</span>
-                        </button>
-                      </div>
+                      <span>{tab.label}</span>
+                      <span
+                        style={{
+                          padding: '1px 7px',
+                          borderRadius: '999px',
+                          fontSize: '10.5px',
+                          background: isActive ? '#FF2A2A' : 'rgba(148, 163, 184, 0.15)',
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-                      {/* Baris 1: Nama & NIK */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>
-                            1. Nama Lengkap Korban <span style={{ color: 'var(--accent-red)' }}>*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={v.nama}
-                            onChange={(e) => handleUpdateVictim(idx, 'nama', e.target.value)}
-                            placeholder="Nama lengkap korban..."
-                            className="form-input"
-                            required
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>
-                            2. NIK (Nomor KTP/Identitas)
-                          </label>
-                          <input
-                            type="text"
-                            value={v.nik}
-                            onChange={(e) => handleUpdateVictim(idx, 'nik', e.target.value)}
-                            placeholder="16 digit NIK..."
-                            className="form-input mono"
-                          />
-                        </div>
-                      </div>
+              {(() => {
+                const tabConfig = {
+                  pelapor: {
+                    title: 'Pelapor / Saksi Korban',
+                    list: victims,
+                    onAdd: handleAddVictim,
+                    onUpdate: handleUpdateVictim,
+                    onRemove: handleRemoveVictim,
+                    emptyText: 'Belum ada data Pelapor/Korban detail. Generator otomatis merujuk ke Nama Pelapor di atas jika kosong. Klik "+ Tambah Pelapor / Korban" untuk mengisi 13 field KUHAP.',
+                    addLabel: '+ Tambah Pelapor / Korban',
+                    canPromote: false,
+                  },
+                  saksi: {
+                    title: 'Saksi',
+                    list: saksiList,
+                    onAdd: handleAddSaksi,
+                    onUpdate: handleUpdateSaksi,
+                    onRemove: handleRemoveSaksi,
+                    emptyText: 'Belum ada Saksi yang didaftarkan pada berkas perkara ini. Klik "+ Tambah Saksi" untuk menambahkan biodata saksi pemeriksaan.',
+                    addLabel: '+ Tambah Saksi',
+                    canPromote: false,
+                  },
+                  terlapor: {
+                    title: 'Terlapor (Calon Tersangka)',
+                    list: terlaporList,
+                    onAdd: handleAddTerlapor,
+                    onUpdate: handleUpdateTerlapor,
+                    onRemove: handleRemoveTerlapor,
+                    emptyText: 'Belum ada Terlapor terdaftar. Klik "+ Tambah Terlapor" untuk menambahkan calon tersangka.',
+                    addLabel: '+ Tambah Terlapor',
+                    canPromote: true,
+                  },
+                  tersangka: {
+                    title: 'Tersangka',
+                    list: tersangkaList,
+                    onAdd: handleAddTersangka,
+                    onUpdate: handleUpdateTersangka,
+                    onRemove: handleRemoveTersangka,
+                    emptyText: 'Belum ada Tersangka resmi. Klik tombol "Tetapkan Jadi Tersangka" pada kartu Terlapor atau otomatis saat menerbitkan SP.Tap Tersangka.',
+                    addLabel: '+ Tambah Tersangka Baru',
+                    canPromote: false,
+                  },
+                }[activeSubjectTab];
 
-                      {/* Baris 2: JK, TTL, Umur */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '130px 1.2fr 100px', gap: '10px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>3. Jenis Kelamin</label>
-                          <select
-                            value={v.jenis_kelamin}
-                            onChange={(e) => handleUpdateVictim(idx, 'jenis_kelamin', e.target.value)}
-                            className="form-select"
-                          >
-                            <option value="Laki-laki">Laki-laki</option>
-                            <option value="Perempuan">Perempuan</option>
-                          </select>
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>4. Tempat & Tanggal Lahir</label>
-                          <input
-                            type="text"
-                            value={v.ttl}
-                            onChange={(e) => handleUpdateVictim(idx, 'ttl', e.target.value)}
-                            placeholder="Contoh: Tirawuta, 12 Mei 1995"
-                            className="form-input"
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>5. Umur</label>
-                          <input
-                            type="text"
-                            value={v.umur}
-                            onChange={(e) => handleUpdateVictim(idx, 'umur', e.target.value)}
-                            placeholder="31 Thn"
-                            className="form-input"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Baris 3: Pekerjaan, Kewarganegaraan, Agama */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>6. Pekerjaan</label>
-                          <input
-                            type="text"
-                            value={v.pekerjaan}
-                            onChange={(e) => handleUpdateVictim(idx, 'pekerjaan', e.target.value)}
-                            placeholder="Contoh: Wiraswasta / Petani"
-                            className="form-input"
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>7. Kewarganegaraan</label>
-                          <input
-                            type="text"
-                            value={v.kewarganegaraan}
-                            onChange={(e) => handleUpdateVictim(idx, 'kewarganegaraan', e.target.value)}
-                            placeholder="Indonesia"
-                            className="form-input"
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>8. Agama</label>
-                          <select
-                            value={v.agama}
-                            onChange={(e) => handleUpdateVictim(idx, 'agama', e.target.value)}
-                            className="form-select"
-                          >
-                            <option value="">-- Pilih Agama --</option>
-                            <option value="Islam">Islam</option>
-                            <option value="Kristen Protestan">Kristen Protestan</option>
-                            <option value="Katolik">Katolik</option>
-                            <option value="Hindu">Hindu</option>
-                            <option value="Buddha">Buddha</option>
-                            <option value="Konghucu">Konghucu</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Baris 4: Pendidikan & Alamat */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '10px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>9. Pendidikan Terakhir</label>
-                          <input
-                            type="text"
-                            value={v.pendidikan}
-                            onChange={(e) => handleUpdateVictim(idx, 'pendidikan', e.target.value)}
-                            placeholder="Contoh: SMA / S-1"
-                            className="form-input"
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '11px' }}>10. Tempat Tinggal / Kediaman</label>
-                          <input
-                            type="text"
-                            value={v.alamat}
-                            onChange={(e) => handleUpdateVictim(idx, 'alamat', e.target.value)}
-                            placeholder="Alamat lengkap tempat tinggal..."
-                            className="form-input"
-                          />
-                        </div>
-                      </div>
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#CBD5E1', fontWeight: 600 }}>
+                        Daftar {tabConfig.title} ({tabConfig.list.length})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={tabConfig.onAdd}
+                        className="btn"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          background: 'rgba(255, 42, 42, 0.18)',
+                          color: '#FFFFFF',
+                          border: '1px solid rgba(255, 42, 42, 0.45)',
+                          borderRadius: '9999px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Plus size={14} />
+                        <span>{tabConfig.addLabel}</span>
+                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {tabConfig.list.length === 0 ? (
+                      <div
+                        style={{
+                          padding: '12px 14px',
+                          background: '#11161F',
+                          border: '1px dashed rgba(255, 42, 42, 0.38)',
+                          borderRadius: 'var(--radius-md)',
+                          fontSize: '12px',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                        }}
+                      >
+                        <Info size={16} color="#FF2A2A" style={{ flexShrink: 0 }} />
+                        <span>{tabConfig.emptyText}</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        {tabConfig.list.map((subj, idx) => (
+                          <div
+                            key={subj.id || idx}
+                            style={{
+                              padding: '14px',
+                              background: '#11161F',
+                              border: '1px solid rgba(148, 163, 184, 0.16)',
+                              borderRadius: 'var(--radius-md)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '10px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF' }}>
+                                  {tabConfig.title} #{idx + 1}
+                                </span>
+                                {idx === 0 && (
+                                  <span
+                                    style={{
+                                      fontSize: '10px',
+                                      padding: '1px 6px',
+                                      borderRadius: '4px',
+                                      background: 'rgba(255, 42, 42, 0.15)',
+                                      color: '#FF3B3B',
+                                      border: '1px solid rgba(255, 42, 42, 0.35)',
+                                    }}
+                                  >
+                                    Utama / Terpilih
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {tabConfig.canPromote && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePromoteTerlaporToTersangka(subj)}
+                                    style={{
+                                      padding: '4px 10px',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      borderRadius: '999px',
+                                      background: 'rgba(255, 42, 42, 0.18)',
+                                      color: '#FFFFFF',
+                                      border: '1px solid #FF2A2A',
+                                      cursor: 'pointer',
+                                    }}
+                                    title="Salin seluruh biodata Terlapor ini ke Daftar Tersangka tanpa mengetik ulang"
+                                  >
+                                    <UserCheck size={13} color="#FF2A2A" />
+                                    <span>Tetapkan Jadi Tersangka</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => tabConfig.onRemove(idx)}
+                                  className="btn-danger-ghost"
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    background: 'transparent',
+                                    color: '#FF2A2A',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                  }}
+                                  title="Hapus Subjek Ini"
+                                >
+                                  <Trash2 size={13} />
+                                  <span>Hapus</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Baris 1: Nama Lengkap, Alias, NIK */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr 1fr', gap: '10px' }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>
+                                  1. Nama Lengkap <span style={{ color: 'var(--accent-red)' }}>*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={subj.nama || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'nama', e.target.value)}
+                                  placeholder={`Nama lengkap ${tabConfig.title.toLowerCase()}...`}
+                                  className="form-input"
+                                  required
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>2. Alias / Panggilan</label>
+                                <input
+                                  type="text"
+                                  value={subj.alias || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'alias', e.target.value)}
+                                  placeholder="Alias (opsional)..."
+                                  className="form-input"
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>3. NIK (Nomor KTP/Identitas)</label>
+                                <input
+                                  type="text"
+                                  value={subj.nik || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'nik', e.target.value)}
+                                  placeholder="16 digit NIK..."
+                                  className="form-input mono"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Baris 2: Tempat Lahir, Tanggal Lahir, Umur (Otomatis), Jenis Kelamin */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 0.7fr 0.9fr', gap: '10px' }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>4. Tempat Lahir</label>
+                                <input
+                                  type="text"
+                                  value={subj.tempat_lahir || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'tempat_lahir', e.target.value)}
+                                  placeholder="Kolaka Timur"
+                                  className="form-input"
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>5. Tanggal Lahir</label>
+                                <input
+                                  type="date"
+                                  value={subj.tanggal_lahir || subj.tgl_lahir || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'tanggal_lahir', e.target.value)}
+                                  className="form-input mono"
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>6. Umur (Thn)</label>
+                                <input
+                                  type="text"
+                                  value={subj.umur || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'umur', e.target.value)}
+                                  placeholder="Otomatis"
+                                  className="form-input mono"
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>7. Jenis Kelamin</label>
+                                <select
+                                  value={subj.jenis_kelamin || 'Laki-laki'}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'jenis_kelamin', e.target.value)}
+                                  className="form-select"
+                                >
+                                  <option value="Laki-laki">Laki-laki</option>
+                                  <option value="Perempuan">Perempuan</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Baris 3: Kewarganegaraan, Agama, Pekerjaan, Pendidikan */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1fr 1.1fr 0.9fr', gap: '10px' }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>8. Kewarganegaraan</label>
+                                <input
+                                  type="text"
+                                  value={subj.kewarganegaraan || 'Indonesia'}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'kewarganegaraan', e.target.value)}
+                                  placeholder="Indonesia"
+                                  className="form-input"
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>9. Agama</label>
+                                <select
+                                  value={subj.agama || 'Islam'}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'agama', e.target.value)}
+                                  className="form-select"
+                                >
+                                  <option value="Islam">Islam</option>
+                                  <option value="Kristen Protestan">Kristen Protestan</option>
+                                  <option value="Katolik">Katolik</option>
+                                  <option value="Hindu">Hindu</option>
+                                  <option value="Buddha">Buddha</option>
+                                  <option value="Konghucu">Konghucu</option>
+                                </select>
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>10. Pekerjaan</label>
+                                <input
+                                  type="text"
+                                  value={subj.pekerjaan || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'pekerjaan', e.target.value)}
+                                  placeholder="Wiraswasta / Petani / PNS..."
+                                  className="form-input"
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>11. Pendidikan</label>
+                                <input
+                                  type="text"
+                                  value={subj.pendidikan || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'pendidikan', e.target.value)}
+                                  placeholder="SMA / S-1..."
+                                  className="form-input"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Baris 4: Alamat Lengkap & No. HP */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '10px' }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>12. Tempat Tinggal / Kediaman Lengkap</label>
+                                <input
+                                  type="text"
+                                  value={subj.alamat || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'alamat', e.target.value)}
+                                  placeholder="Alamat lengkap tempat tinggal..."
+                                  className="form-input"
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>13. No. HP / Kontak</label>
+                                <input
+                                  type="text"
+                                  value={subj.no_hp || subj.kontak || ''}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'no_hp', e.target.value)}
+                                  placeholder="0812..."
+                                  className="form-input mono"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* SECTION 3: PEJABAT & TIM PENYIDIK */}

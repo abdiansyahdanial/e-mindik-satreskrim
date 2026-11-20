@@ -592,6 +592,86 @@ export default function AdminTemplateStudio({
         </div>
       )}
 
+      {/* PANDUAN STANDARD PLACEHOLDER DICTIONARY & POLA RANTAI MINDIK UNIVERSAL */}
+      <div className="glass" style={{
+        padding: '18px 22px',
+        background: '#11161F',
+        border: '1px solid rgba(255, 42, 42, 0.35)',
+        borderRadius: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Layers size={18} color="#FF2A2A" />
+            <span className="heading-font" style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em' }}>
+              STANDARD PLACEHOLDER DICTIONARY — KAMUS TAG WORD & POLA RANTAI OTOMATIS
+            </span>
+          </div>
+          <span style={{
+            fontSize: '10.5px',
+            padding: '2px 10px',
+            borderRadius: '999px',
+            background: 'rgba(255, 42, 42, 0.16)',
+            color: '#FFFFFF',
+            border: '1px solid #FF2A2A',
+            fontWeight: 700
+          }}>
+            Zero-Code Future Template Support
+          </span>
+        </div>
+
+        <p style={{ margin: 0, fontSize: '12px', color: '#CBD5E1', lineHeight: 1.5 }}>
+          Gunakan tag kurung kurawal tunggal <code>{'{NAMA_TAG}'}</code> di dalam dokumen Microsoft Word (<code>.docx</code>). Setiap template baru yang diunggah ke Template Studio dengan <strong>Kode Template</strong> apa pun (misal: <code>BA_KONFRONTASI</code> atau <code>SP_GELAR_PERKARA</code>) otomatis terhubung ke dalam rantai mindik tanpa perlu mengubah kode program:
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+          {/* 1. Pola Rantai Dokumen Dinamis */}
+          <div style={{ padding: '12px 14px', background: '#131924', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
+            <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#FF3B3B', marginBottom: '6px' }}>
+              1. POLA RANTAI DOKUMEN DINAMIS (SEMUA KODE)
+            </div>
+            <div style={{ fontSize: '11px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px', lineHeight: 1.45 }}>
+              <div><code className="mono">{'{NOMOR_<KODE_TEMPLATE>}'}</code> / <code className="mono">{'{NO_<KODE_TEMPLATE>}'}</code></div>
+              <div><code className="mono">{'{TANGGAL_<KODE_TEMPLATE>}'}</code> / <code className="mono">{'{TGL_<KODE_TEMPLATE>}'}</code></div>
+              <div><code className="mono">{'{DASAR_<KODE_TEMPLATE>}'}</code> (Kalimat dasar lengkap)</div>
+              <div><code className="mono">{'{#DAFTAR_DASAR_SURAT}{dasar}{/DAFTAR_DASAR_SURAT}'}</code></div>
+              <div style={{ fontSize: '10px', color: '#94A3B8', marginTop: '2px' }}>
+                Contoh: <code>{'{NOMOR_SPRIN_SIDIK}'}</code>, <code>{'{TANGGAL_SPDP}'}</code>, <code>{'{NOMOR_SP_TAP_TSK}'}</code>, <code>{'{NOMOR_BA_KONFRONTASI}'}</code>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Data Induk Perkara & Pejabat */}
+          <div style={{ padding: '12px 14px', background: '#131924', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
+            <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#FF3B3B', marginBottom: '6px' }}>
+              2. DATA INDUK PERKARA, TIM PENYIDIK & BARANG BUKTI
+            </div>
+            <div style={{ fontSize: '11px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px', lineHeight: 1.45 }}>
+              <div><code className="mono">{'{NOMOR_SURAT}'}</code>, <code className="mono">{'{TANGGAL_SURAT}'}</code>, <code className="mono">{'{NOMOR_LP}'}</code>, <code className="mono">{'{TANGGAL_LP}'}</code></div>
+              <div><code className="mono">{'{TINDAK_PIDANA}'}</code>, <code className="mono">{'{PASAL}'}</code>, <code className="mono">{'{TEMPAT_KEJADIAN}'}</code>, <code className="mono">{'{WAKTU_KEJADIAN}'}</code></div>
+              <div><code className="mono">{'{KRONOLOGI}'}</code>, <code className="mono">{'{URAIAN_SINGKAT}'}</code>, <code className="mono">{'{ATASAN_NAMA}'}</code>, <code className="mono">{'{ATASAN_PANGKAT}'}</code></div>
+              <div><code className="mono">{'{PENYIDIK_1_NAMA}'}</code> s/d <code className="mono">{'{PENYIDIK_10_NAMA}'}</code> &amp; Loop <code className="mono">{'{#PENYIDIK}'}</code></div>
+              <div><code className="mono">{'{DAFTAR_BARANG_BUKTI}'}</code> &amp; Loop <code className="mono">{'{#BARANG_BUKTI}'}</code></div>
+            </div>
+          </div>
+
+          {/* 3. Subjek Hukum Terpadu (13 Atribut KUHAP) */}
+          <div style={{ padding: '12px 14px', background: '#131924', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
+            <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#FF3B3B', marginBottom: '6px' }}>
+              3. SUBJEK HUKUM KUHAP (PELAPOR, SAKSI, TERLAPOR, TERSANGKA)
+            </div>
+            <div style={{ fontSize: '11px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px', lineHeight: 1.45 }}>
+              <div>Prefix: <code className="mono">TERSANGKA_*</code>, <code className="mono">TERLAPOR_*</code>, <code className="mono">SAKSI_*</code>, <code className="mono">PELAPOR_*</code>, <code className="mono">SUBJEK_*</code></div>
+              <div>Atribut: <code className="mono">_NAMA</code>, <code className="mono">_ALIAS</code>, <code className="mono">_NIK</code>, <code className="mono">_TTL</code>, <code className="mono">_UMUR</code>, <code className="mono">_JENIS_KELAMIN</code>, <code className="mono">_PEKERJAAN</code>, <code className="mono">_AGAMA</code>, <code className="mono">_ALAMAT</code>, <code className="mono">_NO_HP</code></div>
+              <div>Blok Penuh: <code className="mono">{'{BIODATA_TERSANGKA_LENGKAP}'}</code>, <code className="mono">{'{BIODATA_SAKSI_LENGKAP}'}</code></div>
+              <div>Loop Multi-Subjek: <code className="mono">{'{#TERSANGKA}'}</code>, <code className="mono">{'{#TERLAPOR}'}</code>, <code className="mono">{'{#SAKSI}'}</code>, <code className="mono">{'{#PELAPOR}'}</code></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Grid: Form Builder (Left) & Existing Templates (Right) */}
       <div style={{
         display: 'grid',

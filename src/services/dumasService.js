@@ -943,70 +943,168 @@ export async function deleteEvidenceFromDumas(dumasId, evidenceId, filePath = nu
 export function convertDumasToCase(dumasItem) {
   if (!dumasItem) return null;
 
-  const tskList = (dumasItem.terlapor_list && dumasItem.terlapor_list.length > 0)
+  const parseTtl = (ttlStr, rawTempat, rawTanggal) => {
+    if (rawTempat || rawTanggal) {
+      return { tempat_lahir: rawTempat || '', tanggal_lahir: rawTanggal || '' };
+    }
+    if (!ttlStr || ttlStr === '-') return { tempat_lahir: '', tanggal_lahir: '' };
+    const parts = String(ttlStr).split(',');
+    return {
+      tempat_lahir: (parts[0] || '').trim(),
+      tanggal_lahir: parts.slice(1).join(',').trim()
+    };
+  };
+
+  // 1. Pelapor / Korban
+  const pelaporTtl = parseTtl(dumasItem.pelapor_ttl, dumasItem.pelapor_tempat_lahir, dumasItem.pelapor_tanggal_lahir || dumasItem.pelapor_tgl_lahir);
+  const pelaporList = (Array.isArray(dumasItem.pelapor_list) && dumasItem.pelapor_list.length > 0)
+    ? dumasItem.pelapor_list
+    : [{
+        id: `pelapor-1`,
+        nama: dumasItem.pelapor_nama || 'PELAPOR',
+        alias: dumasItem.pelapor_alias || '',
+        nik: dumasItem.pelapor_nik || '',
+        tempat_lahir: pelaporTtl.tempat_lahir,
+        tanggal_lahir: pelaporTtl.tanggal_lahir,
+        tgl_lahir: pelaporTtl.tanggal_lahir,
+        ttl: dumasItem.pelapor_ttl || '',
+        umur: dumasItem.pelapor_umur || '',
+        jenis_kelamin: dumasItem.pelapor_jk || dumasItem.pelapor_jenis_kelamin || 'Laki-laki',
+        kewarganegaraan: dumasItem.pelapor_kewarganegaraan || 'Indonesia',
+        agama: dumasItem.pelapor_agama || 'Islam',
+        pekerjaan: dumasItem.pelapor_pekerjaan || '',
+        pendidikan: dumasItem.pelapor_pendidikan || 'SMA',
+        alamat: dumasItem.pelapor_alamat || dumasItem.pelapor_domisili || '',
+        no_hp: dumasItem.pelapor_hp || dumasItem.pelapor_kontak || ''
+      }];
+
+  // 2. Saksi-Saksi
+  const rawSaksi = Array.isArray(dumasItem.saksi_list) ? dumasItem.saksi_list : [];
+  const saksiList = rawSaksi.map((s, idx) => {
+    const sTtl = parseTtl(s.ttl, s.tempat_lahir, s.tanggal_lahir || s.tgl_lahir);
+    return {
+      id: s.id || `saksi-${idx + 1}`,
+      nama: s.nama || '',
+      alias: s.alias || '',
+      nik: s.nik || '',
+      tempat_lahir: sTtl.tempat_lahir,
+      tanggal_lahir: sTtl.tanggal_lahir,
+      tgl_lahir: sTtl.tanggal_lahir,
+      ttl: s.ttl || (sTtl.tempat_lahir && sTtl.tanggal_lahir ? `${sTtl.tempat_lahir}, ${sTtl.tanggal_lahir}` : ''),
+      umur: s.umur || '',
+      jenis_kelamin: s.jenis_kelamin || s.jk || 'Laki-laki',
+      kewarganegaraan: s.kewarganegaraan || 'Indonesia',
+      agama: s.agama || 'Islam',
+      pekerjaan: s.pekerjaan || '',
+      pendidikan: s.pendidikan || 'SMA',
+      alamat: s.alamat || s.domisili || '',
+      no_hp: s.no_hp || s.kontak || s.hp || '',
+      status: 'saksi'
+    };
+  });
+
+  // 3. Terlapor / Calon Tersangka
+  const tskList = (Array.isArray(dumasItem.terlapor_list) && dumasItem.terlapor_list.length > 0)
     ? dumasItem.terlapor_list
     : [{
         nama: dumasItem.terlapor_nama || 'TERLAPOR',
-        nik: dumasItem.terlapor_nik || '-',
-        ttl: dumasItem.terlapor_ttl || '-',
-        pekerjaan: dumasItem.terlapor_pekerjaan || '-',
-        agama: dumasItem.terlapor_agama || '-',
-        alamat: dumasItem.terlapor_domisili || '-',
+        alias: dumasItem.terlapor_alias || '',
+        nik: dumasItem.terlapor_nik || '',
+        ttl: dumasItem.terlapor_ttl || '',
+        pekerjaan: dumasItem.terlapor_pekerjaan || '',
+        agama: dumasItem.terlapor_agama || 'Islam',
+        alamat: dumasItem.terlapor_domisili || dumasItem.terlapor_alamat || '',
+        no_hp: dumasItem.terlapor_hp || dumasItem.terlapor_kontak || ''
       }];
 
-  const caseSuspects = tskList.map((tsk, idx) => ({
-    id: tsk.id || `suspect-${idx + 1}`,
-    nama: tsk.nama || dumasItem.terlapor_nama || '',
-    nik: tsk.nik || '',
-    tempat_lahir: tsk.ttl?.split(',')?.[0]?.trim() || '',
-    tgl_lahir: tsk.ttl?.split(',')?.[1]?.trim() || '',
-    umur: '35',
-    jenis_kelamin: 'Laki-laki',
-    kebangsaan: 'Indonesia',
-    agama: tsk.agama || 'Islam',
-    pekerjaan: tsk.pekerjaan || '',
-    pendidikan: 'SMA / Sederajat',
-    alamat: tsk.alamat || dumasItem.terlapor_domisili || '',
-    status: 'terlapor',
-  }));
+  const caseSuspects = tskList.map((tsk, idx) => {
+    const tTtl = parseTtl(tsk.ttl, tsk.tempat_lahir, tsk.tanggal_lahir || tsk.tgl_lahir);
+    return {
+      id: tsk.id || `suspect-${idx + 1}`,
+      nama: tsk.nama || dumasItem.terlapor_nama || '',
+      alias: tsk.alias || '',
+      nik: tsk.nik || '',
+      tempat_lahir: tTtl.tempat_lahir,
+      tanggal_lahir: tTtl.tanggal_lahir,
+      tgl_lahir: tTtl.tanggal_lahir,
+      ttl: tsk.ttl || (tTtl.tempat_lahir && tTtl.tanggal_lahir ? `${tTtl.tempat_lahir}, ${tTtl.tanggal_lahir}` : ''),
+      umur: tsk.umur || '35',
+      jenis_kelamin: tsk.jenis_kelamin || tsk.jk || 'Laki-laki',
+      kewarganegaraan: tsk.kewarganegaraan || tsk.kebangsaan || 'Indonesia',
+      kebangsaan: tsk.kewarganegaraan || tsk.kebangsaan || 'Indonesia',
+      agama: tsk.agama || 'Islam',
+      pekerjaan: tsk.pekerjaan || '',
+      pendidikan: tsk.pendidikan || 'SMA / Sederajat',
+      alamat: tsk.alamat || tsk.domisili || dumasItem.terlapor_domisili || '',
+      no_hp: tsk.no_hp || tsk.kontak || tsk.hp || '',
+      kontak: tsk.no_hp || tsk.kontak || tsk.hp || '',
+      status: tsk.status || 'terlapor',
+    };
+  });
+
+  // 4. Tersangka (jika sudah ada penetapan tersangka)
+  const tersangkaList = Array.isArray(dumasItem.tersangka_list) ? dumasItem.tersangka_list : [];
 
   const primaryTsk = caseSuspects[0] || {};
+  const barangBuktiList = Array.isArray(dumasItem.lampiran_barang_bukti)
+    ? dumasItem.lampiran_barang_bukti
+    : (Array.isArray(dumasItem.barang_bukti) ? dumasItem.barang_bukti : []);
 
   return {
     id: `case-dumas-${dumasItem.id || Date.now()}`,
+    dumas_id: dumasItem.id || null,
     no_lp: dumasItem.nomor_lp || 'LP/DUMAS/SATRESKRIM',
+    nomor_lp: dumasItem.nomor_lp || 'LP/DUMAS/SATRESKRIM',
     tindak_pidana: dumasItem.tindak_pidana || 'Dugaan Tindak Pidana',
     pasal_uu: dumasItem.pasal_disangkakan || '',
     pasal: dumasItem.pasal_disangkakan || '',
     locus: dumasItem.locus_delicti || '',
     tempus: dumasItem.tempus_delicti || '',
     pelapor_name: dumasItem.pelapor_nama || '',
-    terlapor_name: dumasItem.terlapor_nama || '',
+    nama_pelapor: dumasItem.pelapor_nama || '',
+    terlapor_name: dumasItem.terlapor_nama || primaryTsk.nama || '',
+    nama_terlapor: dumasItem.terlapor_nama || primaryTsk.nama || '',
     sprin_date: new Date().toISOString().split('T')[0],
     sprin_loc: 'Tirawuta',
     status: 'active',
     uraian_kejadian: dumasItem.uraian_kejadian || '',
+    uraian_singkat: dumasItem.uraian_kejadian || '',
     person: {
       nama: primaryTsk.nama || '',
+      alias: primaryTsk.alias || '',
       nik: primaryTsk.nik || '',
       tempat_lahir: primaryTsk.tempat_lahir || '',
+      tanggal_lahir: primaryTsk.tanggal_lahir || '',
       tgl_lahir: primaryTsk.tgl_lahir || '',
       umur: primaryTsk.umur || '',
       jenis_kelamin: primaryTsk.jenis_kelamin || 'Laki-laki',
+      kewarganegaraan: 'Indonesia',
       kebangsaan: 'Indonesia',
       agama: primaryTsk.agama || 'Islam',
       pekerjaan: primaryTsk.pekerjaan || '',
       pendidikan: primaryTsk.pendidikan || 'SMA',
       alamat: primaryTsk.alamat || '',
+      no_hp: primaryTsk.no_hp || '',
       status: 'terlapor'
     },
     case_suspects: caseSuspects,
+    victims: pelaporList,
+    pelapor_list: pelaporList,
+    saksi_list: saksiList,
+    terlapor_list: caseSuspects,
+    tersangka_list: tersangkaList,
     investigators: [],
     references: {
+      dumas_id: dumasItem.id || null,
       no_dumas_asal: dumasItem.nomor_lp,
+      victims: pelaporList,
+      pelapor_list: pelaporList,
+      saksi_list: saksiList,
+      terlapor_list: caseSuspects,
+      tersangka_list: tersangkaList,
+      barang_bukti: barangBuktiList
     },
-    saksi_list: dumasItem.saksi_list || [],
-    lampiran_barang_bukti: dumasItem.lampiran_barang_bukti || [],
+    lampiran_barang_bukti: barangBuktiList,
   };
 }
 

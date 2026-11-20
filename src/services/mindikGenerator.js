@@ -4,51 +4,1115 @@ import fileSaver from 'file-saver';
 const saveAs = fileSaver.saveAs || fileSaver;
 import { supabase } from '../supabaseClient.js';
 
+/**
+ * Hitung umur otomatis dari tanggal lahir (ISO YYYY-MM-DD atau teks tanggal).
+ */
+export function calculateAgeFromDob(dobStr) {
+  if (!dobStr) return '';
+  let birthYear = null;
+  let birthMonth = 0;
+  let birthDay = 1;
+
+  const str = String(dobStr).trim();
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    birthYear = parseInt(isoMatch[1], 10);
+    birthMonth = parseInt(isoMatch[2], 10) - 1;
+    birthDay = parseInt(isoMatch[3], 10);
+  } else {
+    const yearMatch = str.match(/\b(19\d{2}|20\d{2})\b/);
+    if (yearMatch) {
+      birthYear = parseInt(yearMatch[1], 10);
+    }
+  }
+
+  if (!birthYear || isNaN(birthYear)) return '';
+  const now = new Date();
+  let age = now.getFullYear() - birthYear;
+  if (isoMatch) {
+    const mDiff = now.getMonth() - birthMonth;
+    if (mDiff < 0 || (mDiff === 0 && now.getDate() < birthDay)) {
+      age--;
+    }
+  }
+  return age >= 0 && age < 130 ? String(age) : '';
+}
+
+/**
+ * Format biodata subjek hukum (Pelapor, Saksi, Terlapor, Tersangka) menjadi blok teks KUHAP lengkap.
+ */
+export function formatSubjectBiodataBlock(subject = {}) {
+  if (!subject || !subject.nama) return '';
+  const namaStr = subject.alias ? `${subject.nama} Als. ${subject.alias}` : subject.nama;
+  const rawDob = subject.tanggal_lahir || subject.tgl_lahir || '';
+  const formattedDob = rawDob ? formatTanggalIndonesia(rawDob) : '';
+  const ttlStr = (subject.tempat_lahir && formattedDob)
+    ? `${subject.tempat_lahir}, ${formattedDob}`
+    : (subject.ttl || subject.tempat_lahir || formattedDob || '-');
+  const rawUmur = subject.umur || calculateAgeFromDob(rawDob) || '';
+  const umurStr = rawUmur ? (String(rawUmur).toLowerCase().includes('tahun') ? String(rawUmur) : `${rawUmur} Tahun`) : '-';
+  const jkStr = subject.jenis_kelamin || subject.jk || 'Laki-laki';
+  const wargaStr = subject.kewarganegaraan || 'Indonesia';
+  const agamaStr = subject.agama || '-';
+  const kerjaStr = subject.pekerjaan || '-';
+  const didikStr = subject.pendidikan || '-';
+  const nikStr = subject.nik || '-';
+  const alamatStr = subject.alamat || '-';
+  const hpStr = subject.no_hp || subject.kontak || subject.phone || '';
+
+  const lines = [
+    `Nama             : ${namaStr}`,
+    `NIK              : ${nikStr}`,
+    `Tempat/Tgl Lahir : ${ttlStr}`,
+    `Umur             : ${umurStr}`,
+    `Jenis Kelamin    : ${jkStr}`,
+    `Kewarganegaraan  : ${wargaStr}`,
+    `Agama            : ${agamaStr}`,
+    `Pekerjaan        : ${kerjaStr}`,
+    `Pendidikan       : ${didikStr}`,
+    `Alamat           : ${alamatStr}`
+  ];
+  if (hpStr) {
+    lines.push(`No. HP / Kontak  : ${hpStr}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Normalisasi 1 objek Subjek Hukum sesuai 13 field standar KUHAP.
+ */
+export function normalizeSubjectRecord(s = {}, idx = 0, roleLabel = 'Subjek') {
+  if (!s) return null;
+  const nama = (s.nama || s.name || '').trim();
+  const alias = (s.alias || '').trim();
+  const nik = (s.nik || s.no_identitas || '').trim();
+  let tempat_lahir = (s.tempat_lahir || '').trim();
+  let tanggal_lahir = (s.tanggal_lahir || s.tgl_lahir || '').trim();
+
+  if (!tempat_lahir && !tanggal_lahir && s.ttl) {
+    const parts = String(s.ttl).split(',');
+    if (parts.length >= 2) {
+      tempat_lahir = parts[0].trim();
+      tanggal_lahir = parts.slice(1).join(',').trim();
+    } else {
+      tempat_lahir = String(s.ttl).trim();
+    }
+  }
+
+  const formattedDob = tanggal_lahir ? formatTanggalIndonesia(tanggal_lahir) : '';
+  const ttl = (tempat_lahir && formattedDob)
+    ? `${tempat_lahir}, ${formattedDob}`
+    : (s.ttl || tempat_lahir || formattedDob || '');
+  const autoAge = calculateAgeFromDob(tanggal_lahir);
+  const rawUmur = s.umur || autoAge || '';
+  const umurClean = String(rawUmur).replace(/\s*tahun\s*/i, '').trim();
+  const umurFormatted = umurClean ? `${umurClean} Tahun` : '';
+  const jenis_kelamin = s.jenis_kelamin || s.jk || 'Laki-laki';
+  const kewarganegaraan = s.kewarganegaraan || 'Indonesia';
+  const agama = s.agama || 'Islam';
+  const pekerjaan = s.pekerjaan || '';
+  const pendidikan = s.pendidikan || '';
+  const alamat = s.alamat || '';
+  const no_hp = s.no_hp || s.kontak || s.phone || '';
+  const nomor_sp_tap = s.nomor_sp_tap || s.no_sp_tap_tsk || s.no_sp_tap || '';
+  const tanggal_sp_tap = s.tanggal_sp_tap || s.tgl_sp_tap_tsk || s.tgl_sp_tap || '';
+
+  const normalized = {
+    ...s,
+    no: idx + 1,
+    id: s.id || `${roleLabel.toLowerCase()}_${idx + 1}`,
+    nama,
+    alias,
+    nama_lengkap: alias ? `${nama} Als. ${alias}` : nama,
+    nik,
+    tempat_lahir,
+    tanggal_lahir,
+    tgl_lahir: formattedDob || tanggal_lahir,
+    ttl,
+    umur: umurFormatted || umurClean,
+    umur_angka: umurClean,
+    jenis_kelamin,
+    jk: jenis_kelamin,
+    kewarganegaraan,
+    agama,
+    pekerjaan,
+    pendidikan,
+    alamat,
+    no_hp,
+    kontak: no_hp,
+    nomor_sp_tap,
+    tanggal_sp_tap: tanggal_sp_tap ? formatTanggalIndonesia(tanggal_sp_tap) : '',
+    role_category: s.role_category || roleLabel
+  };
+  normalized.biodata_lengkap = formatSubjectBiodataBlock(normalized);
+  return normalized;
+}
+
+/**
+ * Helper untuk mengisi seluruh tag prefix Subjek Hukum (TERSANGKA_*, TERLAPOR_*, SAKSI_*, PELAPOR_*, SUBJEK_*)
+ */
+export function populateSubjectPrefixVariables(targetMap, prefix, subjectList = [], primarySubject = null) {
+  const validList = (Array.isArray(subjectList) ? subjectList : [])
+    .filter(item => item && item.nama)
+    .map((item, i) => normalizeSubjectRecord(item, i, prefix));
+  const primary = primarySubject && primarySubject.nama
+    ? normalizeSubjectRecord(primarySubject, 0, prefix)
+    : (validList[0] || null);
+
+  const upper = prefix.toUpperCase();
+  const lower = prefix.toLowerCase();
+
+  // Loop Array (e.g. {#TERSANGKA}, {#TERLAPOR}, {#SAKSI}, {#PELAPOR})
+  targetMap[upper] = validList;
+  targetMap[lower] = validList;
+  targetMap[`${upper}_LIST`] = validList;
+  targetMap[`${lower}_list`] = validList;
+  targetMap[`DAFTAR_${upper}`] = validList;
+  targetMap[`daftar_${lower}`] = validList;
+
+  // Biodata Lengkap Gabungan atau Tunggal
+  const biodataBlock = validList.length > 1
+    ? validList.map((item, i) => `${i + 1}. ${item.biodata_lengkap}`).join('\n\n')
+    : (primary ? primary.biodata_lengkap : '');
+
+  targetMap[`BIODATA_${upper}_LENGKAP`] = biodataBlock;
+  targetMap[`biodata_${lower}_lengkap`] = biodataBlock;
+
+  if (primary) {
+    const fields = {
+      NAMA: primary.nama,
+      ALIAS: primary.alias,
+      NAMA_ALIAS: primary.nama_lengkap,
+      NIK: primary.nik,
+      TEMPAT_LAHIR: primary.tempat_lahir,
+      TANGGAL_LAHIR: primary.tgl_lahir,
+      TGL_LAHIR: primary.tgl_lahir,
+      TTL: primary.ttl,
+      UMUR: primary.umur,
+      JENIS_KELAMIN: primary.jenis_kelamin,
+      JK: primary.jenis_kelamin,
+      KEWARGANEGARAAN: primary.kewarganegaraan,
+      AGAMA: primary.agama,
+      PEKERJAAN: primary.pekerjaan,
+      PENDIDIKAN: primary.pendidikan,
+      ALAMAT: primary.alamat,
+      NO_HP: primary.no_hp,
+      KONTAK: primary.no_hp
+    };
+
+    Object.entries(fields).forEach(([fKey, fVal]) => {
+      // Format PREFIX_FIELD (contoh: TERSANGKA_NAMA, SAKSI_NIK)
+      targetMap[`${upper}_${fKey}`] = fVal || '';
+      targetMap[`${lower}_${fKey.toLowerCase()}`] = fVal || '';
+      // Format FIELD_PREFIX (contoh: NAMA_TERSANGKA, NIK_TERSANGKA)
+      targetMap[`${fKey}_${upper}`] = fVal || '';
+      targetMap[`${fKey.toLowerCase()}_${lower}`] = fVal || '';
+    });
+  }
+
+  // Indexed slots 1..5 (e.g. SAKSI_1_NAMA, TERLAPOR_1_NAMA, PELAPOR_1_NAMA, TERSANGKA_1_NAMA)
+  for (let i = 1; i <= 5; i++) {
+    const item = validList[i - 1] || {};
+    const slotFields = {
+      NAMA: item.nama || '',
+      ALIAS: item.alias || '',
+      NIK: item.nik || '',
+      TEMPAT_LAHIR: item.tempat_lahir || '',
+      TANGGAL_LAHIR: item.tgl_lahir || '',
+      TGL_LAHIR: item.tgl_lahir || '',
+      TTL: item.ttl || '',
+      UMUR: item.umur || '',
+      JENIS_KELAMIN: item.jenis_kelamin || '',
+      JK: item.jenis_kelamin || '',
+      KEWARGANEGARAAN: item.kewarganegaraan || (item.nama ? 'Indonesia' : ''),
+      AGAMA: item.agama || '',
+      PEKERJAAN: item.pekerjaan || '',
+      PENDIDIKAN: item.pendidikan || '',
+      ALAMAT: item.alamat || '',
+      NO_HP: item.no_hp || '',
+      KONTAK: item.no_hp || ''
+    };
+    Object.entries(slotFields).forEach(([fKey, fVal]) => {
+      targetMap[`${upper}_${i}_${fKey}`] = fVal;
+      targetMap[`${lower}_${i}_${fKey.toLowerCase()}`] = fVal;
+    });
+  }
+}
+
+/**
+ * Normalisasi kode template mindik agar seragam (huruf kapital, titik/spasi/strip -> underscore)
+ * serta deteksi dari judul dokumen sehingga SPRIN_SIDIK, Sprin.Sidik, SP.SIDIK, maupun
+ * "Surat Perintah Penyidikan" semuanya terdeteksi secara presisi.
+ */
+export function normalizeTemplateCode(rawCode = '', rawTitle = '') {
+  const cleanCode = String(rawCode || '')
+    .toUpperCase()
+    .trim()
+    .replace(/[.\-\s/]+/g, '_')
+    .replace(/[^A-Z0-9_]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  const cleanTitle = String(rawTitle || '').toUpperCase().trim();
+
+  // Deteksi SPRIN_SIDIK vs SPGAS_SIDIK
+  const isGasSidik =
+    cleanCode === 'SPGAS_SIDIK' ||
+    cleanCode === 'SPRIN_GAS_SIDIK' ||
+    cleanCode === 'SP_GAS_SIDIK' ||
+    cleanCode === 'SPRIN_TUGAS_PENYIDIKAN' ||
+    (cleanCode.includes('GAS') && cleanCode.includes('SIDIK')) ||
+    (cleanTitle.includes('TUGAS') && cleanTitle.includes('PENYIDIKAN'));
+
+  if (isGasSidik && !cleanCode.includes('TAMBAHAN') && !cleanCode.includes('LANJUTAN') && !cleanCode.includes('MORE')) {
+    return 'SPGAS_SIDIK';
+  }
+
+  const isSprinSidik =
+    cleanCode === 'SPRIN_SIDIK' ||
+    cleanCode === 'SP_SIDIK' ||
+    cleanCode === 'SURAT_PERINTAH_PENYIDIKAN' ||
+    ((cleanCode.includes('SPRIN_SIDIK') || cleanCode.includes('SP_SIDIK')) &&
+      !cleanCode.includes('GAS') &&
+      !cleanCode.includes('TAMBAHAN') &&
+      !cleanCode.includes('LANJUTAN') &&
+      !cleanCode.includes('MORE')) ||
+    (cleanTitle.includes('SURAT PERINTAH PENYIDIKAN') &&
+      !cleanTitle.includes('TUGAS') &&
+      !cleanTitle.includes('TAMBAHAN') &&
+      !cleanTitle.includes('LANJUTAN'));
+
+  if (isSprinSidik) {
+    return 'SPRIN_SIDIK';
+  }
+
+  if (
+    cleanCode === 'SPRIN_LIDIK' ||
+    cleanCode === 'SP_LIDIK' ||
+    (cleanTitle.includes('SURAT PERINTAH PENYELIDIKAN') && !cleanTitle.includes('TUGAS'))
+  ) {
+    return 'SPRIN_LIDIK';
+  }
+
+  if (
+    cleanCode === 'SPGAS_LIDIK' ||
+    cleanCode === 'SPRIN_GAS_LIDIK' ||
+    cleanCode === 'SP_GAS_LIDIK' ||
+    (cleanTitle.includes('TUGAS') && cleanTitle.includes('PENYELIDIKAN'))
+  ) {
+    return 'SPGAS_LIDIK';
+  }
+
+  if (
+    cleanCode === 'SP_TAP_TSK' ||
+    cleanCode === 'TAP_TSK' ||
+    cleanCode === 'S_TAP_TSK' ||
+    (cleanTitle.includes('PENETAPAN TERSANGKA') && !cleanTitle.includes('PEMBERITAHUAN'))
+  ) {
+    return 'SP_TAP_TSK';
+  }
+
+  return cleanCode || 'MINDIK';
+}
+
+/**
+ * Ekstraksi berlapis Nomor Surat & Tanggal Surat dari baris dokumen arsip
+ * (memeriksa kolom utama tabel DAN objek/string JSON meta_values / metadata / form_values).
+ */
+export function extractArchivedDocNumberAndDate(doc = {}) {
+  if (!doc || typeof doc !== 'object') return { docNo: '', rawDocDate: '', formattedDocDate: '' };
+
+  const parseMetaObj = (m) => {
+    if (!m) return {};
+    if (typeof m === 'object') return m;
+    if (typeof m === 'string') {
+      try {
+        return JSON.parse(m) || {};
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  };
+
+  const mv = {
+    ...parseMetaObj(doc.form_values),
+    ...parseMetaObj(doc.metadata),
+    ...parseMetaObj(doc.meta_values)
+  };
+
+  const candidateNos = [
+    doc.doc_number,
+    doc.nomor_surat,
+    doc.document_number,
+    doc.doc_no,
+    doc.no_surat,
+    mv.NOMOR_SURAT,
+    mv.nomor_surat,
+    mv.NO_SURAT,
+    mv.no_surat,
+    mv.DOC_NO,
+    mv.doc_no,
+    mv.NO_SPRIN_SIDIK,
+    mv.NOMOR_SPRIN_SIDIK
+  ];
+
+  let docNo = '';
+  for (const cand of candidateNos) {
+    if (cand !== undefined && cand !== null) {
+      const s = String(cand).trim();
+      if (s !== '' && s !== '-' && s !== 'null' && s !== 'undefined') {
+        docNo = s;
+        break;
+      }
+    }
+  }
+
+  const candidateDates = [
+    doc.tgl_surat,
+    doc.tanggal_surat,
+    doc.doc_date,
+    doc.document_date,
+    mv.TANGGAL_SURAT,
+    mv.tanggal_surat,
+    mv.TGL_SURAT,
+    mv.tgl_surat,
+    mv.DOC_DATE,
+    mv.doc_date,
+    doc.created_at
+  ];
+
+  let rawDocDate = '';
+  for (const cand of candidateDates) {
+    if (cand !== undefined && cand !== null) {
+      const s = String(cand).trim();
+      if (s !== '' && s !== '-' && s !== 'null' && s !== 'undefined') {
+        rawDocDate = s;
+        break;
+      }
+    }
+  }
+
+  const formattedDocDate = rawDocDate ? formatTanggalIndonesia(rawDocDate) : '';
+  return { docNo, rawDocDate, formattedDocDate, metaObj: mv };
+}
+
+/**
+ * Penggabungan aman (Safe Merge) antara chainedContext dan formValues.
+ * Nilai dari formValues HANYA menimpa chainedContext jika benar-benar terisi
+ * (bukan undefined, null, atau string kosong "").
+ */
+export function mergeChainedWithForm(chainedContext = {}, formValues = {}) {
+  const merged = { ...(chainedContext || {}) };
+
+  Object.keys(formValues || {}).forEach((rawKey) => {
+    const cleanKey = rawKey.replace(/[{}]/g, '').trim();
+    if (!cleanKey) return;
+    const value = formValues[rawKey];
+
+    // HANYA timpa jika value benar-benar terisi (bukan string kosong, null, atau undefined)
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      const strTrim = typeof value === 'string' ? value.trim() : value;
+      const formattedVal = (typeof strTrim === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(strTrim))
+        ? formatTanggalIndonesia(strTrim)
+        : value;
+
+      merged[cleanKey] = formattedVal;
+      merged[cleanKey.toUpperCase()] = formattedVal;
+      merged[cleanKey.toLowerCase()] = formattedVal;
+    }
+  });
+
+  return merged;
+}
+
+/**
+ * ============================================================================
+ * UNIVERSAL CHAINED MINDIK ENGINE — SINGLE SOURCE OF TRUTH
+ * ============================================================================
+ * Membangun konteks global perkara + seluruh rantai dokumen mindik yang sudah
+ * tersimpan di Arsip (baik kode mindik yang ada sekarang maupun template baru
+ * di masa depan), pewarisan Tim Penyidik, Barang Bukti, dan 4 Kategori Subjek Hukum.
+ *
+ * @param {string|object} caseIdOrCase - ID perkara atau objek perkara
+ * @param {object} activeFormValues - Nilai input manual pada Generator Mindik (prioritas tertinggi)
+ * @param {object} options - Opsi tambahan (archivedDocs, suspectsList, personnelList, selectedSubjects, dll)
+ */
+export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues = {}, options = {}) {
+  let activeCase = typeof caseIdOrCase === 'object' && caseIdOrCase !== null
+    ? { ...caseIdOrCase }
+    : {};
+  const caseId = typeof caseIdOrCase === 'string'
+    ? caseIdOrCase
+    : (activeCase.id || options.caseId || null);
+
+  let arsipDocs = Array.isArray(options.archivedDocs) ? [...options.archivedDocs] : [];
+  let dbSuspects = Array.isArray(options.suspectsList) ? [...options.suspectsList] : [];
+  let dbEvidence = [];
+
+  if (caseId) {
+    try {
+      const safeCaseIdStr = String(caseId).trim();
+      const queries = [];
+      // 1. Jika hanya diberikan caseId string, ambil data perkara dari tabel cases
+      if (!activeCase.id) {
+        queries.push(
+          supabase.from('cases').select('*').eq('id', safeCaseIdStr).maybeSingle()
+            .then(({ data }) => { if (data) activeCase = { ...data, ...activeCase }; })
+        );
+      }
+      // 2. Ambil seluruh dokumen arsip perkara ini (dengan fallback perbandingan string case_id dan nomor_lp)
+      if (arsipDocs.length === 0) {
+        queries.push(
+          supabase.from('documents').select('*').eq('case_id', safeCaseIdStr).order('created_at', { ascending: true })
+            .then(async ({ data }) => {
+              if (Array.isArray(data) && data.length > 0) {
+                arsipDocs = data;
+              } else {
+                // Fallback jika case_id berbeda tipe atau tersimpan via nomor_lp
+                const lpCandidate = activeCase.nomor_lp || activeCase.no_lp;
+                if (lpCandidate) {
+                  const { data: byLp } = await supabase
+                    .from('documents')
+                    .select('*')
+                    .eq('nomor_lp', lpCandidate)
+                    .order('created_at', { ascending: true });
+                  if (Array.isArray(byLp) && byLp.length > 0) {
+                    arsipDocs = byLp;
+                  }
+                }
+              }
+            })
+        );
+      }
+      // 3. Ambil daftar subjek di tabel case_suspects jika belum tersedia
+      if (dbSuspects.length === 0) {
+        queries.push(
+          supabase.from('case_suspects').select('*').eq('case_id', safeCaseIdStr)
+            .then(({ data }) => { if (Array.isArray(data)) dbSuspects = data; })
+        );
+      }
+      await Promise.all(queries);
+
+      // 3b. Fallback offline / localStorage cache jika arsipDocs masih kosong
+      if (arsipDocs.length === 0 && typeof window !== 'undefined') {
+        try {
+          const localDocs = JSON.parse(localStorage.getItem('emindik_archive_documents') || '[]');
+          const lpCand = activeCase.nomor_lp || activeCase.no_lp;
+          arsipDocs = localDocs.filter(d =>
+            d && (String(d.case_id) === safeCaseIdStr || (lpCand && (d.nomor_lp === lpCand || d.no_lp === lpCand)))
+          );
+        } catch {}
+      }
+
+      // 4. Ambil lampiran barang bukti dari Dumas jika perkara terhubung ke dumas_id
+      const dumasId = activeCase.dumas_id || activeCase.references?.dumas_id;
+      if (dumasId && !Array.isArray(activeCase.lampiran_barang_bukti)) {
+        const { data: evData } = await supabase
+          .from('lampiran_barang_bukti')
+          .select('*')
+          .eq('dumas_id', dumasId);
+        if (Array.isArray(evData)) dbEvidence = evData;
+      }
+    } catch (err) {
+      console.warn('[buildUniversalCaseContext] Non-fatal query warning:', err);
+    }
+  }
+
+  // Pastikan arsipDocs terurut berdasarkan created_at ascending
+  arsipDocs.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+
+  const context = {};
+  const setBothCase = (key, val) => {
+    if (val === undefined || val === null) return;
+    context[key.toUpperCase()] = val;
+    context[key.toLowerCase()] = val;
+  };
+
+  // ---------------------------------------------------------------------------
+  // A. DATA INDUK PERKARA & DUMAS / LP
+  // ---------------------------------------------------------------------------
+  const nomorLp = activeCase.nomor_lp || activeCase.no_lp || '';
+  const rawTglLp = activeCase.tanggal_lp || activeCase.tgl_lp || activeCase.sprin_date || '';
+  const tanggalLp = formatTanggalIndonesia(rawTglLp);
+  const tindakPidana = activeCase.tindak_pidana || '';
+  const pasal = activeCase.pasal || '';
+  const dasarPasalUu = activeCase.dasar_pasal_uu || activeCase.pasal_uu || pasal || '';
+  const tempatKejadian = activeCase.locus || activeCase.tempat_kejadian || activeCase.tkp || '';
+  const waktuKejadian = activeCase.tempus || activeCase.waktu_kejadian || '';
+  const kronologi = activeCase.uraian_kejadian || activeCase.kronologi || activeCase.uraian_singkat || '';
+  const uraianSingkat = activeCase.uraian_singkat || activeCase.uraian_kejadian || kronologi || '';
+  const unitPenangan = activeCase.unit || activeCase.unit_penangan || 'Satreskrim Polres Kolaka Timur';
+  const tempatSurat = activeCase.tempat_surat || 'Tirawuta';
+  const rawTglSurat = activeFormValues.TANGGAL_SURAT || activeFormValues.tanggal_surat || activeFormValues.DOC_DATE || new Date().toISOString().split('T')[0];
+  const tanggalSurat = formatTanggalIndonesia(rawTglSurat);
+
+  setBothCase('NOMOR_LP', nomorLp);
+  setBothCase('NO_LP', nomorLp);
+  setBothCase('TANGGAL_LP', tanggalLp);
+  setBothCase('TGL_LP', tanggalLp);
+  setBothCase('TINDAK_PIDANA', tindakPidana);
+  setBothCase('PASAL', pasal);
+  setBothCase('DASAR_PASAL_UU', dasarPasalUu);
+  setBothCase('TEMPAT_KEJADIAN', tempatKejadian);
+  setBothCase('LOCUS_DELICTI', tempatKejadian);
+  setBothCase('TKP', tempatKejadian);
+  setBothCase('WAKTU_KEJADIAN', waktuKejadian);
+  setBothCase('TEMPUS_DELICTI', waktuKejadian);
+  setBothCase('KRONOLOGI', kronologi);
+  setBothCase('KRONOLOGIS', kronologi);
+  setBothCase('URAIAN_KEJADIAN', kronologi);
+  setBothCase('URAIAN_SINGKAT', uraianSingkat);
+  setBothCase('URAIAN_PERKARA', uraianSingkat);
+  setBothCase('UNIT_PENANGAN', unitPenangan);
+  setBothCase('TEMPAT_SURAT', tempatSurat);
+  setBothCase('TANGGAL_SURAT', tanggalSurat);
+
+  // Pejabat Penandatangan / Atasan (Kasat Reskrim)
+  const atasanNama = activeCase.kasat_nama || activeCase.atasan_nama || '';
+  const atasanPangkat = toPangkatSingkat(activeCase.kasat_pangkat || activeCase.atasan_pangkat || '');
+  const atasanNrp = activeCase.kasat_nrp || activeCase.atasan_nrp || '';
+  const atasanJabatan = activeCase.kasat_jabatan || activeCase.atasan_jabatan || 'Kasat Reskrim';
+
+  setBothCase('ATASAN_NAMA', atasanNama);
+  setBothCase('ATASAN_PANGKAT', atasanPangkat);
+  setBothCase('ATASAN_NRP', atasanNrp);
+  setBothCase('ATASAN_JABATAN', atasanJabatan);
+  setBothCase('ATASAN_PANGKAT_NRP', atasanPangkat && atasanNrp ? `${atasanPangkat} / ${atasanNrp}` : (atasanPangkat || atasanNrp));
+
+  // ---------------------------------------------------------------------------
+  // B. RESOLUSI RANTAI DOKUMEN OTOMATIS (DYNAMIC DOCUMENT CHAIN)
+  // ---------------------------------------------------------------------------
+  const daftarDasarSurat = [];
+  if (nomorLp) {
+    daftarDasarSurat.push({
+      no: 1,
+      huruf: 'a',
+      kode: 'LP',
+      judul: 'Laporan Polisi',
+      nomor: nomorLp,
+      tanggal: tanggalLp,
+      dasar: `Laporan Polisi Nomor: ${nomorLp}${tanggalLp ? `, tanggal ${tanggalLp}` : ''}`,
+      uraian: `Laporan Polisi Nomor: ${nomorLp}${tanggalLp ? `, tanggal ${tanggalLp}` : ''}`
+    });
+  }
+
+  let archivedInvestigators = [];
+
+  // Helper untuk memetakan SELURUH pola alias placeholder untuk suatu kelompok kode surat
+  const assignDocumentAliases = (aliasCodes = [], docNo = '', docDateFormatted = '', dasarKalimat = '') => {
+    aliasCodes.forEach((aliasCode) => {
+      const code = String(aliasCode || '').toUpperCase().trim();
+      if (!code) return;
+      if (docNo) {
+        setBothCase(`NOMOR_${code}`, docNo);
+        setBothCase(`NO_${code}`, docNo);
+        setBothCase(`${code}_NOMOR`, docNo);
+        setBothCase(`${code}_NO`, docNo);
+      }
+      if (docDateFormatted) {
+        setBothCase(`TANGGAL_${code}`, docDateFormatted);
+        setBothCase(`TGL_${code}`, docDateFormatted);
+        setBothCase(`${code}_TANGGAL`, docDateFormatted);
+        setBothCase(`${code}_TGL`, docDateFormatted);
+      }
+      if (dasarKalimat) {
+        setBothCase(`DASAR_${code}`, dasarKalimat);
+      }
+    });
+  };
+
+  arsipDocs.forEach((doc) => {
+    if (!doc) return;
+    const rawOriginalCode = (doc.template_code || doc.code || doc.document_type || '')
+      .toUpperCase()
+      .trim()
+      .replace(/[.\-\s/]+/g, '_')
+      .replace(/[^A-Z0-9_]/g, '')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    const docTitle = (doc.doc_title || doc.title || doc.document_name || rawOriginalCode || 'MINDIK').trim();
+    const rawCode = normalizeTemplateCode(rawOriginalCode, docTitle);
+    if (!rawCode) return;
+
+    const { docNo, rawDocDate, formattedDocDate: docDateFormatted, metaObj: mv } = extractArchivedDocNumberAndDate(doc);
+    const dasarKalimat = docNo
+      ? `${docTitle} Nomor: ${docNo}${docDateFormatted ? `, tanggal ${docDateFormatted}` : ''}`
+      : docTitle;
+
+    // 1. Pola Generik Universal untuk SETIAP template (saat ini & masa depan):
+    // NOMOR_<KODE>, NO_<KODE>, <KODE>_NOMOR, <KODE>_NO, TANGGAL_<KODE>, TGL_<KODE>, <KODE>_TANGGAL, <KODE>_TGL, DASAR_<KODE>
+    const baseCodesToMap = new Set([rawCode]);
+    if (rawOriginalCode) baseCodesToMap.add(rawOriginalCode);
+    assignDocumentAliases(Array.from(baseCodesToMap), docNo, docDateFormatted, dasarKalimat);
+
+    // Tambahkan ke loop array {#DAFTAR_DASAR_SURAT}
+    if (docNo) {
+      const nextIdx = daftarDasarSurat.length;
+      const huruf = String.fromCharCode(97 + (nextIdx % 26));
+      daftarDasarSurat.push({
+        no: nextIdx + 1,
+        huruf,
+        kode: rawCode,
+        judul: docTitle,
+        nomor: docNo,
+        tanggal: docDateFormatted,
+        dasar: dasarKalimat,
+        uraian: dasarKalimat
+      });
+    }
+
+    // 2. Ekstrak Tim Penyidik dari meta_values SPRIN_SIDIK / SPRIN_LIDIK jika ada
+    if ((rawCode.includes('SPRIN_SIDIK') || rawCode.includes('SPRIN_LIDIK') || rawCode.includes('GAS_SIDIK')) && mv) {
+      const extracted = [];
+      for (let i = 1; i <= 10; i++) {
+        const pNama = mv[`PENYIDIK_${i}_NAMA`] || mv[`penyidik_${i}_nama`];
+        if (pNama) {
+          extracted.push({
+            no: i,
+            nama: pNama,
+            pangkat: toPangkatSingkat(mv[`PENYIDIK_${i}_PANGKAT`] || mv[`penyidik_${i}_pangkat`] || ''),
+            nrp: mv[`PENYIDIK_${i}_NRP`] || mv[`penyidik_${i}_nrp`] || '',
+            jabatan: mv[`PENYIDIK_${i}_JABATAN`] || mv[`penyidik_${i}_jabatan`] || (i === 1 ? 'Kanit' : 'Penyidik Pembantu')
+          });
+        }
+      }
+      if (extracted.length > archivedInvestigators.length) {
+        archivedInvestigators = extracted;
+      }
+    }
+
+    // 3. Pemetaan Alias Standar Polri Lintas Tahap
+    // - Tahap Lidik: SPRIN_LIDIK, SPGAS_LIDIK, LI, LHP
+    if (rawCode === 'SPRIN_LIDIK' || (rawCode.includes('LIDIK') && !rawCode.includes('GAS'))) {
+      assignDocumentAliases(
+        ['SPRIN_LIDIK', 'SP_LIDIK', 'SURAT_PERINTAH_PENYELIDIKAN'],
+        docNo,
+        docDateFormatted,
+        dasarKalimat
+      );
+    }
+    if (rawCode === 'SPGAS_LIDIK' || rawCode.includes('GAS_LIDIK')) {
+      assignDocumentAliases(
+        ['SPGAS_LIDIK', 'SPRIN_GAS_LIDIK', 'SP_GAS_LIDIK', 'SURAT_PERINTAH_TUGAS_PENYELIDIKAN'],
+        docNo,
+        docDateFormatted,
+        dasarKalimat
+      );
+    }
+    if (rawCode === 'LI' || rawCode === 'LAPORAN_INFORMASI') {
+      assignDocumentAliases(['LI', 'LAPORAN_INFORMASI'], docNo, docDateFormatted, dasarKalimat);
+    }
+    if (rawCode === 'LHP' || rawCode.includes('HASIL_PENYELIDIKAN')) {
+      assignDocumentAliases(['LHP', 'LAPORAN_HASIL_PENYELIDIKAN'], docNo, docDateFormatted, dasarKalimat);
+    }
+
+    // - Tahap Sidik: SPRIN_SIDIK & SPGAS_SIDIK
+    if (rawCode === 'SPRIN_SIDIK' || (rawCode.includes('SPRIN_SIDIK') && !rawCode.includes('GAS'))) {
+      assignDocumentAliases(
+        ['SPRIN_SIDIK', 'SP_SIDIK', 'SURAT_PERINTAH_PENYIDIKAN'],
+        docNo,
+        docDateFormatted,
+        dasarKalimat
+      );
+      if (docNo) activeCase.no_sprin_sidik = activeCase.no_sprin_sidik || docNo;
+      if (rawDocDate) activeCase.tgl_sprin_sidik = activeCase.tgl_sprin_sidik || rawDocDate;
+    }
+    if (rawCode === 'SPGAS_SIDIK' || rawCode.includes('GAS_SIDIK') || rawCode.includes('TUGAS_PENYIDIKAN')) {
+      assignDocumentAliases(
+        ['SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'SPRIN_TUGAS_PENYIDIKAN', 'SURAT_PERINTAH_TUGAS_PENYIDIKAN'],
+        docNo,
+        docDateFormatted,
+        dasarKalimat
+      );
+      if (docNo) activeCase.no_sprin_gas_sidik = activeCase.no_sprin_gas_sidik || docNo;
+      if (rawDocDate) activeCase.tgl_sprin_gas_sidik = activeCase.tgl_sprin_gas_sidik || rawDocDate;
+    }
+
+    // - Tahap SPDP & Penetapan Tersangka
+    if (rawCode.includes('SPDP')) {
+      assignDocumentAliases(
+        ['SPDP', 'SPDP_TSK', 'SURAT_PEMBERITAHUAN_DIMULAINYA_PENYIDIKAN'],
+        docNo,
+        docDateFormatted,
+        dasarKalimat
+      );
+      if (docNo) activeCase.no_spdp = activeCase.no_spdp || docNo;
+      if (rawDocDate) activeCase.tgl_spdp = activeCase.tgl_spdp || rawDocDate;
+    }
+    if (rawCode === 'SP_TAP_TSK' || rawCode.includes('TAP_TSK') || docTitle.toUpperCase().includes('PENETAPAN TERSANGKA')) {
+      assignDocumentAliases(
+        ['SP_TAP_TSK', 'TAP_TSK', 'SP_TAP', 'S_TAP_TSK', 'PENETAPAN_TERSANGKA'],
+        docNo,
+        docDateFormatted,
+        dasarKalimat
+      );
+      if (docDateFormatted) setBothCase('TANGGAL_PENETAPAN', docDateFormatted);
+    }
+
+    // - Tahap Upaya Paksa & Panggilan
+    if (rawCode.includes('PANGGIL') || rawCode.startsWith('SPGL')) {
+      assignDocumentAliases(['PANGGILAN', 'SPGL', 'SURAT_PANGGILAN'], docNo, docDateFormatted, dasarKalimat);
+    }
+    if (rawCode.includes('KAP') && !rawCode.includes('UNGKAP')) {
+      assignDocumentAliases(['SP_KAP', 'SPRIN_KAP', 'SURAT_PERINTAH_PENANGKAPAN'], docNo, docDateFormatted, dasarKalimat);
+    }
+    if (rawCode.includes('HAN')) {
+      assignDocumentAliases(['SP_HAN', 'SPRIN_HAN', 'SURAT_PERINTAH_PENAHANAN'], docNo, docDateFormatted, dasarKalimat);
+    }
+    if (rawCode.includes('SITA')) {
+      assignDocumentAliases(['SP_SITA', 'SPRIN_SITA', 'SPRIN_SITA_UMUM', 'SURAT_PERINTAH_PENYITAAN'], docNo, docDateFormatted, dasarKalimat);
+    }
+    if (rawCode.includes('GELEDAH')) {
+      assignDocumentAliases(['SP_GELEDAH', 'SPRIN_GELEDAH', 'SURAT_PERINTAH_PENGGELEDAHAN'], docNo, docDateFormatted, dasarKalimat);
+    }
+
+    // - Tahap Pemberkasan: SP2HP & RESUME
+    if (rawCode.includes('SP2HP')) {
+      assignDocumentAliases(['SP2HP'], docNo, docDateFormatted, dasarKalimat);
+    }
+    if (rawCode.includes('RESUME')) {
+      assignDocumentAliases(['RESUME'], docNo, docDateFormatted, dasarKalimat);
+    }
+  });
+
+  // Fallback rantai dari kolom langsung di activeCase / activeCase.references bila belum ada di tabel documents
+  const fallbackSprinSidikNo = activeCase.no_sprin_sidik || activeCase.sprin_sidik || activeCase.references?.no_sprin_sidik || '';
+  const fallbackSprinSidikTgl = formatTanggalIndonesia(activeCase.tgl_sprin_sidik || activeCase.references?.tgl_sprin_sidik || '');
+  if (fallbackSprinSidikNo && !context.NOMOR_SPRIN_SIDIK) {
+    assignDocumentAliases(
+      ['SPRIN_SIDIK', 'SP_SIDIK', 'SURAT_PERINTAH_PENYIDIKAN'],
+      fallbackSprinSidikNo,
+      fallbackSprinSidikTgl,
+      `Surat Perintah Penyidikan Nomor: ${fallbackSprinSidikNo}${fallbackSprinSidikTgl ? `, tanggal ${fallbackSprinSidikTgl}` : ''}`
+    );
+  }
+
+  const fallbackGasSidikNo = activeCase.no_sprin_gas_sidik || activeCase.no_sp_gas_sidik || activeCase.references?.no_spgas_sidik || activeCase.references?.no_sprin_gas_sidik || '';
+  const fallbackGasSidikTgl = formatTanggalIndonesia(activeCase.tgl_sprin_gas_sidik || activeCase.tgl_sp_gas_sidik || activeCase.references?.tgl_sprin_gas_sidik || '');
+  if (fallbackGasSidikNo && !context.NOMOR_SPGAS_SIDIK) {
+    assignDocumentAliases(
+      ['SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'SPRIN_TUGAS_PENYIDIKAN'],
+      fallbackGasSidikNo,
+      fallbackGasSidikTgl,
+      `Surat Perintah Tugas Penyidikan Nomor: ${fallbackGasSidikNo}${fallbackGasSidikTgl ? `, tanggal ${fallbackGasSidikTgl}` : ''}`
+    );
+  }
+
+  // Loop Array {#DAFTAR_DASAR_SURAT}
+  context.DAFTAR_DASAR_SURAT = daftarDasarSurat;
+  context.daftar_dasar_surat = daftarDasarSurat;
+
+  // ---------------------------------------------------------------------------
+  // C. PEWARISAN TIM PENYIDIK GLOBAL (PENYIDIK_1..10 & {#PENYIDIK})
+  // ---------------------------------------------------------------------------
+  const teamList = [];
+  const rawInvList = Array.isArray(activeCase.investigators) && activeCase.investigators.length > 0
+    ? activeCase.investigators
+    : (Array.isArray(activeCase.references?.investigators) && activeCase.references.investigators.length > 0
+        ? activeCase.references.investigators
+        : archivedInvestigators);
+
+  for (let i = 1; i <= 10; i++) {
+    const fromCasePropNama = activeCase[`penyidik_${i}_nama`];
+    const fromArr = rawInvList[i - 1] || {};
+    const pNama = (fromCasePropNama || fromArr.nama || '').trim();
+    const pPangkatRaw = activeCase[`penyidik_${i}_pangkat`] || fromArr.pangkat || '';
+    const pPangkat = toPangkatSingkat(pPangkatRaw);
+    const pNrp = (activeCase[`penyidik_${i}_nrp`] || fromArr.nrp || '').trim();
+    const pJabatan = (activeCase[`penyidik_${i}_jabatan`] || fromArr.jabatan || (pNama ? (i === 1 ? 'Kanit' : 'Penyidik Pembantu') : '')).trim();
+    const pPangkatNrp = pPangkat && pNrp ? `${pPangkat} / ${pNrp}` : (pPangkat || pNrp || '');
+
+    setBothCase(`PENYIDIK_${i}_NAMA`, pNama);
+    setBothCase(`PENYIDIK_${i}_PANGKAT`, pPangkat);
+    setBothCase(`PENYIDIK_${i}_NRP`, pNrp);
+    setBothCase(`PENYIDIK_${i}_JABATAN`, pJabatan);
+    setBothCase(`PENYIDIK_${i}_PANGKAT_NRP`, pPangkatNrp);
+
+    if (pNama) {
+      teamList.push({
+        no: teamList.length + 1,
+        nama: pNama,
+        pangkat: pPangkat,
+        pangkat_singkat: pPangkat,
+        pangkat_lengkap: toPangkatLengkap(pPangkatRaw),
+        nrp: pNrp,
+        jabatan: pJabatan,
+        pangkat_nrp: pPangkatNrp
+      });
+    }
+  }
+
+  context.PENYIDIK = teamList;
+  context.penyidik = teamList;
+  context.TIM_PENYIDIK = teamList;
+  context.tim_penyidik = teamList;
+  context.PENYIDIK_LIST = teamList;
+  context.penyidik_list = teamList;
+
+  // ---------------------------------------------------------------------------
+  // D. PEWARISAN DAFTAR BARANG BUKTI ({DAFTAR_BARANG_BUKTI} & {#BARANG_BUKTI})
+  // ---------------------------------------------------------------------------
+  const rawEvidenceSources = [
+    ...(Array.isArray(activeCase.lampiran_barang_bukti) ? activeCase.lampiran_barang_bukti : []),
+    ...(Array.isArray(activeCase.barang_bukti) ? activeCase.barang_bukti : []),
+    ...(Array.isArray(activeCase.references?.barang_bukti) ? activeCase.references.barang_bukti : []),
+    ...dbEvidence
+  ];
+
+  const seenEv = new Set();
+  const barangBuktiArray = [];
+  rawEvidenceSources.forEach((ev) => {
+    if (!ev) return;
+    const namaBb = typeof ev === 'string'
+      ? ev.trim()
+      : (ev.nama_barang || ev.nama || ev.uraian || ev.jenis_barang || ev.file_name || '').trim();
+    if (!namaBb) return;
+    const jumlahBb = typeof ev === 'object' ? (ev.jumlah || ev.kuantitas || '1 (satu) buah') : '';
+    const ketBb = typeof ev === 'object' ? (ev.keterangan || ev.deskripsi || '') : '';
+    const key = `${namaBb.toLowerCase()}|${jumlahBb}`;
+    if (seenEv.has(key)) return;
+    seenEv.add(key);
+
+    const no = barangBuktiArray.length + 1;
+    const uraianLengkap = jumlahBb && !namaBb.toLowerCase().includes(String(jumlahBb).toLowerCase())
+      ? `${jumlahBb} ${namaBb}${ketBb ? ` (${ketBb})` : ''}`
+      : `${namaBb}${ketBb ? ` (${ketBb})` : ''}`;
+    barangBuktiArray.push({
+      no,
+      nama: namaBb,
+      nama_barang: namaBb,
+      jumlah: jumlahBb || '1',
+      keterangan: ketBb,
+      uraian: uraianLengkap
+    });
+  });
+
+  const daftarBarangBuktiStr = barangBuktiArray.length > 0
+    ? barangBuktiArray.map((b) => `${b.no}. ${b.uraian}`).join('\n')
+    : (typeof activeCase.barang_bukti === 'string' ? activeCase.barang_bukti : '');
+
+  setBothCase('DAFTAR_BARANG_BUKTI', daftarBarangBuktiStr);
+  context.BARANG_BUKTI = barangBuktiArray;
+  context.barang_bukti = barangBuktiArray;
+  context.BARANG_BUKTI_LIST = barangBuktiArray;
+  context.barang_bukti_list = barangBuktiArray;
+
+  // ---------------------------------------------------------------------------
+  // E. 4 KATEGORI SUBJEK HUKUM TERPADU (PELAPOR, SAKSI, TERLAPOR, TERSANGKA)
+  // ---------------------------------------------------------------------------
+  const refs = activeCase.references || {};
+
+  // 1. Pelapor / Korban
+  const rawPelaporList = [
+    ...(Array.isArray(activeCase.pelapor_list) ? activeCase.pelapor_list : []),
+    ...(Array.isArray(refs.pelapor_list) ? refs.pelapor_list : []),
+    ...(Array.isArray(activeCase.victims) ? activeCase.victims : []),
+    ...(Array.isArray(refs.victims) ? refs.victims : [])
+  ];
+  if (rawPelaporList.length === 0 && (activeCase.nama_pelapor || activeCase.pelapor_name)) {
+    rawPelaporList.push({
+      nama: activeCase.nama_pelapor || activeCase.pelapor_name,
+      nik: activeCase.pelapor_nik || refs.pelapor_nik || '',
+      tempat_lahir: activeCase.pelapor_tempat_lahir || refs.pelapor_tempat_lahir || '',
+      tanggal_lahir: activeCase.pelapor_tanggal_lahir || refs.pelapor_tanggal_lahir || '',
+      ttl: activeCase.pelapor_ttl || refs.pelapor_ttl || '',
+      umur: activeCase.pelapor_umur || refs.pelapor_umur || '',
+      jenis_kelamin: activeCase.pelapor_jk || refs.pelapor_jk || 'Laki-laki',
+      pekerjaan: activeCase.pelapor_pekerjaan || refs.pelapor_pekerjaan || '',
+      agama: activeCase.pelapor_agama || refs.pelapor_agama || 'Islam',
+      alamat: activeCase.pelapor_alamat || refs.pelapor_alamat || '',
+      no_hp: activeCase.pelapor_kontak || refs.pelapor_kontak || ''
+    });
+  }
+
+  // 2. Saksi-Saksi
+  const rawSaksiList = [
+    ...(Array.isArray(activeCase.saksi_list) ? activeCase.saksi_list : []),
+    ...(Array.isArray(refs.saksi_list) ? refs.saksi_list : []),
+    ...(Array.isArray(activeCase.saksi) ? activeCase.saksi : []),
+    ...(Array.isArray(refs.saksi) ? refs.saksi : []),
+    ...dbSuspects.filter(s => s && s.status === 'saksi')
+  ];
+
+  // 3. Terlapor / Calon Tersangka
+  const rawTerlaporList = [
+    ...dbSuspects.filter(s => s && s.status === 'terlapor'),
+    ...(Array.isArray(activeCase.terlapor_list) ? activeCase.terlapor_list : []),
+    ...(Array.isArray(refs.terlapor_list) ? refs.terlapor_list : [])
+  ];
+  if (rawTerlaporList.length === 0 && (activeCase.nama_terlapor || activeCase.terlapor)) {
+    rawTerlaporList.push({
+      nama: activeCase.nama_terlapor || activeCase.terlapor,
+      status: 'terlapor'
+    });
+  }
+
+  // 4. Tersangka
+  const rawTersangkaList = [
+    ...dbSuspects.filter(s => s && (s.status === 'tersangka' || !s.status)),
+    ...(Array.isArray(activeCase.tersangka_list) ? activeCase.tersangka_list : []),
+    ...(Array.isArray(refs.tersangka_list) ? refs.tersangka_list : [])
+  ];
+
+  const dedupeSubjects = (arr) => {
+    const seen = new Set();
+    return arr.filter((item) => {
+      if (!item || !item.nama) return false;
+      const k = `${String(item.nama).trim().toLowerCase()}|${String(item.nik || '').trim()}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  };
+
+  const pelaporClean = dedupeSubjects(rawPelaporList);
+  const saksiClean = dedupeSubjects(rawSaksiList);
+  const terlaporClean = dedupeSubjects(rawTerlaporList);
+  const tersangkaClean = dedupeSubjects(rawTersangkaList);
+
+  populateSubjectPrefixVariables(context, 'PELAPOR', pelaporClean);
+  populateSubjectPrefixVariables(context, 'KORBAN', pelaporClean);
+  populateSubjectPrefixVariables(context, 'SAKSI', saksiClean);
+  populateSubjectPrefixVariables(context, 'TERLAPOR', terlaporClean);
+  populateSubjectPrefixVariables(context, 'TERSANGKA', tersangkaClean);
+
+  // Target Subjek Universal (Jika dipilih dari Pemilih Subjek di Generator Mindik)
+  const targetSubjects = Array.isArray(options.selectedSubjects) && options.selectedSubjects.length > 0
+    ? options.selectedSubjects
+    : (options.activeSubject ? [options.activeSubject] : []);
+  if (targetSubjects.length > 0) {
+    populateSubjectPrefixVariables(context, 'SUBJEK', targetSubjects);
+  } else {
+    const defaultSubjek = tersangkaClean.length > 0
+      ? tersangkaClean
+      : (terlaporClean.length > 0 ? terlaporClean : (saksiClean.length > 0 ? saksiClean : pelaporClean));
+    populateSubjectPrefixVariables(context, 'SUBJEK', defaultSubjek);
+  }
+
+  // ---------------------------------------------------------------------------
+  // F. PRIORITAS INPUT MANUAL (activeFormValues SELALU MENANG ATAS DEFAULT ARSIP)
+  //    Menggunakan mergeChainedWithForm agar string kosong ("") tidak menimpa rantai arsip
+  // ---------------------------------------------------------------------------
+  const mergedContext = mergeChainedWithForm(context, activeFormValues);
+
+  // Debug log wajib untuk verifikasi di Console browser
+  const resolvedKeys = Object.keys(mergedContext).filter((k) => {
+    const u = k.toUpperCase();
+    return (
+      u.startsWith('NOMOR_') ||
+      u.startsWith('NO_') ||
+      u.startsWith('TANGGAL_') ||
+      u.startsWith('TGL_') ||
+      u.startsWith('DASAR_') ||
+      u.endsWith('_NOMOR') ||
+      u.endsWith('_NO') ||
+      u.endsWith('_TANGGAL') ||
+      u.endsWith('_TGL')
+    ) && mergedContext[k] !== '' && mergedContext[k] !== '-';
+  });
+  console.log('[CHAINED-MINDIK-DEBUG]', {
+    caseId,
+    foundArchivesCount: arsipDocs.length,
+    resolvedKeys
+  });
+
+  // Lampirkan metadata non-enumerable untuk inspeksi UI bila diperlukan
+  Object.defineProperty(mergedContext, '_meta', {
+    value: {
+      activeCase,
+      arsipDocs,
+      daftarDasarSurat,
+      teamList,
+      barangBuktiArray,
+      subjects: {
+        pelapor: pelaporClean.map((s, i) => normalizeSubjectRecord(s, i, 'Pelapor')),
+        saksi: saksiClean.map((s, i) => normalizeSubjectRecord(s, i, 'Saksi')),
+        terlapor: terlaporClean.map((s, i) => normalizeSubjectRecord(s, i, 'Terlapor')),
+        tersangka: tersangkaClean.map((s, i) => normalizeSubjectRecord(s, i, 'Tersangka'))
+      }
+    },
+    enumerable: false
+  });
+
+  return mergedContext;
+}
+
+/**
+ * Alias resmi resolveChainedMindikContext untuk buildUniversalCaseContext
+ */
+export const resolveChainedMindikContext = buildUniversalCaseContext;
+
 async function syncDataFromArchive(currentCase, suspectsList, formValues = {}) {
   if (!currentCase || !currentCase.id) return;
   try {
-    const { data: arsip } = await supabase.from('documents').select('*').eq('case_id', currentCase.id);
+    const safeCaseIdStr = String(currentCase.id).trim();
+    const { data: arsip } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('case_id', safeCaseIdStr)
+      .order('created_at', { ascending: true });
     if (!arsip || arsip.length === 0) return;
 
-    // Helper presisi berdasarkan skema resmi public.documents
-    const extractDate = (doc) => doc.tgl_surat || doc.created_at || null;
-    const extractNo = (doc) => doc.doc_number;
-
     // 1. INJEKSI PAKSA SPRIN SIDIK
-    const sprinSidik = arsip.find(d => d.template_code?.includes('SPRIN_SIDIK'));
+    const sprinSidik = arsip.find(d =>
+      normalizeTemplateCode(d.template_code || d.code, d.doc_title || d.title) === 'SPRIN_SIDIK'
+    );
     if (sprinSidik) {
-      const no = extractNo(sprinSidik);
-      const tgl = extractDate(sprinSidik);
-      if (no) { formValues.NO_SPRIN_SIDIK = formValues.NO_SPRIN_SIDIK || no; currentCase.no_sprin_sidik = no; }
-      if (tgl) { formValues.TGL_SPRIN_SIDIK = formValues.TGL_SPRIN_SIDIK || tgl; currentCase.tgl_sprin_sidik = tgl; }
+      const { docNo: no, rawDocDate: tgl, formattedDocDate: tglFormatted } = extractArchivedDocNumberAndDate(sprinSidik);
+      if (no) {
+        formValues.NO_SPRIN_SIDIK = (formValues.NO_SPRIN_SIDIK && String(formValues.NO_SPRIN_SIDIK).trim()) || no;
+        formValues.NOMOR_SPRIN_SIDIK = (formValues.NOMOR_SPRIN_SIDIK && String(formValues.NOMOR_SPRIN_SIDIK).trim()) || no;
+        formValues.NO_SP_SIDIK = (formValues.NO_SP_SIDIK && String(formValues.NO_SP_SIDIK).trim()) || no;
+        formValues.NOMOR_SP_SIDIK = (formValues.NOMOR_SP_SIDIK && String(formValues.NOMOR_SP_SIDIK).trim()) || no;
+        currentCase.no_sprin_sidik = no;
+      }
+      if (tgl || tglFormatted) {
+        formValues.TGL_SPRIN_SIDIK = (formValues.TGL_SPRIN_SIDIK && String(formValues.TGL_SPRIN_SIDIK).trim()) || tglFormatted || tgl;
+        formValues.TANGGAL_SPRIN_SIDIK = (formValues.TANGGAL_SPRIN_SIDIK && String(formValues.TANGGAL_SPRIN_SIDIK).trim()) || tglFormatted || tgl;
+        formValues.TGL_SP_SIDIK = (formValues.TGL_SP_SIDIK && String(formValues.TGL_SP_SIDIK).trim()) || tglFormatted || tgl;
+        formValues.TANGGAL_SP_SIDIK = (formValues.TANGGAL_SP_SIDIK && String(formValues.TANGGAL_SP_SIDIK).trim()) || tglFormatted || tgl;
+        currentCase.tgl_sprin_sidik = tgl;
+      }
     }
 
     // 2. INJEKSI PAKSA SPRIN GAS SIDIK
-    const gasSidik = arsip.find(d => d.template_code?.includes('GAS_SIDIK') || d.template_code?.includes('TUGAS_PENYIDIKAN'));
+    const gasSidik = arsip.find(d =>
+      normalizeTemplateCode(d.template_code || d.code, d.doc_title || d.title) === 'SPGAS_SIDIK'
+    );
     if (gasSidik) {
-      const no = extractNo(gasSidik);
-      const tgl = extractDate(gasSidik);
-      if (no) { formValues.NO_SPRIN_GAS_SIDIK = formValues.NO_SPRIN_GAS_SIDIK || no; currentCase.no_sprin_gas_sidik = no; }
-      if (tgl) { formValues.TGL_SPRIN_GAS_SIDIK = formValues.TGL_SPRIN_GAS_SIDIK || tgl; currentCase.tgl_sprin_gas_sidik = tgl; }
+      const { docNo: no, rawDocDate: tgl, formattedDocDate: tglFormatted } = extractArchivedDocNumberAndDate(gasSidik);
+      if (no) {
+        formValues.NO_SPRIN_GAS_SIDIK = (formValues.NO_SPRIN_GAS_SIDIK && String(formValues.NO_SPRIN_GAS_SIDIK).trim()) || no;
+        formValues.NOMOR_SPGAS_SIDIK = (formValues.NOMOR_SPGAS_SIDIK && String(formValues.NOMOR_SPGAS_SIDIK).trim()) || no;
+        formValues.NO_SPGAS_SIDIK = (formValues.NO_SPGAS_SIDIK && String(formValues.NO_SPGAS_SIDIK).trim()) || no;
+        currentCase.no_sprin_gas_sidik = no;
+      }
+      if (tgl || tglFormatted) {
+        formValues.TGL_SPRIN_GAS_SIDIK = (formValues.TGL_SPRIN_GAS_SIDIK && String(formValues.TGL_SPRIN_GAS_SIDIK).trim()) || tglFormatted || tgl;
+        formValues.TANGGAL_SPGAS_SIDIK = (formValues.TANGGAL_SPGAS_SIDIK && String(formValues.TANGGAL_SPGAS_SIDIK).trim()) || tglFormatted || tgl;
+        currentCase.tgl_sprin_gas_sidik = tgl;
+      }
     }
 
     // 3. DEEP SCAN UNTUK S.TAP TERSANGKA
     if (Array.isArray(suspectsList)) {
-      const semuaTap = arsip.filter(d => d.template_code?.includes('TAP_TSK') || (d.doc_title || '').toUpperCase().includes('PENETAPAN TERSANGKA'));
-      
+      const semuaTap = arsip.filter(d =>
+        normalizeTemplateCode(d.template_code || d.code, d.doc_title || d.title) === 'SP_TAP_TSK'
+      );
+
       suspectsList.forEach(s => {
         if (!s || !s.nama) return;
-        
-        // Kunci Final: Cari nama tersangka di dalam koper JSON meta_values!
         const tap = semuaTap.find(d => {
-          const metaStr = JSON.stringify(d.meta_values || {}).toLowerCase();
+          const metaStr = JSON.stringify(d.meta_values || d.metadata || {}).toLowerCase();
           const titleStr = (d.doc_title || '').toLowerCase();
           return metaStr.includes(s.nama.toLowerCase()) || titleStr.includes(s.nama.toLowerCase());
-        });
-        
+        }) || semuaTap[0];
+
         if (tap) {
-          s.nomor_sp_tap = extractNo(tap) || s.nomor_sp_tap;
-          s.tanggal_sp_tap = extractDate(tap) || s.tanggal_sp_tap;
+          const { docNo: no, rawDocDate: tgl } = extractArchivedDocNumberAndDate(tap);
+          s.nomor_sp_tap = no || s.nomor_sp_tap;
+          s.tanggal_sp_tap = tgl || s.tanggal_sp_tap;
         }
       });
     }
@@ -703,45 +1767,111 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const rawTanggalLp = cleanInput.TANGGAL_LP || cleanInput.tanggal_lp || cleanInput.TGL_LP || cleanInput.tgl_lp || activeCase?.tanggal_lp || activeCase?.sprin_date || '';
   const tanggalLp = formatTanggalIndonesia(rawTanggalLp);
 
-  // Universal Auto-Sync Dokumen Induk (Scalable & Modular)
+  // Universal Auto-Sync Dokumen Induk (Scalable & Modular — Anti Empty-String Overwrite)
   const isSprinSidikDoc = tplCode === 'SPRIN_SIDIK' || 
     (tplCode.includes('SIDIK') && !tplCode.includes('GAS') && !tplCode.includes('TUGAS') && !tplCode.includes('TAMBAHAN') && !tplCode.includes('LANJUTAN'));
-  const isSprinGasSidikDoc = tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || 
+  const isSprinGasSidikDoc = tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPGAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || 
     (tplCode.includes('GAS_SIDIK') && !tplCode.includes('TAMBAHAN') && !tplCode.includes('LANJUTAN'));
 
-  const inputSprinSidik = cleanInput.NO_SPRIN_SIDIK !== undefined
-    ? cleanInput.NO_SPRIN_SIDIK
-    : (cleanInput.no_sprin_sidik !== undefined 
-        ? cleanInput.no_sprin_sidik 
-        : (cleanInput.NOMOR_SP_SIDIK !== undefined 
-            ? cleanInput.NOMOR_SP_SIDIK 
-            : (cleanInput.nomor_sp_sidik !== undefined 
-                ? cleanInput.nomor_sp_sidik 
-                : (cleanInput.NO_SP_SIDIK !== undefined 
-                    ? cleanInput.NO_SP_SIDIK 
-                    : (cleanInput.no_sp_sidik !== undefined ? cleanInput.no_sp_sidik : undefined)))));
+  const pickNonEmpty = (...candidates) => {
+    for (const c of candidates) {
+      if (c !== undefined && c !== null) {
+        const s = String(c).trim();
+        if (s !== '' && s !== '-' && s !== 'null' && s !== 'undefined') return s;
+      }
+    }
+    return '';
+  };
+
+  const inputSprinSidik = pickNonEmpty(
+    cleanInput.NO_SPRIN_SIDIK,
+    cleanInput.no_sprin_sidik,
+    cleanInput.NOMOR_SPRIN_SIDIK,
+    cleanInput.nomor_sprin_sidik,
+    cleanInput.NOMOR_SP_SIDIK,
+    cleanInput.nomor_sp_sidik,
+    cleanInput.NO_SP_SIDIK,
+    cleanInput.no_sp_sidik,
+    cleanInput.SPRIN_SIDIK_NOMOR,
+    cleanInput.SPRIN_SIDIK_NO,
+    cleanInput.NOMOR_SURAT_PERINTAH_PENYIDIKAN
+  );
 
   const noSprinSidik = (isSprinSidikDoc && effectiveNomorSurat)
     ? (inputSprinSidik || effectiveNomorSurat)
-    : (inputSprinSidik !== undefined ? inputSprinSidik : (activeCase?.no_sprin_sidik || ''));
+    : (inputSprinSidik || pickNonEmpty(activeCase?.no_sprin_sidik, activeCase?.sprin_sidik, activeCase?.references?.no_sprin_sidik));
 
   const rawTglSprinSidik = (isSprinSidikDoc && effectiveTanggalSurat)
-    ? (cleanInput.TGL_SPRIN_SIDIK || cleanInput.tgl_sprin_sidik || cleanInput.TANGGAL_SPRIN_SIDIK || cleanInput.tanggal_sprin_sidik || effectiveTanggalSurat)
-    : (cleanInput.TGL_SPRIN_SIDIK !== undefined 
-        ? cleanInput.TGL_SPRIN_SIDIK 
-        : (cleanInput.tgl_sprin_sidik !== undefined 
-            ? cleanInput.tgl_sprin_sidik 
-            : (cleanInput.TANGGAL_SPRIN_SIDIK !== undefined 
-                ? cleanInput.TANGGAL_SPRIN_SIDIK 
-                : (cleanInput.tanggal_sprin_sidik !== undefined ? cleanInput.tanggal_sprin_sidik : (activeCase?.tgl_sprin_sidik || activeCase?.sprin_date || '')))));
+    ? (pickNonEmpty(
+        cleanInput.TGL_SPRIN_SIDIK,
+        cleanInput.tgl_sprin_sidik,
+        cleanInput.TANGGAL_SPRIN_SIDIK,
+        cleanInput.tanggal_sprin_sidik,
+        cleanInput.TGL_SP_SIDIK,
+        cleanInput.TANGGAL_SP_SIDIK,
+        cleanInput.SPRIN_SIDIK_TANGGAL,
+        cleanInput.SPRIN_SIDIK_TGL,
+        cleanInput.TANGGAL_SURAT_PERINTAH_PENYIDIKAN
+      ) || effectiveTanggalSurat)
+    : pickNonEmpty(
+        cleanInput.TGL_SPRIN_SIDIK,
+        cleanInput.tgl_sprin_sidik,
+        cleanInput.TANGGAL_SPRIN_SIDIK,
+        cleanInput.tanggal_sprin_sidik,
+        cleanInput.TGL_SP_SIDIK,
+        cleanInput.TANGGAL_SP_SIDIK,
+        cleanInput.SPRIN_SIDIK_TANGGAL,
+        cleanInput.SPRIN_SIDIK_TGL,
+        cleanInput.TANGGAL_SURAT_PERINTAH_PENYIDIKAN,
+        activeCase?.tgl_sprin_sidik,
+        activeCase?.references?.tgl_sprin_sidik,
+        activeCase?.sprin_date
+      );
   const tglSprinSidik = formatTanggalIndonesia(rawTglSprinSidik);
 
   const noSprinGasSidik = (isSprinGasSidikDoc && effectiveNomorSurat)
-    ? (cleanInput.NO_SPRIN_GAS_SIDIK || cleanInput.no_sprin_gas_sidik || cleanInput.NOMOR_SPRIN_GAS_SIDIK || cleanInput.nomor_sprin_gas_sidik || effectiveNomorSurat)
-    : (cleanInput.NO_SPRIN_GAS_SIDIK || cleanInput.no_sprin_gas_sidik || cleanInput.NOMOR_SPRIN_GAS_SIDIK || cleanInput.nomor_sprin_gas_sidik || activeCase?.no_sprin_gas_sidik || activeCase?.nomor_sprin_gas_sidik || '-');
+    ? (pickNonEmpty(
+        cleanInput.NO_SPRIN_GAS_SIDIK,
+        cleanInput.no_sprin_gas_sidik,
+        cleanInput.NOMOR_SPRIN_GAS_SIDIK,
+        cleanInput.nomor_sprin_gas_sidik,
+        cleanInput.NOMOR_SPGAS_SIDIK,
+        cleanInput.NO_SPGAS_SIDIK
+      ) || effectiveNomorSurat)
+    : (pickNonEmpty(
+        cleanInput.NO_SPRIN_GAS_SIDIK,
+        cleanInput.no_sprin_gas_sidik,
+        cleanInput.NOMOR_SPRIN_GAS_SIDIK,
+        cleanInput.nomor_sprin_gas_sidik,
+        cleanInput.NOMOR_SPGAS_SIDIK,
+        cleanInput.NO_SPGAS_SIDIK,
+        activeCase?.no_sprin_gas_sidik,
+        activeCase?.nomor_sprin_gas_sidik,
+        activeCase?.no_sp_gas_sidik,
+        activeCase?.references?.no_spgas_sidik,
+        activeCase?.references?.no_sprin_gas_sidik
+      ) || '-');
   const rawTglSprinGasSidik = (isSprinGasSidikDoc && effectiveTanggalSurat)
-    ? (cleanInput.TGL_SPRIN_GAS_SIDIK || cleanInput.tgl_sprin_gas_sidik || cleanInput.TANGGAL_SPRIN_GAS_SIDIK || cleanInput.tanggal_sprin_gas_sidik || effectiveTanggalSurat)
-    : (cleanInput.TGL_SPRIN_GAS_SIDIK || cleanInput.tgl_sprin_gas_sidik || cleanInput.TANGGAL_SPRIN_GAS_SIDIK || cleanInput.tanggal_sprin_gas_sidik || activeCase?.tgl_sprin_gas_sidik || activeCase?.tanggal_sprin_gas_sidik || '');
+    ? (pickNonEmpty(
+        cleanInput.TGL_SPRIN_GAS_SIDIK,
+        cleanInput.tgl_sprin_gas_sidik,
+        cleanInput.TANGGAL_SPRIN_GAS_SIDIK,
+        cleanInput.tanggal_sprin_gas_sidik,
+        cleanInput.TANGGAL_SPGAS_SIDIK,
+        cleanInput.TGL_SPGAS_SIDIK
+      ) || effectiveTanggalSurat)
+    : pickNonEmpty(
+        cleanInput.TGL_SPRIN_GAS_SIDIK,
+        cleanInput.tgl_sprin_gas_sidik,
+        cleanInput.TANGGAL_SPRIN_GAS_SIDIK,
+        cleanInput.tanggal_sprin_gas_sidik,
+        cleanInput.TANGGAL_SPGAS_SIDIK,
+        cleanInput.TGL_SPGAS_SIDIK,
+        activeCase?.tgl_sprin_gas_sidik,
+        activeCase?.tanggal_sprin_gas_sidik,
+        activeCase?.tgl_sp_gas_sidik,
+        activeCase?.references?.tgl_sprin_gas_sidik
+      );
   const formattedTglSprinGasSidik = formatTanggalIndonesia(rawTglSprinGasSidik);
   const tglSprinGasSidik = formattedTglSprinGasSidik || '-';
 
@@ -1635,18 +2765,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     baseMap[`korban_${i}_alamat`] = v.alamat || '';
   }
 
-  // Timpa dengan custom field manual form dinamis jika ada
-  const finalPayload = { ...baseMap };
-  Object.keys(cleanInput).forEach((key) => {
-    let val = cleanInput[key];
-    // Jika nilai input berupa format tanggal ISO YYYY-MM-DD, format ke teks Indonesia resmi
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
-      val = formatTanggalIndonesia(val);
-    }
-    finalPayload[key] = val;
-    finalPayload[key.toUpperCase()] = val;
-    finalPayload[key.toLowerCase()] = val;
-  });
+  // Timpa dengan custom field manual form dinamis HANYA jika terisi (Anti Empty-String Overwrite via mergeChainedWithForm)
+  const finalPayload = mergeChainedWithForm(baseMap, cleanInput);
 
   // Pastikan variabel tanggal surat utama aktif tetap terformat teks resmi
   finalPayload.TANGGAL_SURAT = tanggalSurat;
@@ -2247,13 +3367,56 @@ export async function generateDocxBlob({
   // 2b. Sinkronisasi rujukan dokumen induk dari arsip database
   await syncDataFromArchive(currentCase || caseData, suspectsList, formValues);
 
-  // 3. Build data map
-  const dataMap = buildMindikVariables(currentCase, formValues, template?.dynamic_fields, personnelList, {
+  // 2c. Bangun konteks rantai universal (seluruh mindik arsip, tim penyidik, barang bukti, & 4 kategori subjek hukum)
+  const universalContext = await buildUniversalCaseContext(currentCase || caseData, formValues, {
+    suspectsList,
+    activeSuspect,
+    activeVictim,
+    victimsList,
+    personnelList
+  });
+
+  // 2d. Gabungkan universalContext dengan formValues menggunakan mergeChainedWithForm
+  //     agar buildMindikVariables menerima nilai rantai arsip yang utuh tanpa tertimpa string kosong ("")
+  const effectiveFormValues = mergeChainedWithForm(universalContext, formValues);
+
+  // 3. Build data map & gabungkan dengan universalContext (basePayload + universalContext + manual formValues)
+  const baseDataMap = buildMindikVariables(currentCase, effectiveFormValues, template?.dynamic_fields, personnelList, {
     activeSuspect,
     suspectsList,
     activeVictim,
     victimsList,
     template
+  });
+  const dataMap = mergeChainedWithForm(
+    {
+      ...universalContext,
+      ...baseDataMap,
+      // Pastikan array rantai dinamis dan tag universal dari buildUniversalCaseContext selalu tersedia
+      DAFTAR_DASAR_SURAT: universalContext.DAFTAR_DASAR_SURAT || [],
+      daftar_dasar_surat: universalContext.daftar_dasar_surat || [],
+      DAFTAR_BARANG_BUKTI: baseDataMap.DAFTAR_BARANG_BUKTI || universalContext.DAFTAR_BARANG_BUKTI || '',
+      daftar_barang_bukti: baseDataMap.daftar_barang_bukti || universalContext.daftar_barang_bukti || '',
+      BARANG_BUKTI: universalContext.BARANG_BUKTI || [],
+      barang_bukti: universalContext.barang_bukti || [],
+      PENYIDIK: baseDataMap.TIM_PENYIDIK?.length ? baseDataMap.TIM_PENYIDIK : (universalContext.PENYIDIK || []),
+      penyidik: baseDataMap.tim_penyidik?.length ? baseDataMap.tim_penyidik : (universalContext.penyidik || []),
+      SAKSI: universalContext.SAKSI || [],
+      saksi: universalContext.saksi || [],
+      TERLAPOR: universalContext.TERLAPOR || baseDataMap.terlapor_list || [],
+      terlapor: universalContext.terlapor || baseDataMap.terlapor_list || [],
+      TERSANGKA: universalContext.TERSANGKA || baseDataMap.tersangka_list || [],
+      tersangka: universalContext.tersangka || baseDataMap.tersangka_list || [],
+      PELAPOR: universalContext.PELAPOR || baseDataMap.korban_list || [],
+      pelapor: universalContext.pelapor || baseDataMap.korban_list || [],
+    },
+    formValues
+  );
+  // Salin seluruh kunci dinamis NOMOR_<KODE>, NO_<KODE>, TANGGAL_<KODE>, TGL_<KODE>, DASAR_<KODE>, BIODATA_*_LENGKAP, SAKSI_*, SUBJEK_*
+  Object.keys(universalContext).forEach((uKey) => {
+    if (dataMap[uKey] === undefined || dataMap[uKey] === '' || dataMap[uKey] === '-') {
+      dataMap[uKey] = universalContext[uKey];
+    }
   });
 
   // 4. Render placeholders

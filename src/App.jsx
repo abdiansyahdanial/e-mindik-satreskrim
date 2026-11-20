@@ -354,6 +354,10 @@ export default function App() {
         console.warn('PGRST204: Membuang objek non-kolom dan mencoba insert ulang...');
         const {
           penyidik_penangan,
+          pelapor_list,
+          saksi_list,
+          tersangka_list,
+          barang_bukti,
           ...cleanCase
         } = newCase;
         const retry = await supabase.from('cases').insert([cleanCase]);
@@ -363,15 +367,20 @@ export default function App() {
         console.error('Insert case error:', error);
         alert(`Gagal menyimpan perkara ke database: ${error.message}`);
       } else {
-        // Insert seluruh terlapor_list ke tabel case_suspects di Supabase dengan status murni terlapor
-        if (Array.isArray(newCase.terlapor_list) && newCase.terlapor_list.length > 0) {
-          const suspectsPayload = newCase.terlapor_list.map((t) => ({
+        // Insert seluruh terlapor_list dan tersangka_list ke tabel case_suspects di Supabase
+        const allInitialSuspects = [
+          ...(Array.isArray(newCase.terlapor_list) ? newCase.terlapor_list.map(t => ({ ...t, status: 'terlapor' })) : []),
+          ...(Array.isArray(newCase.tersangka_list) ? newCase.tersangka_list.map(t => ({ ...t, status: 'tersangka' })) : [])
+        ].filter(t => t && t.nama);
+
+        if (allInitialSuspects.length > 0) {
+          const suspectsPayload = allInitialSuspects.map((t) => ({
             case_id: newCase.id,
             nama: t.nama || 'Dalam Penyelidikan',
             nik: t.nik || '-',
             jenis_kelamin: t.jenis_kelamin || 'Laki-laki',
             tempat_lahir: t.tempat_lahir || 'Kolaka Timur',
-            tgl_lahir: t.tgl_lahir || null,
+            tgl_lahir: t.tanggal_lahir || t.tgl_lahir || null,
             umur: t.umur ? String(t.umur) : null,
             agama: t.agama || 'Islam',
             pekerjaan: t.pekerjaan || 'Wiraswasta',
@@ -379,11 +388,11 @@ export default function App() {
             pendidikan: t.pendidikan || 'SMA',
             status_pernikahan: t.status_pernikahan || 'Kawin',
             alamat: t.alamat || newCase.locus || '',
-            status: 'terlapor', // Formil murni terlapor
-            no_sp_tap_tsk: null,
-            nomor_sp_tap: null,
-            tanggal_sp_tap: null,
-            tgl_sp_tap_tsk: null,
+            status: t.status === 'tersangka' ? 'tersangka' : 'terlapor',
+            no_sp_tap_tsk: t.nomor_sp_tap || t.no_sp_tap_tsk || null,
+            nomor_sp_tap: t.nomor_sp_tap || t.no_sp_tap_tsk || null,
+            tanggal_sp_tap: t.tanggal_sp_tap || t.tgl_sp_tap_tsk || null,
+            tgl_sp_tap_tsk: t.tanggal_sp_tap || t.tgl_sp_tap_tsk || null,
             created_at: new Date().toISOString(),
           }));
           try {
