@@ -20,6 +20,7 @@ export default function OfficialDocPreview({
   caseData,
   template,
   formValues = EMPTY_OBJECT,
+  docDate = '',
   personnel = EMPTY_ARRAY,
   personnelList = EMPTY_ARRAY,
   activeSuspect = null,
@@ -50,12 +51,22 @@ export default function OfficialDocPreview({
     ? personnelList
     : (Array.isArray(personnel) ? personnel : EMPTY_ARRAY);
 
+  const effectiveDocDate = docDate
+    || formValues?.TANGGAL_SURAT
+    || formValues?.DOC_DATE
+    || formValues?.TGL_SURAT
+    || formValues?.tanggal_surat
+    || formValues?.doc_date
+    || formValues?.tgl_surat
+    || '';
+
   // Kunci dependensi primitif berbasis string JSON untuk mencegah infinite upload/render loop
   const renderKey = useMemo(() => JSON.stringify({
     templateId: template?.id || template?.code || template?.file_path || '',
     caseId: currentCase?.id || currentCase?.nomor_lp || currentCase?.no_lp || '',
     activeSuspectId: activeSuspect?.id || activeSuspect?.nama || '',
     activeVictimId: activeVictim?.id || activeVictim?.nama || '',
+    docDate: effectiveDocDate,
     formValues,
     personnelList: effectivePersonnelList,
     suspectsList
@@ -70,6 +81,7 @@ export default function OfficialDocPreview({
     activeSuspect?.nama,
     activeVictim?.id,
     activeVictim?.nama,
+    effectiveDocDate,
     formValues,
     effectivePersonnelList,
     suspectsList
@@ -158,6 +170,17 @@ export default function OfficialDocPreview({
     async function processAndUploadPreview() {
       try {
         // 1. Injeksi variabel perkara ke template .docx asli dari Supabase Storage
+        const syncedFormValues = effectiveDocDate
+          ? {
+              ...formValues,
+              TANGGAL_SURAT: effectiveDocDate,
+              tanggal_surat: effectiveDocDate,
+              DOC_DATE: effectiveDocDate,
+              doc_date: effectiveDocDate,
+              TGL_SURAT: effectiveDocDate,
+              tgl_surat: effectiveDocDate
+            }
+          : formValues;
         const res = await generateDocxBlob({
           template,
           caseData: currentCase,
@@ -166,7 +189,8 @@ export default function OfficialDocPreview({
           suspectsList,
           activeVictim,
           victimsList,
-          formValues,
+          formValues: syncedFormValues,
+          docDate: effectiveDocDate,
           personnelList: effectivePersonnelList
         });
 

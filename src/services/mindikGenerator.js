@@ -539,10 +539,6 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   const uraianSingkat = activeCase.uraian_singkat || activeCase.uraian_kejadian || kronologi || '';
   const unitPenangan = activeCase.unit || activeCase.unit_penangan || 'Satreskrim Polres Kolaka Timur';
   const tempatSurat = activeCase.tempat_surat || 'Tirawuta';
-  const rawTglSurat = activeFormValues.TANGGAL_SURAT || activeFormValues.tanggal_surat || activeFormValues.DOC_DATE || new Date().toISOString().split('T')[0];
-  const tanggalSurat = options.forFormUi
-    ? (toIsoDateString(rawTglSurat) || new Date().toISOString().split('T')[0])
-    : formatTanggalIndonesia(rawTglSurat);
 
   setBothCase('NOMOR_LP', nomorLp);
   setBothCase('NO_LP', nomorLp);
@@ -563,7 +559,6 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   setBothCase('URAIAN_PERKARA', uraianSingkat);
   setBothCase('UNIT_PENANGAN', unitPenangan);
   setBothCase('TEMPAT_SURAT', tempatSurat);
-  setBothCase('TANGGAL_SURAT', tanggalSurat);
 
   // Pejabat Penandatangan / Atasan (Kasat Reskrim)
   const atasanNama = activeCase.kasat_nama || activeCase.atasan_nama || '';
@@ -1045,11 +1040,21 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   //    Menggunakan mergeChainedWithForm agar string kosong ("") tidak menimpa rantai arsip
   // ---------------------------------------------------------------------------
   // Pastikan context rantai murni TIDAK PERNAH membawa key generik surat aktif
+  // (baik nomor maupun tanggal surat aktif) agar tidak membocorkan tanggal hari ini atau arsip lama.
   [
     'NOMOR_SURAT', 'nomor_surat',
     'NO_SURAT', 'no_surat',
     'DOC_NO', 'doc_no',
-    'NOMOR_SURAT_HEADER', 'nomor_surat_header'
+    'NOMOR_SURAT_HEADER', 'nomor_surat_header',
+    'TANGGAL_SURAT', 'tanggal_surat',
+    'TANGGAL_SURAT_HEADER', 'tanggal_surat_header',
+    'DOC_DATE', 'doc_date',
+    'TGL_SURAT', 'tgl_surat',
+    'TANGGAL_NASKAH', 'tanggal_naskah',
+    'TANGGAL_DOKUMEN', 'tanggal_dokumen',
+    'HARI_SURAT', 'hari_surat',
+    'BULAN_SURAT', 'bulan_surat',
+    'TAHUN_SURAT', 'tahun_surat'
   ].forEach((gKey) => {
     delete context[gKey];
   });
@@ -1793,6 +1798,16 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const isKapDoc = tplCode === 'BA_KAP' || tplCode === 'SPRIN_KAP_DAN_BA' || tplCode.includes('KAP');
   const isHanDoc = tplCode === 'SPRIN_HAN' || tplCode === 'BA_HAN' || tplCode === 'SPRIN_HAN_DAN_BA' || tplCode.includes('HAN');
 
+  const pickNonEmpty = (...candidates) => {
+    for (const c of candidates) {
+      if (c !== undefined && c !== null) {
+        const s = String(c).trim();
+        if (s !== '' && s !== '-' && s !== 'null' && s !== 'undefined') return s;
+      }
+    }
+    return '';
+  };
+
   const rawNomorSurat = cleanInput.NOMOR_SURAT 
     || cleanInput.nomor_surat 
     || cleanInput.NO_SURAT 
@@ -1801,7 +1816,20 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     || cleanInput.doc_no 
     || (isSpTap ? (cleanInput.nomor_sp_tap_tsk || cleanInput.no_sp_tap_tsk || cleanInput.nomor_sp_tap || '') : '')
     || '';
-  const rawTanggalSurat = cleanInput.TANGGAL_SURAT || cleanInput.DOC_DATE || cleanInput.tanggal_surat || cleanInput.doc_date || (isSpTap ? (cleanInput.tanggal_sp_tap || cleanInput.tgl_sp_tap_tsk) : '') || new Date().toISOString().split('T')[0];
+  const rawTanggalSurat = pickNonEmpty(
+    arg1?.docDate,
+    cleanInput.TANGGAL_SURAT,
+    cleanInput.DOC_DATE,
+    cleanInput.TGL_SURAT,
+    cleanInput.TANGGAL_NASKAH,
+    cleanInput.TANGGAL_DOKUMEN
+  ) || pickNonEmpty(
+    cleanInput.tanggal_surat,
+    cleanInput.doc_date,
+    cleanInput.tgl_surat,
+    cleanInput.tanggal_naskah,
+    cleanInput.tanggal_dokumen
+  );
 
   const suspectNomorSpTap = isSpTap ? (activeSuspect?.nomor_sp_tap || activeSuspect?.no_sp_tap_tsk || '') : '';
   const suspectTanggalSpTap = isSpTap ? (activeSuspect?.tanggal_sp_tap || activeSuspect?.tgl_sp_tap_tsk || '') : '';
@@ -1811,13 +1839,18 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const effectiveNomorSurat = isSpTap 
     ? (rawNomorSurat || suspectNomorSpTap)
     : rawNomorSurat;
-
-  const effectiveTanggalSurat = isSpTap 
-    ? (rawTanggalSurat || suspectTanggalSpTap)
-    : (isKapDoc && cleanInput.TANGGAL_KAP ? cleanInput.TANGGAL_KAP : (isHanDoc && cleanInput.TANGGAL_MULAI_HAN ? cleanInput.TANGGAL_MULAI_HAN : rawTanggalSurat));
-
   const nomorSurat = effectiveNomorSurat;
-  const tanggalSurat = formatTanggalIndonesia(effectiveTanggalSurat);
+
+  const activeRawDate = rawTanggalSurat
+    || (isSpTap ? pickNonEmpty(cleanInput.tanggal_sp_tap, cleanInput.tgl_sp_tap_tsk, suspectTanggalSpTap) : '')
+    || (isKapDoc ? pickNonEmpty(cleanInput.TANGGAL_KAP, cleanInput.tanggal_kap) : '')
+    || (isHanDoc ? pickNonEmpty(cleanInput.TANGGAL_MULAI_HAN, cleanInput.tanggal_mulai_han) : '')
+    || new Date().toISOString().split('T')[0];
+
+  const effectiveTanggalSurat = activeRawDate;
+  const formattedActiveDate = formatTanggalIndonesia(activeRawDate);
+  const parsedActiveDate = parseDateParts(activeRawDate);
+  const tanggalSurat = formattedActiveDate;
   const tempatSurat = cleanInput.TEMPAT_SURAT || cleanInput.tempat_surat || cleanInput.DOC_LOCATION || 
     (isKapDoc && cleanInput.TEMPAT_KAP ? cleanInput.TEMPAT_KAP : (isHanDoc && cleanInput.TEMPAT_HAN ? cleanInput.TEMPAT_HAN : 'Tirawuta'));
   const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || '';
@@ -1835,16 +1868,6 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     (tplCode.includes('SIDIK') && !tplCode.includes('GAS') && !tplCode.includes('TUGAS') && !tplCode.includes('TAMBAHAN') && !tplCode.includes('LANJUTAN'));
   const isSprinGasSidikDoc = tplCode === 'SPRIN_GAS_SIDIK' || tplCode === 'SPGAS_SIDIK' || tplCode === 'SPRIN_TUGAS_PENYIDIKAN' || 
     (tplCode.includes('GAS_SIDIK') && !tplCode.includes('TAMBAHAN') && !tplCode.includes('LANJUTAN'));
-
-  const pickNonEmpty = (...candidates) => {
-    for (const c of candidates) {
-      if (c !== undefined && c !== null) {
-        const s = String(c).trim();
-        if (s !== '' && s !== '-' && s !== 'null' && s !== 'undefined') return s;
-      }
-    }
-    return '';
-  };
 
   const inputSprinSidik = pickNonEmpty(
     cleanInput.NO_SPRIN_SIDIK,
@@ -3228,6 +3251,92 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   }
   // ==============================================================
 
+  // ==============================================================
+  // PENEGASAN MUTLAK TANGGAL SURAT AKTIF (SINGLE SOURCE OF TRUTH)
+  // Memastikan activeFormValues.TANGGAL_SURAT / docDate menimpa seluruh alias
+  // tanggal surat aktif & alias tanggal milik template yang sedang aktif.
+  // ==============================================================
+  const formattedHeaderDate = formatTanggalSuratHeader(tanggalSurat);
+  [
+    'TANGGAL_SURAT', 'tanggal_surat',
+    'TGL_SURAT', 'tgl_surat',
+    'DOC_DATE', 'doc_date',
+    'TANGGAL_NASKAH', 'tanggal_naskah',
+    'TANGGAL_DOKUMEN', 'tanggal_dokumen'
+  ].forEach((k) => {
+    finalPayload[k] = tanggalSurat;
+  });
+  finalPayload.TANGGAL_SURAT_HEADER = formattedHeaderDate;
+  finalPayload.tanggal_surat_header = formattedHeaderDate;
+
+  if (parsedActiveDate?.hari) {
+    finalPayload.HARI_SURAT = parsedActiveDate.hari;
+    finalPayload.hari_surat = parsedActiveDate.hari;
+  }
+  if (parsedActiveDate?.bulan) {
+    finalPayload.BULAN_SURAT = parsedActiveDate.bulan;
+    finalPayload.bulan_surat = parsedActiveDate.bulan;
+  }
+  if (parsedActiveDate?.tahun) {
+    finalPayload.TAHUN_SURAT = parsedActiveDate.tahun;
+    finalPayload.tahun_surat = parsedActiveDate.tahun;
+  }
+
+  // Alias tanggal milik dokumen/template yang sedang aktif (bukan arsip lama)
+  if (canonicalTplCode && canonicalTplCode !== 'MINDIK') {
+    const kLower = canonicalTplCode.toLowerCase();
+    finalPayload[`TANGGAL_${canonicalTplCode}`] = tanggalSurat;
+    finalPayload[`tanggal_${kLower}`] = tanggalSurat;
+    finalPayload[`TGL_${canonicalTplCode}`] = tanggalSurat;
+    finalPayload[`tgl_${kLower}`] = tanggalSurat;
+    finalPayload[`${canonicalTplCode}_TANGGAL`] = tanggalSurat;
+    finalPayload[`${kLower}_tanggal`] = tanggalSurat;
+    finalPayload[`${canonicalTplCode}_TGL`] = tanggalSurat;
+    finalPayload[`${kLower}_tgl`] = tanggalSurat;
+  }
+  if (canonicalTplCode.startsWith('SPDP') || canonicalTplCode === 'PENGIRIMAN_KEMBALI_SPDP_P20') {
+    [
+      'TANGGAL_SPDP', 'tanggal_spdp',
+      'TGL_SPDP', 'tgl_spdp',
+      'SPDP_TANGGAL', 'spdp_tanggal',
+      'SPDP_TGL', 'spdp_tgl'
+    ].forEach((k) => {
+      finalPayload[k] = tanggalSurat;
+    });
+  } else if (isSprinSidikDoc) {
+    [
+      'TANGGAL_SPRIN_SIDIK', 'tanggal_sprin_sidik',
+      'TGL_SPRIN_SIDIK', 'tgl_sprin_sidik',
+      'TANGGAL_SP_SIDIK', 'tanggal_sp_sidik',
+      'TGL_SP_SIDIK', 'tgl_sp_sidik'
+    ].forEach((k) => {
+      finalPayload[k] = tanggalSurat;
+    });
+  } else if (isSprinGasSidikDoc) {
+    [
+      'TANGGAL_SPRIN_GAS_SIDIK', 'tanggal_sprin_gas_sidik',
+      'TGL_SPRIN_GAS_SIDIK', 'tgl_sprin_gas_sidik',
+      'TANGGAL_SPGAS_SIDIK', 'tanggal_spgas_sidik',
+      'TGL_SPGAS_SIDIK', 'tgl_spgas_sidik',
+      'TANGGAL_SP_GAS_SIDIK', 'tanggal_sp_gas_sidik',
+      'TGL_SP_GAS_SIDIK', 'tgl_sp_gas_sidik'
+    ].forEach((k) => {
+      finalPayload[k] = tanggalSurat;
+    });
+  } else if (isSpTap) {
+    [
+      'TANGGAL_TAP_TSK', 'tanggal_tap_tsk',
+      'TGL_TAP_TSK', 'tgl_tap_tsk',
+      'TANGGAL_SP_TAP_TSK', 'tanggal_sp_tap_tsk',
+      'TGL_SP_TAP_TSK', 'tgl_sp_tap_tsk',
+      'TANGGAL_SP_TAP', 'tanggal_sp_tap',
+      'TGL_SP_TAP', 'tgl_sp_tap',
+      'TANGGAL_PENETAPAN', 'tanggal_penetapan'
+    ].forEach((k) => {
+      finalPayload[k] = tanggalSurat;
+    });
+  }
+
   // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined' di dokumen Word
   Object.keys(finalPayload).forEach((k) => {
     if (finalPayload[k] === null || finalPayload[k] === undefined || finalPayload[k] === 'null' || finalPayload[k] === 'undefined') {
@@ -3276,6 +3385,7 @@ export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig
   const template = options.template || options.selectedTemplate || lpData.template || null;
   const activeVictim = options.activeVictim || options.selectedVictim || lpData.activeVictim || lpData.victims?.[0] || lpData.references?.victims?.[0] || null;
   const victimsList = options.victimsList || lpData.victimsList || lpData.victims || lpData.references?.victims || [];
+  const docDate = options.docDate || '';
 
   return buildMindikPayload({
     activeCase,
@@ -3284,7 +3394,8 @@ export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig
     activeVictim,
     victimsList,
     formValues,
-    template
+    template,
+    docDate
   });
 }
 
@@ -3351,6 +3462,7 @@ export async function generateAndDownloadDocx({
   activeVictim,
   victimsList = [],
   formValues = {},
+  docDate = '',
   personnelList = []
 }) {
   if (!template) {
@@ -3370,6 +3482,7 @@ export async function generateAndDownloadDocx({
     activeVictim,
     victimsList,
     formValues,
+    docDate,
     personnelList
   });
 
@@ -3401,6 +3514,7 @@ export async function generateDocxBlob({
   activeVictim,
   victimsList = [],
   formValues = {},
+  docDate = '',
   personnelList = []
 }) {
   if (!template) {
@@ -3427,8 +3541,36 @@ export async function generateDocxBlob({
   const zip = new PizZip(arrayBuffer);
   normalizeDocxXml(zip);
 
+  // Normalisasi input tanggal surat aktif agar key lowercase/stale tidak pernah menimpa TANGGAL_SURAT / docDate
+  const explicitActiveDocDate = String(
+    docDate ||
+    formValues?.TANGGAL_SURAT ||
+    formValues?.DOC_DATE ||
+    formValues?.TGL_SURAT ||
+    formValues?.tanggal_surat ||
+    formValues?.doc_date ||
+    formValues?.tgl_surat ||
+    ''
+  ).trim();
+
+  const normalizedFormValues = { ...(formValues || {}) };
+  if (explicitActiveDocDate) {
+    normalizedFormValues.TANGGAL_SURAT = explicitActiveDocDate;
+    normalizedFormValues.tanggal_surat = explicitActiveDocDate;
+    normalizedFormValues.DOC_DATE = explicitActiveDocDate;
+    normalizedFormValues.doc_date = explicitActiveDocDate;
+    normalizedFormValues.TGL_SURAT = explicitActiveDocDate;
+    normalizedFormValues.tgl_surat = explicitActiveDocDate;
+    delete normalizedFormValues.TANGGAL_SURAT_HEADER;
+    delete normalizedFormValues.tanggal_surat_header;
+    delete normalizedFormValues.TANGGAL_NASKAH;
+    delete normalizedFormValues.tanggal_naskah;
+    delete normalizedFormValues.TANGGAL_DOKUMEN;
+    delete normalizedFormValues.tanggal_dokumen;
+  }
+
   // 2b. Sinkronisasi rujukan dokumen induk dari arsip database
-  await syncDataFromArchive(currentCase || caseData, suspectsList, formValues);
+  await syncDataFromArchive(currentCase || caseData, suspectsList, normalizedFormValues);
 
   // 2c. Bangun konteks rantai universal dari arsip tanpa menimpa key generik surat aktif
   const universalContext = await buildUniversalCaseContext(currentCase || caseData, {}, {
@@ -3439,9 +3581,9 @@ export async function generateDocxBlob({
     personnelList
   });
 
-  // 2d. Gabungkan universalContext dengan formValues menggunakan mergeChainedWithForm
+  // 2d. Gabungkan universalContext dengan normalizedFormValues menggunakan mergeChainedWithForm
   //     agar buildMindikVariables menerima nilai rantai arsip + input aktif yang sedang diketik
-  const effectiveFormValues = mergeChainedWithForm(universalContext, formValues, { formatDatesForDocx: true });
+  const effectiveFormValues = mergeChainedWithForm(universalContext, normalizedFormValues, { formatDatesForDocx: true });
 
   // 3. Build data map & gabungkan dengan universalContext (basePayload + universalContext + manual formValues)
   const baseDataMap = buildMindikVariables(currentCase, effectiveFormValues, template?.dynamic_fields, personnelList, {
@@ -3449,7 +3591,8 @@ export async function generateDocxBlob({
     suspectsList,
     activeVictim,
     victimsList,
-    template
+    template,
+    docDate: explicitActiveDocDate
   });
   const dataMap = mergeChainedWithForm(
     {
@@ -3473,21 +3616,48 @@ export async function generateDocxBlob({
       PELAPOR: universalContext.PELAPOR || baseDataMap.korban_list || [],
       pelapor: universalContext.pelapor || baseDataMap.korban_list || [],
     },
-    formValues,
+    normalizedFormValues,
     { formatDatesForDocx: true }
   );
   // Salin seluruh kunci dinamis NOMOR_<KODE>, NO_<KODE>, TANGGAL_<KODE>, TGL_<KODE>, DASAR_<KODE>, BIODATA_*_LENGKAP, SAKSI_*, SUBJEK_*
-  // tanpa menyentuh key generik surat aktif maupun alias nomor milik template yang sedang di-generate
+  // tanpa menyentuh key generik surat aktif maupun alias nomor/tanggal milik template yang sedang di-generate
   const ACTIVE_SURAT_PROTECTED_KEYS = new Set([
     'NOMOR_SURAT', 'nomor_surat',
     'NO_SURAT', 'no_surat',
     'DOC_NO', 'doc_no',
-    'NOMOR_SURAT_HEADER', 'nomor_surat_header'
+    'NOMOR_SURAT_HEADER', 'nomor_surat_header',
+    'TANGGAL_SURAT', 'tanggal_surat',
+    'TGL_SURAT', 'tgl_surat',
+    'DOC_DATE', 'doc_date',
+    'TANGGAL_SURAT_HEADER', 'tanggal_surat_header',
+    'TANGGAL_NASKAH', 'tanggal_naskah',
+    'TANGGAL_DOKUMEN', 'tanggal_dokumen',
+    'HARI_SURAT', 'hari_surat',
+    'BULAN_SURAT', 'bulan_surat',
+    'TAHUN_SURAT', 'tahun_surat'
   ]);
   Object.keys(universalContext).forEach((uKey) => {
     if (ACTIVE_SURAT_PROTECTED_KEYS.has(uKey)) return;
     if (dataMap[uKey] === undefined || dataMap[uKey] === '' || dataMap[uKey] === '-') {
       dataMap[uKey] = universalContext[uKey];
+    }
+  });
+
+  // Kunci akhir tanggal surat aktif agar selalu sama persis dengan TANGGAL_SURAT dari form / docDate
+  const ACTIVE_DATE_KEYS_FROM_BASE = [
+    'TANGGAL_SURAT', 'tanggal_surat',
+    'TGL_SURAT', 'tgl_surat',
+    'DOC_DATE', 'doc_date',
+    'TANGGAL_NASKAH', 'tanggal_naskah',
+    'TANGGAL_DOKUMEN', 'tanggal_dokumen',
+    'TANGGAL_SURAT_HEADER', 'tanggal_surat_header',
+    'HARI_SURAT', 'hari_surat',
+    'BULAN_SURAT', 'bulan_surat',
+    'TAHUN_SURAT', 'tahun_surat'
+  ];
+  ACTIVE_DATE_KEYS_FROM_BASE.forEach((k) => {
+    if (baseDataMap[k] !== undefined && baseDataMap[k] !== '') {
+      dataMap[k] = baseDataMap[k];
     }
   });
 

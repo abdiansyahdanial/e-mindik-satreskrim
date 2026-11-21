@@ -1,54 +1,54 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  FileSignature, 
-  FileText, 
-  Lock, 
-  Unlock, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  FileSignature,
+  FileText,
+  Lock,
+  Unlock,
+  Check,
+  CheckCircle2,
+  AlertCircle,
   AlertTriangle,
-  Download, 
-  Save, 
-  RefreshCw, 
-  Calendar, 
-  User, 
+  Download,
+  Save,
+  RefreshCw,
+  Calendar,
   Users,
-  Shield, 
-  ChevronRight, 
+  Shield,
   Search,
-  ExternalLink,
   Layers,
-  Sparkles,
   Info,
   Eye,
-  X
+  X,
+  UserCheck,
+  ChevronRight,
+  Sparkles,
+  Briefcase
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import OfficialDocPreview from '../../components/OfficialDocPreview';
 import { checkPrerequisite } from './mindikPrerequisites';
-import { 
-  generateAndDownloadDocx, 
+import {
+  generateAndDownloadDocx,
   formatTanggalIndonesia,
   formatPangkatLengkap,
   normalizeSubjectRecord,
   populateSubjectPrefixVariables,
-  buildUniversalCaseContext,
   resolveChainedMindikContext,
   mergeChainedWithForm,
-  normalizeTemplateCode,
-  extractArchivedDocNumberAndDate
+  extractArchivedDocNumberAndDate,
+  toIsoDateString
 } from '../../services/mindikGenerator';
-import { 
-  MINDIK_PRESETS, 
-  MINDIK_CATEGORY_TABS, 
-  MINDIK_CODE_TO_CATEGORY 
+import {
+  MINDIK_PRESETS,
+  MINDIK_CATEGORY_TABS,
+  MINDIK_CODE_TO_CATEGORY
 } from '../../constants/mindikPresets';
 import {
   toCanonicalMindikCode,
   isValidOfficialDocNumber,
-  resolveLatestArchiveDoc
+  resolveLatestArchiveDoc,
+  getSubjectModeForTemplate
 } from '../../constants/mindikChainRegistry';
-import { toIsoDateString } from '../../services/mindikGenerator';
 
 export default function MindikGeneratorView({
   cases = [],
@@ -91,8 +91,12 @@ export default function MindikGeneratorView({
   const [templateSearch, setTemplateSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
 
-  // --- STATE FORM GENERATOR ---
+  // --- STATE FORM GENERATOR & MODAL UI ---
   const [formValues, setFormValues] = useState({});
+  const [noUrutInput, setNoUrutInput] = useState('');
+  const [showOptionalSubjectPicker, setShowOptionalSubjectPicker] = useState(false);
+  const [isCaseDetailModalOpen, setIsCaseDetailModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -471,6 +475,59 @@ export default function MindikGeneratorView({
     return { badges, teamCount, customDocs: Array.from(customDocsMap.values()) };
   }, [currentCase, activeCaseDocs, caseSuspects]);
 
+  // Daftar Tim Penyidik Terwarisi untuk Modal "Tim Penyidik (N)"
+  const inheritedTeamMembers = useMemo(() => {
+    if (!currentCase) return [];
+    const list = [];
+    for (let i = 1; i <= 10; i++) {
+      const nama = currentCase[`penyidik_${i}_nama`];
+      if (nama) {
+        list.push({
+          no: i,
+          nama,
+          pangkat: currentCase[`penyidik_${i}_pangkat`] || '',
+          nrp: currentCase[`penyidik_${i}_nrp`] || '',
+          jabatan: currentCase[`penyidik_${i}_jabatan`] || (i === 1 ? 'Kanit' : 'Penyidik Pembantu')
+        });
+      }
+    }
+    if (list.length === 0 && Array.isArray(currentCase.investigators)) {
+      currentCase.investigators.forEach((inv, idx) => {
+        if (inv && inv.nama) {
+          list.push({
+            no: idx + 1,
+            nama: inv.nama,
+            pangkat: inv.pangkat || '',
+            nrp: inv.nrp || '',
+            jabatan: inv.jabatan || (idx === 0 ? 'Kanit' : 'Penyidik Pembantu')
+          });
+        }
+      });
+    }
+    return list;
+  }, [currentCase]);
+
+  // Jumlah dokumen sah (nomor surat resmi valid tanpa placeholder '....')
+  const validDocsCount = useMemo(() => {
+    return (activeCaseDocs || []).filter((d) => isValidOfficialDocNumber(d?.doc_number)).length;
+  }, [activeCaseDocs]);
+
+  // Daftar Perkara tersaring oleh pencarian cepat di Command Strip
+  const filteredCases = useMemo(() => {
+    const q = (caseSearchQuery || '').trim().toLowerCase();
+    if (!q) return cases;
+    const matched = cases.filter((c) => {
+      const lp = String(c.nomor_lp || c.no_lp || '').toLowerCase();
+      const pel = String(c.pelapor || c.nama_pelapor || c.pelapor_name || '').toLowerCase();
+      const tsk = String(c.tindak_pidana || c.crime_category || c.kasus || '').toLowerCase();
+      return lp.includes(q) || pel.includes(q) || tsk.includes(q);
+    });
+    if (currentCase && !matched.some(c => c.id === currentCase.id)) {
+      return [currentCase, ...matched];
+    }
+    return matched;
+  }, [cases, caseSearchQuery, currentCase]);
+
   // Update nilai profil tersangka ke formValues jika suspect berganti
   useEffect(() => {
     if (!activeSuspect) return;
@@ -593,7 +650,7 @@ export default function MindikGeneratorView({
         const nextValues = mergeChainedWithForm(cleanScalarChained, prev, { formatDatesForDocx: false });
         nextValues._activeTemplateKey = tplCaseKey;
 
-        // Pastikan TANGGAL_SURAT selalu valid format ISO YYYY-MM-DD
+        // Pastikan TANGGAL_SURAT selalu valid format ISO YYYY-MM-DD dan bersihkan stale header keys
         const existingArchivedDate = existingAnyDoc ? toIsoDateString(existingAnyDoc.tgl_surat) : '';
         const currentIsoDate = toIsoDateString(nextValues.TANGGAL_SURAT);
         const finalIsoDate = (isNewTplState && existingArchivedDate)
@@ -604,6 +661,14 @@ export default function MindikGeneratorView({
         nextValues.tanggal_surat = finalIsoDate;
         nextValues.DOC_DATE = finalIsoDate;
         nextValues.doc_date = finalIsoDate;
+        nextValues.TGL_SURAT = finalIsoDate;
+        nextValues.tgl_surat = finalIsoDate;
+        delete nextValues.TANGGAL_SURAT_HEADER;
+        delete nextValues.tanggal_surat_header;
+        delete nextValues.TANGGAL_NASKAH;
+        delete nextValues.tanggal_naskah;
+        delete nextValues.TANGGAL_DOKUMEN;
+        delete nextValues.tanggal_dokumen;
 
         // Reset terkontrol NOMOR_SURAT saat template/perkara berganti,
         // atau perbarui jika arsip sah baru dimuat & input saat ini masih kosong/placeholder.
@@ -676,16 +741,228 @@ export default function MindikGeneratorView({
     };
   }, [currentTemplate?.id, currentTemplate?.code, currentCase?.id, activeCaseDocsSignature]);
 
-  // Listener tombol Esc untuk menutup modal preview
+  // Sinkronisasi No. Urut & Subjek Hukum Kontekstual saat template aktif berubah
+  const activeCanonicalCode = useMemo(() => {
+    if (!currentTemplate) return toCanonicalMindikCode(selectedTemplateCode);
+    return toCanonicalMindikCode(
+      currentTemplate.code || currentTemplate.template_code || selectedTemplateCode,
+      currentTemplate.title || currentTemplate.name || ''
+    );
+  }, [currentTemplate, selectedTemplateCode]);
+
+  const currentSubjectMode = useMemo(() => {
+    return getSubjectModeForTemplate(activeCanonicalCode, currentTemplate?.title || currentTemplate?.name || '');
+  }, [activeCanonicalCode, currentTemplate]);
+
+  const ROMAN_MONTH_PATTERN = /^(.*\/)([^/]+)(\/(?:XII|XI|IX|X|VIII|VII|VI|IV|V|III|II|I)(?:\/|$).*)$/i;
+
+  const extractNoUrutFromDocNo = (docNo) => {
+    const str = String(docNo || '').trim();
+    if (!str) return '';
+    const romanMatch = str.match(ROMAN_MONTH_PATTERN);
+    if (romanMatch) {
+      const seg = romanMatch[2].trim();
+      if (/^(\.{3,}|\u2026+|\s*)$/.test(seg)) return '';
+      if (/^\d+[A-Za-z0-9.-]*$/.test(seg)) return seg;
+    }
+    const shortSegMatch = str.match(/^(.*?\/)(\d{1,3}[A-Za-z]?)(\/.*)$/);
+    if (shortSegMatch) {
+      return shortSegMatch[2];
+    }
+    return '';
+  };
+
+  const replaceNoUrutInDocNo = (baseStr, nextSeq) => {
+    const str = String(baseStr || '').trim();
+    const seq = String(nextSeq || '').trim();
+    if (!str) return seq;
+
+    if (/\.{3,}|\u2026+/.test(str)) {
+      return seq ? str.replace(/\.{3,}|\u2026+/, seq) : str;
+    }
+    if (/\/\s+\//.test(str)) {
+      return seq ? str.replace(/\/\s+\//, `/${seq}/`) : str;
+    }
+    const romanMatch = str.match(ROMAN_MONTH_PATTERN);
+    if (romanMatch) {
+      return `${romanMatch[1]}${seq || '....'}${romanMatch[3]}`;
+    }
+    const shortSegMatch = str.match(/^(.*?\/)(\d{1,3}[A-Za-z]?)(\/.*)$/);
+    if (shortSegMatch) {
+      return `${shortSegMatch[1]}${seq || '....'}${shortSegMatch[3]}`;
+    }
+    return str;
+  };
+
+  // Pola default Nomor Surat untuk Smart Input "No. Urut"
+  const activeNumberPattern = useMemo(() => {
+    const preset = MINDIK_PRESETS[activeCanonicalCode] || [];
+    return preset.find(f => f.tag === 'NOMOR_SURAT')?.default || '';
+  }, [activeCanonicalCode]);
+
+  const supportsNoUrutHelper = useMemo(() => {
+    const currentNo = String(formValues.NOMOR_SURAT || '');
+    return (
+      /(\.{3,}|\u2026+|\/\s+\/)/.test(activeNumberPattern) ||
+      /(\.{3,}|\u2026+|\/\s+\/)/.test(currentNo) ||
+      ROMAN_MONTH_PATTERN.test(currentNo) ||
+      /^(.*?\/)\d{1,3}[A-Za-z]?\/.*$/.test(currentNo)
+    );
+  }, [activeNumberPattern, formValues.NOMOR_SURAT]);
+
+  // Reset & sinkronkan No. Urut + filter kategori subjek otomatis saat berpindah template
+  useEffect(() => {
+    setNoUrutInput(extractNoUrutFromDocNo(formValues.NOMOR_SURAT));
+    setShowOptionalSubjectPicker(false);
+    if (currentSubjectMode === 'terlapor_to_tersangka' || currentSubjectMode === 'terlapor') {
+      setSelectedSubjectCategory('TERLAPOR');
+    } else if (currentSubjectMode === 'tersangka') {
+      setSelectedSubjectCategory('TERSANGKA');
+    } else if (currentSubjectMode === 'saksi') {
+      setSelectedSubjectCategory('SAKSI');
+    } else if (currentSubjectMode === 'pelapor_korban') {
+      setSelectedSubjectCategory('PELAPOR');
+    } else {
+      setSelectedSubjectCategory('ALL');
+    }
+  }, [activeCanonicalCode, currentCase?.id, currentSubjectMode]);
+
+  // Sinkronkan No. Urut saat NOMOR_SURAT berubah dari load arsip / ganti template
+  useEffect(() => {
+    const extracted = extractNoUrutFromDocNo(formValues.NOMOR_SURAT);
+    setNoUrutInput((prev) => (prev === extracted ? prev : extracted));
+  }, [formValues.NOMOR_SURAT]);
+
+  // Sisipkan No. Urut secara real-time menggantikan placeholder '....' atau segmen nomor urut eksisting di Nomor Surat
+  const handleNoUrutChange = (rawSeq) => {
+    setNoUrutInput(rawSeq);
+    const currentNo = String(formValues.NOMOR_SURAT || '').trim();
+    const baseStr = currentNo || activeNumberPattern;
+    if (!baseStr) return;
+
+    const cleanTrimmed = String(rawSeq || '').trim();
+    if (!cleanTrimmed && /(\.{3,}|\u2026+|\/\s+\/)/.test(activeNumberPattern) && currentNo === replaceNoUrutInDocNo(activeNumberPattern, noUrutInput)) {
+      handleInputChange('NOMOR_SURAT', activeNumberPattern, { skipNoUrutSync: true });
+      return;
+    }
+
+    const updated = replaceNoUrutInDocNo(baseStr, cleanTrimmed);
+    handleInputChange('NOMOR_SURAT', updated, { skipNoUrutSync: true });
+  };
+
+  // Jalur 7 Tahap Interactive Mindik Pipeline Stepper
+  const pipelineSteps = useMemo(() => {
+    const hasValidLp = Boolean(currentCase && (currentCase.nomor_lp || currentCase.no_lp));
+    const sprinSidikDoc = resolveLatestArchiveDoc(activeCaseDocs, ['SPRIN_SIDIK', 'SPRIN_SIDIK_MORE_5'], false);
+    const spGasDoc = resolveLatestArchiveDoc(activeCaseDocs, ['SPGAS_SIDIK', 'SPGAS_SIDIK_MORE_5'], false);
+    const spdpDoc = resolveLatestArchiveDoc(activeCaseDocs, ['SPDP_TSK', 'SPDP_MORE_1_TSK', 'SPDP_TERLAPOR', 'SPDP_LIDIK_ANON', 'SPDP_KORPORASI', 'PENGIRIMAN_KEMBALI_SPDP_P20'], false);
+    const tapTskDoc = resolveLatestArchiveDoc(activeCaseDocs, ['TAP_TSK'], false);
+    const upayaPaksaDoc = resolveLatestArchiveDoc(activeCaseDocs, [
+      'SPRIN_KAP_DAN_BA', 'SPGAS_KAP', 'SPRIN_BAWA_LEWAT_KAP', 'BA_HAK_TSK', 'SPRIN_LEPAS_KAP_DAN_BA',
+      'SPRIN_HAN_DAN_BA', 'MINTA_PANJANG_HAN_40_KN', 'SPRIN_PANJANG_HAN_40_KN_DAN_BA',
+      'MINTA_PANJANG_HAN_30_KPN1', 'SPRIN_PANJANG_HAN_30_KPN1_DAN_BA',
+      'MINTA_PANJANG_HAN_30_KPN2', 'SPRIN_PANJANG_HAN_30_KPN2_DAN_BA'
+    ], false);
+    const berkasDoc = resolveLatestArchiveDoc(activeCaseDocs, [
+      'SAMPUL_BERKAS_PERKARA', 'PENGANTAR_BP_TAHAP1', 'TANDA_TERIMA_TAHAP1',
+      'PENGANTAR_BP_KEMBALI_P19', 'TANDA_TERIMA_KEMBALI_P19', 'PENGANTAR_TAHAP2'
+    ], false);
+
+    const hasSprinSidik = Boolean(sprinSidikDoc && isValidOfficialDocNumber(sprinSidikDoc.doc_number));
+    const hasSpGas = Boolean(spGasDoc && isValidOfficialDocNumber(spGasDoc.doc_number));
+    const hasSpdp = Boolean(spdpDoc && isValidOfficialDocNumber(spdpDoc.doc_number));
+    const hasTapTsk = Boolean(tapTskDoc && isValidOfficialDocNumber(tapTskDoc.doc_number));
+    const hasUpayaPaksa = Boolean(upayaPaksaDoc && isValidOfficialDocNumber(upayaPaksaDoc.doc_number));
+    const hasBerkas = Boolean(berkasDoc && isValidOfficialDocNumber(berkasDoc.doc_number));
+
+    const activeCat = MINDIK_CODE_TO_CATEGORY[activeCanonicalCode] || '';
+
+    return [
+      {
+        num: 1,
+        label: '1. LP',
+        targetCategory: 'ALL',
+        done: hasValidLp,
+        unlocked: Boolean(currentCase),
+        active: false,
+        docNumber: currentCase?.nomor_lp || currentCase?.no_lp || '',
+        docDate: currentCase?.tanggal_lp || currentCase?.sprin_date || ''
+      },
+      {
+        num: 2,
+        label: '2. Sprin Sidik',
+        targetCategory: 'SP_SIDIK',
+        done: hasSprinSidik,
+        unlocked: hasValidLp,
+        active: activeCanonicalCode.startsWith('SPRIN_SIDIK'),
+        docNumber: sprinSidikDoc?.doc_number || '',
+        docDate: sprinSidikDoc?.tgl_surat || ''
+      },
+      {
+        num: 3,
+        label: '3. SP Gas',
+        targetCategory: 'SP_SIDIK',
+        done: hasSpGas,
+        unlocked: hasSprinSidik,
+        active: activeCanonicalCode.startsWith('SPGAS_SIDIK'),
+        docNumber: spGasDoc?.doc_number || '',
+        docDate: spGasDoc?.tgl_surat || ''
+      },
+      {
+        num: 4,
+        label: '4. SPDP',
+        targetCategory: 'SPDP',
+        done: hasSpdp,
+        unlocked: hasSprinSidik,
+        active: activeCat === 'SPDP',
+        docNumber: spdpDoc?.doc_number || '',
+        docDate: spdpDoc?.tgl_surat || ''
+      },
+      {
+        num: 5,
+        label: '5. Tap Tsk',
+        targetCategory: 'TERSANGKA',
+        done: hasTapTsk,
+        unlocked: hasSprinSidik,
+        active: activeCanonicalCode === 'TAP_TSK' || activeCat === 'TERSANGKA',
+        docNumber: tapTskDoc?.doc_number || '',
+        docDate: tapTskDoc?.tgl_surat || ''
+      },
+      {
+        num: 6,
+        label: '6. Upaya Paksa',
+        targetCategory: 'PENAHANAN',
+        done: hasUpayaPaksa,
+        unlocked: hasSprinSidik && hasTapTsk,
+        active: activeCat === 'PENAHANAN',
+        docNumber: upayaPaksaDoc?.doc_number || '',
+        docDate: upayaPaksaDoc?.tgl_surat || ''
+      },
+      {
+        num: 7,
+        label: '7. Berkas',
+        targetCategory: 'BERKAS_PERKARA',
+        done: hasBerkas,
+        unlocked: hasSprinSidik && hasSpdp && hasTapTsk,
+        active: activeCat === 'BERKAS_PERKARA',
+        docNumber: berkasDoc?.doc_number || '',
+        docDate: berkasDoc?.tgl_surat || ''
+      }
+    ];
+  }, [currentCase, activeCaseDocs, activeCanonicalCode]);
+
+  // Listener tombol Esc untuk menutup modal preview & modal info
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isPreviewModalOpen) {
-        setIsPreviewModalOpen(false);
+      if (e.key === 'Escape') {
+        if (isPreviewModalOpen) setIsPreviewModalOpen(false);
+        if (isCaseDetailModalOpen) setIsCaseDetailModalOpen(false);
+        if (isTeamModalOpen) setIsTeamModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPreviewModalOpen]);
+  }, [isPreviewModalOpen, isCaseDetailModalOpen, isTeamModalOpen]);
 
   // Evaluasi Rantai Formil KUHAP untuk Template Aktif
   const activeChainStatus = useMemo(() => {
@@ -719,7 +996,7 @@ export default function MindikGeneratorView({
   }, [allTemplates, templateSearch, selectedCategory]);
 
   // Handle Input Perubahan Field Form
-  const handleInputChange = (key, value) => {
+  const handleInputChange = (key, value, opts = {}) => {
     setFormValues(prev => {
       const next = {
         ...prev,
@@ -732,19 +1009,46 @@ export default function MindikGeneratorView({
         next.NO_SURAT = value;
         next.no_surat = value;
       }
+      if (['TANGGAL_SURAT', 'DOC_DATE', 'TGL_SURAT', 'tanggal_surat', 'doc_date', 'tgl_surat'].includes(key)) {
+        const syncedDate = toIsoDateString(value) || value || '';
+        next.TANGGAL_SURAT = syncedDate;
+        next.tanggal_surat = syncedDate;
+        next.DOC_DATE = syncedDate;
+        next.doc_date = syncedDate;
+        next.TGL_SURAT = syncedDate;
+        next.tgl_surat = syncedDate;
+        delete next.TANGGAL_SURAT_HEADER;
+        delete next.tanggal_surat_header;
+        delete next.TANGGAL_NASKAH;
+        delete next.tanggal_naskah;
+        delete next.TANGGAL_DOKUMEN;
+        delete next.tanggal_dokumen;
+      }
       return next;
     });
+    if (key === 'NOMOR_SURAT' && !opts?.skipNoUrutSync) {
+      setNoUrutInput(extractNoUrutFromDocNo(value));
+    }
     setIsSaved(false);
   };
 
   // Simpan Arsip Dokumen ke Supabase `documents`
   const handleSaveArchive = async () => {
-    if (!currentCase || !currentTemplate) return;
+    if (!currentCase || !currentTemplate) return false;
+    const docNoCandidate = formValues.NOMOR_SURAT || formValues.doc_no || formValues.NO_SURAT || '';
+    if (!isValidOfficialDocNumber(docNoCandidate)) {
+      setFeedbackNotice({
+        type: 'warning',
+        message: 'Nomor Surat Resmi belum valid atau masih mengandung placeholder "....". Isi No. Urut / Nomor Surat sebelum menyimpan ke arsip.'
+      });
+      return false;
+    }
+
     setIsSaving(true);
     setFeedbackNotice(null);
 
     try {
-      const docNo = formValues.NOMOR_SURAT || formValues.doc_no || formValues.NO_SURAT || '-';
+      const docNo = docNoCandidate;
       const rawDocDate = formValues.TANGGAL_SURAT || formValues.doc_date || new Date().toISOString().split('T')[0];
       const docDate = toIsoDateString(rawDocDate) || new Date().toISOString().split('T')[0];
       const tplCode = currentTemplate.code || currentTemplate.template_code || 'MINDIK';
@@ -861,6 +1165,13 @@ export default function MindikGeneratorView({
         ? caseSuspects
         : (activeSuspect ? [activeSuspect] : null);
 
+      const {
+        _activeTemplateKey: _omitTplKey,
+        TANGGAL_SURAT_HEADER: _omitHdr1,
+        tanggal_surat_header: _omitHdr2,
+        ...cleanFormValuesForMeta
+      } = formValues;
+
       const dbDocumentPayload = {
         id: crypto.randomUUID(),
         case_id: String(currentCase.id),
@@ -869,9 +1180,13 @@ export default function MindikGeneratorView({
         doc_title: tplTitle,
         doc_number: docNo,
         meta_values: {
-          ...formValues,
+          ...cleanFormValuesForMeta,
           NOMOR_SURAT: docNo,
           TANGGAL_SURAT: docDate,
+          tanggal_surat: docDate,
+          DOC_DATE: docDate,
+          doc_date: docDate,
+          TGL_SURAT: docDate,
           tgl_surat: docDate,
           nomor_lp: currentCase.nomor_lp || currentCase.no_lp || '',
           canonical_code: canonicalCode,
@@ -987,12 +1302,14 @@ export default function MindikGeneratorView({
       if (onSaveDocument) {
         onSaveDocument(savedDoc ? { ...savedDoc, _skipDbUpsert: true } : hydratedDocForUi);
       }
+      return true;
     } catch (err) {
       console.error('[MindikGeneratorView] Gagal menyimpan arsip:', err);
       setFeedbackNotice({
         type: 'error',
         message: `Gagal menyimpan dokumen: ${err.message || 'Terjadi kesalahan sistem.'}`
       });
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -1008,27 +1325,49 @@ export default function MindikGeneratorView({
       });
       return;
     }
+    if (!isValidOfficialDocNumber(formValues.NOMOR_SURAT) || !formValues.TANGGAL_SURAT) {
+      setFeedbackNotice({
+        type: 'warning',
+        message: 'Lengkapi Nomor Surat resmi (tanpa placeholder "....") dan Tanggal Surat sebelum menyimpan atau mengunduh .docx.'
+      });
+      return;
+    }
 
     setIsGenerating(true);
     setFeedbackNotice(null);
 
     try {
-      // 1. Eksekusi Auto-Save sebelum mengunduh
-      await handleSaveArchive();
+      // 1. Pastikan arsip tersimpan bila belum disimpan (tidak pernah menimpa arsip dengan nomor '....')
+      if (!isSaved) {
+        const savedOk = await handleSaveArchive();
+        if (!savedOk) return;
+      }
 
-      // 2. Generate dan Unduh
+      // 2. Generate dan Unduh (kirim docDate eksplisit dari formValues.TANGGAL_SURAT terbaru)
+      const activeDocDate = toIsoDateString(formValues.TANGGAL_SURAT || formValues.DOC_DATE || formValues.TGL_SURAT)
+        || formValues.TANGGAL_SURAT
+        || '';
       await generateAndDownloadDocx({
         template: currentTemplate,
         activeCase: currentCase,
         activeSuspect,
         suspectsList: caseSuspects,
-        formValues,
+        formValues: {
+          ...formValues,
+          TANGGAL_SURAT: activeDocDate,
+          tanggal_surat: activeDocDate,
+          DOC_DATE: activeDocDate,
+          doc_date: activeDocDate,
+          TGL_SURAT: activeDocDate,
+          tgl_surat: activeDocDate
+        },
+        docDate: activeDocDate,
         personnelList: personnel
       });
 
       setFeedbackNotice({
         type: 'success',
-        message: `Arsip berhasil disimpan & dokumen terunduh.`
+        message: `Arsip berhasil disimpan & berkas .docx terunduh.`
       });
     } catch (err) {
       console.error('[MindikGeneratorView] Gagal membuat file docx:', err);
@@ -1041,51 +1380,76 @@ export default function MindikGeneratorView({
     }
   };
 
+  const hasValidDocNo = isValidOfficialDocNumber(formValues.NOMOR_SURAT);
+  const hasValidDocDate = Boolean(formValues.TANGGAL_SURAT);
+  const canSaveOrDownload = Boolean(activeChainStatus.allowed && hasValidDocNo && hasValidDocDate);
+  const actionDisabledTooltip = !activeChainStatus.allowed
+    ? (activeChainStatus.reason || 'Syarat formil KUHAP belum terpenuhi.')
+    : !hasValidDocNo
+      ? 'Lengkapi Nomor Surat resmi (tidak boleh mengandung ....).'
+      : !hasValidDocDate
+        ? 'Pilih Tanggal Surat terlebih dahulu.'
+        : '';
+
   return (
-    <div className="mindik-generator-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px', minHeight: '100%', padding: '24px' }}>
-      
-      {/* --- TOP HEADER & BAR IDENTITAS SISTEM --- */}
+    <div
+      className="mindik-generator-view"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+        minHeight: '100%',
+        padding: '18px 22px 28px',
+        background: '#0B0E14',
+        color: '#FFFFFF'
+      }}
+    >
+      {/* --- HEADER KOMPAK & AKSES ADMIN --- */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '20px 24px',
+        flexWrap: 'wrap',
+        gap: '12px',
+        padding: '12px 16px',
         background: 'linear-gradient(135deg, #161D2A 0%, #11161F 100%)',
-        borderRadius: '16px',
-        border: '1px solid rgba(148, 163, 184, 0.14)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
+        borderRadius: '12px',
+        border: '1px solid rgba(148, 163, 184, 0.16)',
+        borderLeft: '3px solid #FF2A2A'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
           <div style={{
-            width: '46px',
-            height: '46px',
-            borderRadius: '12px',
+            width: '38px',
+            height: '38px',
+            borderRadius: '9px',
             background: '#FF2A2A',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 18px rgba(255, 42, 42, 0.35)'
+            boxShadow: '0 4px 16px rgba(255, 42, 42, 0.35)',
+            flexShrink: 0
           }}>
-            <FileSignature size={24} color="#FFFFFF" />
+            <FileSignature size={20} color="#FFFFFF" />
           </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 className="heading-font" style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#FFFFFF', letterSpacing: '0.04em' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h2 className="heading-font" style={{ fontSize: '15.5px', fontWeight: 800, margin: 0, color: '#FFFFFF', letterSpacing: '0.04em' }}>
                 GENERATOR MINDIK PRO-JUSTITIA
               </h2>
               <span style={{
-                background: '#FFFFFF',
-                color: '#0B0E14',
-                border: '1px solid #FFFFFF',
-                padding: '2px 10px',
-                borderRadius: '9999px',
-                fontSize: '10.5px',
-                fontWeight: 700
+                background: 'rgba(255, 42, 42, 0.14)',
+                color: '#FF3B3B',
+                border: '1px solid rgba(255, 42, 42, 0.45)',
+                padding: '1px 8px',
+                borderRadius: '6px',
+                fontSize: '10px',
+                fontWeight: 800,
+                letterSpacing: '0.05em'
               }}>
                 ISOLASI LP AKTIF
               </span>
             </div>
-            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#CBD5E1' }}>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: '#94A3B8' }}>
               Administrasi Penyidikan terisolasi per Laporan Polisi dengan mesin rantai formil KUHAP.
             </p>
           </div>
@@ -1095,10 +1459,21 @@ export default function MindikGeneratorView({
           <button
             type="button"
             onClick={onOpenTemplateStudio}
-            className="btn btn-secondary btn-sm"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px',
+              padding: '7px 12px',
+              borderRadius: '8px',
+              background: '#11161F',
+              border: '1px solid rgba(148, 163, 184, 0.25)',
+              color: '#FFFFFF',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
           >
-            <Layers size={15} />
+            <Layers size={14} color="#FF2A2A" />
             <span>Kelola Template Studio</span>
           </button>
         )}
@@ -1107,567 +1482,912 @@ export default function MindikGeneratorView({
       {/* --- FEEDBACK NOTICE BANNER --- */}
       {feedbackNotice && (
         <div style={{
-          padding: '12px 18px',
-          borderRadius: '10px',
-          fontSize: '13px',
+          padding: '10px 14px',
+          borderRadius: '9px',
+          fontSize: '12.5px',
           fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: '10px',
-          background: feedbackNotice.type === 'success' ? 'rgba(255, 42, 42, 0.14)' : (feedbackNotice.type === 'warning' ? 'rgba(148, 163, 184, 0.12)' : 'rgba(255, 42, 42, 0.18)'),
-          border: `1px solid ${feedbackNotice.type === 'success' ? 'rgba(255, 42, 42, 0.5)' : (feedbackNotice.type === 'warning' ? 'rgba(148, 163, 184, 0.35)' : '#FF2A2A')}`,
-          color: feedbackNotice.type === 'success' ? '#FFFFFF' : (feedbackNotice.type === 'warning' ? '#CBD5E1' : '#FF3B3B'),
-          animation: 'fadeIn 200ms ease-out'
+          background: feedbackNotice.type === 'success'
+            ? 'rgba(16, 185, 129, 0.12)'
+            : (feedbackNotice.type === 'warning' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 42, 42, 0.16)'),
+          border: `1px solid ${feedbackNotice.type === 'success'
+            ? 'rgba(16, 185, 129, 0.45)'
+            : (feedbackNotice.type === 'warning' ? 'rgba(245, 158, 11, 0.45)' : '#FF2A2A')}`,
+          color: feedbackNotice.type === 'success'
+            ? '#FFFFFF'
+            : (feedbackNotice.type === 'warning' ? '#FDE68A' : '#FCA5A5')
         }}>
-          {feedbackNotice.type === 'success' && <CheckCircle2 size={18} color="#FF2A2A" />}
-          {feedbackNotice.type === 'warning' && <AlertTriangle size={18} color="#CBD5E1" />}
-          {feedbackNotice.type === 'error' && <AlertCircle size={18} color="#FF2A2A" />}
-          <span>{feedbackNotice.message}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {feedbackNotice.type === 'success' && <CheckCircle2 size={16} color="#10B981" />}
+            {feedbackNotice.type === 'warning' && <AlertTriangle size={16} color="#F59E0B" />}
+            {feedbackNotice.type === 'error' && <AlertCircle size={16} color="#FF2A2A" />}
+            <span>{feedbackNotice.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFeedbackNotice(null)}
+            style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '2px' }}
+            aria-label="Tutup notifikasi"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
 
-      {/* --- SECTION 1: PEMILIH PERKARA / LP AKTIF --- */}
+      {/* --- 1. COMMAND STRIP BARIS ATAS (1 BARIS PADAT) --- */}
       <div style={{
-        background: 'rgba(17, 22, 31, 0.80)',
-        borderRadius: '16px',
-        border: '1px solid rgba(148, 163, 184, 0.14)',
-        padding: '18px 22px',
+        background: '#11161F',
+        borderRadius: '11px',
+        border: '1px solid rgba(148, 163, 184, 0.16)',
+        padding: '10px 14px',
         display: 'flex',
-        flexDirection: 'column',
-        gap: '14px'
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Shield size={18} color="#FF2A2A" />
-            <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.4px' }}>
-              BERKAS PERKARA AKTIF (LAPORAN POLISI)
-            </span>
-          </div>
-          <span style={{ fontSize: '11.5px', color: '#94A3B8' }}>
-            Total Terdaftar: <strong>{cases.length} Perkara</strong>
-          </span>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) 2fr', gap: '16px', alignItems: 'center' }}>
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', marginBottom: '6px', display: 'block' }}>
-              PILIH NOMOR LP:
-            </label>
-            <select
-              value={selectedCaseId ?? ''}
-              onChange={(e) => setSelectedCaseId(e.target.value)}
-              className="form-select"
+        {/* Kiri: Quick Search + Dropdown Pilih LP */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 360px', minWidth: 0 }}>
+          <div style={{ position: 'relative', width: '165px', flexShrink: 0 }}>
+            <Search size={13} color="#94A3B8" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              placeholder="Cari LP / Pelapor..."
+              value={caseSearchQuery ?? ''}
+              onChange={(e) => setCaseSearchQuery(e.target.value)}
+              className="form-input"
               style={{
                 width: '100%',
-                background: 'var(--bg-tertiary)',
-                borderColor: 'var(--border-glass)',
-                color: 'var(--text-primary)',
-                fontWeight: 700,
-                fontSize: '13px',
-                padding: '10px 14px'
+                height: '34px',
+                paddingLeft: '28px',
+                paddingRight: '8px',
+                fontSize: '12px',
+                background: '#0B0E14',
+                borderColor: 'rgba(148, 163, 184, 0.22)',
+                color: '#FFFFFF'
               }}
-            >
-              {cases.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nomor_lp || c.no_lp || `Perkara #${c.id.substring(0, 8)}`} — {c.crime_category || c.kasus || 'Tindak Pidana'}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
-          {currentCase && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-              gap: '10px',
-              padding: '10px 16px',
-              background: '#11161F',
-              borderRadius: '12px',
-              border: '1px solid rgba(148, 163, 184, 0.14)'
+          <select
+            value={selectedCaseId ?? ''}
+            onChange={(e) => setSelectedCaseId(e.target.value)}
+            className="form-select"
+            style={{
+              flex: 1,
+              minWidth: '200px',
+              height: '34px',
+              background: '#0B0E14',
+              borderColor: 'rgba(148, 163, 184, 0.24)',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: '12.5px',
+              padding: '0 10px'
+            }}
+          >
+            {filteredCases.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nomor_lp || c.no_lp || `Perkara #${String(c.id).substring(0, 8)}`} — {c.crime_category || c.kasus || 'Tindak Pidana'}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tengah: Ringkasan 1 Baris */}
+        {currentCase && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            flexWrap: 'wrap',
+            fontSize: '11.5px',
+            color: '#CBD5E1',
+            padding: '5px 12px',
+            borderRadius: '8px',
+            background: '#0B0E14',
+            border: '1px solid rgba(148, 163, 184, 0.14)'
+          }}>
+            <span>
+              <strong style={{ color: '#94A3B8', fontWeight: 600 }}>Pelapor:</strong>{' '}
+              <span style={{ color: '#FFFFFF', fontWeight: 700 }}>
+                {currentCase.pelapor || currentCase.nama_pelapor || currentCase.pelapor_name || '-'}
+              </span>
+            </span>
+            <span style={{ color: 'rgba(148, 163, 184, 0.3)' }}>|</span>
+            <span>
+              <strong style={{ color: '#94A3B8', fontWeight: 600 }}>Tgl LP:</strong>{' '}
+              <span style={{ color: '#FFFFFF', fontWeight: 700 }}>
+                {formatTanggalIndonesia(currentCase.tanggal_lp || currentCase.sprin_date) || '-'}
+              </span>
+            </span>
+            <span style={{ color: 'rgba(148, 163, 184, 0.3)' }}>|</span>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              color: validDocsCount > 0 ? '#10B981' : '#94A3B8',
+              fontWeight: 700
             }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.6)', display: 'block' }}>Pelapor</span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF' }}>{currentCase.pelapor || '-'}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.6)', display: 'block' }}>Tanggal LP</span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF' }}>
-                  {formatTanggalIndonesia(currentCase.tanggal_lp || currentCase.sprin_date) || '-'}
-                </span>
-              </div>
-              <div>
-                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.6)', display: 'block' }}>Penyidik Penangan</span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF' }}>{currentCase.penyidik_1_nama || '-'}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.6)', display: 'block' }}>Arsip Naskah Dinas</span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#CBD5E1' }}>
-                  {isLoadingDocs ? 'Memuat...' : `${activeCaseDocs.length} Dokumen Sah`}
-                </span>
-              </div>
-            </div>
-          )}
+              <CheckCircle2 size={13} color={validDocsCount > 0 ? '#10B981' : '#64748B'} />
+              {isLoadingDocs ? 'Memuat...' : `${validDocsCount} Dokumen Sah`}
+            </span>
+          </div>
+        )}
+
+        {/* Kanan: 2 Tombol Popup Detail Perkara & Tim Penyidik */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => setIsCaseDetailModalOpen(true)}
+            disabled={!currentCase}
+            style={{
+              height: '34px',
+              padding: '0 11px',
+              borderRadius: '8px',
+              background: '#161D2A',
+              border: '1px solid rgba(148, 163, 184, 0.25)',
+              color: '#FFFFFF',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: currentCase ? 'pointer' : 'not-allowed'
+            }}
+          >
+            <Briefcase size={13} color="#FF2A2A" />
+            <span>Detail Perkara</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsTeamModalOpen(true)}
+            disabled={!currentCase}
+            style={{
+              height: '34px',
+              padding: '0 11px',
+              borderRadius: '8px',
+              background: '#161D2A',
+              border: '1px solid rgba(148, 163, 184, 0.25)',
+              color: '#FFFFFF',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: currentCase ? 'pointer' : 'not-allowed'
+            }}
+          >
+            <Users size={13} color="#FF2A2A" />
+            <span>Tim Penyidik ({inheritedTeamMembers.length})</span>
+          </button>
         </div>
       </div>
 
-      {/* --- SECTION 2: WORKSPACE DUA PANEL (KIRI: FORMAT & FORM, KANAN: PREVIEW DOKUMEN) --- */}
+      {/* --- 2. INTERACTIVE MINDIK PIPELINE STEPPER --- */}
+      <div style={{
+        background: '#11161F',
+        borderRadius: '11px',
+        border: '1px solid rgba(148, 163, 184, 0.16)',
+        padding: '10px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <Shield size={14} color="#FF2A2A" />
+            <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', color: '#CBD5E1', textTransform: 'uppercase' }}>
+              Alur Rantai Formil Mindik (KUHAP)
+            </span>
+          </div>
+          <span style={{ fontSize: '10.5px', color: '#94A3B8' }}>
+            Klik tahap untuk menyaring daftar template di kolom kiri
+          </span>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          overflowX: 'auto',
+          paddingBottom: '2px'
+        }}>
+          {pipelineSteps.map((step, idx) => {
+            const tooltipText = step.done
+              ? `${step.label}: ${step.docNumber}${step.docDate ? ` (${formatTanggalIndonesia(step.docDate)})` : ''}`
+              : step.unlocked
+                ? `${step.label} — Prasyarat terpenuhi, siap diterbitkan`
+                : `${step.label} — Terkunci (dokumen prasyarat belum terarsip sah)`;
+
+            const borderColor = step.active
+              ? '#FF2A2A'
+              : step.done
+                ? 'rgba(16, 185, 129, 0.48)'
+                : step.unlocked
+                  ? 'rgba(148, 163, 184, 0.28)'
+                  : 'rgba(148, 163, 184, 0.12)';
+
+            const bgColor = step.active
+              ? 'rgba(255, 42, 42, 0.16)'
+              : step.done
+                ? 'rgba(16, 185, 129, 0.10)'
+                : step.unlocked
+                  ? '#161D2A'
+                  : 'rgba(11, 14, 20, 0.7)';
+
+            return (
+              <React.Fragment key={step.num}>
+                <button
+                  type="button"
+                  title={tooltipText}
+                  onClick={() => setSelectedCategory(step.targetCategory)}
+                  style={{
+                    flex: '1 0 auto',
+                    minWidth: '116px',
+                    padding: '7px 10px',
+                    borderRadius: '8px',
+                    border: `1px solid ${borderColor}`,
+                    background: bgColor,
+                    color: step.active || step.done || step.unlocked ? '#FFFFFF' : '#64748B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'border-color 150ms ease, background 150ms ease'
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                      {step.label}
+                    </div>
+                    <div className="mono" style={{
+                      fontSize: '9.5px',
+                      color: step.done ? '#10B981' : (step.active ? '#FCA5A5' : '#94A3B8'),
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '110px'
+                    }}>
+                      {step.done ? (step.docNumber || 'Sah') : (step.unlocked ? 'Siap' : 'Terkunci')}
+                    </div>
+                  </div>
+
+                  {step.done ? (
+                    <span style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '999px',
+                      background: 'rgba(16, 185, 129, 0.2)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <Check size={11} color="#10B981" />
+                    </span>
+                  ) : !step.unlocked ? (
+                    <Lock size={12} color="#64748B" style={{ flexShrink: 0 }} />
+                  ) : (
+                    <Unlock size={12} color={step.active ? '#FF2A2A' : '#CBD5E1'} style={{ flexShrink: 0 }} />
+                  )}
+                </button>
+
+                {idx < pipelineSteps.length - 1 && (
+                  <ChevronRight size={14} color="rgba(148, 163, 184, 0.4)" style={{ flexShrink: 0 }} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* --- 3. WORKSPACE 2 KOLOM (KIRI ~35% KATALOG, KANAN ~65% FORM AKTIF + STICKY FOOTER) --- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        
-        {/* PANEL KIRI: KATALOG TEMPLATE & INPUT FIELD */}
-        <div className="lg:col-span-7 flex flex-col gap-[18px]">
-          
-          {/* Card 1: Pilihan Format Dokumen Mindik */}
-          <div style={{
-            background: 'rgba(17, 22, 31, 0.80)',
-            borderRadius: '16px',
-            border: '1px solid rgba(148, 163, 184, 0.14)',
-            padding: '18px',
+
+        {/* KOLOM KIRI (lg:col-span-4): KATALOG FORMAT MINDIK */}
+        <div
+          className="lg:col-span-4"
+          style={{
+            background: '#11161F',
+            borderRadius: '12px',
+            border: '1px solid rgba(148, 163, 184, 0.16)',
+            padding: '14px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={17} color="#FF2A2A" />
-                <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF' }}>
-                  FORMAT MINDIK TERSEDIA
-                </span>
-              </div>
-              <span style={{ fontSize: '11px', color: '#CBD5E1' }}>
-                {filteredTemplates.length} Format
+            gap: '10px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <FileText size={15} color="#FF2A2A" />
+              <span style={{ fontSize: '12px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.04em' }}>
+                KATALOG MINDIK
               </span>
             </div>
+            <span className="mono" style={{
+              fontSize: '10.5px',
+              fontWeight: 700,
+              color: '#CBD5E1',
+              background: '#161D2A',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              border: '1px solid rgba(148, 163, 184, 0.16)'
+            }}>
+              {filteredTemplates.length} Format
+            </span>
+          </div>
 
-            {/* Tab Kategori */}
-            <div className="flex flex-wrap gap-1.5 pb-1">
-              {MINDIK_CATEGORY_TABS.map(tab => {
-                const isActive = selectedCategory === tab.id;
+          {/* Filter Kategori Dropdown + Pencarian */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <select
+              value={selectedCategory ?? 'ALL'}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="form-select"
+              style={{
+                width: '100%',
+                height: '36px',
+                background: '#0B0E14',
+                borderColor: 'rgba(148, 163, 184, 0.24)',
+                color: '#FFFFFF',
+                fontSize: '12px',
+                fontWeight: 700,
+                padding: '0 10px'
+              }}
+            >
+              {MINDIK_CATEGORY_TABS.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  Kategori: {tab.label}
+                </option>
+              ))}
+            </select>
+
+            <div style={{ position: 'relative' }}>
+              <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                type="text"
+                placeholder="Cari kode atau judul format..."
+                value={templateSearch ?? ''}
+                onChange={(e) => setTemplateSearch(e.target.value)}
+                className="form-input"
+                style={{
+                  width: '100%',
+                  height: '35px',
+                  paddingLeft: '32px',
+                  fontSize: '12px',
+                  background: '#0B0E14',
+                  borderColor: 'rgba(148, 163, 184, 0.22)',
+                  color: '#FFFFFF'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Daftar Template Scrollable Tinggi Penuh */}
+          <div style={{
+            maxHeight: '640px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            paddingRight: '3px'
+          }}>
+            {isLoadingTemplates ? (
+              <div style={{ textAlign: 'center', padding: '28px 10px', color: '#94A3B8', fontSize: '12px' }}>
+                Memuat daftar format template...
+              </div>
+            ) : filteredTemplates.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '28px 10px', color: '#94A3B8', fontSize: '12px' }}>
+                Tidak ada format dokumen yang cocok.
+              </div>
+            ) : (
+              filteredTemplates.map((tpl) => {
+                const tplCode = tpl.code || tpl.template_code || '';
+                const tplTitle = tpl.title || tpl.name || tplCode;
+                const canonCode = toCanonicalMindikCode(tplCode, tplTitle);
+                const evalRes = checkPrerequisite(tplCode, selectedCase, activeCaseDocs);
+                const isSelected = (selectedTemplateCode || '').toUpperCase().trim() === tplCode.toUpperCase().trim();
+                const isLocked = !evalRes.allowed;
+                const archivedDoc = resolveLatestArchiveDoc(activeCaseDocs, [canonCode, tplCode], true);
+                const hasValidArchive = Boolean(archivedDoc && isValidOfficialDocNumber(archivedDoc.doc_number));
+
                 return (
                   <button
-                    key={tab.id}
-                    onClick={() => setSelectedCategory(tab.id)}
+                    key={tpl.id || tplCode}
                     type="button"
+                    onClick={() => setSelectedTemplateCode(tplCode)}
                     style={{
-                      padding: '6px 14px',
-                      borderRadius: '9999px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      whiteSpace: 'nowrap',
-                      border: isActive ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.16)',
-                      background: isActive ? '#FF2A2A' : '#11161F',
-                      color: isActive ? '#FFFFFF' : '#CBD5E1',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 11px',
+                      borderRadius: '9px',
+                      background: isSelected
+                        ? 'rgba(255, 42, 42, 0.16)'
+                        : (isLocked ? 'rgba(11, 14, 20, 0.72)' : '#161D2A'),
+                      border: isSelected
+                        ? '1.5px solid #FF2A2A'
+                        : (isLocked ? '1px solid rgba(148, 163, 184, 0.10)' : '1px solid rgba(148, 163, 184, 0.18)'),
                       cursor: 'pointer',
-                      transition: 'all 150ms ease'
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      opacity: isLocked && !isSelected ? 0.68 : 1,
+                      transition: 'all 140ms ease'
                     }}
                   >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Filter & Search Bar */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Search size={14} color="#64748B" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input
-                  type="text"
-                  placeholder="Cari kode / judul format..."
-                  value={templateSearch ?? ''}
-                  onChange={(e) => setTemplateSearch(e.target.value)}
-                  className="form-input w-full"
-                  style={{ paddingLeft: '30px', fontSize: '12px', height: '36px' }}
-                />
-              </div>
-            </div>
-
-            {/* Daftar Pilihan Template dengan Validasi Rantai Formil KUHAP */}
-            <div style={{
-              maxHeight: '260px',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              paddingRight: '4px'
-            }}>
-              {filteredTemplates.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px 10px', color: '#64748B', fontSize: '12px' }}>
-                  Tidak ada format dokumen yang cocok dengan filter pencarian.
-                </div>
-              ) : (
-                filteredTemplates.map((tpl) => {
-                  const tplCode = tpl.code || tpl.template_code || '';
-                  const tplTitle = tpl.title || tpl.name || tplCode;
-                  const evalRes = checkPrerequisite(tplCode, selectedCase, activeCaseDocs);
-                  const isSelected = (selectedTemplateCode || '').toUpperCase() === tplCode.toUpperCase();
-                  const isLocked = !evalRes.allowed;
-
-                  return (
-                    <div
-                      key={tpl.id || tplCode}
-                      onClick={() => {
-                        if (!isLocked) {
-                          setSelectedTemplateCode(tplCode);
-                        }
-                      }}
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        background: isSelected 
-                          ? 'rgba(255, 42, 42, 0.16)' 
-                          : (isLocked ? 'rgba(11, 14, 20, 0.65)' : '#11161F'),
-                        border: isSelected 
-                          ? '1.5px solid #FF2A2A' 
-                          : (isLocked ? '1px solid rgba(148, 163, 184, 0.1)' : '1px solid rgba(148, 163, 184, 0.16)'),
-                        cursor: isLocked ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '10px',
-                        opacity: isLocked ? 0.6 : 1,
-                        transition: 'all 150ms ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                        {isLocked ? (
-                          <Lock size={14} color="#FF2A2A" style={{ flexShrink: 0 }} />
-                        ) : (
-                          <Unlock size={14} color="#CBD5E1" style={{ flexShrink: 0 }} />
-                        )}
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            color: isSelected ? '#FFFFFF' : '#F8FAFC',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {tplTitle}
-                          </div>
-                          <div style={{ fontSize: '10px', color: 'rgba(203, 213, 225, 0.55)' }}>
-                            Kode: <span className="mono">{tplCode}</span>
-                          </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', minWidth: 0 }}>
+                      {isLocked ? (
+                        <Lock size={13} color="#FF2A2A" style={{ flexShrink: 0, marginTop: '2px' }} />
+                      ) : hasValidArchive ? (
+                        <CheckCircle2 size={13} color="#10B981" style={{ flexShrink: 0, marginTop: '2px' }} />
+                      ) : (
+                        <Unlock size={13} color="#CBD5E1" style={{ flexShrink: 0, marginTop: '2px' }} />
+                      )}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          color: '#FFFFFF',
+                          lineHeight: 1.3
+                        }}>
+                          {tplTitle}
+                        </div>
+                        <div className="mono" style={{ fontSize: '10px', color: '#94A3B8', marginTop: '2px' }}>
+                          {canonCode}
                         </div>
                       </div>
+                    </div>
 
-                      {evalRes.badge && (
+                    <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                      {hasValidArchive && (
                         <span style={{
-                          fontSize: '10px',
+                          fontSize: '9.5px',
+                          fontWeight: 800,
+                          padding: '2px 7px',
+                          borderRadius: '999px',
+                          background: 'rgba(16, 185, 129, 0.16)',
+                          border: '1px solid rgba(16, 185, 129, 0.45)',
+                          color: '#10B981',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          Tersimpan
+                        </span>
+                      )}
+                      {isLocked && evalRes.badge && (
+                        <span style={{
+                          fontSize: '9.5px',
                           fontWeight: 700,
-                          padding: '2px 9px',
-                          borderRadius: '9999px',
-                          whiteSpace: 'nowrap',
-                          background: evalRes.isLocked ? 'rgba(255, 42, 42, 0.15)' : '#FFFFFF',
-                          border: evalRes.isLocked ? '1px solid rgba(255, 42, 42, 0.4)' : '1px solid #FFFFFF',
-                          color: evalRes.isLocked ? '#FF2A2A' : '#0B0E14'
+                          padding: '2px 7px',
+                          borderRadius: '6px',
+                          background: 'rgba(255, 42, 42, 0.14)',
+                          border: '1px solid rgba(255, 42, 42, 0.35)',
+                          color: '#FF3B3B',
+                          whiteSpace: 'nowrap'
                         }}>
                           {evalRes.badge}
                         </span>
                       )}
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  </button>
+                );
+              })
+            )}
           </div>
+        </div>
 
-          {/* Card 2: Status Prasyarat & Form Input Aktif */}
+        {/* KOLOM KANAN (lg:col-span-8): FORM AKTIF DOKUMEN MINDIK */}
+        <div
+          className="lg:col-span-8"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}
+        >
           <div style={{
-            background: 'rgba(17, 22, 31, 0.80)',
-            borderRadius: '16px',
-            border: '1px solid rgba(148, 163, 184, 0.14)',
-            padding: '20px',
+            background: '#11161F',
+            borderRadius: '12px',
+            border: '1px solid rgba(148, 163, 184, 0.16)',
+            padding: '18px 20px',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px'
           }}>
             {/* Header Form Dokumen Terpilih */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(203, 213, 225, 0.65)' }}>DOKUMEN TERPILIH</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: activeChainStatus.allowed ? '#CBD5E1' : '#FF2A2A'
-                }}>
-                  {activeChainStatus.allowed ? '✓ Rantai Formil Terpenuhi' : '✕ Syarat Belum Lengkap'}
-                </span>
+            <div style={{
+              borderBottom: '1px solid rgba(148, 163, 184, 0.14)',
+              paddingBottom: '12px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '10px'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.06em' }}>
+                    FORMULIR PENERBITAN NASKAH DINAS
+                  </span>
+                  {activeCanonicalCode && (
+                    <span className="mono" style={{
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      padding: '1px 7px',
+                      borderRadius: '5px',
+                      background: '#161D2A',
+                      color: '#CBD5E1',
+                      border: '1px solid rgba(148, 163, 184, 0.2)'
+                    }}>
+                      {activeCanonicalCode}
+                    </span>
+                  )}
+                </div>
+                <h3 className="heading-font" style={{ fontSize: '17px', fontWeight: 800, color: '#FFFFFF', margin: '4px 0 0' }}>
+                  {currentTemplate?.title || currentTemplate?.name || selectedTemplateCode || 'Pilih Format Dokumen'}
+                </h3>
               </div>
-              <h3 className="heading-font" style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', margin: '4px 0 0' }}>
-                {currentTemplate?.title || currentTemplate?.name || selectedTemplateCode}
-              </h3>
+
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                padding: '4px 11px',
+                borderRadius: '999px',
+                background: activeChainStatus.allowed ? 'rgba(16, 185, 129, 0.14)' : 'rgba(255, 42, 42, 0.16)',
+                border: activeChainStatus.allowed ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid rgba(255, 42, 42, 0.5)',
+                color: activeChainStatus.allowed ? '#10B981' : '#FF3B3B',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                {activeChainStatus.allowed ? <CheckCircle2 size={13} /> : <Lock size={13} />}
+                <span>{activeChainStatus.allowed ? 'Rantai Formil Terpenuhi' : 'Terkunci (Syarat Belum Lengkap)'}</span>
+              </span>
             </div>
 
-            {/* Warning jika Prasyarat Belum Terpenuhi */}
-            {!activeChainStatus.allowed && (
+            {/* Banner Prasyarat Terkunci / Info Rantai */}
+            {!activeChainStatus.allowed ? (
               <div style={{
-                padding: '12px 14px',
-                borderRadius: '10px',
+                padding: '11px 14px',
+                borderRadius: '9px',
                 background: 'rgba(255, 42, 42, 0.12)',
-                border: '1px solid rgba(255, 42, 42, 0.4)',
+                border: '1px solid rgba(255, 42, 42, 0.42)',
                 display: 'flex',
-                alignItems: 'start',
+                alignItems: 'flex-start',
                 gap: '10px',
                 fontSize: '12px',
                 color: '#CBD5E1'
               }}>
-                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <AlertCircle size={16} color="#FF2A2A" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div>
-                  <strong>Akses Dokumen Terkunci:</strong>
-                  <div style={{ marginTop: '2px', lineHeight: 1.4 }}>{activeChainStatus.reason}</div>
+                  <strong style={{ color: '#FFFFFF' }}>Akses Penerbitan Terkunci:</strong>
+                  <div style={{ marginTop: '2px', lineHeight: 1.45 }}>{activeChainStatus.reason}</div>
                 </div>
               </div>
-            )}
+            ) : activeChainStatus.infoNotice ? (
+              <div style={{
+                padding: '9px 12px',
+                borderRadius: '8px',
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.32)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '11.5px',
+                color: '#FDE68A'
+              }}>
+                <Info size={15} color="#F59E0B" style={{ flexShrink: 0 }} />
+                <span>{activeChainStatus.infoNotice}</span>
+              </div>
+            ) : null}
 
-            {/* 1. PANEL STATUS RANTAI MINDIK (CHAIN RESOLUTION OVERVIEW) */}
-            <div style={{
-              padding: '12px 14px',
-              borderRadius: '12px',
-              background: '#11161F',
-              border: '1px solid rgba(148, 163, 184, 0.16)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
+            {/* Input Utama: Smart Nomor Surat (No. Urut + Full Number) & Tanggal Surat */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4" style={{
+              padding: '14px',
+              borderRadius: '10px',
+              background: '#161D2A',
+              border: '1px solid rgba(148, 163, 184, 0.16)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Sparkles size={14} color="#FF2A2A" />
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em' }}>
-                    PANEL STATUS RANTAI MINDIK & PEWARISAN DATA ARSIP
-                  </span>
-                </div>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  background: 'rgba(255, 42, 42, 0.15)',
-                  color: '#FFFFFF',
-                  border: '1px solid rgba(255, 42, 42, 0.35)'
-                }}>
-                  Tim Penyidik: {chainOverviewStatus.teamCount} Personel Terwarisi
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {chainOverviewStatus.badges.map((b) => (
-                  <div
-                    key={b.key}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '8px',
-                      fontSize: '10.5px',
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      background: b.ready ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 42, 42, 0.08)',
-                      border: b.ready ? '1px solid rgba(203, 213, 225, 0.25)' : '1px dashed rgba(255, 42, 42, 0.35)',
-                      color: b.ready ? '#FFFFFF' : '#94A3B8'
-                    }}
-                    title={b.ready ? `${b.label}: ${b.value}` : `${b.label} belum diterbitkan di Arsip`}
-                  >
-                    {b.ready ? (
-                      <CheckCircle2 size={12} color="#FF2A2A" />
-                    ) : (
-                      <AlertTriangle size={12} color="#94A3B8" />
-                    )}
-                    <span>{b.label}:</span>
-                    <span className="mono" style={{ color: b.ready ? '#CBD5E1' : '#64748B', fontWeight: 700 }}>
-                      {b.ready ? b.value : 'Belum Ada'}
-                    </span>
-                  </div>
-                ))}
-
-                {chainOverviewStatus.customDocs.map((cd, cIdx) => (
-                  <div
-                    key={cd.id || cIdx}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '8px',
-                      fontSize: '10.5px',
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid rgba(203, 213, 225, 0.25)',
-                      color: '#FFFFFF'
-                    }}
-                  >
-                    <CheckCircle2 size={12} color="#FF2A2A" />
-                    <span>{cd.template_code}:</span>
-                    <span className="mono" style={{ color: '#CBD5E1', fontWeight: 700 }}>
-                      {cd.doc_number || 'Tersimpan'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. PEMILIH SUBJEK HUKUM UNIVERSAL (TARGET SURAT: PELAPOR, SAKSI, TERLAPOR, TERSANGKA) */}
-            <div style={{
-              padding: '12px 14px',
-              borderRadius: '12px',
-              background: '#11161F',
-              border: '1px solid rgba(255, 42, 42, 0.28)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Users size={14} color="#FF2A2A" />
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em' }}>
-                    PEMILIH SUBJEK HUKUM UNIVERSAL (TARGET SURAT)
-                  </span>
-                </div>
-                <span style={{ fontSize: '10px', color: '#CBD5E1' }}>
-                  Pilih 1 atau lebih subjek untuk mengisi otomatis biodata KUHAP pada surat
-                </span>
-              </div>
-
-              {/* Filter Kategori Subjek */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {[
-                  { id: 'ALL', label: `Semua (${allCaseSubjects.all.length})` },
-                  { id: 'PELAPOR', label: `Pelapor/Korban (${allCaseSubjects.pelapor.length})` },
-                  { id: 'SAKSI', label: `Saksi (${allCaseSubjects.saksi.length})` },
-                  { id: 'TERLAPOR', label: `Terlapor/Calon Tsk (${allCaseSubjects.terlapor.length})` },
-                  { id: 'TERSANGKA', label: `Tersangka (${allCaseSubjects.tersangka.length})` },
-                ].map((cat) => {
-                  const isCatActive = selectedSubjectCategory === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedSubjectCategory(cat.id)}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '999px',
-                        fontSize: '10.5px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        background: isCatActive ? '#FF2A2A' : '#131924',
-                        color: isCatActive ? '#FFFFFF' : '#CBD5E1',
-                        border: isCatActive ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.2)'
-                      }}
-                    >
-                      {cat.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Daftar Chip / Checkbox Subjek Hukum */}
-              {(() => {
-                const visibleSubjects = selectedSubjectCategory === 'ALL'
-                  ? allCaseSubjects.all
-                  : allCaseSubjects.all.filter(s => s._category === selectedSubjectCategory);
-
-                if (visibleSubjects.length === 0) {
-                  return (
-                    <div style={{ fontSize: '11.5px', color: '#94A3B8', padding: '6px 2px' }}>
-                      Belum ada subjek pada kategori ini di Berkas Perkara. Anda dapat menambahkannya lewat tombol Edit Berkas Perkara.
+              <div className="md:col-span-7" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                  {supportsNoUrutHelper && (
+                    <div style={{ width: '105px', flexShrink: 0 }}>
+                      <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                        No. Urut:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="01"
+                        value={noUrutInput ?? ''}
+                        onChange={(e) => handleNoUrutChange(e.target.value)}
+                        className="form-input mono"
+                        style={{
+                          width: '100%',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          background: '#0B0E14',
+                          borderColor: 'rgba(255, 42, 42, 0.45)',
+                          color: '#FFFFFF',
+                          textAlign: 'center'
+                        }}
+                      />
                     </div>
-                  );
-                }
+                  )}
 
-                return (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '130px', overflowY: 'auto' }}>
-                    {visibleSubjects.map((subj) => {
-                      const isChecked = Boolean(
-                        selectedTargetSubjectKeys.includes(subj._uid) ||
-                        (selectedTargetSubjectKeys.length === 0 && activeSuspect && subj.nama === activeSuspect.nama)
-                      );
-                      return (
-                        <label
-                          key={subj._uid}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '7px',
-                            padding: '6px 11px',
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            fontSize: '11.5px',
-                            background: isChecked ? 'rgba(255, 42, 42, 0.18)' : '#131924',
-                            border: isChecked ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.2)',
-                            color: '#FFFFFF',
-                            userSelect: 'none'
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              let nextKeys;
-                              if (e.target.checked) {
-                                nextKeys = [...new Set([...selectedTargetSubjectKeys, subj._uid])];
-                              } else {
-                                nextKeys = selectedTargetSubjectKeys.filter(k => k !== subj._uid);
-                              }
-                              setSelectedTargetSubjectKeys(nextKeys);
-                              const nextSelectedObjs = allCaseSubjects.all.filter(s => nextKeys.includes(s._uid));
-                              if (nextSelectedObjs.length > 0) {
-                                applyUniversalSelectedSubjects(nextSelectedObjs);
-                              }
-                            }}
-                            style={{ accentColor: '#FF2A2A', cursor: 'pointer' }}
-                          />
-                          <span style={{ fontWeight: 700 }}>{subj.nama_lengkap || subj.nama}</span>
-                          <span style={{
-                            fontSize: '9.5px',
-                            padding: '1px 6px',
-                            borderRadius: '999px',
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            color: '#CBD5E1'
-                          }}>
-                            {subj._categoryLabel}
-                          </span>
-                        </label>
-                      );
-                    })}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                      Nomor Surat Resmi:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="SP.Sidik/01/XI/RES.1.24/2026"
+                      value={formValues.NOMOR_SURAT ?? ''}
+                      onChange={(e) => handleInputChange('NOMOR_SURAT', e.target.value)}
+                      className="form-input mono"
+                      style={{
+                        width: '100%',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        background: '#0B0E14',
+                        borderColor: hasValidDocNo ? 'rgba(16, 185, 129, 0.45)' : 'rgba(245, 158, 11, 0.55)',
+                        color: '#FFFFFF'
+                      }}
+                    />
                   </div>
-                );
-              })()}
-            </div>
+                </div>
 
-            {/* Form Fields Baku: Nomor Surat & Tanggal Surat */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: '#CBD5E1' }}>
-                  Nomor Surat Resmi:
-                </label>
-                <input
-                  type="text"
-                  placeholder="SP.Sidik/.../.../RES.1.24/2026"
-                  value={formValues.NOMOR_SURAT ?? ''}
-                  onChange={(e) => handleInputChange('NOMOR_SURAT', e.target.value)}
-                  className="form-input mono"
-                  style={{ fontSize: '12px', fontWeight: 600 }}
-                />
+                {!hasValidDocNo && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '11px',
+                    color: '#F59E0B',
+                    marginTop: '2px'
+                  }}>
+                    <AlertTriangle size={13} color="#F59E0B" style={{ flexShrink: 0 }} />
+                    <span>
+                      Nomor surat masih mengandung placeholder (<span className="mono">....</span>) atau kosong. Isi <strong>No. Urut</strong> atau lengkapi Nomor Surat sebelum menyimpan arsip.
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: '#CBD5E1' }}>
-                  Tanggal Surat:
+              <div className="md:col-span-5" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label className="form-label" style={{ fontSize: '11px', fontWeight: 700, color: '#CBD5E1', marginBottom: '0', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Calendar size={12} color="#FF2A2A" />
+                  <span>Tanggal Surat:</span>
                 </label>
                 <input
                   type="date"
                   value={formValues.TANGGAL_SURAT ?? ''}
-                  onChange={(e) => {
-                    handleInputChange('TANGGAL_SURAT', e.target.value);
-                    handleInputChange('DOC_DATE', e.target.value);
+                  onChange={(e) => handleInputChange('TANGGAL_SURAT', e.target.value)}
+                  className="form-input mono"
+                  style={{
+                    width: '100%',
+                    fontSize: '12.5px',
+                    background: '#0B0E14',
+                    borderColor: hasValidDocDate ? 'rgba(148, 163, 184, 0.25)' : 'rgba(255, 42, 42, 0.5)',
+                    color: '#FFFFFF'
                   }}
-                  className="form-input"
-                  style={{ fontSize: '12px' }}
                 />
+                <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                  Tercetak di surat:{' '}
+                  <strong style={{ color: '#FFFFFF' }}>
+                    {formValues.TANGGAL_SURAT ? formatTanggalIndonesia(formValues.TANGGAL_SURAT) : '-'}
+                  </strong>
+                </div>
               </div>
             </div>
 
-            {/* Dynamic Fields dari Template Studio (Hanya variabel non-rujukan yang perlu diisi operator) */}
+            {/* Pemilih Subjek Hukum Kontekstual */}
+            {currentSubjectMode === 'none' && !showOptionalSubjectPicker ? (
+              <div style={{
+                padding: '9px 13px',
+                borderRadius: '9px',
+                background: '#0B0E14',
+                border: '1px solid rgba(148, 163, 184, 0.14)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '11.5px', color: '#94A3B8' }}>
+                  <UserCheck size={14} color="#94A3B8" />
+                  <span>Format ini otomatis mewarisi data perkara &amp; tim penyidik (pemilih subjek opsional).</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOptionalSubjectPicker(true)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '7px',
+                    background: '#161D2A',
+                    border: '1px solid rgba(148, 163, 184, 0.26)',
+                    color: '#CBD5E1',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Tampilkan Pemilih Subjek
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                background: '#161D2A',
+                border: '1px solid rgba(255, 42, 42, 0.30)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <Users size={14} color="#FF2A2A" />
+                    <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em' }}>
+                      PEMILIH SUBJEK HUKUM TARGET SURAT
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '10.5px', color: '#94A3B8' }}>
+                      Otomatis mengisi biodata KUHAP pada dokumen
+                    </span>
+                    {currentSubjectMode === 'none' && (
+                      <button
+                        type="button"
+                        onClick={() => setShowOptionalSubjectPicker(false)}
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: '#0B0E14',
+                          border: '1px solid rgba(148, 163, 184, 0.24)',
+                          color: '#CBD5E1',
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Sembunyikan
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {currentSubjectMode === 'terlapor_to_tersangka' && (
+                  <div style={{
+                    padding: '7px 10px',
+                    borderRadius: '7px',
+                    background: 'rgba(255, 42, 42, 0.12)',
+                    border: '1px solid rgba(255, 42, 42, 0.35)',
+                    fontSize: '11px',
+                    color: '#FCA5A5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '7px'
+                  }}>
+                    <Sparkles size={13} color="#FF2A2A" style={{ flexShrink: 0 }} />
+                    <span>
+                      <strong>Mode Penetapan Tersangka:</strong> Subjek terlapor yang dipilih akan otomatis ditetapkan sebagai <strong>Tersangka</strong> pada berkas perkara saat arsip disimpan.
+                    </span>
+                  </div>
+                )}
+
+                {/* Filter Kategori Subjek */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {[
+                    { id: 'ALL', label: `Semua (${allCaseSubjects.all.length})` },
+                    { id: 'PELAPOR', label: `Pelapor/Korban (${allCaseSubjects.pelapor.length})` },
+                    { id: 'SAKSI', label: `Saksi (${allCaseSubjects.saksi.length})` },
+                    { id: 'TERLAPOR', label: `Terlapor/Calon Tsk (${allCaseSubjects.terlapor.length})` },
+                    { id: 'TERSANGKA', label: `Tersangka (${allCaseSubjects.tersangka.length})` },
+                  ].map((cat) => {
+                    const isCatActive = selectedSubjectCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedSubjectCategory(cat.id)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '999px',
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: isCatActive ? '#FF2A2A' : '#0B0E14',
+                          color: isCatActive ? '#FFFFFF' : '#CBD5E1',
+                          border: isCatActive ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.2)'
+                        }}
+                      >
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Daftar Chip / Checkbox Subjek Hukum */}
+                {(() => {
+                  const visibleSubjects = selectedSubjectCategory === 'ALL'
+                    ? allCaseSubjects.all
+                    : allCaseSubjects.all.filter(s => s._category === selectedSubjectCategory);
+
+                  if (visibleSubjects.length === 0) {
+                    return (
+                      <div style={{ fontSize: '11.5px', color: '#94A3B8', padding: '4px 2px' }}>
+                        Belum ada subjek pada kategori ini di Berkas Perkara.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', maxHeight: '140px', overflowY: 'auto' }}>
+                      {visibleSubjects.map((subj) => {
+                        const isChecked = Boolean(
+                          selectedTargetSubjectKeys.includes(subj._uid) ||
+                          (selectedTargetSubjectKeys.length === 0 && activeSuspect && subj.nama === activeSuspect.nama)
+                        );
+                        return (
+                          <label
+                            key={subj._uid}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '7px',
+                              padding: '5px 10px',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontSize: '11.5px',
+                              background: isChecked ? 'rgba(255, 42, 42, 0.18)' : '#0B0E14',
+                              border: isChecked ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.2)',
+                              color: '#FFFFFF',
+                              userSelect: 'none'
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                let nextKeys;
+                                if (e.target.checked) {
+                                  nextKeys = [...new Set([...selectedTargetSubjectKeys, subj._uid])];
+                                } else {
+                                  nextKeys = selectedTargetSubjectKeys.filter(k => k !== subj._uid);
+                                }
+                                setSelectedTargetSubjectKeys(nextKeys);
+                                const nextSelectedObjs = allCaseSubjects.all.filter(s => nextKeys.includes(s._uid));
+                                if (nextSelectedObjs.length > 0) {
+                                  applyUniversalSelectedSubjects(nextSelectedObjs);
+                                }
+                              }}
+                              style={{ accentColor: '#FF2A2A', cursor: 'pointer' }}
+                            />
+                            <span style={{ fontWeight: 700 }}>{subj.nama_lengkap || subj.nama}</span>
+                            <span style={{
+                              fontSize: '9.5px',
+                              padding: '1px 6px',
+                              borderRadius: '999px',
+                              background: 'rgba(255, 255, 255, 0.08)',
+                              color: '#CBD5E1'
+                            }}>
+                              {subj._categoryLabel}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Dynamic Fields dari Template Studio (Grid 2 Kolom, variabel rujukan otomatis tetap disembunyikan) */}
             {(() => {
               // Filter keluar seluruh variabel rujukan dokumen pendahulu & arsip yang sudah terinjeksi otomatis di latar belakang
               const isAutoChainedReferenceField = (rawKey) => {
@@ -1740,176 +2460,412 @@ export default function MindikGeneratorView({
               if (operatorDynamicFields.length === 0) return null;
 
               return (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  marginTop: '4px',
-                  maxHeight: '220px',
-                  overflowY: 'auto'
-                }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8' }}>
-                    FIELD TAMBAHAN FORMAT INI:
-                  </span>
-                  {operatorDynamicFields.map((f, idx) => {
-                    const key = f.field_key || f.key || `field_${idx}`;
-                    const label = f.label || f.field_label || key;
-                    const isDateField = f.field_type === 'date' || key === 'MASA_BERLAKU';
-                    
-                    const getValidDateValue = (val) => {
-                      if (!val) return '';
-                      return toIsoDateString(val) || '';
-                    };
-                    const inputValue = isDateField ? getValidDateValue(formValues[key]) : (formValues[key] ?? '');
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#CBD5E1', letterSpacing: '0.04em' }}>
+                      FIELD TAMBAHAN FORMAT INI ({operatorDynamicFields.length})
+                    </span>
+                    <span style={{ fontSize: '10.5px', color: '#94A3B8' }}>
+                      Rujukan dokumen pendahulu disuntikkan otomatis
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {operatorDynamicFields.map((f, idx) => {
+                      const key = f.field_key || f.key || `field_${idx}`;
+                      const label = f.label || f.field_label || key;
+                      const isDateField = f.field_type === 'date' || key === 'MASA_BERLAKU';
+                      const inputValue = isDateField ? (toIsoDateString(formValues[key]) || '') : (formValues[key] ?? '');
 
-                    return (
-                      <div key={key} className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ fontSize: '11px', color: '#94A3B8' }}>
-                          {label}
-                        </label>
-                        <input
-                          type={isDateField ? 'date' : 'text'}
-                          value={inputValue ?? ''}
-                          onChange={(e) => handleInputChange(key, e.target.value)}
-                          className={`form-input ${isDateField ? 'mono' : ''}`}
-                          placeholder={f.placeholder || ''}
-                          style={{ fontSize: '12px' }}
-                        />
-                      </div>
-                    );
-                  })}
+                      return (
+                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                            {label}
+                          </label>
+                          <input
+                            type={isDateField ? 'date' : 'text'}
+                            value={inputValue ?? ''}
+                            onChange={(e) => handleInputChange(key, e.target.value)}
+                            className={`form-input ${isDateField ? 'mono' : ''}`}
+                            placeholder={f.placeholder || ''}
+                            style={{
+                              width: '100%',
+                              fontSize: '12px',
+                              background: '#0B0E14',
+                              borderColor: 'rgba(148, 163, 184, 0.22)',
+                              color: '#FFFFFF'
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })()}
+          </div>
 
-            {/* Tombol Aksi: Simpan Arsip */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginTop: '8px' }}>
+          {/* STICKY ACTION FOOTER BERURUTAN (1. Pratinjau -> 2. Simpan ke Arsip -> 3. Unduh .docx) */}
+          <div style={{
+            position: 'sticky',
+            bottom: '12px',
+            zIndex: 20,
+            background: 'rgba(17, 22, 31, 0.96)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '12px',
+            border: '1px solid rgba(148, 163, 184, 0.22)',
+            boxShadow: '0 10px 28px rgba(0, 0, 0, 0.55)',
+            padding: '12px 16px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ minWidth: '180px', flex: '1 1 200px' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Ringkasan Siap Terbit
+              </div>
+              <div className="mono" style={{ fontSize: '12px', fontWeight: 700, color: hasValidDocNo ? '#FFFFFF' : '#F59E0B', marginTop: '2px' }}>
+                {formValues.NOMOR_SURAT || 'Nomor belum diisi'}
+                <span style={{ color: '#94A3B8', fontWeight: 500 }}>
+                  {' '}• {formValues.TANGGAL_SURAT ? formatTanggalIndonesia(formValues.TANGGAL_SURAT) : 'Tanggal belum dipilih'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                disabled={isSaving || !activeChainStatus.allowed}
-                onClick={handleSaveArchive}
-                className="btn btn-primary"
+                onClick={() => setIsPreviewModalOpen(true)}
+                disabled={!activeChainStatus.allowed}
+                title={!activeChainStatus.allowed ? activeChainStatus.reason : 'Pratinjau naskah dinas melalui Microsoft Office Online Viewer'}
                 style={{
-                  padding: '11px 14px',
-                  fontSize: '12.5px',
+                  padding: '9px 14px',
+                  borderRadius: '8px',
+                  background: '#161D2A',
+                  border: '1px solid rgba(148, 163, 184, 0.30)',
+                  color: activeChainStatus.allowed ? '#FFFFFF' : '#64748B',
+                  fontSize: '12px',
                   fontWeight: 700,
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
+                  gap: '7px',
+                  cursor: activeChainStatus.allowed ? 'pointer' : 'not-allowed',
+                  opacity: activeChainStatus.allowed ? 1 : 0.55
                 }}
               >
-                {isSaving ? <RefreshCw size={15} className="animate-spin" /> : (isSaved ? <CheckCircle2 size={15} /> : <Save size={15} />)}
-                <span>{isSaving ? 'Menyimpan...' : (isSaved ? 'Tersimpan' : 'Simpan Arsip')}</span>
+                <Eye size={14} />
+                <span>1. Pratinjau Dokumen</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isSaving || !canSaveOrDownload}
+                onClick={handleSaveArchive}
+                title={actionDisabledTooltip || 'Simpan metadata & nomor resmi dokumen ke Arsip Perkara'}
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '8px',
+                  background: isSaved ? 'rgba(16, 185, 129, 0.16)' : '#161D2A',
+                  border: isSaved ? '1px solid #10B981' : '1px solid rgba(255, 42, 42, 0.55)',
+                  color: !canSaveOrDownload ? '#64748B' : (isSaved ? '#10B981' : '#FFFFFF'),
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  cursor: !isSaving && canSaveOrDownload ? 'pointer' : 'not-allowed',
+                  opacity: canSaveOrDownload ? 1 : 0.55
+                }}
+              >
+                {isSaving ? <RefreshCw size={14} className="animate-spin" /> : (isSaved ? <CheckCircle2 size={14} /> : <Save size={14} />)}
+                <span>{isSaving ? 'Menyimpan...' : (isSaved ? '2. Tersimpan di Arsip' : '2. Simpan ke Arsip')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadDocx}
+                disabled={isGenerating || !canSaveOrDownload}
+                title={actionDisabledTooltip || 'Unduh dokumen .docx resmi (otomatis menyimpan arsip jika belum tersimpan)'}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  background: canSaveOrDownload ? '#FF2A2A' : '#161D2A',
+                  border: canSaveOrDownload ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.2)',
+                  color: canSaveOrDownload ? '#FFFFFF' : '#64748B',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  cursor: !isGenerating && canSaveOrDownload ? 'pointer' : 'not-allowed',
+                  boxShadow: canSaveOrDownload ? '0 4px 16px rgba(255, 42, 42, 0.35)' : 'none',
+                  opacity: canSaveOrDownload ? 1 : 0.55
+                }}
+              >
+                {isGenerating ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+                <span>{isGenerating ? 'Memproses...' : '3. Unduh .docx'}</span>
               </button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* PANEL KANAN: DASHBOARD STATUS NASKAH DINAS SIAP TERBIT */}
-        <div className="lg:col-span-5" style={{
-          background: 'rgba(17, 22, 31, 0.80)',
-          borderRadius: '16px',
-          border: '1px solid rgba(148, 163, 184, 0.14)',
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '20px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
-        }}>
-          <div style={{ borderBottom: '1px solid rgba(148, 163, 184, 0.14)', paddingBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <span style={{ fontSize: '11px', color: 'rgba(203, 213, 225, 0.65)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Naskah Dinas Siap Terbit
-              </span>
-              <h2 className="heading-font" style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: '4px 0 0' }}>
-                {currentTemplate?.title || currentTemplate?.name || selectedTemplateCode}
-              </h2>
-            </div>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              background: activeChainStatus.allowed ? '#FFFFFF' : 'rgba(255, 42, 42, 0.15)',
-              border: activeChainStatus.allowed ? '1px solid #FFFFFF' : '1px solid rgba(255, 42, 42, 0.45)',
-              color: activeChainStatus.allowed ? '#0B0E14' : '#FF2A2A'
+      {/* --- MODAL DETAIL PERKARA --- */}
+      {isCaseDetailModalOpen && currentCase && (
+        <div
+          onClick={() => setIsCaseDetailModalOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.78)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '720px',
+              maxHeight: '85vh',
+              background: '#11161F',
+              borderRadius: '14px',
+              border: '1px solid rgba(148, 163, 184, 0.22)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85)'
+            }}
+          >
+            <div style={{
+              padding: '14px 18px',
+              borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#161D2A'
             }}>
-              {activeChainStatus.allowed ? '✓ Rantai Formil Sah' : '✕ Belum Memenuhi Syarat'}
-            </span>
-          </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <Briefcase size={16} color="#FF2A2A" />
+                <span className="heading-font" style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF' }}>
+                  Detail Perkara: {currentCase.nomor_lp || currentCase.no_lp || '-'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCaseDetailModalOpen(false)}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '7px',
+                  background: '#0B0E14',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                  color: '#CBD5E1',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={14} />
+                <span>Tutup</span>
+              </button>
+            </div>
 
-          {/* Ringkasan Parameter */}
-          <div style={{
-            background: '#11161F',
-            padding: '16px',
-            borderRadius: '12px',
-            border: '1px solid rgba(148, 163, 184, 0.14)',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '14px'
-          }}>
-            <div>
-              <div style={{ fontSize: '11px', color: 'rgba(203, 213, 225, 0.55)' }}>Nomor Naskah:</div>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#FFFFFF', wordBreak: 'break-all' }}>
-                {formValues.NOMOR_SURAT || '-'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', color: 'rgba(203, 213, 225, 0.55)' }}>Tanggal Surat:</div>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#FFFFFF' }}>
-                {formValues.TANGGAL_SURAT ? formatTanggalIndonesia(formValues.TANGGAL_SURAT) : '-'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', color: '#64748b' }}>Rujukan Laporan Polisi:</div>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#e2e8f0' }}>
-                {currentCase?.nomor_lp || currentCase?.no_lp || '-'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', color: '#64748b' }}>Penyidik Penugasan:</div>
-              <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#e2e8f0' }}>
-                {currentCase?.penyidik_1_nama || currentCase?.penyidik_nama || '-'}
-              </div>
-            </div>
-            {requiresSuspectTarget && (
-              <div style={{ gridColumn: '1 / -1' }}>
-                <div style={{ fontSize: '11px', color: '#64748b' }}>Subjek Tersangka:</div>
-                <div style={{ color: 'var(--accent-blue)', fontWeight: 600, fontSize: '14px', textTransform: 'uppercase' }}>
-                  {((currentTemplate?.code === 'SPDP_MORE_1_TSK') || ((currentTemplate?.title || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA')))
-                    ? 'OTOMATIS (MULTI-TERSANGKA)'
-                    : (activeSuspect?.nama || activeSuspect?.nama_lengkap || '-')}
+            <div style={{ padding: '18px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" style={{
+                padding: '12px',
+                borderRadius: '10px',
+                background: '#0B0E14',
+                border: '1px solid rgba(148, 163, 184, 0.14)'
+              }}>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#94A3B8' }}>Nomor LP</div>
+                  <div className="mono" style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
+                    {currentCase.nomor_lp || currentCase.no_lp || '-'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#94A3B8' }}>Tanggal LP</div>
+                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
+                    {formatTanggalIndonesia(currentCase.tanggal_lp || currentCase.sprin_date) || '-'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#94A3B8' }}>Tindak Pidana / Perkara</div>
+                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
+                    {currentCase.tindak_pidana || currentCase.crime_category || currentCase.kasus || '-'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#94A3B8' }}>Pasal Disangkakan</div>
+                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#CBD5E1' }}>
+                    {currentCase.pasal_uu || currentCase.pasal || '-'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#94A3B8' }}>Locus Delicti</div>
+                  <div style={{ fontSize: '12px', color: '#CBD5E1' }}>{currentCase.locus || currentCase.tkp || '-'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#94A3B8' }}>Tempus Delicti</div>
+                  <div style={{ fontSize: '12px', color: '#CBD5E1' }}>{currentCase.tempus || currentCase.waktu_kejadian || '-'}</div>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Tombol Aksi Utama */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '16px' }}>
-            <button
-              type="button"
-              onClick={() => setIsPreviewModalOpen(true)}
-              disabled={!activeChainStatus.allowed}
-              className="btn btn-secondary"
-              style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontWeight: 700 }}
-            >
-              <Eye size={16} />
-              <span>Pratinjau Hasil Dokumen</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadDocx}
-              disabled={!activeChainStatus.allowed || isGenerating}
-              className="btn btn-primary"
-              style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontWeight: 700 }}
-            >
-              {isGenerating ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
-              <span>{isGenerating ? 'Memproses...' : 'Unduh .docx'}</span>
-            </button>
+              {[
+                { label: 'Pelapor / Korban', items: allCaseSubjects.pelapor },
+                { label: 'Terlapor (Calon Tersangka)', items: allCaseSubjects.terlapor },
+                { label: 'Tersangka Ditetapkan', items: allCaseSubjects.tersangka },
+                { label: 'Saksi-saksi', items: allCaseSubjects.saksi }
+              ].map((grp) => (
+                <div key={grp.label} style={{
+                  padding: '10px 12px',
+                  borderRadius: '9px',
+                  background: '#0B0E14',
+                  border: '1px solid rgba(148, 163, 184, 0.14)'
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#CBD5E1', marginBottom: '6px' }}>
+                    {grp.label} ({grp.items.length})
+                  </div>
+                  {grp.items.length === 0 ? (
+                    <div style={{ fontSize: '11.5px', color: '#64748B' }}>Belum tercatat pada berkas perkara.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {grp.items.map((item, idx) => (
+                        <div key={item._uid || idx} style={{ fontSize: '12px', color: '#FFFFFF', display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                          <span style={{ fontWeight: 700 }}>{idx + 1}. {item.nama_lengkap || item.nama}</span>
+                          <span style={{ fontSize: '11px', color: '#94A3B8' }}>{item.nik ? `NIK: ${item.nik}` : (item.pekerjaan || '-')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* --- MODAL TIM PENYIDIK TERWARISI --- */}
+      {isTeamModalOpen && currentCase && (
+        <div
+          onClick={() => setIsTeamModalOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.78)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '640px',
+              maxHeight: '80vh',
+              background: '#11161F',
+              borderRadius: '14px',
+              border: '1px solid rgba(148, 163, 184, 0.22)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85)'
+            }}
+          >
+            <div style={{
+              padding: '14px 18px',
+              borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#161D2A'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <Users size={16} color="#FF2A2A" />
+                <span className="heading-font" style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF' }}>
+                  Tim Penyidik Terwarisi ({inheritedTeamMembers.length} Personel)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTeamModalOpen(false)}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '7px',
+                  background: '#0B0E14',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                  color: '#CBD5E1',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={14} />
+                <span>Tutup</span>
+              </button>
+            </div>
+
+            <div style={{ padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {inheritedTeamMembers.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94A3B8', fontSize: '12px' }}>
+                  Belum ada personel penyidik tercantum pada berkas perkara ini.
+                </div>
+              ) : (
+                inheritedTeamMembers.map((member) => (
+                  <div
+                    key={`${member.no}_${member.nama}`}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '9px',
+                      background: '#0B0E14',
+                      border: '1px solid rgba(148, 163, 184, 0.16)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FFFFFF' }}>
+                        {member.no}. {member.pangkat ? `${member.pangkat} ` : ''}{member.nama}
+                      </div>
+                      <div className="mono" style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                        NRP: {member.nrp || '-'}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      padding: '3px 9px',
+                      borderRadius: '6px',
+                      background: 'rgba(255, 42, 42, 0.14)',
+                      border: '1px solid rgba(255, 42, 42, 0.35)',
+                      color: '#CBD5E1'
+                    }}>
+                      {member.jabatan}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL POP-UP PRATINJAU DOKUMEN (OFFICIAL DOC PREVIEW ISOLASI) */}
       {isPreviewModalOpen && (
@@ -1971,6 +2927,7 @@ export default function MindikGeneratorView({
                 caseData={currentCase}
                 template={currentTemplate}
                 formValues={formValues}
+                docDate={formValues.TANGGAL_SURAT || formValues.DOC_DATE || ''}
                 personnel={personnel}
                 personnelList={personnel}
                 activeSuspect={
