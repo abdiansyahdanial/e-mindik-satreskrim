@@ -297,7 +297,7 @@ export default function DumasFormView({
               .from('lampiran_barang_bukti')
               .select('*')
               .eq('laporan_id', initialData.id)
-              .order('diunggah_pada', { ascending: true });
+              .order('created_at', { ascending: true });
             if (bbRows && bbRows.length > 0) {
               const formatted = bbRows.map(row => ({
                 id: row.id,
@@ -311,7 +311,7 @@ export default function DumasFormView({
                 file_size_bytes: row.file_size_bytes,
                 keterangan: row.keterangan,
                 hash_sha256: row.hash_sha256,
-                diunggah_pada: row.diunggah_pada
+                created_at: row.created_at
               }));
               setDaftarBukti(formatted);
             }

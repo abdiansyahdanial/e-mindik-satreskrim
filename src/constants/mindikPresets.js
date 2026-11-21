@@ -1,3 +1,5 @@
+import { toCanonicalMindikCode } from './mindikChainRegistry.js';
+
 /**
  * Master Data Preset Dokumen Mindik Satreskrim
  * Berisi konfigurasi default fields, tipe data, status wajib, dan placeholder resmi.
@@ -537,32 +539,11 @@ export const MINDIK_PRESET_TITLES = {
 };
 
 /**
- * Normalisasi kode preset (case-insensitive & pemetaan alias populer)
+ * Normalisasi kode preset menggunakan Single Source of Truth toCanonicalMindikCode
  */
-export function normalizePresetCode(code) {
+export function normalizePresetCode(code, title = '') {
   if (!code || typeof code !== 'string') return '';
-  const clean = code.trim().replace(/[{}]/g, '').replace(/\s+/g, '_').toUpperCase();
-
-  // Dukungan alias pemetaan
-  const ALIASES = {
-    'SP_SIDIK': 'SPRIN_SIDIK',
-    'SPRIN_GAS_SIDIK': 'SPGAS_SIDIK',
-    'SP_GAS_SIDIK': 'SPGAS_SIDIK',
-    'SPRIN_TUGAS_PENYIDIKAN': 'SPGAS_SIDIK',
-    'SP_TAP_TSK': 'TAP_TSK',
-    'SPDP': 'SPDP_TSK',
-    'BA_KAP': 'SPRIN_KAP_DAN_BA',
-    'SPRIN_KAP': 'SPRIN_KAP_DAN_BA',
-    'BA_HAN': 'SPRIN_HAN_DAN_BA',
-    'SPRIN_HAN': 'SPRIN_HAN_DAN_BA',
-    'SAMPUL_BP': 'SAMPUL_BERKAS_PERKARA',
-    'PENGANTAR_TAHAP_1': 'PENGANTAR_BP_TAHAP1',
-    'PENGANTAR_TAHAP1': 'PENGANTAR_BP_TAHAP1',
-    'PENGANTAR_P19': 'PENGANTAR_BP_KEMBALI_P19',
-    'PENGANTAR_TAHAP_2': 'PENGANTAR_TAHAP2',
-  };
-
-  return ALIASES[clean] || clean;
+  return toCanonicalMindikCode(code, title);
 }
 
 /**

@@ -161,7 +161,7 @@ export default function EvidenceQrSyncModal({
         hash_sha256: data.hash_sha256 || Array.from(crypto.getRandomValues(new Uint8Array(16)))
           .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
         uploaded_at: data.uploaded_at || data.timestamp || new Date().toISOString(),
-        diunggah_pada: data.uploaded_at || data.timestamp || new Date().toISOString(),
+        created_at: data.created_at || data.uploaded_at || data.timestamp || new Date().toISOString(),
         isNew: true
       };
 
@@ -311,7 +311,7 @@ export default function EvidenceQrSyncModal({
         keterangan: 'Foto barang bukti fisik diambil via pemindaian kamera HP penyidik',
         hash_sha256: Array.from(crypto.getRandomValues(new Uint8Array(16)))
           .map(b => b.toString(16).padStart(2, '0')).join('') + '...',
-        diunggah_pada: new Date().toISOString()
+        created_at: new Date().toISOString()
       };
 
       const finalEvidence = {

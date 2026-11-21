@@ -43,7 +43,9 @@ export const sanitizeEvidenceList = (list) => {
       const nama = typeof item.nama_berkas === 'string' ? item.nama_berkas : (typeof item.nama === 'string' ? item.nama : (typeof item.name === 'string' ? item.name : (typeof item.nama_file === 'string' ? item.nama_file : 'Berkas Bukti')));
       const tipe = typeof item.tipe === 'string' ? item.tipe : (typeof item.type === 'string' ? item.type : (typeof item.mime_type === 'string' ? item.mime_type : 'image/jpeg'));
       const ukuran = typeof item.ukuran === 'number' ? item.ukuran : (typeof item.size === 'number' ? item.size : 0);
-      const uploaded_at = typeof item.uploaded_at === 'string' ? item.uploaded_at : (typeof item.diunggah_pada === 'string' ? item.diunggah_pada : new Date().toISOString());
+      const created_at = typeof item.created_at === 'string'
+        ? item.created_at
+        : (typeof item.uploaded_at === 'string' ? item.uploaded_at : (typeof item.diunggah_pada === 'string' ? item.diunggah_pada : new Date().toISOString()));
 
       return {
         id: typeof item.id === 'string' || typeof item.id === 'number' ? String(item.id) : `bb_${Date.now()}_${index}`,
@@ -62,8 +64,8 @@ export const sanitizeEvidenceList = (list) => {
         file_size_formatted: item.file_size_formatted || `${(ukuran / 1024).toFixed(0)} KB`,
         kategori_bukti: item.kategori_bukti || (nama.toLowerCase().endsWith('.pdf') ? 'DOKUMEN_PDF' : 'OBJEK_FISIK_JPG'),
         keterangan: typeof item.keterangan === 'string' ? item.keterangan : '',
-        uploaded_at: uploaded_at,
-        diunggah_pada: uploaded_at
+        uploaded_at: created_at,
+        created_at: created_at
       };
     });
 };
@@ -258,7 +260,7 @@ export async function fetchDumasRecords() {
                 .from('lampiran_barang_bukti')
                 .select('*')
                 .eq('laporan_id', d.id)
-                .order('diunggah_pada', { ascending: true });
+                .order('created_at', { ascending: true });
               bbRows = data || [];
             }
 
@@ -339,7 +341,7 @@ export async function saveDumasRecord(newRecord, evidenceFiles = []) {
         file_size_formatted: file.size ? `${(file.size / 1024).toFixed(0)} KB` : '150 KB',
         mime_type: file.type || file.mime_type || (file.name?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
         hash_sha256: file.hash_sha256 || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
-        diunggah_pada: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         file_url: r2Url,
         keterangan: file.keterangan || 'Lampiran bukti pengaduan terunggah',
       };
@@ -809,7 +811,7 @@ export async function addEvidenceToDumas(dumasId, evidenceInput, nomorRegister =
     file_size_formatted: evidenceInput.file_size_formatted || (evidenceInput.size ? `${(evidenceInput.size / 1024).toFixed(0)} KB` : '150 KB'),
     mime_type: evidenceInput.type || evidenceInput.mime_type || (isPdf ? 'application/pdf' : 'image/jpeg'),
     hash_sha256: evidenceInput.hash_sha256 || randomHash,
-    diunggah_pada: new Date().toISOString(),
+    created_at: new Date().toISOString(),
     keterangan: evidenceInput.keterangan || 'Lampiran bukti digital perkara pengaduan',
   };
 

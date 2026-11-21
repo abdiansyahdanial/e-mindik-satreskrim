@@ -83,7 +83,7 @@ export default function DumasDetailView({
           .from('lampiran_barang_bukti')
           .select('*')
           .eq('laporan_id', idPerkara)
-          .order('diunggah_pada', { ascending: true });
+          .order('created_at', { ascending: true });
 
         if (!bbErr && Array.isArray(bbData)) {
           fetchedLpRef.current = idPerkara; // Tandai sudah diambil agar tidak loop
@@ -100,7 +100,7 @@ export default function DumasDetailView({
             file_size_bytes: row.file_size_bytes,
             keterangan: row.keterangan,
             hash_sha256: row.hash_sha256,
-            diunggah_pada: row.diunggah_pada
+            created_at: row.created_at
           }));
 
           setPerkara((prev) => {
@@ -218,7 +218,7 @@ export default function DumasDetailView({
       return;
     }
 
-    const content = `BERKAS RESMI SATRESKRIM POLRES KOLAKA TIMUR\nFile: ${fileName}\nNomor LP: ${perkara?.nomor_lp || '-'}\nHash: ${bb?.hash_sha256 || 'SHA-256 Valid'}\nDiunggah: ${bb?.diunggah_pada || new Date().toISOString()}`;
+    const content = `BERKAS RESMI SATRESKRIM POLRES KOLAKA TIMUR\nFile: ${fileName}\nNomor LP: ${perkara?.nomor_lp || '-'}\nHash: ${bb?.hash_sha256 || 'SHA-256 Valid'}\nDiunggah: ${bb?.created_at || new Date().toISOString()}`;
     const blob = new Blob([content], { type: bb?.mime_type || 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1232,7 +1232,7 @@ export default function DumasDetailView({
                       <div className="flex justify-between" style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Diunggah:</span>
                         <span className="text-[#F8FAFC]">
-                          {bb?.diunggah_pada ? new Date(bb.diunggah_pada).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '14 Sep 2026'}
+                          {bb?.created_at ? new Date(bb.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '14 Sep 2026'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1656,7 +1656,8 @@ export default function DumasDetailView({
     file_size_bytes BIGINT,
     mime_type VARCHAR(60),
     hash_sha256 VARCHAR(64),
-    diunggah_pada TIMESTAMPTZ DEFAULT NOW()
+    keterangan TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );`}
                 </pre>
               </div>

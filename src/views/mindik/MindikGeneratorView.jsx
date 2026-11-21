@@ -38,7 +38,17 @@ import {
   normalizeTemplateCode,
   extractArchivedDocNumberAndDate
 } from '../../services/mindikGenerator';
-import { MINDIK_PRESETS, MINDIK_CATEGORY_TABS, MINDIK_CODE_TO_CATEGORY } from '../../constants/mindikPresets';
+import { 
+  MINDIK_PRESETS, 
+  MINDIK_CATEGORY_TABS, 
+  MINDIK_CODE_TO_CATEGORY 
+} from '../../constants/mindikPresets';
+import {
+  toCanonicalMindikCode,
+  isValidOfficialDocNumber,
+  resolveLatestArchiveDoc
+} from '../../constants/mindikChainRegistry';
+import { toIsoDateString } from '../../services/mindikGenerator';
 
 export default function MindikGeneratorView({
   cases = [],
@@ -89,6 +99,12 @@ export default function MindikGeneratorView({
   const [feedbackNotice, setFeedbackNotice] = useState(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
+  // Refs anti race-condition & deduplikasi pemanggilan buildUniversalCaseContext
+  const caseFetchSeqRef = useRef(0);
+  const docsLoadedCaseIdRef = useRef('');
+  const lastTemplateKeyRef = useRef('');
+  const chainedContextCacheRef = useRef({ key: '', scalar: null });
+
   // 1. Muat Template dari Supabase `document_templates`
   const fetchTemplates = async () => {
     setIsLoadingTemplates(true);
@@ -119,20 +135,32 @@ export default function MindikGeneratorView({
   }, []);
 
   // 2. ISOLASI TOTAL BERBASIS LP:
-  // Setiap selectedCaseId berganti:
-  // - Kosongkan & set form state awal (tanggal hari ini secara real-time)
-  // - Muat arsip dokumen perkara dari Supabase documents via query multi-identifier
+  // Setiap selectedCaseId / currentCase berganti:
+  // - Reset seluruh state terkait perkara sebelumnya secara sinkron (anti stale state)
+  // - Batalkan hasil async perkara lama menggunakan caseFetchSeqRef
+  // - Muat arsip dokumen perkara murni dari tabel resmi Supabase `public.documents`
   // - Muat tersangka perkara
   useEffect(() => {
+    const fetchSeq = ++caseFetchSeqRef.current;
+    docsLoadedCaseIdRef.current = '';
+    chainedContextCacheRef.current = { key: '', scalar: null };
+
+    // Reset sinkron agar state perkara lama tidak pernah bocor ke perkara baru
+    setActiveCaseDocs([]);
+    setCaseSuspects([]);
+    setSelectedSuspectId('');
+    setSelectedTargetSubjectKeys([]);
+    setIsSaved(false);
+    setFeedbackNotice(null);
+
     if (!currentCase) {
-      setActiveCaseDocs([]);
-      setCaseSuspects([]);
+      setFormValues({});
       return;
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // Reset Form Values dengan tanggal hari ini & nomor LP aktif
+    // Reset Form Values dengan tanggal ISO hari ini & nomor LP aktif
     setFormValues({
       TANGGAL_SURAT: todayStr,
       tanggal_surat: todayStr,
@@ -156,84 +184,60 @@ export default function MindikGeneratorView({
       PENYIDIK_JABATAN: currentCase.penyidik_1_jabatan || '',
       NO_SPRIN_SIDIK: currentCase.no_sprin_sidik || '',
       TGL_SPRIN_SIDIK: currentCase.tgl_sprin_sidik || '',
-      NO_SPRIN_GAS_SIDIK: currentCase.no_sp_gas_sidik || currentCase.no_sprin_gas_sidik || '',
-      TGL_SPRIN_GAS_SIDIK: currentCase.tgl_sp_gas_sidik || currentCase.tgl_sprin_gas_sidik || '',
+      NO_SPRIN_GAS_SIDIK: currentCase.no_sp_gas_sidik || currentCase.no_sprin_gas_sidik || currentCase.references?.no_spgas_sidik || '',
+      TGL_SPRIN_GAS_SIDIK: currentCase.tgl_sp_gas_sidik || currentCase.tgl_sprin_gas_sidik || currentCase.references?.tgl_spgas_sidik || '',
       MASA_BERLAKU: todayStr,
     });
 
-    setIsSaved(false);
-    setFeedbackNotice(null);
-
-    // Muat Arsip Dokumen khusus LP ini
+    // Muat Arsip Dokumen murni dari tabel resmi public.documents (diurutkan created_at ASC)
     const fetchActiveCaseDocs = async (caseId) => {
       if (!caseId) {
-        setActiveCaseDocs([]);
+        if (caseFetchSeqRef.current === fetchSeq) setActiveCaseDocs([]);
         return;
       }
       setIsLoadingDocs(true);
       try {
-        const [resCaseDocs, resDocs, resGenDocs, resArsip] = await Promise.allSettled([
-          supabase.from('case_documents').select('*').eq('case_id', caseId),
-          supabase.from('documents').select('*').eq('case_id', caseId),
-          supabase.from('case_generated_documents').select('*').eq('case_id', caseId),
-          supabase.from('arsip_dokumen').select('*').eq('case_id', caseId)
-        ]);
+        const { data, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('case_id', String(caseId).trim())
+          .order('created_at', { ascending: true });
 
-        let combined = [];
-        if (resCaseDocs.value?.data) combined.push(...resCaseDocs.value.data);
-        if (resDocs.value?.data) combined.push(...resDocs.value.data);
-        if (resGenDocs.value?.data) combined.push(...resGenDocs.value.data);
-        if (resArsip.value?.data) combined.push(...resArsip.value.data);
+        if (error) throw error;
+        if (caseFetchSeqRef.current !== fetchSeq) return;
 
-        // Filter valid docs and remove exact duplicates based on normalized template_code
-        const uniqueDocs = [];
-        const seenCodes = new Set();
-        combined.forEach(doc => {
-           const rawCode = doc.template_code || doc.code || doc.document_type || '';
-           const rawTitle = doc.doc_title || doc.title || doc.document_name || '';
-           const actualCode = normalizeTemplateCode(rawCode, rawTitle);
-           const { docNo, rawDocDate, formattedDocDate } = extractArchivedDocNumberAndDate(doc);
-           if (actualCode && !seenCodes.has(actualCode)) {
-               seenCodes.add(actualCode);
-               uniqueDocs.push({
-                   ...doc,
-                   template_code: actualCode,
-                   doc_number: docNo,
-                   tgl_surat: rawDocDate || doc.tgl_surat || doc.created_at,
-                   formatted_date: formattedDocDate
-               });
-           }
+        const normalizedDocs = (Array.isArray(data) ? data : []).map((doc) => {
+          const rawCode = doc.template_code || doc.code || '';
+          const rawTitle = doc.doc_title || doc.title || '';
+          const canonicalCode = toCanonicalMindikCode(rawCode, rawTitle);
+          const { docNo, rawDocDate, formattedDocDate } = extractArchivedDocNumberAndDate(doc);
+          const isoTgl = toIsoDateString(rawDocDate) || rawDocDate || '';
+          return {
+            ...doc,
+            template_code: canonicalCode,
+            canonical_code: canonicalCode,
+            original_template_code: rawCode,
+            doc_number: docNo,
+            tgl_surat: isoTgl || doc.created_at,
+            formatted_date: formattedDocDate
+          };
         });
 
-        setActiveCaseDocs(uniqueDocs);
-
-        // Suntikkan langsung chainedContext dari arsip ke state formValues UI
-        // tanpa menimpa field yang sudah terisi (Anti Empty-String Overwrite)
-        try {
-          const chainedCtx = await resolveChainedMindikContext(currentCase, {}, {
-            archivedDocs: uniqueDocs,
-            personnelList: personnel
-          });
-          setFormValues(prev => {
-            const safeBase = {};
-            Object.keys(chainedCtx).forEach(k => {
-              const val = chainedCtx[k];
-              if (typeof val === 'string' || typeof val === 'number') {
-                safeBase[k] = val;
-              }
-            });
-            return mergeChainedWithForm(safeBase, prev);
-          });
-        } catch (ctxErr) {
-          console.warn('[MindikGeneratorView] Gagal resolveChainedMindikContext:', ctxErr);
-        }
+        docsLoadedCaseIdRef.current = String(caseId).trim();
+        setActiveCaseDocs(normalizedDocs);
       } catch (err) {
-        setActiveCaseDocs([]);
+        if (caseFetchSeqRef.current === fetchSeq) {
+          console.warn('[MindikGeneratorView] Gagal memuat arsip dokumen:', err?.message || err);
+          docsLoadedCaseIdRef.current = String(caseId).trim();
+          setActiveCaseDocs([]);
+        }
       } finally {
-        setIsLoadingDocs(false);
+        if (caseFetchSeqRef.current === fetchSeq) {
+          setIsLoadingDocs(false);
+        }
       }
     };
-    
+
     fetchActiveCaseDocs(currentCase?.id);
 
     // Muat Tersangka Perkara
@@ -247,13 +251,14 @@ export default function MindikGeneratorView({
           .order('created_at', { ascending: true });
 
         if (error) throw error;
+        if (caseFetchSeqRef.current !== fetchSeq) return;
         const list = data || [];
         setCaseSuspects(list);
-        if (list.length > 0 && !selectedSuspectId) {
-          setSelectedSuspectId(list[0].id);
-        }
+        setSelectedSuspectId(list.length > 0 ? list[0].id : '');
       } catch (err) {
-        console.warn('[MindikGeneratorView] Gagal memuat daftar tersangka:', err);
+        if (caseFetchSeqRef.current === fetchSeq) {
+          console.warn('[MindikGeneratorView] Gagal memuat daftar tersangka:', err);
+        }
       }
     };
 
@@ -408,18 +413,21 @@ export default function MindikGeneratorView({
     setIsSaved(false);
   };
 
-  // Ringkasan Panel Status Rantai Mindik (Deteksi Dokumen Pendahulu di Arsip + Tim Penyidik Terwarisi)
+  // Ringkasan Panel Status Rantai Mindik (Deteksi Dokumen Pendahulu Sah di Arsip + Tim Penyidik Terwarisi)
   const chainOverviewStatus = useMemo(() => {
     if (!currentCase) return { badges: [], teamCount: 0, customDocs: [] };
-    const findDoc = (matcher) => activeCaseDocs.find(d => matcher((d.template_code || '').toUpperCase(), (d.doc_title || '').toUpperCase()));
 
     const lpNo = currentCase.nomor_lp || currentCase.no_lp || '';
-    const sprinLidikDoc = findDoc((c) => c.includes('SPRIN_LIDIK'));
-    const spgasLidikDoc = findDoc((c) => c.includes('GAS_LIDIK'));
-    const sprinSidikDoc = findDoc((c) => c === 'SPRIN_SIDIK' || (c.includes('SPRIN_SIDIK') && !c.includes('GAS')));
-    const spgasSidikDoc = findDoc((c) => c.includes('GAS_SIDIK') || c.includes('TUGAS_PENYIDIKAN'));
-    const spdpDoc = findDoc((c) => c.includes('SPDP'));
-    const tapTskDoc = findDoc((c, t) => c.includes('TAP_TSK') || t.includes('PENETAPAN TERSANGKA'));
+    const sprinLidikDoc = resolveLatestArchiveDoc(activeCaseDocs, ['SPRIN_LIDIK'], true);
+    const spgasLidikDoc = resolveLatestArchiveDoc(activeCaseDocs, ['SPGAS_LIDIK'], true);
+    const sprinSidikDoc = resolveLatestArchiveDoc(activeCaseDocs, ['SPRIN_SIDIK', 'SPRIN_SIDIK_MORE_5'], false)
+      || resolveLatestArchiveDoc(activeCaseDocs, ['SPRIN_SIDIK', 'SPRIN_SIDIK_MORE_5'], true);
+    const spgasSidikDoc = resolveLatestArchiveDoc(activeCaseDocs, ['SPGAS_SIDIK', 'SPGAS_SIDIK_MORE_5'], false)
+      || resolveLatestArchiveDoc(activeCaseDocs, ['SPGAS_SIDIK', 'SPGAS_SIDIK_MORE_5'], true);
+    const spdpDoc = resolveLatestArchiveDoc(activeCaseDocs, ['SPDP_TSK', 'SPDP_MORE_1_TSK', 'SPDP_TERLAPOR', 'SPDP_LIDIK_ANON', 'SPDP_KORPORASI', 'PENGIRIMAN_KEMBALI_SPDP_P20'], false)
+      || resolveLatestArchiveDoc(activeCaseDocs, ['SPDP_TSK', 'SPDP_MORE_1_TSK', 'SPDP_TERLAPOR', 'SPDP_LIDIK_ANON', 'SPDP_KORPORASI', 'PENGIRIMAN_KEMBALI_SPDP_P20'], true);
+    const tapTskDoc = resolveLatestArchiveDoc(activeCaseDocs, ['TAP_TSK'], false)
+      || resolveLatestArchiveDoc(activeCaseDocs, ['TAP_TSK'], true);
 
     const noSprinSidik = sprinSidikDoc?.doc_number || currentCase.no_sprin_sidik || currentCase.references?.no_sprin_sidik || '';
     const noSpgasSidik = spgasSidikDoc?.doc_number || currentCase.no_sprin_gas_sidik || currentCase.references?.no_spgas_sidik || '';
@@ -437,18 +445,30 @@ export default function MindikGeneratorView({
 
     const badges = [
       { key: 'LP', label: 'LP Terdaftar', value: lpNo, ready: Boolean(lpNo), required: true },
-      ...(sprinLidikDoc ? [{ key: 'SPRIN_LIDIK', label: 'SPRIN_LIDIK', value: sprinLidikDoc.doc_number, ready: true }] : []),
-      ...(spgasLidikDoc ? [{ key: 'SPGAS_LIDIK', label: 'SPGAS_LIDIK', value: spgasLidikDoc.doc_number, ready: true }] : []),
-      { key: 'SPRIN_SIDIK', label: 'SPRIN_SIDIK', value: noSprinSidik, ready: Boolean(noSprinSidik) },
-      { key: 'SPGAS_SIDIK', label: 'SPGAS_SIDIK', value: noSpgasSidik, ready: Boolean(noSpgasSidik) },
-      { key: 'SPDP', label: 'SPDP', value: noSpdp, ready: Boolean(noSpdp) },
-      { key: 'SP_TAP_TSK', label: 'SP_TAP_TSK', value: noTapTsk, ready: Boolean(noTapTsk) },
+      ...(sprinLidikDoc ? [{ key: 'SPRIN_LIDIK', label: 'SPRIN_LIDIK', value: sprinLidikDoc.doc_number, ready: isValidOfficialDocNumber(sprinLidikDoc.doc_number) }] : []),
+      ...(spgasLidikDoc ? [{ key: 'SPGAS_LIDIK', label: 'SPGAS_LIDIK', value: spgasLidikDoc.doc_number, ready: isValidOfficialDocNumber(spgasLidikDoc.doc_number) }] : []),
+      { key: 'SPRIN_SIDIK', label: 'SPRIN_SIDIK', value: noSprinSidik, ready: isValidOfficialDocNumber(noSprinSidik) },
+      { key: 'SPGAS_SIDIK', label: 'SPGAS_SIDIK', value: noSpgasSidik, ready: isValidOfficialDocNumber(noSpgasSidik) },
+      { key: 'SPDP', label: 'SPDP', value: noSpdp, ready: isValidOfficialDocNumber(noSpdp) },
+      { key: 'TAP_TSK', label: 'TAP_TSK', value: noTapTsk, ready: isValidOfficialDocNumber(noTapTsk) },
     ];
 
-    const coreKeys = new Set(['SPRIN_LIDIK', 'SPGAS_LIDIK', 'SPRIN_SIDIK', 'SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SPDP', 'SP_TAP_TSK', 'TAP_TSK']);
-    const customDocs = activeCaseDocs.filter(d => !coreKeys.has((d.template_code || '').toUpperCase()));
+    const coreKeys = new Set([
+      'SPRIN_LIDIK', 'SPGAS_LIDIK',
+      'SPRIN_SIDIK', 'SPRIN_SIDIK_MORE_5',
+      'SPGAS_SIDIK', 'SPGAS_SIDIK_MORE_5',
+      'SPDP_TSK', 'SPDP_MORE_1_TSK', 'SPDP_TERLAPOR', 'SPDP_LIDIK_ANON', 'SPDP_KORPORASI', 'PENGIRIMAN_KEMBALI_SPDP_P20',
+      'TAP_TSK'
+    ]);
+    const customDocsMap = new Map();
+    activeCaseDocs.forEach((d) => {
+      const cCode = toCanonicalMindikCode(d.template_code || d.code, d.doc_title);
+      if (!coreKeys.has(cCode)) {
+        customDocsMap.set(cCode, { ...d, template_code: cCode });
+      }
+    });
 
-    return { badges, teamCount, customDocs };
+    return { badges, teamCount, customDocs: Array.from(customDocsMap.values()) };
   }, [currentCase, activeCaseDocs, caseSuspects]);
 
   // Update nilai profil tersangka ke formValues jika suspect berganti
@@ -479,28 +499,40 @@ export default function MindikGeneratorView({
     }));
   }, [activeSuspect]);
 
-  // Template yang aktif dipilih saat ini
+  // Template yang aktif dipilih saat ini (pencocokan persis lalu fallback kode kanonik)
   const currentTemplate = useMemo(() => {
     if (!selectedTemplateCode) return null;
-    // Cari di data yang di-fetch dari Supabase
-    const found = (allTemplates || []).find(t => 
-      (t.code || t.template_code || '').toUpperCase().trim() === selectedTemplateCode.toUpperCase().trim()
+    const rawUpper = selectedTemplateCode.toUpperCase().trim();
+    const targetCanonical = toCanonicalMindikCode(rawUpper);
+    const exact = (allTemplates || []).find(t =>
+      (t.code || t.template_code || '').toUpperCase().trim() === rawUpper
     );
-    return found || null;
+    if (exact) return exact;
+    return (allTemplates || []).find(t =>
+      toCanonicalMindikCode(t.code || t.template_code || '', t.title || t.name || '') === targetCanonical
+    ) || null;
   }, [selectedTemplateCode, allTemplates]);
+
+  // Sidik jari deterministik arsip perkara aktif agar efek sinkronisasi tidak bergantung pada .length saja
+  const activeCaseDocsSignature = useMemo(() => {
+    return (activeCaseDocs || [])
+      .map(d => `${d.id || ''}:${toCanonicalMindikCode(d.template_code || d.code, d.doc_title)}:${d.doc_number || ''}`)
+      .join('|');
+  }, [activeCaseDocs]);
 
   // Helper filter dokumen tersangka
   const requiresSuspectTarget = useMemo(() => {
     if (!currentTemplate) return false;
-    const code = (currentTemplate.code || currentTemplate.template_code || '').toUpperCase().trim();
+    const rawCode = (currentTemplate.code || currentTemplate.template_code || '').toUpperCase().trim();
+    const code = toCanonicalMindikCode(rawCode, currentTemplate.title || currentTemplate.name || '');
     const title = (currentTemplate.title || currentTemplate.name || '').toUpperCase().trim();
 
-    if (code.includes('SPRIN_SIDIK') || code.includes('SP_SIDIK') || code.includes('SPGAS') || code.includes('SP_GAS')) return false;
+    if (code.startsWith('SPRIN_SIDIK') || code.startsWith('SPGAS_SIDIK')) return false;
     if (title.includes('PERINTAH PENYIDIKAN') || title.includes('TUGAS PENYIDIKAN')) return false;
 
     return (
+      code === 'TAP_TSK' ||
       code.includes('TAP_TSK') ||
-      code.includes('SP_TAP') ||
       code.startsWith('SPDP') ||
       code.includes('KAP') ||
       code.includes('HAN') ||
@@ -512,37 +544,118 @@ export default function MindikGeneratorView({
     );
   }, [currentTemplate]);
 
-  // Sinkronisasi form saat currentTemplate, currentCase, atau activeCaseDocs berganti
-  // sekaligus menyuntikkan langsung hasil chainedContext ke state formValues UI
+  // Sinkronisasi form saat currentTemplate, currentCase, atau activeCaseDocsSignature berganti
+  // sekaligus menyuntikkan langsung hasil chainedContext ke state formValues UI dengan menjaga tanggal ISO
   useEffect(() => {
     if (!currentTemplate || !currentCase) return;
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const upperCode = normalizeTemplateCode(
-      currentTemplate.code || currentTemplate.template_code || '',
+    const rawUpperCode = (currentTemplate.code || currentTemplate.template_code || '').toUpperCase().trim();
+    const canonicalCode = toCanonicalMindikCode(
+      rawUpperCode,
       currentTemplate.title || currentTemplate.name || ''
     );
-    const rawUpperCode = (currentTemplate.code || currentTemplate.template_code || '').toUpperCase().trim();
+    const tplCaseKey = `${currentCase.id}::${canonicalCode}::${currentTemplate.id || rawUpperCode}`;
+    const isTplOrCaseChanged = lastTemplateKeyRef.current !== tplCaseKey;
+    lastTemplateKeyRef.current = tplCaseKey;
 
-    // Cek apakah jenis dokumen ini SUDAH PERNAH disimpan untuk perkara (case_id) ini:
-    const existingDoc = activeCaseDocs.find(
-      d => d.template_code === upperCode || d.template_code === rawUpperCode
-    );
-    let targetNumber = '';
+    // Cari arsip sah terbaru untuk template tujuan di activeCaseDocs (berdasarkan toCanonicalMindikCode)
+    const existingValidDoc = resolveLatestArchiveDoc(activeCaseDocs, [canonicalCode, rawUpperCode], false);
+    const existingAnyDoc = existingValidDoc || resolveLatestArchiveDoc(activeCaseDocs, [canonicalCode, rawUpperCode], true);
+    const preset = MINDIK_PRESETS[canonicalCode] || MINDIK_PRESETS[rawUpperCode] || [];
+    const presetDefaultNo = preset.find(f => f.tag === 'NOMOR_SURAT')?.default || '';
 
-    if (existingDoc && existingDoc.doc_number) {
-      targetNumber = existingDoc.doc_number;
-    } else {
-      const preset = MINDIK_PRESETS[rawUpperCode] || MINDIK_PRESETS[upperCode] || [];
-      const defaultField = preset.find(f => f.tag === 'NOMOR_SURAT');
-      targetNumber = defaultField?.default || '';
+    const targetNumber = (existingValidDoc && existingValidDoc.doc_number)
+      ? existingValidDoc.doc_number
+      : ((existingAnyDoc && existingAnyDoc.doc_number && isValidOfficialDocNumber(existingAnyDoc.doc_number))
+          ? existingAnyDoc.doc_number
+          : (presetDefaultNo || (existingAnyDoc?.doc_number || '')));
+
+    const cacheKey = `${currentCase.id}::${activeCaseDocsSignature}`;
+    let isCancelled = false;
+
+    const applyChainedToForm = (scalarChained) => {
+      // Hapus key generik surat aktif dari konteks rantai agar tidak pernah menimpa NOMOR_SURAT template tujuan
+      const cleanScalarChained = { ...(scalarChained || {}) };
+      delete cleanScalarChained.NOMOR_SURAT;
+      delete cleanScalarChained.nomor_surat;
+      delete cleanScalarChained.NO_SURAT;
+      delete cleanScalarChained.no_surat;
+      delete cleanScalarChained.DOC_NO;
+      delete cleanScalarChained.doc_no;
+      delete cleanScalarChained.NOMOR_SURAT_HEADER;
+      delete cleanScalarChained.nomor_surat_header;
+
+      setFormValues(prev => {
+        const isNewTplState = prev._activeTemplateKey !== tplCaseKey || isTplOrCaseChanged;
+        // Gabungkan chainedCtx sebagai basis lalu pertahankan input non-empty dari prev
+        // Tanpa mengonversi tanggal ISO menjadi teks Indonesia di state form UI
+        const nextValues = mergeChainedWithForm(cleanScalarChained, prev, { formatDatesForDocx: false });
+        nextValues._activeTemplateKey = tplCaseKey;
+
+        // Pastikan TANGGAL_SURAT selalu valid format ISO YYYY-MM-DD
+        const existingArchivedDate = existingAnyDoc ? toIsoDateString(existingAnyDoc.tgl_surat) : '';
+        const currentIsoDate = toIsoDateString(nextValues.TANGGAL_SURAT);
+        const finalIsoDate = (isNewTplState && existingArchivedDate)
+          ? existingArchivedDate
+          : (currentIsoDate || existingArchivedDate || todayStr);
+
+        nextValues.TANGGAL_SURAT = finalIsoDate;
+        nextValues.tanggal_surat = finalIsoDate;
+        nextValues.DOC_DATE = finalIsoDate;
+        nextValues.doc_date = finalIsoDate;
+
+        // Reset terkontrol NOMOR_SURAT saat template/perkara berganti,
+        // atau perbarui jika arsip sah baru dimuat & input saat ini masih kosong/placeholder.
+        if (
+          isNewTplState ||
+          (!isValidOfficialDocNumber(prev.NOMOR_SURAT) && isValidOfficialDocNumber(targetNumber))
+        ) {
+          nextValues.NOMOR_SURAT = targetNumber;
+          nextValues.nomor_surat = targetNumber;
+          nextValues.DOC_NO = targetNumber;
+          nextValues.doc_no = targetNumber;
+          nextValues.NO_SURAT = targetNumber;
+          nextValues.no_surat = targetNumber;
+        }
+
+        // Inisialisasi default field dinamis dari template jika belum terisi dari chainedCtx
+        if (Array.isArray(currentTemplate.dynamic_fields)) {
+          currentTemplate.dynamic_fields.forEach(f => {
+            const k = f.field_key || f.key;
+            if (k && !['NOMOR_SURAT', 'DOC_NO', 'NO_SURAT'].includes(k)) {
+              if ((nextValues[k] === undefined || nextValues[k] === '') && f.default_value !== undefined && String(f.default_value).trim() !== '') {
+                nextValues[k] = f.field_type === 'date' ? toIsoDateString(f.default_value) : f.default_value;
+              } else if (f.field_type === 'date' && nextValues[k]) {
+                const converted = toIsoDateString(nextValues[k]);
+                if (converted) nextValues[k] = converted;
+              }
+            }
+          });
+        }
+
+        return nextValues;
+      });
+    };
+
+    // Tunggu arsip dokumen perkara aktif selesai dimuat sebelum memanggil buildUniversalCaseContext
+    // agar tidak terjadi pemanggilan ganda saat inisialisasi awal.
+    if (docsLoadedCaseIdRef.current !== String(currentCase.id).trim()) {
+      applyChainedToForm({});
+      return;
     }
 
-    let isCancelled = false;
+    // Jika cache untuk (caseId + activeCaseDocsSignature) sudah tersedia, gunakan langsung tanpa query ulang
+    if (chainedContextCacheRef.current.key === cacheKey && chainedContextCacheRef.current.scalar) {
+      applyChainedToForm(chainedContextCacheRef.current.scalar);
+      return;
+    }
+
     resolveChainedMindikContext(currentCase, {}, {
       archivedDocs: activeCaseDocs,
       suspectsList: caseSuspects,
-      personnelList: personnel
+      personnelList: personnel,
+      forFormUi: true
     }).then((chainedCtx) => {
       if (isCancelled) return;
       const scalarChained = {};
@@ -552,39 +665,8 @@ export default function MindikGeneratorView({
           scalarChained[k] = val;
         }
       });
-
-      setFormValues(prev => {
-        // Gabungkan chainedCtx sebagai basis lalu pertahankan input non-empty dari prev
-        const nextValues = mergeChainedWithForm(scalarChained, prev);
-
-        // Pasang tanggal surat hari ini jika belum terisi
-        if (!nextValues.TANGGAL_SURAT) nextValues.TANGGAL_SURAT = todayStr;
-        if (!nextValues.tanggal_surat) nextValues.tanggal_surat = todayStr;
-        if (!nextValues.DOC_DATE) nextValues.DOC_DATE = todayStr;
-
-        // SET NOMOR SURAT OTOMATIS SAAT TEMPLATE BERGANTI
-        nextValues.NOMOR_SURAT = targetNumber;
-        nextValues.DOC_NO = targetNumber;
-        nextValues.NO_SURAT = targetNumber;
-
-        // Inisialisasi default field dinamis dari template jika belum terisi dari chainedCtx
-        if (Array.isArray(currentTemplate.dynamic_fields)) {
-          currentTemplate.dynamic_fields.forEach(f => {
-            const k = f.field_key || f.key;
-            if (
-              k &&
-              !['NOMOR_SURAT', 'DOC_NO', 'NO_SURAT'].includes(k) &&
-              (nextValues[k] === undefined || nextValues[k] === '') &&
-              f.default_value !== undefined &&
-              String(f.default_value).trim() !== ''
-            ) {
-              nextValues[k] = f.default_value;
-            }
-          });
-        }
-
-        return nextValues;
-      });
+      chainedContextCacheRef.current = { key: cacheKey, scalar: scalarChained };
+      applyChainedToForm(scalarChained);
     }).catch((err) => {
       console.warn('[MindikGeneratorView] Gagal menyuntikkan chainedContext saat ganti template:', err);
     });
@@ -592,7 +674,7 @@ export default function MindikGeneratorView({
     return () => {
       isCancelled = true;
     };
-  }, [currentTemplate?.id, currentTemplate?.code, currentCase?.id, activeCaseDocs.length]);
+  }, [currentTemplate?.id, currentTemplate?.code, currentCase?.id, activeCaseDocsSignature]);
 
   // Listener tombol Esc untuk menutup modal preview
   useEffect(() => {
@@ -617,8 +699,9 @@ export default function MindikGeneratorView({
   // Saring Daftar Template Berdasarkan Filter & Pencarian
   const filteredTemplates = useMemo(() => {
     return allTemplates.filter((template) => {
-      const tplCode = (template.code || template.template_code || template.id || '').toUpperCase();
-      const mappedCategory = MINDIK_CODE_TO_CATEGORY[tplCode] || template.category;
+      const rawTplCode = (template.code || template.template_code || template.id || '').toUpperCase();
+      const canonicalCode = toCanonicalMindikCode(rawTplCode, template.title || template.name || '');
+      const mappedCategory = MINDIK_CODE_TO_CATEGORY[canonicalCode] || MINDIK_CODE_TO_CATEGORY[rawTplCode] || template.category;
 
       // 1. Cek Kategori
       const matchesCategory = selectedCategory === 'ALL' || mappedCategory === selectedCategory;
@@ -626,9 +709,10 @@ export default function MindikGeneratorView({
       // 2. Cek Pencarian
       const query = templateSearch.toLowerCase();
       const title = (template.title || template.name || '').toLowerCase();
-      const matchesSearch = !query || 
-        title.includes(query) || 
-        tplCode.toLowerCase().includes(query);
+      const matchesSearch = !query ||
+        title.includes(query) ||
+        rawTplCode.toLowerCase().includes(query) ||
+        canonicalCode.toLowerCase().includes(query);
 
       return matchesCategory && matchesSearch;
     });
@@ -636,10 +720,20 @@ export default function MindikGeneratorView({
 
   // Handle Input Perubahan Field Form
   const handleInputChange = (key, value) => {
-    setFormValues(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setFormValues(prev => {
+      const next = {
+        ...prev,
+        [key]: value
+      };
+      if (key === 'NOMOR_SURAT') {
+        next.nomor_surat = value;
+        next.DOC_NO = value;
+        next.doc_no = value;
+        next.NO_SURAT = value;
+        next.no_surat = value;
+      }
+      return next;
+    });
     setIsSaved(false);
   };
 
@@ -651,20 +745,20 @@ export default function MindikGeneratorView({
 
     try {
       const docNo = formValues.NOMOR_SURAT || formValues.doc_no || formValues.NO_SURAT || '-';
-      const docDate = formValues.TANGGAL_SURAT || formValues.doc_date || new Date().toISOString().split('T')[0];
+      const rawDocDate = formValues.TANGGAL_SURAT || formValues.doc_date || new Date().toISOString().split('T')[0];
+      const docDate = toIsoDateString(rawDocDate) || new Date().toISOString().split('T')[0];
       const tplCode = currentTemplate.code || currentTemplate.template_code || 'MINDIK';
       const tplTitle = currentTemplate.title || currentTemplate.name || 'Dokumen Mindik';
+      const canonicalCode = toCanonicalMindikCode(tplCode, tplTitle);
 
       // =========================================================
-      // AUTO-PROMOTE & AUTO-UPDATE DATABASE TERSANGKA (S.TAP TSK)
+      // AUTO-PROMOTE & AUTO-UPDATE DATABASE TERSANGKA (TAP_TSK)
       // =========================================================
-      const isTapTsk = tplCode.toUpperCase().includes('TAP_TSK') || tplTitle.toUpperCase().includes('PENETAPAN TERSANGKA');
+      const isTapTsk = canonicalCode === 'TAP_TSK';
 
       if (isTapTsk) {
         try {
-          const cleanDate = docDate.includes('-') && docDate.split('-')[0].length === 4
-            ? docDate
-            : new Date().toISOString().split('T')[0];
+          const cleanDate = docDate;
 
           const targetSubjectsToPromote = selectedTargetSubjects.length > 0
             ? selectedTargetSubjects
@@ -756,83 +850,114 @@ export default function MindikGeneratorView({
       }
       // =========================================================
 
-      const payload = {
+      const chainSnapshot = {};
+      (chainOverviewStatus?.badges || []).forEach((b) => {
+        if (b.ready && b.value) {
+          chainSnapshot[b.key] = b.value;
+        }
+      });
+
+      const suspectSnapshot = (caseSuspects && caseSuspects.length > 0)
+        ? caseSuspects
+        : (activeSuspect ? [activeSuspect] : null);
+
+      const dbDocumentPayload = {
         id: crypto.randomUUID(),
-        case_id: currentCase.id,
-        nomor_lp: currentCase.nomor_lp || currentCase.no_lp || '',
-        template_code: tplCode,
-        document_type: currentTemplate.category || 'SURAT PERINTAH',
-        document_name: tplTitle,
-        title: tplTitle,
+        case_id: String(currentCase.id),
+        template_id: currentTemplate.id ? String(currentTemplate.id) : null,
+        template_code: canonicalCode,
         doc_title: tplTitle,
-        document_number: docNo,
         doc_number: docNo,
-        nomor_surat: docNo,
-        document_date: docDate,
-        doc_date: docDate,
-        tanggal_surat: docDate,
-        metadata: formValues,
-        meta_values: formValues,
-        suspect_data: (caseSuspects && caseSuspects.length > 0) 
-                     ? JSON.stringify(caseSuspects) 
-                     : (activeSuspect ? JSON.stringify(activeSuspect) : null),
+        meta_values: {
+          ...formValues,
+          NOMOR_SURAT: docNo,
+          TANGGAL_SURAT: docDate,
+          tgl_surat: docDate,
+          nomor_lp: currentCase.nomor_lp || currentCase.no_lp || '',
+          canonical_code: canonicalCode,
+          original_template_code: tplCode,
+          chain_snapshot: chainSnapshot,
+          suspect_data: suspectSnapshot
+        },
+        file_url: null,
+        storage_path: null,
         created_at: new Date().toISOString()
+      };
+
+      const hydratedDocForUi = {
+        ...dbDocumentPayload,
+        tgl_surat: docDate,
+        nomor_lp: currentCase.nomor_lp || currentCase.no_lp || ''
       };
 
       let savedDoc = null;
       try {
-        const { data, error } = await supabase.from('documents').insert([payload]).select();
+        const { data, error } = await supabase.from('documents').insert([dbDocumentPayload]).select();
         if (error) {
           console.warn('[MindikGeneratorView] Gagal simpan ke documents:', error.message);
         } else if (data && data[0]) {
-          savedDoc = data[0];
-          setActiveCaseDocs(prev => [savedDoc, ...prev]);
+          savedDoc = {
+            ...data[0],
+            template_code: toCanonicalMindikCode(data[0].template_code, data[0].doc_title),
+            tgl_surat: data[0].meta_values?.tgl_surat || docDate,
+            nomor_lp: data[0].meta_values?.nomor_lp || currentCase.nomor_lp || currentCase.no_lp || ''
+          };
+          setActiveCaseDocs(prev => [...prev, savedDoc]);
         }
       } catch (errCaseDoc) {
         console.warn('[MindikGeneratorView] Exception saat simpan ke documents:', errCaseDoc?.message || errCaseDoc);
       }
 
-      // Pastikan fallback array selalu menangkap meskipun insert gagal
+      // Fallback UI state jika insert Supabase mengalami kendala koneksi
       if (!savedDoc) {
-        setActiveCaseDocs(prev => [payload, ...prev]);
+        setActiveCaseDocs(prev => [...prev, hydratedDocForUi]);
       }
 
-      // Update Rujukan Nomor Induk Perkara jika Dokumen adalah Gerbang Utama
-      const templateCode = tplCode.toUpperCase();
-      const existingRefs = currentCase.references || {};
-      
-      let refKey = '';
-      if (templateCode === 'SPRIN_SIDIK' || templateCode === 'SP_SIDIK') refKey = 'no_sprin_sidik';
-      if (templateCode === 'SPGAS_SIDIK' || templateCode === 'SP_GAS_SIDIK') refKey = 'no_spgas_sidik';
-
+      // Update Rujukan di kolom JSONB `references` & kolom resmi DDL `public.cases`
+      const existingRefs = (currentCase.references && typeof currentCase.references === 'object') ? currentCase.references : {};
       const updatedRefs = {
         ...existingRefs,
-        ...(refKey ? { [refKey]: docNo } : {})
+        [`no_${canonicalCode.toLowerCase()}`]: docNo,
+        [`tgl_${canonicalCode.toLowerCase()}`]: docDate
       };
 
-      // Tambahan agar kunci cadangan juga diset
-      if (templateCode === 'SPGAS_SIDIK' || templateCode === 'SP_GAS_SIDIK') {
+      if (canonicalCode === 'SPRIN_SIDIK' || canonicalCode === 'SPRIN_SIDIK_MORE_5') {
+        updatedRefs.no_sprin_sidik = docNo;
+        updatedRefs.tgl_sprin_sidik = docDate;
+      } else if (canonicalCode === 'SPGAS_SIDIK' || canonicalCode === 'SPGAS_SIDIK_MORE_5') {
+        updatedRefs.spgas_sidik = docNo;
+        updatedRefs.no_spgas_sidik = docNo;
         updatedRefs.no_sp_gas_sidik = docNo;
         updatedRefs.no_sprin_gas_sidik = docNo;
-      } else if (!refKey) {
-        updatedRefs[`no_${templateCode.toLowerCase()}`] = docNo;
+        updatedRefs.tgl_sprin_gas_sidik = docDate;
+      } else if (canonicalCode === 'TAP_TSK') {
+        updatedRefs.tap_tsk = docNo;
+        updatedRefs.no_sp_tap_tsk = docNo;
+        updatedRefs.tanggal_sp_tap = docDate;
+      } else if (canonicalCode.startsWith('SPDP')) {
+        updatedRefs.no_spdp = docNo;
+        updatedRefs.tgl_spdp = docDate;
+      } else if (canonicalCode === 'SPRIN_KAP_DAN_BA') {
+        updatedRefs.sprin_kap = docNo;
+        updatedRefs.no_sprin_kap = docNo;
+      } else if (canonicalCode === 'SPRIN_HAN_DAN_BA') {
+        updatedRefs.sprin_han = docNo;
+        updatedRefs.no_sprin_han = docNo;
       }
 
-      // 1. Buat payload super bersih
+      // Kirim HANYA kolom asli sesuai DDL tabel public.cases
       const caseUpdatePayload = {
-        references: updatedRefs, 
+        references: updatedRefs,
         updated_at: new Date().toISOString()
       };
-
-      // 2. Tambahkan kolom spesifik HANYA jika template sesuai:
-      if (templateCode === 'SPRIN_SIDIK' || templateCode === 'SP_SIDIK') {
+      if (canonicalCode === 'SPRIN_SIDIK' || canonicalCode === 'SPRIN_SIDIK_MORE_5') {
         caseUpdatePayload.no_sprin_sidik = docNo;
-        caseUpdatePayload.sprin_sidik = docNo;
-      } else if (templateCode === 'SPGAS_SIDIK' || templateCode === 'SP_GAS_SIDIK') {
-        caseUpdatePayload.no_sprin_gas_sidik = docNo;
+      } else if (canonicalCode.startsWith('SPDP')) {
+        caseUpdatePayload.no_spdp = docNo;
+      } else if (canonicalCode === 'P21_KN') {
+        caseUpdatePayload.no_p21_kn = docNo;
       }
 
-      // 3. Eksekusi update
       const { error: caseErr } = await supabase
         .from('cases')
         .update(caseUpdatePayload)
@@ -842,11 +967,14 @@ export default function MindikGeneratorView({
         console.error('[Mindik] Gagal update cases:', caseErr.message);
       }
 
-      // Perbarui state selectedCase lokal (di sini menggunakan objek memori currentCase)
+      // Perbarui state lokal currentCase
       if (currentCase) {
         if (caseUpdatePayload.no_sprin_sidik) currentCase.no_sprin_sidik = caseUpdatePayload.no_sprin_sidik;
-        if (caseUpdatePayload.sprin_sidik) currentCase.sprin_sidik = caseUpdatePayload.sprin_sidik;
-        if (caseUpdatePayload.no_sprin_gas_sidik) currentCase.no_sprin_gas_sidik = caseUpdatePayload.no_sprin_gas_sidik;
+        if (caseUpdatePayload.no_spdp) currentCase.no_spdp = caseUpdatePayload.no_spdp;
+        if (caseUpdatePayload.no_p21_kn) currentCase.no_p21_kn = caseUpdatePayload.no_p21_kn;
+        if (canonicalCode === 'SPGAS_SIDIK' || canonicalCode === 'SPGAS_SIDIK_MORE_5') {
+          currentCase.no_sprin_gas_sidik = docNo;
+        }
         currentCase.references = updatedRefs;
       }
 
@@ -857,7 +985,7 @@ export default function MindikGeneratorView({
       });
 
       if (onSaveDocument) {
-        onSaveDocument(savedDoc || payload);
+        onSaveDocument(savedDoc ? { ...savedDoc, _skipDbUpsert: true } : hydratedDocForUi);
       }
     } catch (err) {
       console.error('[MindikGeneratorView] Gagal menyimpan arsip:', err);
@@ -1026,7 +1154,7 @@ export default function MindikGeneratorView({
               PILIH NOMOR LP:
             </label>
             <select
-              value={selectedCaseId}
+              value={selectedCaseId ?? ''}
               onChange={(e) => setSelectedCaseId(e.target.value)}
               className="form-select"
               style={{
@@ -1145,7 +1273,7 @@ export default function MindikGeneratorView({
                 <input
                   type="text"
                   placeholder="Cari kode / judul format..."
-                  value={templateSearch}
+                  value={templateSearch ?? ''}
                   onChange={(e) => setTemplateSearch(e.target.value)}
                   className="form-input w-full"
                   style={{ paddingLeft: '30px', fontSize: '12px', height: '36px' }}
@@ -1449,8 +1577,10 @@ export default function MindikGeneratorView({
                 return (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '130px', overflowY: 'auto' }}>
                     {visibleSubjects.map((subj) => {
-                      const isChecked = selectedTargetSubjectKeys.includes(subj._uid) ||
-                        (selectedTargetSubjectKeys.length === 0 && activeSuspect && subj.nama === activeSuspect.nama);
+                      const isChecked = Boolean(
+                        selectedTargetSubjectKeys.includes(subj._uid) ||
+                        (selectedTargetSubjectKeys.length === 0 && activeSuspect && subj.nama === activeSuspect.nama)
+                      );
                       return (
                         <label
                           key={subj._uid}
@@ -1513,7 +1643,7 @@ export default function MindikGeneratorView({
                 <input
                   type="text"
                   placeholder="SP.Sidik/.../.../RES.1.24/2026"
-                  value={formValues.NOMOR_SURAT || ''}
+                  value={formValues.NOMOR_SURAT ?? ''}
                   onChange={(e) => handleInputChange('NOMOR_SURAT', e.target.value)}
                   className="form-input mono"
                   style={{ fontSize: '12px', fontWeight: 600 }}
@@ -1526,7 +1656,7 @@ export default function MindikGeneratorView({
                 </label>
                 <input
                   type="date"
-                  value={formValues.TANGGAL_SURAT || ''}
+                  value={formValues.TANGGAL_SURAT ?? ''}
                   onChange={(e) => {
                     handleInputChange('TANGGAL_SURAT', e.target.value);
                     handleInputChange('DOC_DATE', e.target.value);
@@ -1628,10 +1758,9 @@ export default function MindikGeneratorView({
                     
                     const getValidDateValue = (val) => {
                       if (!val) return '';
-                      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-                      return ''; 
+                      return toIsoDateString(val) || '';
                     };
-                    const inputValue = isDateField ? getValidDateValue(formValues[key]) : (formValues[key] || '');
+                    const inputValue = isDateField ? getValidDateValue(formValues[key]) : (formValues[key] ?? '');
 
                     return (
                       <div key={key} className="form-group" style={{ marginBottom: 0 }}>
@@ -1640,7 +1769,7 @@ export default function MindikGeneratorView({
                         </label>
                         <input
                           type={isDateField ? 'date' : 'text'}
-                          value={inputValue}
+                          value={inputValue ?? ''}
                           onChange={(e) => handleInputChange(key, e.target.value)}
                           className={`form-input ${isDateField ? 'mono' : ''}`}
                           placeholder={f.placeholder || ''}

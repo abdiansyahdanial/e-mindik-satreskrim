@@ -486,7 +486,7 @@ CREATE TABLE IF NOT EXISTS public.lampiran_barang_bukti (
     mime_type VARCHAR(60),
     hash_sha256 VARCHAR(64),
     keterangan TEXT,
-    diunggah_pada TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexing

@@ -10,6 +10,7 @@ import MindikGeneratorView from './views/mindik/MindikGeneratorView';
 import ArchivesView from './views/ArchivesView';
 import PersonnelView, { cleanOfficerName } from './views/PersonnelView';
 import AdminTemplateStudio from './views/AdminTemplateStudio';
+import { toCanonicalMindikCode } from './constants/mindikChainRegistry';
 import CaseDetailModal from './components/CaseDetailModal';
 import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
@@ -282,10 +283,22 @@ export default function App() {
           } catch {}
 
           // Gabungkan hasil public.documents (prioritas server) dan cache offline berdasarkan ID
+          const hydrateDocRow = (doc) => {
+            if (!doc) return doc;
+            const mv = (doc.meta_values && typeof doc.meta_values === 'object') ? doc.meta_values : {};
+            const canonicalCode = toCanonicalMindikCode(doc.template_code || mv.canonical_code || '', doc.doc_title || '');
+            return {
+              ...doc,
+              template_code: canonicalCode,
+              tgl_surat: doc.tgl_surat || mv.tgl_surat || mv.TANGGAL_SURAT || doc.created_at,
+              nomor_lp: doc.nomor_lp || mv.nomor_lp || mv.NOMOR_LP || ''
+            };
+          };
+
           const combinedMap = new Map();
           [...(listDocs || []), ...listLocal].forEach(doc => {
             if (doc && doc.id && !combinedMap.has(doc.id)) {
-              combinedMap.set(doc.id, doc);
+              combinedMap.set(doc.id, hydrateDocRow(doc));
             }
           });
 
@@ -650,45 +663,71 @@ export default function App() {
 
   const handleSaveDocument = async (newDoc) => {
     const docToSave = newDoc || {};
+    const skipDbUpsert = Boolean(docToSave._skipDbUpsert);
 
-    const cleanPayload = {
-      id: docToSave.id || crypto.randomUUID(),
-      case_id: docToSave.case_id ? String(docToSave.case_id) : null,
-      nomor_lp: docToSave.nomor_lp || docToSave.no_lp || '-',
-      template_id: (docToSave.template_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docToSave.template_id)) ? docToSave.template_id : null,
-      template_code: docToSave.template_code || 'MINDIK',
-      doc_title: docToSave.doc_title || docToSave.title || 'Dokumen Mindik',
-      doc_number: docToSave.doc_number || docToSave.nomor_surat || '-',
-      meta_values: docToSave.meta_values || docToSave.metadata || {},
-      file_url: docToSave.file_url || null,
-      storage_path: docToSave.storage_path || null,
-      tgl_surat: docToSave.tgl_surat || docToSave.tanggal_surat || docToSave.created_at || null,
-      created_at: docToSave.created_at || docToSave.tgl_surat || docToSave.tanggal_surat || new Date().toISOString()
+    const existingMeta = (docToSave.meta_values && typeof docToSave.meta_values === 'object')
+      ? docToSave.meta_values
+      : ((docToSave.metadata && typeof docToSave.metadata === 'object') ? docToSave.metadata : {});
+
+    const canonicalCode = toCanonicalMindikCode(
+      docToSave.template_code || existingMeta.canonical_code || 'MINDIK',
+      docToSave.doc_title || docToSave.title || ''
+    );
+    const tglSuratVal = docToSave.tgl_surat || docToSave.tanggal_surat || existingMeta.tgl_surat || existingMeta.TANGGAL_SURAT || null;
+    const nomorLpVal = docToSave.nomor_lp || docToSave.no_lp || existingMeta.nomor_lp || existingMeta.NOMOR_LP || '';
+
+    const mergedMetaValues = {
+      ...existingMeta,
+      ...(tglSuratVal ? { tgl_surat: tglSuratVal } : {}),
+      ...(nomorLpVal ? { nomor_lp: nomorLpVal } : {}),
+      canonical_code: canonicalCode
     };
 
-    setDocuments((prev) => [cleanPayload, ...prev.filter(d => d.id !== cleanPayload.id)]);
-    showToast(`Dokumen ${cleanPayload.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
+    // Payload 100% sesuai DDL tabel resmi public.documents
+    const dbPayload = {
+      id: docToSave.id || crypto.randomUUID(),
+      case_id: docToSave.case_id ? String(docToSave.case_id) : null,
+      template_id: docToSave.template_id ? String(docToSave.template_id) : null,
+      template_code: canonicalCode,
+      doc_title: docToSave.doc_title || docToSave.title || 'Dokumen Mindik',
+      doc_number: docToSave.doc_number || docToSave.nomor_surat || '-',
+      meta_values: mergedMetaValues,
+      file_url: docToSave.file_url || null,
+      storage_path: docToSave.storage_path || null,
+      created_at: docToSave.created_at || new Date().toISOString()
+    };
 
-    // Pastikan localStorage juga menyimpan salinan dokumen sementara sebagai fallback luring (offline fallback) jika koneksi Supabase bermasalah
+    const hydratedUiDoc = {
+      ...dbPayload,
+      tgl_surat: tglSuratVal || dbPayload.created_at,
+      nomor_lp: nomorLpVal || '-'
+    };
+
+    setDocuments((prev) => [hydratedUiDoc, ...prev.filter(d => d.id !== hydratedUiDoc.id)]);
+    showToast(`Dokumen ${hydratedUiDoc.doc_title || 'Mindik'} berhasil disimpan ke arsip!`);
+
+    // Pastikan localStorage juga menyimpan salinan dokumen sementara sebagai fallback luring
     try {
       const currentLocal = JSON.parse(localStorage.getItem('emindik_archive_documents') || '[]');
-      localStorage.setItem('emindik_archive_documents', JSON.stringify([cleanPayload, ...currentLocal.filter(x => x.id !== cleanPayload.id)]));
+      localStorage.setItem('emindik_archive_documents', JSON.stringify([hydratedUiDoc, ...currentLocal.filter(x => x.id !== hydratedUiDoc.id)]));
     } catch (e) {}
 
-    // Simpan ke database Supabase
-    try {
-      const { data, error } = await supabase
-        .from('documents')
-        .upsert([cleanPayload], { onConflict: 'id' })
-        .select();
+    // Simpan ke database Supabase (lewati bila sudah di-insert oleh pemanggil seperti MindikGeneratorView)
+    if (!skipDbUpsert) {
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .upsert([dbPayload], { onConflict: 'id' })
+          .select();
 
-      if (error) {
-        console.error('[CRITICAL DB INSERT ERROR]:', error.message);
-      } else {
-        console.log('[App] Dokumen berhasil disimpan ke Supabase:', data);
+        if (error) {
+          console.error('[CRITICAL DB INSERT ERROR]:', error.message);
+        } else {
+          console.log('[App] Dokumen berhasil disimpan ke Supabase:', data);
+        }
+      } catch (err) {
+        console.error('[CRITICAL DB INSERT ERROR]:', err);
       }
-    } catch (err) {
-      console.error('[CRITICAL DB INSERT ERROR]:', err);
     }
   };
 
@@ -804,10 +843,24 @@ export default function App() {
     // C. JIKA YANG DIHAPUS ADALAH SP.SIDIK / SPRIN.SIDIK:
     if (docCode.includes('SIDIK') && !docCode.includes('GAS') && !docCode.includes('TAMBAHAN')) {
       if (doc.case_id) {
+        const targetCase = cases.find(c => String(c.id) === String(doc.case_id));
+        const cleanedRefs = {
+          ...(targetCase?.references || {}),
+          no_sprin_sidik: null,
+          no_sp_sidik: null,
+          sprin_date: null,
+          tgl_sprin_sidik: null,
+          spgas_sidik: null,
+          no_spgas_sidik: null,
+          no_sp_gas_sidik: null,
+          no_sprin_gas_sidik: null
+        };
         await supabase.from('cases')
-          .update({ 
-            no_sprin_sidik: null, no_sp_sidik: null, tgl_sprin_sidik: null, sprin_date: null,
-            no_sp_gas_sidik: null, no_sprin_gas_sidik: null, tgl_sp_gas_sidik: null, tgl_sprin_gas_sidik: null
+          .update({
+            no_sprin_sidik: null,
+            sprin_date: null,
+            references: cleanedRefs,
+            updated_at: new Date().toISOString()
           })
           .eq('id', doc.case_id);
       }
@@ -875,8 +928,20 @@ export default function App() {
     // D. JIKA YANG DIHAPUS ADALAH SP.GAS.SIDIK:
     if (docCode.includes('GAS') && docCode.includes('SIDIK')) {
       if (doc.case_id) {
+        const targetCase = cases.find(c => String(c.id) === String(doc.case_id));
+        const cleanedRefs = {
+          ...(targetCase?.references || {}),
+          spgas_sidik: null,
+          no_spgas_sidik: null,
+          no_sp_gas_sidik: null,
+          no_sprin_gas_sidik: null,
+          tgl_sprin_gas_sidik: null
+        };
         await supabase.from('cases')
-          .update({ no_sp_gas_sidik: null, no_sprin_gas_sidik: null, tgl_sp_gas_sidik: null, tgl_sprin_gas_sidik: null })
+          .update({
+            references: cleanedRefs,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', doc.case_id);
       }
 
