@@ -16,6 +16,7 @@ import {
   FilePlus
 } from 'lucide-react';
 import logoImg from '../../assets/logo.png';
+import { isSpktRole } from '../../utils/rbacHelper';
 import './ExpandingSidebar.css';
 
 /**
@@ -44,8 +45,9 @@ export default function ExpandingSidebar({
 
   const isSuperAdmin = userRole === 'super_admin';
   const isAdmin = userRole === 'admin';
+  const isSpkt = isSpktRole(userRole);
 
-  // 3-Tier RBAC Menu Items
+  // 4-Tier RBAC Menu Items (spkt terisolasi hanya ke Input Dumas / Baru)
   const allMenuItems = [
     {
       id: 'dashboard',
@@ -60,7 +62,7 @@ export default function ExpandingSidebar({
       icon: FilePlus,
       badge: dumasCount || null,
       badgeRed: true,
-      roles: ['super_admin', 'admin', 'anggota'],
+      roles: ['super_admin', 'admin', 'anggota', 'spkt'],
     },
     {
       id: 'cases',
@@ -103,7 +105,10 @@ export default function ExpandingSidebar({
   ];
 
   // Filter menu strictly according to user role
-  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
+  const effectiveRoleKey = isSpkt ? 'spkt' : userRole;
+  const menuItems = isSpkt
+    ? allMenuItems.filter(item => item.id === 'dumas')
+    : allMenuItems.filter(item => item.roles.includes(effectiveRoleKey));
 
   // --- Keyboard & Click Outside Handlers ---
   useEffect(() => {
@@ -229,12 +234,15 @@ export default function ExpandingSidebar({
         {/* Role & Security Status Bar */}
         <div className="es-role-bar">
           <div className="es-role-indicator">
-            <div className={`es-role-dot ${isSuperAdmin ? 'super' : isAdmin ? 'admin' : ''}`} />
-            <span className="es-role-label">
-              {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN SATKER' : 'PENYIDIK ANGGOTA'}
+            <div
+              className={`es-role-dot ${isSuperAdmin ? 'super' : isAdmin ? 'admin' : ''}`}
+              style={isSpkt ? { backgroundColor: '#F59E0B', boxShadow: '0 0 8px rgba(245, 158, 11, 0.7)' } : undefined}
+            />
+            <span className="es-role-label" style={isSpkt ? { color: '#FBBF24' } : undefined}>
+              {isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN SATKER' : isSpkt ? 'PETUGAS SPKT' : 'PENYIDIK ANGGOTA'}
             </span>
           </div>
-          <span className="es-role-tag">PRESISI</span>
+          <span className="es-role-tag">{isSpkt ? 'LOKET' : 'PRESISI'}</span>
         </div>
 
         {/* Navigation List */}

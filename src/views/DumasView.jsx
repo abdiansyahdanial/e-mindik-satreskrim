@@ -10,15 +10,19 @@ import {
   convertDumasToCase,
   hasDumasDraft
 } from '../services/dumasService';
+import { isSpktRole } from '../utils/rbacHelper';
 import '../styles/dumas.css';
 
 export default function DumasView({
   dumasList = [],
   setDumasList,
   currentUserProfile,
+  userRole = 'anggota',
+  isSpkt = false,
   onHandoverToGenerator,
   onShowToast
 }) {
+  const isSpktMode = Boolean(isSpkt || isSpktRole(userRole || currentUserProfile?.role));
   // Sub-view: 'list' | 'form' | 'detail' (Rehidrasi otomatis dari sessionStorage agar tidak mental ke list saat refresh)
   const [subView, setSubView] = useState(() => {
     try {
@@ -122,10 +126,13 @@ export default function DumasView({
     setSubView('form');
   };
 
-  // 2. Handler Submit Form Dumas
+  // 2. Handler Submit Form Dumas (Akun SPKT tetap boleh input Dumas baru, tapi dilarang edit Dumas tersimpan)
   const handleSubmitDumas = async (newRecord, evidenceFiles = []) => {
     try {
       const isEditMode = formMode === 'edit';
+      if (isSpktMode && isEditMode) {
+        return { success: false, error: 'Mode baca-saja SPKT tidak diizinkan mengubah berkas tersimpan.' };
+      }
       const result = await saveDumasRecord({ ...newRecord, _isEdit: isEditMode }, evidenceFiles);
       if (result.success && result.record) {
         try {
@@ -156,8 +163,9 @@ export default function DumasView({
     }
   };
 
-  // 3. Handler Hapus Dumas
+  // 3. Handler Hapus Dumas (Diblokir mutlak untuk role SPKT)
   const handleDeleteDumas = async (id) => {
+    if (isSpktMode) return;
     try {
       const res = await deleteDumasRecord(id);
       if (!res?.success) {
@@ -183,13 +191,41 @@ export default function DumasView({
     }
   };
 
-  // 4. Handler Handover ke DocGeneratorView (Sprin Lidik/Sidik)
-  const handleHandoverSprin = (dumasItem) => {
+  // 4. Handler Edit / Update Dumas (Diblokir mutlak untuk role SPKT)
+  const handleEditDumas = (item) => {
+    if (isSpktMode) return;
+    setSelectedDumas(item);
+    setFormMode('edit');
+    setSubView('form');
+    try {
+      sessionStorage.setItem('emindik_active_dumas_item', JSON.stringify(item));
+      sessionStorage.setItem('emindik_dumas_subview', 'form');
+    } catch { }
+  };
+
+  const handleUpdateDumas = (updatedRecord) => {
+    if (isSpktMode) return;
+    setSelectedDumas(updatedRecord);
+    setDumasList(prev => prev.map(d => d.id === updatedRecord.id ? updatedRecord : d));
+  };
+
+  // 5. Handler Naik Sidik / Konversi ke LP (Diblokir mutlak untuk role SPKT)
+  const handleConvertToLP = (dumasItem) => {
+    if (isSpktMode) return;
     const mappedCase = convertDumasToCase(dumasItem);
     if (onHandoverToGenerator) {
       onHandoverToGenerator(mappedCase);
     }
   };
+
+  // Pastikan akun SPKT tidak pernah terjebak pada mode edit bila memulihkan sessionStorage
+  useEffect(() => {
+    if (isSpktMode && formMode === 'edit') {
+      setFormMode('manual');
+      setSelectedDumas(null);
+      setSubView('list');
+    }
+  }, [isSpktMode, formMode]);
 
   return (
     <div className="dumas-container h-full flex flex-col">
@@ -204,6 +240,7 @@ export default function DumasView({
       {(subView === 'list' || (subView === 'detail' && !selectedDumas) || (subView !== 'form' && subView !== 'detail')) && (
         <DumasListView
           dumasList={dumasList}
+          isSpkt={isSpktMode}
           onOpenModeSelect={handleOpenModeSelect}
           hasDraft={hasDumasDraft(currentUserProfile?.id)}
           onOpenDraft={handleOpenDraft}
@@ -211,8 +248,8 @@ export default function DumasView({
             setSelectedDumas(item);
             setSubView('detail');
           }}
-          onDeleteDumas={handleDeleteDumas}
-          onOpenGeneratorForDumas={handleHandoverSprin}
+          onDeleteDumas={isSpktMode ? undefined : handleDeleteDumas}
+          onOpenGeneratorForDumas={isSpktMode ? undefined : handleConvertToLP}
         />
       )}
 
@@ -253,6 +290,7 @@ export default function DumasView({
       {subView === 'detail' && selectedDumas && (
         <DumasDetailView
           dumasItem={selectedDumas}
+          isSpkt={isSpktMode}
           onBack={() => {
             setSelectedDumas(null);
             setSubView('list');
@@ -261,20 +299,9 @@ export default function DumasView({
               sessionStorage.setItem('emindik_dumas_subview', 'list');
             } catch { }
           }}
-          onOpenGeneratorForDumas={handleHandoverSprin}
-          onUpdateDumas={(updatedRecord) => {
-            setSelectedDumas(updatedRecord);
-            setDumasList(prev => prev.map(d => d.id === updatedRecord.id ? updatedRecord : d));
-          }}
-          onEditDumas={(item) => {
-            setSelectedDumas(item);
-            setFormMode('edit');
-            setSubView('form');
-            try {
-              sessionStorage.setItem('emindik_active_dumas_item', JSON.stringify(item));
-              sessionStorage.setItem('emindik_dumas_subview', 'form');
-            } catch { }
-          }}
+          onOpenGeneratorForDumas={isSpktMode ? undefined : handleConvertToLP}
+          onUpdateDumas={isSpktMode ? undefined : handleUpdateDumas}
+          onEditDumas={isSpktMode ? undefined : handleEditDumas}
         />
       )}
     </div>

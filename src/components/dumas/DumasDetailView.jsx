@@ -48,6 +48,7 @@ const formatTanggalSerahTerima = (isoString) => {
 
 export default function DumasDetailView({
   dumasItem,
+  isSpkt = false,
   onBack,
   onOpenGeneratorForDumas,
   onUpdateDumas,
@@ -161,6 +162,7 @@ export default function DumasDetailView({
   };
 
   const handleEvidenceAdded = (newEvidence) => {
+    if (isSpkt) return;
     const currentList = Array.isArray(perkara?.lampiran_barang_bukti) ? perkara.lampiran_barang_bukti : [];
     const updated = {
       ...perkara,
@@ -173,6 +175,7 @@ export default function DumasDetailView({
   };
 
   const handleDeleteEvidence = async (bb) => {
+    if (isSpkt) return;
     if (perkara?.is_locked_spkt) {
       alert('Berkas telah diserahkan dan berstatus terkunci. Barang bukti tidak dapat dihapus demi integritas chain of custody.');
       return;
@@ -325,9 +328,29 @@ export default function DumasDetailView({
           </button>
         </div>
 
-        {/* Tombol Aksi Kanan: Edit Pengaduan & Lanjut Buat Sprin */}
+        {/* Tombol Aksi Kanan: Edit Pengaduan & Lanjut Buat Sprin (Tersembunyi pada mode baca-saja SPKT) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {onEditDumas && (
+          {isSpkt && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '9999px',
+                fontSize: '11px',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontWeight: 700,
+                backgroundColor: 'rgba(245, 158, 11, 0.16)',
+                border: '1px solid rgba(245, 158, 11, 0.55)',
+                color: '#FBBF24'
+              }}
+            >
+              MODE LOKET SPKT (BACA-SAJA)
+            </span>
+          )}
+
+          {!isSpkt && onEditDumas && (
             <button
               type="button"
               onClick={() => {
@@ -358,30 +381,32 @@ export default function DumasDetailView({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => onOpenGeneratorForDumas && onOpenGeneratorForDumas(perkara)}
-            className="bg-[#FF2A2A] hover:bg-[#FF3B3B] text-white font-mono font-bold px-4 py-2 rounded-full text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer dumas-btn-sprin-accent"
-            style={{
-              backgroundColor: '#FF2A2A',
-              color: '#FFFFFF',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontWeight: 700,
-              padding: '8px 16px',
-              borderRadius: '9999px',
-              fontSize: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              border: 'none',
-              boxShadow: '0 8px 24px -5px rgba(255, 42, 42, 0.5)',
-              cursor: 'pointer'
-            }}
-          >
-            <FileSignature size={15} />
-            <span>Lanjut Buat Sprin</span>
-            <ChevronRight size={14} />
-          </button>
+          {!isSpkt && onOpenGeneratorForDumas && (
+            <button
+              type="button"
+              onClick={() => onOpenGeneratorForDumas(perkara)}
+              className="bg-[#FF2A2A] hover:bg-[#FF3B3B] text-white font-mono font-bold px-4 py-2 rounded-full text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer dumas-btn-sprin-accent"
+              style={{
+                backgroundColor: '#FF2A2A',
+                color: '#FFFFFF',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontWeight: 700,
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                fontSize: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                border: 'none',
+                boxShadow: '0 8px 24px -5px rgba(255, 42, 42, 0.5)',
+                cursor: 'pointer'
+              }}
+            >
+              <FileSignature size={15} />
+              <span>Lanjut Buat Sprin</span>
+              <ChevronRight size={14} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -475,7 +500,7 @@ export default function DumasDetailView({
           </div>
 
           <div className="flex items-center gap-3 text-xs font-mono" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', flexWrap: 'wrap' }}>
-            {!perkara?.is_locked_spkt && (
+            {!isSpkt && !perkara?.is_locked_spkt && (
               <button
                 type="button"
                 onClick={() => setIsHandoverModalOpen(true)}
@@ -1041,8 +1066,8 @@ export default function DumasDetailView({
             </span>
           </div>
 
-          {/* Tombol Aksi Tambah Barang Bukti */}
-          {!perkara?.is_locked_spkt ? (
+          {/* Tombol Aksi Tambah Barang Bukti (Tersembunyi pada mode baca-saja SPKT) */}
+          {!isSpkt && !perkara?.is_locked_spkt ? (
             <button
               type="button"
               onClick={() => setIsAddEvidenceOpen(true)}
@@ -1066,7 +1091,7 @@ export default function DumasDetailView({
               <Plus size={13} />
               <span>+ Tambah Barang Bukti</span>
             </button>
-          ) : (
+          ) : perkara?.is_locked_spkt ? (
             <div
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF2A2A]/15 border border-[#FF2A2A]/40 text-[#FF3B3B] text-xs font-mono"
               style={{
@@ -1086,7 +1111,7 @@ export default function DumasDetailView({
               <Lock size={13} />
               <span>Bukti Terkunci (Chain-of-Custody)</span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Grid Kartu Responsif 3 Kolom */}
@@ -1292,7 +1317,7 @@ export default function DumasDetailView({
                       <Download size={13} />
                     </button>
 
-                    {!perkara?.is_locked_spkt && (
+                    {!isSpkt && !perkara?.is_locked_spkt && (
                       <button
                         type="button"
                         onClick={() => handleDeleteEvidence(bb)}
@@ -1466,29 +1491,31 @@ export default function DumasDetailView({
               <span>CETAK TANDA TERIMA LAPORAN (STTL)</span>
             </button>
 
-            {/* Tombol Lanjut Buat Sprin */}
-            <button
-              type="button"
-              onClick={() => onOpenGeneratorForDumas && onOpenGeneratorForDumas(perkara)}
-              className="bg-[#FF2A2A]/20 hover:bg-[#FF2A2A]/30 text-[#FF3B3B] border border-[#FF2A2A]/45 px-4 py-2.5 rounded-full text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-colors"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 18px',
-                borderRadius: '9999px',
-                backgroundColor: 'rgba(255, 42, 42, 0.18)',
-                border: '1px solid rgba(255, 42, 42, 0.45)',
-                color: '#FF3B3B',
-                fontSize: '12px',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              <FileSignature size={15} />
-              <span>LANJUT BUAT SPRIN</span>
-            </button>
+            {/* Tombol Lanjut Buat Sprin (Tersembunyi pada mode baca-saja SPKT) */}
+            {!isSpkt && onOpenGeneratorForDumas && (
+              <button
+                type="button"
+                onClick={() => onOpenGeneratorForDumas(perkara)}
+                className="bg-[#FF2A2A]/20 hover:bg-[#FF2A2A]/30 text-[#FF3B3B] border border-[#FF2A2A]/45 px-4 py-2.5 rounded-full text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 18px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'rgba(255, 42, 42, 0.18)',
+                  border: '1px solid rgba(255, 42, 42, 0.45)',
+                  color: '#FF3B3B',
+                  fontSize: '12px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                <FileSignature size={15} />
+                <span>LANJUT BUAT SPRIN</span>
+              </button>
+            )}
           </div>
         </div>
       </section>

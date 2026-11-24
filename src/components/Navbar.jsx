@@ -6,6 +6,7 @@ import {
   FileText
 } from 'lucide-react';
 import { TacticalButton, HudCorners, PulseDot, cn } from './command/hud';
+import { isSpktRole } from '../utils/rbacHelper';
 
 export default function Navbar({ 
   onNewCase, 
@@ -22,6 +23,7 @@ export default function Navbar({
 
   const isSuperAdmin = userRole === 'super_admin';
   const isAdmin = userRole === 'admin';
+  const isSpkt = isSpktRole(userRole);
 
   // Clock WITA (UTC+8)
   useEffect(() => {
@@ -51,10 +53,10 @@ export default function Navbar({
     return () => clearInterval(timer);
   }, []);
 
-  const officerName = currentUserProfile?.full_name || currentUserProfile?.nama || (isSuperAdmin ? 'Super Admin Satreskrim' : 'Personel Penyidik');
+  const officerName = currentUserProfile?.full_name || currentUserProfile?.nama || (isSuperAdmin ? 'Super Admin Satreskrim' : isSpkt ? 'Petugas SPKT' : 'Personel Penyidik');
   const officerPangkat = currentUserProfile?.pangkat || (isSuperAdmin ? 'POLRI' : '-');
   const officerNrp = currentUserProfile?.rank_nrp || currentUserProfile?.nrp || '-';
-  const officerJabatan = currentUserProfile?.jabatan || (isSuperAdmin ? 'Super Admin' : 'Penyidik Pembantu');
+  const officerJabatan = currentUserProfile?.jabatan || (isSuperAdmin ? 'Super Admin' : isSpkt ? 'Petugas Loket SPKT' : 'Penyidik Pembantu');
   const officerInitials = officerName ? officerName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() : 'P';
 
   return (
@@ -67,20 +69,27 @@ export default function Navbar({
         borderBottom: '1px solid rgba(148, 163, 184, 0.12)',
       }}
     >
-      {/* Left (Search) */}
-      <div className="relative w-72 md:w-80 flex items-center">
-        <Search size={15} className="absolute left-3.5 text-[#CBD5E1]/60 pointer-events-none" />
-        <input
-          type="text"
-          value={searchQuery || ''}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Cari No. LP, Tersangka, Pasal, Saksi..."
-          className="h-9 w-full bg-[#131924] border border-[rgba(148,163,184,0.18)] rounded-full px-4 pl-9 text-xs text-white placeholder-[#94A3B8]/65 font-mono outline-none focus:border-[#FF2A2A] transition-colors"
-        />
-        <span className="absolute right-2.5 rounded-full border border-[rgba(148,163,184,0.22)] bg-[#0B0E14] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#CBD5E1]/75 pointer-events-none">
-          Ctrl + K
-        </span>
-      </div>
+      {/* Left (Search - Tersembunyi untuk Role SPKT agar tidak mencari berkas LP/tersangka) */}
+      {isSpkt ? (
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#131924] border border-[rgba(245,158,11,0.35)] text-[11px] font-mono font-bold text-[#FBBF24]">
+          <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+          <span>MODE LOKET SPKT • AKSES TERISOLASI</span>
+        </div>
+      ) : (
+        <div className="relative w-72 md:w-80 flex items-center">
+          <Search size={15} className="absolute left-3.5 text-[#CBD5E1]/60 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery || ''}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari No. LP, Tersangka, Pasal, Saksi..."
+            className="h-9 w-full bg-[#131924] border border-[rgba(148,163,184,0.18)] rounded-full px-4 pl-9 text-xs text-white placeholder-[#94A3B8]/65 font-mono outline-none focus:border-[#FF2A2A] transition-colors"
+          />
+          <span className="absolute right-2.5 rounded-full border border-[rgba(148,163,184,0.22)] bg-[#0B0E14] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#CBD5E1]/75 pointer-events-none">
+            Ctrl + K
+          </span>
+        </div>
+      )}
 
       {/* Tengah (Widget Waktu Taktis) */}
       <div className="flex items-center gap-2.5 px-3.5 py-1.5 bg-[#131924] border border-[rgba(148,163,184,0.18)] rounded-full font-mono text-xs text-[#CBD5E1]">
@@ -93,14 +102,16 @@ export default function Navbar({
 
       {/* Kanan (Action & Profile) */}
       <div className="flex items-center gap-3 shrink-0">
-        {/* Tombol BUAT MINDIK */}
-        <TacticalButton
-          label="Buat Mindik"
-          icon={FileText}
-          variant="crimson-glow"
-          className="h-9 px-4 font-mono text-xs rounded-full bg-[linear-gradient(135deg,#E61919_0%,#FF2A2A_100%)] text-white border-[#FF5252] hover:!bg-white hover:!text-[#0B0E14] hover:!border-white shadow-[0_4px_20px_rgba(255,42,42,0.40)]"
-          onClick={onNewDoc}
-        />
+        {/* Tombol BUAT MINDIK (Disembunyikan untuk Role SPKT) */}
+        {!isSpkt && (
+          <TacticalButton
+            label="Buat Mindik"
+            icon={FileText}
+            variant="crimson-glow"
+            className="h-9 px-4 font-mono text-xs rounded-full bg-[linear-gradient(135deg,#E61919_0%,#FF2A2A_100%)] text-white border-[#FF5252] hover:!bg-white hover:!text-[#0B0E14] hover:!border-white shadow-[0_4px_20px_rgba(255,42,42,0.40)]"
+            onClick={onNewDoc}
+          />
+        )}
 
         {/* Kartu Profil */}
         <div className="flex items-center gap-2.5 px-3 py-1 bg-[#131924] border border-[rgba(148,163,184,0.18)] rounded-full text-left">

@@ -36,7 +36,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pendin
 -- Lepaskan check constraint lama dan pasang check constraint luas untuk role
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check 
-  CHECK (role IN ('super_admin', 'admin', 'anggota', 'penyidik', 'rejected', 'pending'));
+  CHECK (role IN ('super_admin', 'admin', 'anggota', 'penyidik', 'spkt', 'petugas_spkt', 'rejected', 'pending'));
 
 -- Hapus static default BRIPKA & 00000000 agar tidak menimpa data pendaftar baru
 ALTER TABLE public.profiles ALTER COLUMN pangkat DROP DEFAULT;

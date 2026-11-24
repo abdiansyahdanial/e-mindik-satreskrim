@@ -19,6 +19,7 @@ import DumasView from './views/DumasView';
 import DumasFormView from './components/dumas/DumasFormView';
 import MobileUploadView from './views/MobileUploadView';
 import { fetchDumasRecords } from './services/dumasService';
+import { isSpktRole } from './utils/rbacHelper';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -33,11 +34,12 @@ export default function App() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Authentication & Role State (3-tier: 'super_admin' | 'admin' | 'anggota')
+  // Authentication & Role State (4-tier: 'super_admin' | 'admin' | 'anggota' | 'spkt')
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const isSpktUser = isSpktRole(userRole);
 
   // Core Data States - 100% PURE REAL-TIME SUPABASE (NO MOCK / NO DUMMY FALLBACK)
   const [cases, setCases] = useState([]);
@@ -115,8 +117,12 @@ export default function App() {
 
           if (isMounted) {
             const finalRole = isSuper ? 'super_admin' : (profile?.role || meta.role || 'anggota');
+            const spktAccount = isSpktRole(finalRole);
             setUser(u);
             setUserRole(finalRole);
+            if (spktAccount) {
+              setActiveTab('dumas');
+            }
             setCurrentUserProfile({
               ...profile,
               id: u.id,
@@ -124,7 +130,7 @@ export default function App() {
               nama: profile?.full_name || profile?.nama || meta.nama || meta.full_name || u.email.split('@')[0],
               pangkat: profile?.pangkat || meta.pangkat || '-',
               nrp: profile?.rank_nrp || profile?.nrp || meta.nrp || '-',
-              jabatan: isSuper ? 'Super Admin Satreskrim' : (profile?.jabatan || meta.jabatan || 'Penyidik Pembantu'),
+              jabatan: isSuper ? 'Super Admin Satreskrim' : (profile?.jabatan || meta.jabatan || (spktAccount ? 'Petugas Loket SPKT' : 'Penyidik Pembantu')),
               satker: profile?.satker || meta.satker || 'Satreskrim Polres Kolaka Timur',
               unit: profile?.unit || meta.unit || '',
               phone: profile?.phone || profile?.no_hp || meta.phone || meta.no_hp || '',
@@ -158,9 +164,31 @@ export default function App() {
     };
   }, []);
 
-  // 2. Fetch Supabase Data Purely (Cases, Personnel, Documents)
+  // 2. Fetch Supabase Data Purely (Tunggu user & userRole; isolasi data sensitif untuk role spkt)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !userRole) return;
+
+    if (isSpktRole(userRole)) {
+      // Isolasi total data sensitif Satreskrim untuk akun SPKT
+      setCases([]);
+      setPersonnel([]);
+      setDocuments([]);
+      setSelectedCaseForDetail(null);
+
+      const loadSpktDumasOnly = async () => {
+        try {
+          const { data: dumasData } = await fetchDumasRecords();
+          if (dumasData && Array.isArray(dumasData)) {
+            setDumasList(dumasData);
+          }
+        } catch (e) {
+          console.warn('Dumas sync error (SPKT):', e);
+        }
+      };
+
+      loadSpktDumasOnly();
+      return;
+    }
 
     const loadSupabaseData = async () => {
       // 1. Cases: read pure real-time data from Supabase
@@ -212,7 +240,7 @@ export default function App() {
           const ranks = ['AKBP', 'KOMPOL', 'AKP', 'IPTU', 'IPDA', 'AIPTU', 'AIPDA', 'BRIPKA', 'BRIGPOL', 'BRIGADIR', 'BRIPTU', 'BRIPDA'];
           activeProfs.forEach(ap => {
             const exists = merged.some(m => m.id === ap.id || (ap.rank_nrp && m.nrp === ap.rank_nrp));
-            if (!exists && ap.role !== 'super_admin') {
+            if (!exists && ap.role !== 'super_admin' && !isSpktRole(ap.role)) {
               let detectedRank = 'BRIPDA';
               const nameUpper = (ap.full_name || '').toUpperCase();
               for (const rk of ranks) {
@@ -317,10 +345,24 @@ export default function App() {
     };
 
     loadSupabaseData();
-  }, [user]);
+  }, [user, userRole]);
 
-  // 3. Protected Routes Guard: Hanya Super Admin yang boleh akses Personel & Template Studio
+  // 3. Protected Routes Guard:
+  // - Role spkt hanya diizinkan mengakses tab 'dumas' (auto-landing & blokir rute lain)
+  // - Hanya Super Admin yang boleh akses Personel & Template Studio
   useEffect(() => {
+    if (isSpktRole(userRole)) {
+      if (activeTab !== 'dumas') {
+        setActiveTab('dumas');
+      }
+      setSelectedCaseForDetail(null);
+      setCaseForGenerator(null);
+      setIsNewCaseModalOpen(false);
+      setSelectedDocForPreview(null);
+      setIsUserManagementOpen(false);
+      return;
+    }
+
     if (userRole && userRole !== 'super_admin' && (activeTab === 'personnel' || activeTab === 'admin-templates')) {
       setActiveTab('dashboard');
       showToast('Akses dibatasi: Menu ini hanya dapat diakses oleh Super Admin Satreskrim.');
@@ -330,9 +372,24 @@ export default function App() {
   // 4. Persist Tab Aktif ke sessionStorage — dipulihkan saat browser refresh
   useEffect(() => {
     try {
-      sessionStorage.setItem('emindik_active_tab', activeTab);
+      sessionStorage.setItem('emindik_active_tab', isSpktRole(userRole) ? 'dumas' : activeTab);
     } catch {}
-  }, [activeTab]);
+  }, [activeTab, userRole]);
+
+  const handleNavigateTab = (nextTab) => {
+    if (isSpktRole(userRole)) {
+      if (nextTab !== 'dumas') {
+        setActiveTab('dumas');
+      }
+      return;
+    }
+    if (userRole && userRole !== 'super_admin' && (nextTab === 'personnel' || nextTab === 'admin-templates')) {
+      setActiveTab('dashboard');
+      showToast('Akses dibatasi: Menu ini hanya dapat diakses oleh Super Admin Satreskrim.');
+      return;
+    }
+    setActiveTab(nextTab);
+  };
 
   // Handlers
   const handleLoginSuccess = ({ user: authUser, profile, role, status }) => {
@@ -340,8 +397,9 @@ export default function App() {
     setCurrentUserProfile(profile);
     setUserRole(role);
     if (status === 'active' || role === 'super_admin') {
-      setActiveTab('dashboard');
-      showToast(`Selamat bertugas, ${profile.pangkat || ''} ${profile.nama || profile.full_name || ''} (${role.toUpperCase()})`);
+      const spktAccount = isSpktRole(role);
+      setActiveTab(spktAccount ? 'dumas' : 'dashboard');
+      showToast(`Selamat bertugas, ${profile.pangkat || ''} ${profile.nama || profile.full_name || ''} (${spktAccount ? 'PETUGAS SPKT' : role.toUpperCase()})`);
     }
   };
 
@@ -358,6 +416,7 @@ export default function App() {
   };
 
   const handleAddCase = async (newCase) => {
+    if (isSpktRole(userRole)) return;
     setCases((prev) => [newCase, ...prev]);
     showToast(`Perkara ${newCase.nomor_lp || newCase.no_lp} berhasil diregistrasi!`);
 
@@ -662,6 +721,7 @@ export default function App() {
   };
 
   const handleSaveDocument = async (newDoc) => {
+    if (isSpktRole(userRole)) return;
     const docToSave = newDoc || {};
     const skipDbUpsert = Boolean(docToSave._skipDbUpsert);
 
@@ -732,6 +792,7 @@ export default function App() {
   };
 
   const handleDeleteDocument = async (doc) => {
+    if (isSpktRole(userRole)) return;
     if (!doc || !doc.id) return;
 
     const docCode = (doc.template_code || doc.code || '').toUpperCase();
@@ -996,6 +1057,7 @@ export default function App() {
   };
 
   const handleOpenGeneratorForCase = (caseItem, templateCode = null, suspectId = null) => {
+    if (isSpktRole(userRole)) return;
     setCaseForGenerator(caseItem);
     if (templateCode) {
       setTemplateForGenerator(typeof templateCode === 'object' ? templateCode : { code: templateCode });
@@ -1007,6 +1069,7 @@ export default function App() {
   };
 
   const handleHandoverFromDumas = (mappedCase) => {
+    if (isSpktRole(userRole)) return;
     setCaseForGenerator(mappedCase);
     setActiveTab('generator');
     showToast(`Data perkara Dumas ${mappedCase.no_lp || ''} siap diproses di Generator Mindik.`);
@@ -1132,10 +1195,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Expanding Sidebar Navigation with 3-tier Role-based filtering */}
+      {/* Expanding Sidebar Navigation with 4-tier Role-based filtering */}
       <ExpandingSidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        activeTab={isSpktUser ? 'dumas' : activeTab}
+        setActiveTab={handleNavigateTab}
         caseCount={cases.length}
         dumasCount={dumasList.length}
         docCount={documents.length}
@@ -1156,10 +1219,13 @@ export default function App() {
         }}
       >
         <Navbar
-          onNewCase={() => setIsNewCaseModalOpen(true)}
+          onNewCase={() => {
+            if (!isSpktUser) setIsNewCaseModalOpen(true);
+          }}
           onNewDoc={() => {
+            if (isSpktUser) return;
             setCaseForGenerator(null);
-            setActiveTab('generator');
+            handleNavigateTab('generator');
           }}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -1170,7 +1236,7 @@ export default function App() {
         />
 
         <main className="main-content">
-          {activeTab === 'dashboard' && (
+          {!isSpktUser && activeTab === 'dashboard' && (
             <DashboardView
               cases={cases}
               documents={documents}
@@ -1182,14 +1248,16 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'dumas' && (
+          {(activeTab === 'dumas' || isSpktUser) && (
             <div className="w-full h-full overflow-y-auto">
               {DumasView ? (
                 <DumasView
                   dumasList={dumasList}
                   setDumasList={setDumasList}
                   currentUserProfile={currentUserProfile}
-                  onHandoverToGenerator={handleHandoverFromDumas}
+                  userRole={userRole}
+                  isSpkt={isSpktUser}
+                  onHandoverToGenerator={isSpktUser ? undefined : handleHandoverFromDumas}
                   onShowToast={showToast}
                 />
               ) : DumasFormView ? (
@@ -1206,7 +1274,7 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'cases' && (
+          {!isSpktUser && activeTab === 'cases' && (
             <CasesView
               cases={cases}
               personnel={personnel}
@@ -1219,7 +1287,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'generator' && (
+          {!isSpktUser && activeTab === 'generator' && (
             <MindikGeneratorView
               cases={cases}
               personnel={personnel}
@@ -1228,11 +1296,11 @@ export default function App() {
               initialTemplate={templateForGenerator}
               initialSuspectId={suspectForGenerator}
               onSaveDocument={handleSaveDocument}
-              onOpenTemplateStudio={() => setActiveTab('admin-templates')}
+              onOpenTemplateStudio={() => handleNavigateTab('admin-templates')}
             />
           )}
 
-          {activeTab === 'archives' && (
+          {!isSpktUser && activeTab === 'archives' && (
             <ArchivesView
               documents={documents}
               personnel={personnel}
@@ -1243,7 +1311,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'personnel' && userRole === 'super_admin' && (
+          {!isSpktUser && activeTab === 'personnel' && userRole === 'super_admin' && (
             <PersonnelView
               cases={cases}
               personnel={personnel}
@@ -1254,7 +1322,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'admin-templates' && userRole === 'super_admin' && (
+          {!isSpktUser && activeTab === 'admin-templates' && userRole === 'super_admin' && (
             <AdminTemplateStudio
               userRole={userRole}
               onTemplateSaved={(newTpl) => {
@@ -1262,7 +1330,7 @@ export default function App() {
               }}
               onSelectTemplateForGenerator={(tpl) => {
                 setTemplateForGenerator(tpl);
-                setActiveTab('generator');
+                handleNavigateTab('generator');
               }}
             />
           )}
@@ -1270,7 +1338,7 @@ export default function App() {
       </div>
 
       {/* Case Detail Dossier Modal */}
-      {selectedCaseForDetail && (
+      {!isSpktUser && selectedCaseForDetail && (
         <CaseDetailModal
           caseItem={selectedCaseForDetail}
           personnel={personnel}
@@ -1282,7 +1350,7 @@ export default function App() {
       )}
 
       {/* New Case Registration Modal */}
-      {isNewCaseModalOpen && (
+      {!isSpktUser && isNewCaseModalOpen && (
         <NewCaseModal
           onClose={() => setIsNewCaseModalOpen(false)}
           onAddCase={handleAddCase}
@@ -1291,7 +1359,7 @@ export default function App() {
       )}
 
       {/* Document View / Print Modal */}
-      {selectedDocForPreview && (
+      {!isSpktUser && selectedDocForPreview && (
         <DocPreviewModal
           docItem={selectedDocForPreview}
           cases={cases}
@@ -1300,7 +1368,8 @@ export default function App() {
       )}
 
       {/* User / RBAC Role Management Modal (Khusus Super Admin) */}
-      <UserManagementModal
+      {!isSpktUser && userRole === 'super_admin' && (
+        <UserManagementModal
         isOpen={isUserManagementOpen}
         onClose={() => setIsUserManagementOpen(false)}
         currentUserId={user?.id}
@@ -1321,6 +1390,7 @@ export default function App() {
           showToast(`Personel ${cleanedName} berhasil disinkronkan ke direktori!`);
         }}
       />
+      )}
     </div>
   );
 }

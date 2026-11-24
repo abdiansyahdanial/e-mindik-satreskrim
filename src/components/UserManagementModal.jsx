@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { sendAccountApprovedEmail } from '../services/emailService';
+import { isSpktRole, getRoleLabel, getRoleBadgeStyle } from '../utils/rbacHelper';
 
 const PANGKAT_OPTIONS = [
   'BRIPDA',
@@ -89,6 +90,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
   const [message, setMessage] = useState(null);
   const [nrpInputs, setNrpInputs] = useState({});
   const [activeNrpInputs, setActiveNrpInputs] = useState({});
+  const [pendingRoleInputs, setPendingRoleInputs] = useState({});
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -119,7 +121,7 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
   const pendingProfiles = profiles.filter(p =>
     p.status === 'pending' ||
     p.role === 'pending' ||
-    (!p.status && p.role === 'penyidik' && p.role !== 'super_admin' && p.role !== 'admin' && p.role !== 'anggota')
+    (!p.status && p.role === 'penyidik' && p.role !== 'super_admin' && p.role !== 'admin' && p.role !== 'anggota' && !isSpktRole(p.role))
   );
 
   const activeProfiles = profiles.filter(p => !pendingProfiles.some(pp => pp.id === p.id));
@@ -144,10 +146,12 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
       const userTypedNrp = nrpInputs[profile.id]?.trim();
       const resolvedNrp = userTypedNrp || resolveNrp(profile) || '';
       const cleanName = cleanOfficerName(profile.nama || profile.full_name) || 'Penyidik Satreskrim';
+      const approvedRole = pendingRoleInputs[profile.id] || 'anggota';
+      const isApprovedSpkt = isSpktRole(approvedRole);
 
       // 1. Update status & role di tabel public.profiles (menggunakan rank_nrp & position yang ada di schema)
       const updatePayload = {
-        role: 'anggota',
+        role: approvedRole,
         status: 'active',
         full_name: `${resolvedPangkat} ${cleanName}`
       };
@@ -164,14 +168,14 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
         console.warn('Profile approval update notice:', err1.message);
         await supabase
           .from('profiles')
-          .update({ role: 'anggota' })
+          .update({ role: approvedRole })
           .eq('id', profile.id);
       }
 
       // Update in-memory profiles state
       setProfiles(prev => prev.map(p => p.id === profile.id ? {
         ...p,
-        role: 'anggota',
+        role: approvedRole,
         status: 'active',
         full_name: `${resolvedPangkat} ${cleanName}`,
         rank_nrp: resolvedNrp || p.rank_nrp
@@ -183,58 +187,60 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
         nama: cleanName,
         pangkat: resolvedPangkat,
         nrp: resolvedNrp || '-',
-        jabatan: profile.position || profile.jabatan || 'Penyidik Pembantu',
+        jabatan: isApprovedSpkt ? 'Petugas Loket SPKT' : (profile.position || profile.jabatan || 'Penyidik Pembantu'),
         satker: profile.satker || 'Satreskrim Polres Kolaka Timur',
         unit: profile.unit || '',
         phone: profile.phone || profile.no_hp || '',
         email: profile.email || '',
-        role: 'Penyidik',
+        role: isApprovedSpkt ? 'Petugas SPKT' : 'Penyidik',
         status: 'active'
       };
 
-      // 3. Sinkronkan Otomatis ke Tabel public.investigators
-      try {
-        if (officerData.nrp && officerData.nrp !== '-') {
-          const { data: existingInv } = await supabase
-            .from('investigators')
-            .select('id')
-            .or(`id.eq.${profile.id},nrp.eq.${officerData.nrp}`)
-            .maybeSingle();
+      // 3. Sinkronkan Otomatis ke Tabel public.investigators (khusus personel Satreskrim, lewati untuk akun SPKT)
+      if (!isApprovedSpkt) {
+        try {
+          if (officerData.nrp && officerData.nrp !== '-') {
+            const { data: existingInv } = await supabase
+              .from('investigators')
+              .select('id')
+              .or(`id.eq.${profile.id},nrp.eq.${officerData.nrp}`)
+              .maybeSingle();
 
-          if (existingInv?.id) {
-            await supabase
-              .from('investigators')
-              .update({
-                nama: cleanName,
-                pangkat: officerData.pangkat,
-                nrp: officerData.nrp,
-                jabatan: officerData.jabatan,
-                phone: officerData.phone,
-                status: 'active'
-              })
-              .eq('id', existingInv.id);
-          } else {
-            await supabase
-              .from('investigators')
-              .insert([{
-                id: profile.id || `inv-${Date.now()}`,
-                nama: cleanName,
-                pangkat: officerData.pangkat,
-                nrp: officerData.nrp,
-                jabatan: officerData.jabatan,
-                role: 'Penyidik',
-                phone: officerData.phone,
-                status: 'active'
-              }]);
+            if (existingInv?.id) {
+              await supabase
+                .from('investigators')
+                .update({
+                  nama: cleanName,
+                  pangkat: officerData.pangkat,
+                  nrp: officerData.nrp,
+                  jabatan: officerData.jabatan,
+                  phone: officerData.phone,
+                  status: 'active'
+                })
+                .eq('id', existingInv.id);
+            } else {
+              await supabase
+                .from('investigators')
+                .insert([{
+                  id: profile.id || `inv-${Date.now()}`,
+                  nama: cleanName,
+                  pangkat: officerData.pangkat,
+                  nrp: officerData.nrp,
+                  jabatan: officerData.jabatan,
+                  role: 'Penyidik',
+                  phone: officerData.phone,
+                  status: 'active'
+                }]);
+            }
           }
+        } catch (invErr) {
+          console.warn('Investigator sync notice (handled):', invErr.message);
         }
-      } catch (invErr) {
-        console.warn('Investigator sync notice (handled):', invErr.message);
-      }
 
-      // 4. Perbarui daftar personel di state App.jsx
-      if (onPersonnelUpdated) {
-        onPersonnelUpdated(officerData);
+        // 4. Perbarui daftar personel di state App.jsx
+        if (onPersonnelUpdated) {
+          onPersonnelUpdated(officerData);
+        }
       }
 
       // 5. Kirim email notifikasi aktivasi resmi ke penyidik via Resend (asynchronous non-blocking)
@@ -536,7 +542,25 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                       </div>
 
                       {/* Tombol Aksi Super Admin */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <select
+                          value={pendingRoleInputs[p.id] || 'anggota'}
+                          onChange={(e) => setPendingRoleInputs(prev => ({ ...prev, [p.id]: e.target.value }))}
+                          disabled={savingId === p.id}
+                          className="form-select"
+                          style={{
+                            fontSize: '11px',
+                            padding: '5px 8px',
+                            width: '132px',
+                            borderColor: 'rgba(255, 255, 255, 0.2)'
+                          }}
+                          title="Pilih peran awal saat akun disetujui"
+                        >
+                          <option value="anggota">Anggota</option>
+                          <option value="spkt">Petugas SPKT</option>
+                          <option value="admin">Admin</option>
+                        </select>
+
                         <button
                           type="button"
                           onClick={() => handleApproveUser(p)}
@@ -646,8 +670,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                 border: '1px solid rgba(148, 163, 184, 0.14)',
                 fontSize: '11px',
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '8px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: '10px',
                 marginBottom: '14px'
               }}>
                 <div>
@@ -668,6 +692,12 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                     Peran default. Input LP baru & jalankan generator mindik.
                   </p>
                 </div>
+                <div>
+                  <strong style={{ color: '#FBBF24' }}>4. Petugas SPKT</strong>
+                  <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)' }}>
+                    Akses loket terisolasi: hanya Input Dumas Baru & Daftar Dumas baca-saja (tanpa mindik/LP).
+                  </p>
+                </div>
               </div>
 
               {activeProfiles.length === 0 ? (
@@ -678,8 +708,8 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {activeProfiles.map((p) => {
                     const isSelf = p.id === currentUserId;
-                    const isSuper = p.role === 'super_admin';
-                    const isAdmin = p.role === 'admin';
+                    const normalizedSelectRole = isSpktRole(p.role) ? 'spkt' : (p.role || 'anggota');
+                    const roleBadgeStyle = getRoleBadgeStyle(p.role);
 
                     return (
                       <div
@@ -707,13 +737,10 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                               </span>
                             )}
                             <span className="badge" style={{
-                              background: isSuper ? '#FF2A2A' : isAdmin ? '#FFFFFF' : '#131924',
-                              border: isSuper ? '1px solid #FF2A2A' : isAdmin ? '1px solid #FFFFFF' : '1px solid rgba(148, 163, 184, 0.2)',
-                              color: isAdmin ? '#0B0E14' : '#FFFFFF',
-                              fontSize: '9.5px',
-                              borderRadius: '9999px'
+                              ...roleBadgeStyle,
+                              fontSize: '9.5px'
                             }}>
-                              {isSuper ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : 'ANGGOTA'}
+                              {getRoleLabel(p.role)}
                             </span>
                           </div>
 
@@ -752,20 +779,21 @@ export default function UserManagementModal({ isOpen, onClose, currentUserId, on
                         {/* Role Selector Controls */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <select
-                            value={p.role || 'anggota'}
+                            value={normalizedSelectRole}
                             disabled={savingId === p.id || isSelf}
                             onChange={(e) => handleRoleChange(p.id, e.target.value)}
                             className="form-select"
                             style={{
                               fontSize: '11.5px',
                               padding: '6px 10px',
-                              width: '140px',
+                              width: '150px',
                               borderColor: 'rgba(255, 255, 255, 0.15)'
                             }}
                           >
                             <option value="super_admin">Super Admin</option>
                             <option value="admin">Admin</option>
                             <option value="anggota">Anggota</option>
+                            <option value="spkt">Petugas SPKT</option>
                           </select>
 
                           {savingId === p.id && (

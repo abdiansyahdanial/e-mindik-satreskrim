@@ -230,6 +230,7 @@ function matchCrimeCategory(item, selectedCategory) {
 
 export default function DumasListView({
   dumasList = [],
+  isSpkt = false,
   onOpenModeSelect,
   hasDraft = false,
   onOpenDraft,
@@ -330,9 +331,17 @@ export default function DumasListView({
         {/* ======================================================= */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FFFFFF] text-[#0B0E14] text-[11px] font-mono font-bold tracking-wider mb-2.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FF2A2A]"></span>
-              SISTEM INFORMASI REGISTRASI DUMAS PRESISI
+            <div className="flex items-center flex-wrap gap-2 mb-2.5">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#FFFFFF] text-[#0B0E14] text-[11px] font-mono font-bold tracking-wider shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FF2A2A]"></span>
+                SISTEM INFORMASI REGISTRASI DUMAS PRESISI
+              </div>
+              {isSpkt && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(245,158,11,0.16)] border border-[rgba(245,158,11,0.55)] text-[#FBBF24] text-[10.5px] font-mono font-bold tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
+                  MODE LOKET SPKT (DAFTAR BACA-SAJA)
+                </div>
+              )}
             </div>
             <h1 className="heading-font text-xl md:text-2xl font-bold text-white uppercase tracking-[0.04em] m-0">
               DAFTAR PENGADUAN MASYARAKAT (DUMAS)
@@ -564,16 +573,18 @@ export default function DumasListView({
                               <FileText size={14} />
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => onOpenGeneratorForDumas && onOpenGeneratorForDumas(item)}
-                              className="inline-flex items-center justify-center w-[34px] h-[34px] rounded-full bg-[#131924] hover:bg-white text-[#CBD5E1] hover:text-[#0B0E14] border border-[rgba(148,163,184,0.20)] hover:border-white transition-all cursor-pointer"
-                              title="Lanjut Buat Sprin (Generator Mindik)"
-                            >
-                              <FileSignature size={14} />
-                            </button>
+                            {!isSpkt && onOpenGeneratorForDumas && (
+                              <button
+                                type="button"
+                                onClick={() => onOpenGeneratorForDumas(item)}
+                                className="inline-flex items-center justify-center w-[34px] h-[34px] rounded-full bg-[#131924] hover:bg-white text-[#CBD5E1] hover:text-[#0B0E14] border border-[rgba(148,163,184,0.20)] hover:border-white transition-all cursor-pointer"
+                                title="Lanjut Buat Sprin (Generator Mindik)"
+                              >
+                                <FileSignature size={14} />
+                              </button>
+                            )}
 
-                            {onDeleteDumas && (
+                            {!isSpkt && onDeleteDumas && (
                               <button
                                 type="button"
                                 onClick={() => {
