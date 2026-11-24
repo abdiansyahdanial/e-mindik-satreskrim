@@ -86,34 +86,36 @@ export function normalizeSubjectRecord(s = {}, idx = 0, roleLabel = 'Subjek') {
   if (!s) return null;
   const nama = (s.nama || s.name || '').trim();
   const alias = (s.alias || '').trim();
-  const nik = (s.nik || s.no_identitas || '').trim();
+  const nik = (s.nik || s.no_identitas || s.nomor_identitas || s.no_ktp || s.nomor_ktp || s.identitas || '').trim();
   let tempat_lahir = (s.tempat_lahir || '').trim();
   let tanggal_lahir = (s.tanggal_lahir || s.tgl_lahir || '').trim();
 
-  if (!tempat_lahir && !tanggal_lahir && s.ttl) {
-    const parts = String(s.ttl).split(',');
+  if (!tempat_lahir && !tanggal_lahir && (s.ttl || s.tempat_tanggal_lahir || s.tempat_tgl_lahir)) {
+    const rawTtlSrc = String(s.ttl || s.tempat_tanggal_lahir || s.tempat_tgl_lahir);
+    const parts = rawTtlSrc.split(',');
     if (parts.length >= 2) {
       tempat_lahir = parts[0].trim();
       tanggal_lahir = parts.slice(1).join(',').trim();
     } else {
-      tempat_lahir = String(s.ttl).trim();
+      tempat_lahir = rawTtlSrc.trim();
     }
   }
 
   const formattedDob = tanggal_lahir ? formatTanggalIndonesia(tanggal_lahir) : '';
   const ttl = (tempat_lahir && formattedDob)
     ? `${tempat_lahir}, ${formattedDob}`
-    : (s.ttl || tempat_lahir || formattedDob || '');
+    : (s.ttl || s.tempat_tanggal_lahir || s.tempat_tgl_lahir || tempat_lahir || formattedDob || '');
   const autoAge = calculateAgeFromDob(tanggal_lahir);
-  const rawUmur = s.umur || autoAge || '';
+  const rawUmur = s.umur || s.usia || autoAge || '';
   const umurClean = String(rawUmur).replace(/\s*tahun\s*/i, '').trim();
   const umurFormatted = umurClean ? `${umurClean} Tahun` : '';
-  const jenis_kelamin = s.jenis_kelamin || s.jk || 'Laki-laki';
-  const kewarganegaraan = s.kewarganegaraan || 'Indonesia';
+  const jenis_kelamin = s.jenis_kelamin || s.jk || s.kelamin || 'Laki-laki';
+  const kewarganegaraan = s.kewarganegaraan || s.warga_negara || s.wn || 'Indonesia';
   const agama = s.agama || 'Islam';
-  const pekerjaan = s.pekerjaan || '';
-  const pendidikan = s.pendidikan || '';
-  const alamat = s.alamat || '';
+  const pekerjaan = s.pekerjaan || s.kerja || '';
+  const pendidikan = s.pendidikan || s.pendidikan_terakhir || '';
+  const status_pernikahan = (s.status_pernikahan || s.status_kawin || s.status_nikah || s.marital_status || s.perkawinan || '').trim();
+  const alamat = (s.alamat || s.tempat_tinggal || s.kediaman || s.alamat_tinggal || s.domisili || '').trim();
   const no_hp = s.no_hp || s.kontak || s.phone || '';
   const nomor_sp_tap = s.nomor_sp_tap || s.no_sp_tap_tsk || s.no_sp_tap || '';
   const tanggal_sp_tap = s.tanggal_sp_tap || s.tgl_sp_tap_tsk || s.tgl_sp_tap || '';
@@ -126,19 +128,37 @@ export function normalizeSubjectRecord(s = {}, idx = 0, roleLabel = 'Subjek') {
     alias,
     nama_lengkap: alias ? `${nama} Als. ${alias}` : nama,
     nik,
+    no_identitas: nik,
+    nomor_identitas: nik,
     tempat_lahir,
     tanggal_lahir,
     tgl_lahir: formattedDob || tanggal_lahir,
     ttl,
+    tempat_tanggal_lahir: ttl,
+    tempat_tgl_lahir: ttl,
     umur: umurFormatted || umurClean,
+    usia: umurFormatted || umurClean,
     umur_angka: umurClean,
     jenis_kelamin,
     jk: jenis_kelamin,
+    kelamin: jenis_kelamin,
     kewarganegaraan,
+    warga_negara: kewarganegaraan,
+    wn: kewarganegaraan,
     agama,
     pekerjaan,
+    kerja: pekerjaan,
     pendidikan,
+    pendidikan_terakhir: pendidikan,
+    status_pernikahan,
+    status_kawin: status_pernikahan,
+    status_nikah: status_pernikahan,
+    perkawinan: status_pernikahan,
     alamat,
+    tempat_tinggal: alamat,
+    kediaman: alamat,
+    alamat_tinggal: alamat,
+    domisili: alamat,
     no_hp,
     kontak: no_hp,
     nomor_sp_tap,
@@ -147,6 +167,312 @@ export function normalizeSubjectRecord(s = {}, idx = 0, roleLabel = 'Subjek') {
   };
   normalized.biodata_lengkap = formatSubjectBiodataBlock(normalized);
   return normalized;
+}
+
+function enrichSubjectWithPool(subj = {}, pool = []) {
+  if (!subj || typeof subj !== 'object') return subj;
+  const sId = subj.id ? String(subj.id).trim() : '';
+  const sNik = String(subj.nik || subj.no_identitas || '').trim().toLowerCase();
+  const sName = String(subj.nama || subj.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const matched = (Array.isArray(pool) ? pool : []).find((cand) => {
+    if (!cand || typeof cand !== 'object') return false;
+    if (sId && cand.id && String(cand.id).trim() === sId) return true;
+    const cNik = String(cand.nik || cand.no_identitas || '').trim().toLowerCase();
+    if (sNik && sNik !== '-' && cNik && cNik === sNik) return true;
+    const cName = String(cand.nama || cand.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    return Boolean(sName && sName !== '-' && cName && cName === sName);
+  });
+  if (!matched) return subj;
+
+  const merged = { ...matched };
+  Object.keys(subj).forEach((k) => {
+    const v = subj[k];
+    if (v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim() !== '-') {
+      merged[k] = v;
+    }
+  });
+  return merged;
+}
+
+/**
+ * Deduplikasi subjek hukum tunggal lintas sumber (case_suspects, terlapor_list, terlapor_name, person).
+ * - Identitas unik per orang berdasarkan `nik` (jika valid bukan `-`) ATAU `nama` ternormalisasi.
+ * - Menggabungkan seluruh field non-kosong menjadi 1 objek tunggal tanpa saling menimpa dgn kosong.
+ * - Mempertahankan status tertinggi ('tersangka' menang atas 'terlapor').
+ */
+export function deduplicateSubjectRecords(records = [], roleLabel = 'Subjek') {
+  if (!Array.isArray(records) || records.length === 0) return [];
+
+  const normNameKey = (val) => String(val || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const normNikKey = (val) => {
+    const s = String(val || '').trim();
+    return (!s || s === '-' || s === 'null' || s === 'undefined') ? '' : s.toLowerCase();
+  };
+  const isValPresent = (val) => {
+    if (val === undefined || val === null) return false;
+    if (typeof val === 'string') {
+      const t = val.trim();
+      return t !== '' && t !== '-' && t !== 'null' && t !== 'undefined';
+    }
+    return true;
+  };
+  const isSyntheticId = (idVal) => !idVal || /^(subjek|terlapor|tersangka|saksi|pelapor|korban)_\d+$/i.test(String(idVal));
+
+  const rawMergedList = [];
+  const byNik = new Map();
+  const byName = new Map();
+
+  records.forEach((rawItem) => {
+    if (!rawItem || typeof rawItem !== 'object') return;
+    const rawName = String(rawItem.nama || rawItem.name || '').trim();
+    if (!rawName || rawName === '-') return;
+
+    const cleanRaw = {};
+    Object.keys(rawItem).forEach((k) => {
+      if (isValPresent(rawItem[k])) {
+        cleanRaw[k] = rawItem[k];
+      }
+    });
+    if (!cleanRaw.nama && cleanRaw.name) {
+      cleanRaw.nama = cleanRaw.name;
+    }
+
+    const nameKey = normNameKey(cleanRaw.nama);
+    if (!nameKey || nameKey === '-') return;
+    const nikKey = normNikKey(cleanRaw.nik || cleanRaw.no_identitas || cleanRaw.nomor_identitas || cleanRaw.no_ktp);
+
+    let existingIdx = -1;
+    if (nikKey && byNik.has(nikKey)) {
+      existingIdx = byNik.get(nikKey);
+    } else if (byName.has(nameKey)) {
+      existingIdx = byName.get(nameKey);
+    }
+
+    if (existingIdx >= 0) {
+      const target = rawMergedList[existingIdx];
+      Object.keys(cleanRaw).forEach((k) => {
+        if (k === 'status' || k === 'id' || k === 'no' || k === 'biodata_lengkap' || k === 'role_category') return;
+        if (!isValPresent(target[k])) {
+          target[k] = cleanRaw[k];
+        }
+      });
+
+      // Pertahankan ID riil database (misal UUID dari public.case_suspects)
+      if (isSyntheticId(target.id) && !isSyntheticId(cleanRaw.id)) {
+        target.id = cleanRaw.id;
+      }
+
+      // Pertahankan status tertinggi ('tersangka' menang atas 'terlapor')
+      const prevStatus = String(target.status || '').toLowerCase().trim();
+      const nextStatus = String(cleanRaw.status || '').toLowerCase().trim();
+      if (prevStatus === 'tersangka' || nextStatus === 'tersangka') {
+        target.status = 'tersangka';
+      } else if (!prevStatus && nextStatus) {
+        target.status = nextStatus;
+      }
+
+      if (nikKey) byNik.set(nikKey, existingIdx);
+      if (nameKey) byName.set(nameKey, existingIdx);
+      const mergedNik = normNikKey(target.nik || target.no_identitas);
+      if (mergedNik) byNik.set(mergedNik, existingIdx);
+    } else {
+      const targetIdx = rawMergedList.length;
+      rawMergedList.push(cleanRaw);
+      if (nikKey) byNik.set(nikKey, targetIdx);
+      byName.set(nameKey, targetIdx);
+    }
+  });
+
+  return rawMergedList
+    .map((mergedRaw, idx) => normalizeSubjectRecord(mergedRaw, idx, roleLabel))
+    .filter(Boolean);
+}
+
+/**
+ * Resolusi fallback Terlapor yang aman dari data terstruktur perkara:
+ * 1. case_suspects dengan status 'terlapor' + activeCase.terlapor_list + references.terlapor_list
+ * 2. Jika filter 'terlapor' murni kosong, gunakan subjek case_suspects (termasuk 'tersangka'
+ *    karena tersangka pada tahap penyidikan berasal dari terlapor)
+ * 3. Fallback legacy (activeCase.person & terlapor_name) HANYA dipakai bila sumber terstruktur kosong
+ *    agar nilai usang di kolom cases.terlapor_name / cases.person tidak menimpa case_suspects.
+ * Dilarang keras mengambil data terlapor dari pelapor_name, nama_pelapor, investigators, atau dummy statis.
+ */
+function resolveCaseTerlaporFallback(suspectsArr = [], activeCase = {}, refsObj = {}) {
+  const safeSuspects = Array.isArray(suspectsArr) ? suspectsArr : [];
+  const pureTerlapor = safeSuspects.filter((s) => s && s.status === 'terlapor');
+  const structuredTerlapor = [
+    ...pureTerlapor,
+    ...(Array.isArray(activeCase?.terlapor_list) ? activeCase.terlapor_list : []),
+    ...(Array.isArray(refsObj?.terlapor_list) ? refsObj.terlapor_list : [])
+  ].filter((s) => s && (s.nama || s.name));
+
+  const structuredPool = structuredTerlapor.length > 0
+    ? structuredTerlapor
+    : safeSuspects.filter((s) => s && (s.nama || s.name) && s.status !== 'saksi' && s.status !== 'pelapor');
+
+  if (structuredPool.length > 0) {
+    return deduplicateSubjectRecords(structuredPool, 'Terlapor');
+  }
+
+  const legacyList = [];
+  if (
+    activeCase?.person &&
+    activeCase.person.nama &&
+    activeCase.person.status !== 'saksi' &&
+    activeCase.person.status !== 'pelapor'
+  ) {
+    legacyList.push(activeCase.person);
+  }
+  const legacyName = String(activeCase?.nama_terlapor || activeCase?.terlapor_name || activeCase?.terlapor || '').trim();
+  if (legacyName && legacyName !== '-') {
+    legacyList.push({ nama: legacyName, status: 'terlapor' });
+  }
+  return deduplicateSubjectRecords(legacyList, 'Terlapor');
+}
+
+/**
+ * Mengisi 11 field biodata KUHAP beserta seluruh permutasi tag indeks (i = 1..5) dan array loop
+ * untuk setiap group prefix (misal TERLAPOR, SUBJEK, TSK, TERSANGKA):
+ * - ${P}_${i}_${F}, ${F}_${P}_${i}, ${P}${i}_${F}, ${F}_${P}${i} (UPPERCASE & lowercase)
+ * - Array loop {#TERLAPOR}, {#SUBJEK}, dst.
+ */
+export function populateIndexedSubjectGroup(
+  targetObj,
+  subjectList = [],
+  groupPrefixes = ['TERLAPOR', 'SUBJEK'],
+  enrichmentPool = []
+) {
+  if (!targetObj || typeof targetObj !== 'object') return [];
+  const enrichedRaw = (Array.isArray(subjectList) ? subjectList : [])
+    .filter(item => item && (item.nama || item.name))
+    .map(item => enrichSubjectWithPool(item, enrichmentPool));
+  const primaryGroupLabel = groupPrefixes[0] || 'Subjek';
+  const normalizedList = deduplicateSubjectRecords(enrichedRaw, primaryGroupLabel);
+
+  const buildFieldMapForItem = (item) => {
+    const exists = Boolean(item && item.nama);
+    if (!exists) {
+      return {
+        NAMA: '', NAMA_LENGKAP: '', NAMA_ALIAS: '', ALIAS: '',
+        NIK: '', NO_IDENTITAS: '', NOMOR_IDENTITAS: '', NO_KTP: '', NOMOR_KTP: '', IDENTITAS: '',
+        KEWARGANEGARAAN: '', WARGA_NEGARA: '', WN: '',
+        JENIS_KELAMIN: '', JK: '', KELAMIN: '',
+        TTL: '', TEMPAT_TANGGAL_LAHIR: '', TEMPAT_TGL_LAHIR: '', TEMPAT_LAHIR: '', TANGGAL_LAHIR: '', TGL_LAHIR: '',
+        UMUR: '', USIA: '',
+        PEKERJAAN: '', KERJA: '',
+        PENDIDIKAN: '', PENDIDIKAN_TERAKHIR: '',
+        AGAMA: '',
+        STATUS_PERNIKAHAN: '', STATUS_KAWIN: '', STATUS_NIKAH: '', PERKAWINAN: '',
+        ALAMAT: '', TEMPAT_TINGGAL: '', KEDIAMAN: '', ALAMAT_TINGGAL: '', DOMISILI: '',
+        NO_HP: '', KONTAK: '', BIODATA_LENGKAP: ''
+      };
+    }
+    return {
+      NAMA: item.nama || '',
+      NAMA_LENGKAP: item.nama_lengkap || item.nama || '',
+      NAMA_ALIAS: item.nama_lengkap || item.nama || '',
+      ALIAS: item.alias || '',
+      NIK: item.nik || '',
+      NO_IDENTITAS: item.nik || '',
+      NOMOR_IDENTITAS: item.nik || '',
+      NO_KTP: item.nik || '',
+      NOMOR_KTP: item.nik || '',
+      IDENTITAS: item.nik || '',
+      KEWARGANEGARAAN: item.kewarganegaraan || 'Indonesia',
+      WARGA_NEGARA: item.kewarganegaraan || 'Indonesia',
+      WN: item.kewarganegaraan || 'Indonesia',
+      JENIS_KELAMIN: item.jenis_kelamin || '',
+      JK: item.jenis_kelamin || '',
+      KELAMIN: item.jenis_kelamin || '',
+      TTL: item.ttl || '',
+      TEMPAT_TANGGAL_LAHIR: item.ttl || '',
+      TEMPAT_TGL_LAHIR: item.ttl || '',
+      TEMPAT_LAHIR: item.tempat_lahir || '',
+      TANGGAL_LAHIR: item.tgl_lahir || '',
+      TGL_LAHIR: item.tgl_lahir || '',
+      UMUR: item.umur || '',
+      USIA: item.umur || '',
+      PEKERJAAN: item.pekerjaan || '',
+      KERJA: item.pekerjaan || '',
+      PENDIDIKAN: item.pendidikan || '',
+      PENDIDIKAN_TERAKHIR: item.pendidikan || '',
+      AGAMA: item.agama || '',
+      STATUS_PERNIKAHAN: item.status_pernikahan || '',
+      STATUS_KAWIN: item.status_pernikahan || '',
+      STATUS_NIKAH: item.status_pernikahan || '',
+      PERKAWINAN: item.status_pernikahan || '',
+      ALAMAT: item.alamat || '',
+      TEMPAT_TINGGAL: item.alamat || '',
+      KEDIAMAN: item.alamat || '',
+      ALAMAT_TINGGAL: item.alamat || '',
+      DOMISILI: item.alamat || '',
+      NO_HP: item.no_hp || '',
+      KONTAK: item.no_hp || '',
+      BIODATA_LENGKAP: item.biodata_lengkap || ''
+    };
+  };
+
+  groupPrefixes.forEach((rawPrefix) => {
+    const P = String(rawPrefix || '').toUpperCase().trim();
+    const p = P.toLowerCase();
+    if (!P) return;
+
+    // 1. Array Loop {#TERLAPOR}, {#SUBJEK}, dll dengan properti lengkap
+    const loopItems = normalizedList.map((item, idx) => ({
+      ...item,
+      no: idx + 1,
+      identitas: item.nik || '',
+      no_identitas: item.nik || '',
+      nomor_identitas: item.nik || '',
+      no_ktp: item.nik || '',
+      nomor_ktp: item.nik || '',
+      warga_negara: item.kewarganegaraan || 'Indonesia',
+      wn: item.kewarganegaraan || 'Indonesia',
+      kelamin: item.jenis_kelamin || '',
+      tempat_tanggal_lahir: item.ttl || '',
+      tempat_tgl_lahir: item.ttl || '',
+      usia: item.umur || '',
+      kerja: item.pekerjaan || '',
+      pendidikan_terakhir: item.pendidikan || '',
+      status_pernikahan: item.status_pernikahan || '',
+      status_kawin: item.status_pernikahan || '',
+      status_nikah: item.status_pernikahan || '',
+      perkawinan: item.status_pernikahan || '',
+      tempat_tinggal: item.alamat || '',
+      kediaman: item.alamat || '',
+      alamat_tinggal: item.alamat || '',
+      domisili: item.alamat || ''
+    }));
+    targetObj[P] = loopItems;
+    targetObj[p] = loopItems;
+    targetObj[`${P}_LIST`] = loopItems;
+    targetObj[`${p}_list`] = loopItems;
+    targetObj[`DAFTAR_${P}`] = loopItems;
+    targetObj[`daftar_${p}`] = loopItems;
+
+    // 2. Indexed slots i = 1..5 dengan seluruh 4 pola permutasi penulisan tag
+    for (let i = 1; i <= 5; i++) {
+      const item = normalizedList[i - 1] || null;
+      const fieldMap = buildFieldMapForItem(item);
+      Object.entries(fieldMap).forEach(([F, val]) => {
+        const f = F.toLowerCase();
+        // Pola 1: PREFIX_i_FIELD (contoh: TERLAPOR_1_NAMA)
+        targetObj[`${P}_${i}_${F}`] = val;
+        targetObj[`${p}_${i}_${f}`] = val;
+        // Pola 2: FIELD_PREFIX_i (contoh: NAMA_TERLAPOR_1)
+        targetObj[`${F}_${P}_${i}`] = val;
+        targetObj[`${f}_${p}_${i}`] = val;
+        // Pola 3: PREFIXi_FIELD (contoh: TERLAPOR1_NAMA)
+        targetObj[`${P}${i}_${F}`] = val;
+        targetObj[`${p}${i}_${f}`] = val;
+        // Pola 4: FIELD_PREFIXi (contoh: NAMA_TERLAPOR1)
+        targetObj[`${F}_${P}${i}`] = val;
+        targetObj[`${f}_${p}${i}`] = val;
+      });
+    }
+  });
+
+  return normalizedList;
 }
 
 /**
@@ -163,14 +489,6 @@ export function populateSubjectPrefixVariables(targetMap, prefix, subjectList = 
   const upper = prefix.toUpperCase();
   const lower = prefix.toLowerCase();
 
-  // Loop Array (e.g. {#TERSANGKA}, {#TERLAPOR}, {#SAKSI}, {#PELAPOR})
-  targetMap[upper] = validList;
-  targetMap[lower] = validList;
-  targetMap[`${upper}_LIST`] = validList;
-  targetMap[`${lower}_list`] = validList;
-  targetMap[`DAFTAR_${upper}`] = validList;
-  targetMap[`daftar_${lower}`] = validList;
-
   // Biodata Lengkap Gabungan atau Tunggal
   const biodataBlock = validList.length > 1
     ? validList.map((item, i) => `${i + 1}. ${item.biodata_lengkap}`).join('\n\n')
@@ -184,19 +502,41 @@ export function populateSubjectPrefixVariables(targetMap, prefix, subjectList = 
       NAMA: primary.nama,
       ALIAS: primary.alias,
       NAMA_ALIAS: primary.nama_lengkap,
+      NAMA_LENGKAP: primary.nama_lengkap,
       NIK: primary.nik,
+      NO_IDENTITAS: primary.nik,
+      NOMOR_IDENTITAS: primary.nik,
+      NO_KTP: primary.nik,
+      NOMOR_KTP: primary.nik,
+      IDENTITAS: primary.nik,
       TEMPAT_LAHIR: primary.tempat_lahir,
       TANGGAL_LAHIR: primary.tgl_lahir,
       TGL_LAHIR: primary.tgl_lahir,
       TTL: primary.ttl,
+      TEMPAT_TANGGAL_LAHIR: primary.ttl,
+      TEMPAT_TGL_LAHIR: primary.ttl,
       UMUR: primary.umur,
+      USIA: primary.umur,
       JENIS_KELAMIN: primary.jenis_kelamin,
       JK: primary.jenis_kelamin,
+      KELAMIN: primary.jenis_kelamin,
       KEWARGANEGARAAN: primary.kewarganegaraan,
+      WARGA_NEGARA: primary.kewarganegaraan,
+      WN: primary.kewarganegaraan,
       AGAMA: primary.agama,
       PEKERJAAN: primary.pekerjaan,
+      KERJA: primary.pekerjaan,
       PENDIDIKAN: primary.pendidikan,
+      PENDIDIKAN_TERAKHIR: primary.pendidikan,
+      STATUS_PERNIKAHAN: primary.status_pernikahan,
+      STATUS_KAWIN: primary.status_pernikahan,
+      STATUS_NIKAH: primary.status_pernikahan,
+      PERKAWINAN: primary.status_pernikahan,
       ALAMAT: primary.alamat,
+      TEMPAT_TINGGAL: primary.alamat,
+      KEDIAMAN: primary.alamat,
+      ALAMAT_TINGGAL: primary.alamat,
+      DOMISILI: primary.alamat,
       NO_HP: primary.no_hp,
       KONTAK: primary.no_hp
     };
@@ -211,33 +551,8 @@ export function populateSubjectPrefixVariables(targetMap, prefix, subjectList = 
     });
   }
 
-  // Indexed slots 1..5 (e.g. SAKSI_1_NAMA, TERLAPOR_1_NAMA, PELAPOR_1_NAMA, TERSANGKA_1_NAMA)
-  for (let i = 1; i <= 5; i++) {
-    const item = validList[i - 1] || {};
-    const slotFields = {
-      NAMA: item.nama || '',
-      ALIAS: item.alias || '',
-      NIK: item.nik || '',
-      TEMPAT_LAHIR: item.tempat_lahir || '',
-      TANGGAL_LAHIR: item.tgl_lahir || '',
-      TGL_LAHIR: item.tgl_lahir || '',
-      TTL: item.ttl || '',
-      UMUR: item.umur || '',
-      JENIS_KELAMIN: item.jenis_kelamin || '',
-      JK: item.jenis_kelamin || '',
-      KEWARGANEGARAAN: item.kewarganegaraan || (item.nama ? 'Indonesia' : ''),
-      AGAMA: item.agama || '',
-      PEKERJAAN: item.pekerjaan || '',
-      PENDIDIKAN: item.pendidikan || '',
-      ALAMAT: item.alamat || '',
-      NO_HP: item.no_hp || '',
-      KONTAK: item.no_hp || ''
-    };
-    Object.entries(slotFields).forEach(([fKey, fVal]) => {
-      targetMap[`${upper}_${i}_${fKey}`] = fVal;
-      targetMap[`${lower}_${i}_${fKey.toLowerCase()}`] = fVal;
-    });
-  }
+  // Indexed slots 1..5 & array loop lengkap untuk semua 11 field dan permutasi tag
+  populateIndexedSubjectGroup(targetMap, validList, [upper]);
 }
 
 /**
@@ -328,6 +643,319 @@ export function extractArchivedDocNumberAndDate(doc = {}) {
 
   const formattedDocDate = rawDocDate ? formatTanggalIndonesia(rawDocDate) : '';
   return { docNo, rawDocDate, formattedDocDate, metaObj: mv };
+}
+
+/**
+ * Membangkitkan variabel tanggal terurai universal (HARI_*, TGL_ANGKA_*, TANGGAL_ANGKA_*,
+ * BULAN_*, TAHUN_*, TERBILANG_TAHUN_*, TANGGAL_TERURAI_*) untuk setiap prefix tanpa menimpa TANGGAL_<PREFIX>.
+ */
+export function assignDecomposedDateTags(targetObj, rawDateValue, prefixes = []) {
+  if (!targetObj || typeof targetObj !== 'object' || !rawDateValue || !Array.isArray(prefixes) || prefixes.length === 0) {
+    return;
+  }
+  const trimmed = String(rawDateValue).trim();
+  if (!trimmed || trimmed === '-' || /\.{3,}|\u2026/.test(trimmed)) return;
+
+  const iso = toIsoDateString(trimmed);
+  const parts = parseDateParts(iso || trimmed);
+  if (!parts || (!parts.hari && !parts.tanggal && !parts.bulan && !parts.tahun)) return;
+
+  const hari = parts.hari || '';
+  const tglAngka = parts.tanggal ? String(parseInt(parts.tanggal, 10) || parts.tanggal) : '';
+  const bulan = parts.bulan || '';
+  const tahun = parts.tahun || '';
+  const terbilangThn = parts.terbilangTahun || (tahun ? terbilangTahun(tahun) : '');
+  const terurai = (hari && tglAngka && bulan && tahun)
+    ? `hari ${hari} tanggal ${tglAngka} bulan ${bulan} tahun ${tahun}`
+    : (parts.tanggalLengkap || '');
+
+  prefixes.forEach((rawPrefix) => {
+    const pUpper = String(rawPrefix || '')
+      .toUpperCase()
+      .trim()
+      .replace(/[^A-Z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    if (!pUpper) return;
+
+    const setTag = (upperKey, val) => {
+      if (!val) return;
+      targetObj[upperKey] = val;
+      targetObj[upperKey.toLowerCase()] = val;
+    };
+
+    setTag(`HARI_${pUpper}`, hari);
+    setTag(`TGL_ANGKA_${pUpper}`, tglAngka);
+    setTag(`TANGGAL_ANGKA_${pUpper}`, tglAngka);
+    setTag(`BULAN_${pUpper}`, bulan);
+    setTag(`TAHUN_${pUpper}`, tahun);
+    setTag(`TERBILANG_TAHUN_${pUpper}`, terbilangThn);
+    setTag(`TANGGAL_TERURAI_${pUpper}`, terurai);
+  });
+}
+
+function extractDocTargetSuspectInfo(metaObj = {}) {
+  const mv = metaObj && typeof metaObj === 'object' ? metaObj : {};
+  const ids = [];
+  const names = [];
+
+  const pushId = (val) => {
+    if (val === undefined || val === null) return;
+    const s = String(val).trim();
+    if (s && s !== 'null' && s !== 'undefined' && !ids.includes(s)) ids.push(s);
+  };
+  const pushName = (val) => {
+    if (val === undefined || val === null) return;
+    const s = String(val).trim().toLowerCase();
+    if (s && s !== '-' && s !== 'null' && s !== 'undefined' && !names.includes(s)) names.push(s);
+  };
+
+  pushId(mv.target_suspect_id);
+  if (Array.isArray(mv.target_suspect_ids)) {
+    mv.target_suspect_ids.forEach(pushId);
+  }
+  pushName(mv.target_suspect_name);
+  pushName(mv.TERSANGKA_NAMA);
+  pushName(mv.tersangka_nama);
+  pushName(mv.SUBJEK_NAMA);
+  pushName(mv.subjek_nama);
+  pushName(mv.NAMA_TERSANGKA);
+  pushName(mv.nama_tersangka);
+
+  if (mv.suspect_data && !Array.isArray(mv.suspect_data) && typeof mv.suspect_data === 'object') {
+    pushId(mv.suspect_data.id);
+    pushName(mv.suspect_data.nama_lengkap || mv.suspect_data.nama);
+  } else if (Array.isArray(mv.suspect_data) && mv.suspect_data.length === 1 && mv.suspect_data[0]) {
+    pushId(mv.suspect_data[0].id);
+    pushName(mv.suspect_data[0].nama_lengkap || mv.suspect_data[0].nama);
+  }
+
+  return { ids, names };
+}
+
+/**
+ * Resolver 4-Lapis Dokumen Arsip Per-Tersangka (TAP_TSK, SPRIN_KAP, SPRIN_HAN).
+ * Memastikan tersangka ke-1..ke-5 tidak pernah tertukar/mewarisi nomor milik tersangka lain.
+ */
+export function resolvePerSuspectDocuments(suspectList = [], archivedDocs = [], docCategory = 'TAP_TSK') {
+  const validSuspects = Array.isArray(suspectList) ? suspectList : [];
+  if (validSuspects.length === 0) return [];
+
+  const pickVal = (...vals) => {
+    for (const v of vals) {
+      if (v !== undefined && v !== null) {
+        const s = String(v).trim();
+        if (s !== '' && s !== '-' && s !== 'null' && s !== 'undefined') return s;
+      }
+    }
+    return '';
+  };
+
+  const matchingDocs = (Array.isArray(archivedDocs) ? archivedDocs : [])
+    .filter((doc) => {
+      if (!doc) return false;
+      const rawUp = String(doc.template_code || doc.code || doc.document_type || '').toUpperCase().trim();
+      const canon = toCanonicalMindikCode(rawUp, doc.doc_title || doc.title || doc.document_name || '');
+      if (docCategory === 'TAP_TSK') return canon === 'TAP_TSK';
+      if (docCategory === 'SPRIN_KAP') return canon === 'SPRIN_KAP_DAN_BA' || rawUp === 'SPRIN_KAP' || rawUp === 'SP_KAP';
+      if (docCategory === 'SPRIN_HAN') return canon === 'SPRIN_HAN_DAN_BA' || rawUp === 'SPRIN_HAN' || rawUp === 'SP_HAN';
+      return false;
+    })
+    .map((doc) => {
+      const ext = extractArchivedDocNumberAndDate(doc);
+      return {
+        doc,
+        docNo: ext.docNo,
+        rawDocDate: ext.rawDocDate,
+        formattedDocDate: ext.formattedDocDate,
+        target: extractDocTargetSuspectInfo(ext.metaObj)
+      };
+    })
+    .filter((entry) => isValidOfficialDocNumber(entry.docNo))
+    .sort((a, b) => new Date(a.doc?.created_at || 0).getTime() - new Date(b.doc?.created_at || 0).getTime());
+
+  const results = new Array(validSuspects.length).fill(null);
+  const claimedDocIndices = new Set();
+
+  // Pass 1: Prioritas Lapis 1 (ID di meta_values) -> Lapis 2 (Nama di meta_values) -> Lapis 3 (Kolom row tersangka)
+  validSuspects.forEach((s, idx) => {
+    if (!s || typeof s !== 'object') {
+      results[idx] = { docNo: '', rawDocDate: '', formattedDocDate: '' };
+      return;
+    }
+    const sId = s.id ? String(s.id).trim() : '';
+    const sName = String(s.nama || s.nama_lengkap || '').trim().toLowerCase();
+
+    // Lapis 1: Cocok target_suspect_id / suspect_data.id
+    if (sId) {
+      for (let k = matchingDocs.length - 1; k >= 0; k--) {
+        if (matchingDocs[k].target.ids.includes(sId)) {
+          claimedDocIndices.add(k);
+          results[idx] = {
+            docNo: matchingDocs[k].docNo,
+            rawDocDate: matchingDocs[k].rawDocDate,
+            formattedDocDate: matchingDocs[k].formattedDocDate
+          };
+          return;
+        }
+      }
+    }
+
+    // Lapis 2: Cocok target_suspect_name / TERSANGKA_NAMA / SUBJEK_NAMA
+    if (sName) {
+      for (let k = matchingDocs.length - 1; k >= 0; k--) {
+        if (matchingDocs[k].target.names.includes(sName)) {
+          claimedDocIndices.add(k);
+          results[idx] = {
+            docNo: matchingDocs[k].docNo,
+            rawDocDate: matchingDocs[k].rawDocDate,
+            formattedDocDate: matchingDocs[k].formattedDocDate
+          };
+          return;
+        }
+      }
+    }
+
+    // Lapis 3: Kolom langsung milik baris public.case_suspects tersangka ini
+    let rowNo = '';
+    let rowDate = '';
+    if (docCategory === 'TAP_TSK') {
+      rowNo = pickVal(s.nomor_sp_tap, s.no_sp_tap_tsk, s.no_sp_tap, s.nomor_sptap, s.no_sptap_tsk);
+      rowDate = pickVal(s.tanggal_sp_tap, s.tgl_sp_tap_tsk, s.tgl_sp_tap, s.tanggal_sptap, s.tgl_sptap_tsk);
+    } else if (docCategory === 'SPRIN_KAP') {
+      rowNo = pickVal(s.no_sprin_kap, s.nomor_sprin_kap);
+      rowDate = pickVal(s.tgl_sprin_kap, s.tanggal_sprin_kap);
+    } else if (docCategory === 'SPRIN_HAN') {
+      rowNo = pickVal(s.no_sprin_han, s.nomor_sprin_han);
+      rowDate = pickVal(s.tgl_sprin_han, s.tanggal_sprin_han);
+    }
+    if (rowNo && isValidOfficialDocNumber(rowNo)) {
+      matchingDocs.forEach((m, k) => {
+        if (m.docNo === rowNo) claimedDocIndices.add(k);
+      });
+      const matchedByNo = matchingDocs.find(m => m.docNo === rowNo);
+      const effDate = rowDate || matchedByNo?.rawDocDate || '';
+      results[idx] = {
+        docNo: rowNo,
+        rawDocDate: effDate,
+        formattedDocDate: effDate ? formatTanggalIndonesia(effDate) : ''
+      };
+    }
+  });
+
+  // Pass 2 (Lapis 4): Fallback arsip lama berurutan kronologis (HANYA dokumen tanpa klaim target lain)
+  validSuspects.forEach((s, idx) => {
+    if (results[idx] !== null) return;
+    const candidate = matchingDocs[idx];
+    const isUnclaimedLegacy = candidate &&
+      !claimedDocIndices.has(idx) &&
+      candidate.target.ids.length === 0 &&
+      candidate.target.names.length === 0;
+
+    if (isUnclaimedLegacy) {
+      claimedDocIndices.add(idx);
+      results[idx] = {
+        docNo: candidate.docNo,
+        rawDocDate: candidate.rawDocDate,
+        formattedDocDate: candidate.formattedDocDate
+      };
+    } else {
+      results[idx] = { docNo: '', rawDocDate: '', formattedDocDate: '' };
+    }
+  });
+
+  return results;
+}
+
+/**
+ * Mengisi tag terindeks TSK_1..5 / TERSANGKA_1..5 / NOMOR_TAP_TSK_1..5 serta SPRIN_KAP & SPRIN_HAN per tersangka.
+ */
+export function applyPerSuspectDocTags(targetObj, suspectList = [], archivedDocs = []) {
+  if (!targetObj || typeof targetObj !== 'object') return [];
+  const validSuspects = (Array.isArray(suspectList) ? suspectList : []).filter(s => s && s.nama);
+
+  const tapResolved = resolvePerSuspectDocuments(validSuspects, archivedDocs, 'TAP_TSK');
+  const kapResolved = resolvePerSuspectDocuments(validSuspects, archivedDocs, 'SPRIN_KAP');
+  const hanResolved = resolvePerSuspectDocuments(validSuspects, archivedDocs, 'SPRIN_HAN');
+
+  const setIndexedAlias = (key, val) => {
+    targetObj[key] = val;
+    targetObj[key.toLowerCase()] = val;
+  };
+
+  for (let i = 1; i <= 5; i++) {
+    const idx = i - 1;
+    const tap = tapResolved[idx] || { docNo: '', rawDocDate: '', formattedDocDate: '' };
+    const kap = kapResolved[idx] || { docNo: '', rawDocDate: '', formattedDocDate: '' };
+    const han = hanResolved[idx] || { docNo: '', rawDocDate: '', formattedDocDate: '' };
+
+    const tapNo = tap.docNo || '';
+    const tapTgl = tap.formattedDocDate || '';
+    const kapNo = kap.docNo || '';
+    const kapTgl = kap.formattedDocDate || '';
+    const hanNo = han.docNo || '';
+    const hanTgl = han.formattedDocDate || '';
+
+    // Alias SP Tap Tersangka per-tersangka
+    setIndexedAlias(`TSK_${i}_NOMOR_SP_TAP`, tapNo);
+    setIndexedAlias(`TSK_${i}_NO_SP_TAP`, tapNo);
+    setIndexedAlias(`TSK_${i}_NO_SP_TAP_TSK`, tapNo);
+    setIndexedAlias(`TSK_${i}_NOMOR_SP_TAP_TSK`, tapNo);
+    setIndexedAlias(`TSK_${i}_NOMOR_TAP_TSK`, tapNo);
+    setIndexedAlias(`TSK_${i}_NO_TAP_TSK`, tapNo);
+    setIndexedAlias(`TERSANGKA_${i}_NOMOR_SP_TAP`, tapNo);
+    setIndexedAlias(`TERSANGKA_${i}_NO_SP_TAP`, tapNo);
+    setIndexedAlias(`TERSANGKA_${i}_NO_SP_TAP_TSK`, tapNo);
+    setIndexedAlias(`NOMOR_TAP_TSK_${i}`, tapNo);
+    setIndexedAlias(`NO_SP_TAP_TSK_${i}`, tapNo);
+
+    setIndexedAlias(`TSK_${i}_TGL_SP_TAP`, tapTgl);
+    setIndexedAlias(`TSK_${i}_TANGGAL_SP_TAP`, tapTgl);
+    setIndexedAlias(`TSK_${i}_TGL_SP_TAP_TSK`, tapTgl);
+    setIndexedAlias(`TSK_${i}_TANGGAL_SP_TAP_TSK`, tapTgl);
+    setIndexedAlias(`TSK_${i}_TANGGAL_TAP_TSK`, tapTgl);
+    setIndexedAlias(`TSK_${i}_TGL_TAP_TSK`, tapTgl);
+    setIndexedAlias(`TERSANGKA_${i}_TGL_SP_TAP`, tapTgl);
+    setIndexedAlias(`TERSANGKA_${i}_TANGGAL_SP_TAP`, tapTgl);
+    setIndexedAlias(`TANGGAL_TAP_TSK_${i}`, tapTgl);
+
+    // Alias Sprin Kap per-tersangka
+    setIndexedAlias(`TSK_${i}_NOMOR_SPRIN_KAP`, kapNo);
+    setIndexedAlias(`TSK_${i}_NO_SPRIN_KAP`, kapNo);
+    setIndexedAlias(`TERSANGKA_${i}_NO_SPRIN_KAP`, kapNo);
+    setIndexedAlias(`NOMOR_SPRIN_KAP_${i}`, kapNo);
+    setIndexedAlias(`TSK_${i}_TGL_SPRIN_KAP`, kapTgl);
+    setIndexedAlias(`TSK_${i}_TANGGAL_SPRIN_KAP`, kapTgl);
+    setIndexedAlias(`TERSANGKA_${i}_TGL_SPRIN_KAP`, kapTgl);
+    setIndexedAlias(`TANGGAL_SPRIN_KAP_${i}`, kapTgl);
+
+    // Alias Sprin Han per-tersangka
+    setIndexedAlias(`TSK_${i}_NOMOR_SPRIN_HAN`, hanNo);
+    setIndexedAlias(`TSK_${i}_NO_SPRIN_HAN`, hanNo);
+    setIndexedAlias(`TERSANGKA_${i}_NO_SPRIN_HAN`, hanNo);
+    setIndexedAlias(`NOMOR_SPRIN_HAN_${i}`, hanNo);
+    setIndexedAlias(`TSK_${i}_TGL_SPRIN_HAN`, hanTgl);
+    setIndexedAlias(`TSK_${i}_TANGGAL_SPRIN_HAN`, hanTgl);
+    setIndexedAlias(`TERSANGKA_${i}_TGL_SPRIN_HAN`, hanTgl);
+    setIndexedAlias(`TANGGAL_SPRIN_HAN_${i}`, hanTgl);
+  }
+
+  return validSuspects.map((s, idx) => {
+    const tap = tapResolved[idx] || {};
+    const kap = kapResolved[idx] || {};
+    const han = hanResolved[idx] || {};
+    return {
+      ...s,
+      nomor_sp_tap: tap.docNo || s.nomor_sp_tap || s.no_sp_tap_tsk || '',
+      no_sp_tap_tsk: tap.docNo || s.no_sp_tap_tsk || s.nomor_sp_tap || '',
+      tanggal_sp_tap: tap.formattedDocDate || (s.tanggal_sp_tap ? formatTanggalIndonesia(s.tanggal_sp_tap) : ''),
+      tgl_sp_tap_tsk: tap.formattedDocDate || (s.tgl_sp_tap_tsk ? formatTanggalIndonesia(s.tgl_sp_tap_tsk) : ''),
+      no_sprin_kap: kap.docNo || s.no_sprin_kap || '',
+      tgl_sprin_kap: kap.formattedDocDate || (s.tgl_sprin_kap ? formatTanggalIndonesia(s.tgl_sprin_kap) : ''),
+      no_sprin_han: han.docNo || s.no_sprin_han || '',
+      tgl_sprin_han: han.formattedDocDate || (s.tgl_sprin_han ? formatTanggalIndonesia(s.tgl_sprin_han) : '')
+    };
+  });
 }
 
 /**
@@ -544,6 +1172,7 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   setBothCase('NO_LP', nomorLp);
   setBothCase('TANGGAL_LP', tanggalLp);
   setBothCase('TGL_LP', tanggalLp);
+  assignDecomposedDateTags(context, rawTglLp || tanggalLp, ['LP']);
   setBothCase('TINDAK_PIDANA', tindakPidana);
   setBothCase('PASAL', pasal);
   setBothCase('DASAR_PASAL_UU', dasarPasalUu);
@@ -599,10 +1228,12 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     'SURAT_HEADER',
     'DOC'
   ]);
-  const assignDocumentAliases = (aliasCodes = [], docNo = '', docDateFormatted = '', dasarKalimat = '') => {
+  const assignDocumentAliases = (aliasCodes = [], docNo = '', docDateFormatted = '', dasarKalimat = '', rawDocDate = '') => {
+    const validAliasCodes = [];
     aliasCodes.forEach((aliasCode) => {
       const code = String(aliasCode || '').toUpperCase().trim();
       if (!code || FORBIDDEN_GENERIC_ACTIVE_KEYS.has(code)) return;
+      validAliasCodes.push(code);
       if (docNo) {
         setBothCase(`NOMOR_${code}`, docNo);
         setBothCase(`NO_${code}`, docNo);
@@ -619,6 +1250,9 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
         setBothCase(`DASAR_${code}`, dasarKalimat);
       }
     });
+    if (validAliasCodes.length > 0 && (rawDocDate || docDateFormatted)) {
+      assignDecomposedDateTags(context, rawDocDate || docDateFormatted, validAliasCodes);
+    }
   };
 
   // Resolusi deterministik per kode kanonik: dokumen sah terbaru (created_at terbesar)
@@ -666,7 +1300,7 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     // NOMOR_<KODE>, NO_<KODE>, <KODE>_NOMOR, <KODE>_NO, TANGGAL_<KODE>, TGL_<KODE>, <KODE>_TANGGAL, <KODE>_TGL, DASAR_<KODE>
     const baseCodesToMap = new Set([rawCode]);
     if (rawOriginalCode) baseCodesToMap.add(rawOriginalCode);
-    assignDocumentAliases(Array.from(baseCodesToMap), docNo, docDateFormatted, dasarKalimat);
+    assignDocumentAliases(Array.from(baseCodesToMap), docNo, docDateFormatted, dasarKalimat, rawDocDate);
 
     // Tambahkan ke loop array {#DAFTAR_DASAR_SURAT} hanya bila nomor surat valid/sah
     if (docNo && entry.hasValidNo) {
@@ -710,7 +1344,8 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
         ['SPRIN_LIDIK', 'SP_LIDIK', 'SURAT_PERINTAH_PENYELIDIKAN'],
         docNo,
         docDateFormatted,
-        dasarKalimat
+        dasarKalimat,
+        rawDocDate
       );
     }
     if (rawCode === 'SPGAS_LIDIK' || rawCode.includes('GAS_LIDIK')) {
@@ -718,33 +1353,36 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
         ['SPGAS_LIDIK', 'SPRIN_GAS_LIDIK', 'SP_GAS_SIDIK', 'SP_GAS_LIDIK', 'SURAT_PERINTAH_TUGAS_PENYELIDIKAN'],
         docNo,
         docDateFormatted,
-        dasarKalimat
+        dasarKalimat,
+        rawDocDate
       );
     }
     if (rawCode === 'LI' || rawCode === 'LAPORAN_INFORMASI') {
-      assignDocumentAliases(['LI', 'LAPORAN_INFORMASI'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases(['LI', 'LAPORAN_INFORMASI'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode === 'LHP' || rawCode.includes('HASIL_PENYELIDIKAN')) {
-      assignDocumentAliases(['LHP', 'LAPORAN_HASIL_PENYELIDIKAN'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases(['LHP', 'LAPORAN_HASIL_PENYELIDIKAN'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
 
     // - Tahap Sidik: SPRIN_SIDIK & SPGAS_SIDIK (terbaru di arsip menang atas kolom lama di cases)
     if (rawCode === 'SPRIN_SIDIK' || rawCode === 'SPRIN_SIDIK_MORE_5') {
       assignDocumentAliases(
-        ['SPRIN_SIDIK', 'SP_SIDIK', 'SURAT_PERINTAH_PENYIDIKAN', rawCode],
+        ['SPRIN_SIDIK', 'SP_SIDIK', 'SIDIK', 'SURAT_PERINTAH_PENYIDIKAN', rawCode],
         docNo,
         docDateFormatted,
-        dasarKalimat
+        dasarKalimat,
+        rawDocDate
       );
       if (docNo && entry.hasValidNo) activeCase.no_sprin_sidik = docNo;
       if (rawDocDate) activeCase.tgl_sprin_sidik = rawDocDate;
     }
     if (rawCode === 'SPGAS_SIDIK' || rawCode === 'SPGAS_SIDIK_MORE_5') {
       assignDocumentAliases(
-        ['SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'SPRIN_TUGAS_PENYIDIKAN', 'SURAT_PERINTAH_TUGAS_PENYIDIKAN', rawCode],
+        ['SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'GAS_SIDIK', 'SPRIN_TUGAS_PENYIDIKAN', 'SURAT_PERINTAH_TUGAS_PENYIDIKAN', rawCode],
         docNo,
         docDateFormatted,
-        dasarKalimat
+        dasarKalimat,
+        rawDocDate
       );
       if (docNo && entry.hasValidNo) activeCase.no_sprin_gas_sidik = docNo;
       if (rawDocDate) activeCase.tgl_sprin_gas_sidik = rawDocDate;
@@ -756,7 +1394,8 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
         [rawCode, 'SPDP', 'SPDP_TSK', 'SPDP_TERLAPOR', 'SURAT_PEMBERITAHUAN_DIMULAINYA_PENYIDIKAN'],
         docNo,
         docDateFormatted,
-        dasarKalimat
+        dasarKalimat,
+        rawDocDate
       );
       if (docNo && entry.hasValidNo) activeCase.no_spdp = docNo;
       if (rawDocDate) activeCase.tgl_spdp = rawDocDate;
@@ -766,7 +1405,8 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
         ['TAP_TSK', 'SP_TAP_TSK', 'SP_TAP', 'S_TAP_TSK', 'PENETAPAN_TERSANGKA'],
         docNo,
         docDateFormatted,
-        dasarKalimat
+        dasarKalimat,
+        rawDocDate
       );
       if (docDateFormatted) setBothCase('TANGGAL_PENETAPAN', docDateFormatted);
     }
@@ -777,70 +1417,75 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
           : ['PEMBERITAHUAN_TAP_TSK_JPU', 'PEMBERITAHUAN_TAP_TSK_KE_JPU'],
         docNo,
         docDateFormatted,
-        dasarKalimat
+        dasarKalimat,
+        rawDocDate
       );
     }
 
     // - Tahap Upaya Paksa & Panggilan
     if (rawCode.includes('PANGGIL') || rawCode.startsWith('SPGL')) {
-      assignDocumentAliases([rawCode, 'PANGGILAN', 'SPGL', 'SURAT_PANGGILAN'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases([rawCode, 'PANGGILAN', 'SPGL', 'SURAT_PANGGILAN'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode === 'SPRIN_KAP_DAN_BA' || (rawCode.includes('KAP') && !rawCode.includes('UNGKAP'))) {
-      assignDocumentAliases([rawCode, 'SPRIN_KAP_DAN_BA', 'SP_KAP', 'SPRIN_KAP', 'BA_KAP', 'SURAT_PERINTAH_PENANGKAPAN'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases([rawCode, 'SPRIN_KAP_DAN_BA', 'SP_KAP', 'SPRIN_KAP', 'BA_KAP', 'SURAT_PERINTAH_PENANGKAPAN'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode === 'SPRIN_HAN_DAN_BA' || rawCode.includes('HAN')) {
-      assignDocumentAliases([rawCode, 'SPRIN_HAN_DAN_BA', 'SP_HAN', 'SPRIN_HAN', 'BA_HAN', 'SURAT_PERINTAH_PENAHANAN'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases([rawCode, 'SPRIN_HAN_DAN_BA', 'SP_HAN', 'SPRIN_HAN', 'BA_HAN', 'SURAT_PERINTAH_PENAHANAN'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode.includes('SITA')) {
-      assignDocumentAliases([rawCode, 'SP_SITA', 'SPRIN_SITA', 'SPRIN_SITA_UMUM', 'SURAT_PERINTAH_PENYITAAN'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases([rawCode, 'SP_SITA', 'SPRIN_SITA', 'SPRIN_SITA_UMUM', 'SURAT_PERINTAH_PENYITAAN'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode.includes('GELEDAH')) {
-      assignDocumentAliases([rawCode, 'SP_GELEDAH', 'SPRIN_GELEDAH', 'SURAT_PERINTAH_PENGGELEDAHAN'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases([rawCode, 'SP_GELEDAH', 'SPRIN_GELEDAH', 'SURAT_PERINTAH_PENGGELEDAHAN'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
 
     // - Berkas Perkara (Tahap 1, P-19, Tahap 2)
     if (rawCode === 'SAMPUL_BERKAS_PERKARA') {
-      assignDocumentAliases(['SAMPUL_BERKAS_PERKARA', 'SAMPUL_BP', 'BERKAS_PERKARA'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases(['SAMPUL_BERKAS_PERKARA', 'SAMPUL_BP', 'BERKAS_PERKARA'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode === 'PENGANTAR_BP_TAHAP1') {
-      assignDocumentAliases(['PENGANTAR_BP_TAHAP1', 'PENGANTAR_TAHAP_1', 'PENGANTAR_TAHAP1', 'PENGANTAR_BP_TAHAP_1'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases(['PENGANTAR_BP_TAHAP1', 'PENGANTAR_TAHAP_1', 'PENGANTAR_TAHAP1', 'PENGANTAR_BP_TAHAP_1'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode === 'PENGANTAR_BP_KEMBALI_P19') {
-      assignDocumentAliases(['PENGANTAR_BP_KEMBALI_P19', 'PENGANTAR_P19', 'PENGANTAR_KEMBALI_P19'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases(['PENGANTAR_BP_KEMBALI_P19', 'PENGANTAR_P19', 'PENGANTAR_KEMBALI_P19'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode === 'PENGANTAR_TAHAP2') {
-      assignDocumentAliases(['PENGANTAR_TAHAP2', 'PENGANTAR_TAHAP_2', 'PENGANTAR_KIRIM_TSK_BB_TAHAP_2'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases(['PENGANTAR_TAHAP2', 'PENGANTAR_TAHAP_2', 'PENGANTAR_KIRIM_TSK_BB_TAHAP_2'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
 
     // - Tahap Pemberkasan: SP2HP & RESUME
     if (rawCode.includes('SP2HP')) {
-      assignDocumentAliases([rawCode, 'SP2HP'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases([rawCode, 'SP2HP'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode.includes('RESUME')) {
-      assignDocumentAliases([rawCode, 'RESUME'], docNo, docDateFormatted, dasarKalimat);
+      assignDocumentAliases([rawCode, 'RESUME'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
   });
 
   // Fallback rantai dari kolom langsung di activeCase / activeCase.references bila belum ada di tabel documents
   const fallbackSprinSidikNo = activeCase.no_sprin_sidik || activeCase.sprin_sidik || activeCase.references?.no_sprin_sidik || '';
-  const fallbackSprinSidikTgl = formatTanggalIndonesia(activeCase.tgl_sprin_sidik || activeCase.references?.tgl_sprin_sidik || '');
+  const rawFallbackSprinSidikTgl = activeCase.tgl_sprin_sidik || activeCase.references?.tgl_sprin_sidik || '';
+  const fallbackSprinSidikTgl = formatTanggalIndonesia(rawFallbackSprinSidikTgl);
   if (fallbackSprinSidikNo && isValidOfficialDocNumber(fallbackSprinSidikNo) && !isValidOfficialDocNumber(context.NOMOR_SPRIN_SIDIK)) {
     assignDocumentAliases(
-      ['SPRIN_SIDIK', 'SP_SIDIK', 'SURAT_PERINTAH_PENYIDIKAN'],
+      ['SPRIN_SIDIK', 'SP_SIDIK', 'SIDIK', 'SURAT_PERINTAH_PENYIDIKAN'],
       fallbackSprinSidikNo,
       fallbackSprinSidikTgl,
-      `Surat Perintah Penyidikan Nomor: ${fallbackSprinSidikNo}${fallbackSprinSidikTgl ? `, tanggal ${fallbackSprinSidikTgl}` : ''}`
+      `Surat Perintah Penyidikan Nomor: ${fallbackSprinSidikNo}${fallbackSprinSidikTgl ? `, tanggal ${fallbackSprinSidikTgl}` : ''}`,
+      rawFallbackSprinSidikTgl
     );
   }
 
   const fallbackGasSidikNo = activeCase.no_sprin_gas_sidik || activeCase.no_sp_gas_sidik || activeCase.references?.no_spgas_sidik || activeCase.references?.no_sprin_gas_sidik || '';
-  const fallbackGasSidikTgl = formatTanggalIndonesia(activeCase.tgl_sprin_gas_sidik || activeCase.tgl_sp_gas_sidik || activeCase.references?.tgl_sprin_gas_sidik || '');
+  const rawFallbackGasSidikTgl = activeCase.tgl_sprin_gas_sidik || activeCase.tgl_sp_gas_sidik || activeCase.references?.tgl_sprin_gas_sidik || '';
+  const fallbackGasSidikTgl = formatTanggalIndonesia(rawFallbackGasSidikTgl);
   if (fallbackGasSidikNo && isValidOfficialDocNumber(fallbackGasSidikNo) && !isValidOfficialDocNumber(context.NOMOR_SPGAS_SIDIK)) {
     assignDocumentAliases(
-      ['SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'SPRIN_TUGAS_PENYIDIKAN'],
+      ['SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'GAS_SIDIK', 'SPRIN_TUGAS_PENYIDIKAN'],
       fallbackGasSidikNo,
       fallbackGasSidikTgl,
-      `Surat Perintah Tugas Penyidikan Nomor: ${fallbackGasSidikNo}${fallbackGasSidikTgl ? `, tanggal ${fallbackGasSidikTgl}` : ''}`
+      `Surat Perintah Tugas Penyidikan Nomor: ${fallbackGasSidikNo}${fallbackGasSidikTgl ? `, tanggal ${fallbackGasSidikTgl}` : ''}`,
+      rawFallbackGasSidikTgl
     );
   }
 
@@ -955,7 +1600,7 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     ...(Array.isArray(activeCase.victims) ? activeCase.victims : []),
     ...(Array.isArray(refs.victims) ? refs.victims : [])
   ];
-  if (rawPelaporList.length === 0 && (activeCase.nama_pelapor || activeCase.pelapor_name)) {
+  if (activeCase.nama_pelapor || activeCase.pelapor_name) {
     rawPelaporList.push({
       nama: activeCase.nama_pelapor || activeCase.pelapor_name,
       nik: activeCase.pelapor_nik || refs.pelapor_nik || '',
@@ -973,25 +1618,15 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
 
   // 2. Saksi-Saksi
   const rawSaksiList = [
+    ...dbSuspects.filter(s => s && s.status === 'saksi'),
     ...(Array.isArray(activeCase.saksi_list) ? activeCase.saksi_list : []),
     ...(Array.isArray(refs.saksi_list) ? refs.saksi_list : []),
     ...(Array.isArray(activeCase.saksi) ? activeCase.saksi : []),
-    ...(Array.isArray(refs.saksi) ? refs.saksi : []),
-    ...dbSuspects.filter(s => s && s.status === 'saksi')
+    ...(Array.isArray(refs.saksi) ? refs.saksi : [])
   ];
 
-  // 3. Terlapor / Calon Tersangka
-  const rawTerlaporList = [
-    ...dbSuspects.filter(s => s && s.status === 'terlapor'),
-    ...(Array.isArray(activeCase.terlapor_list) ? activeCase.terlapor_list : []),
-    ...(Array.isArray(refs.terlapor_list) ? refs.terlapor_list : [])
-  ];
-  if (rawTerlaporList.length === 0 && (activeCase.nama_terlapor || activeCase.terlapor)) {
-    rawTerlaporList.push({
-      nama: activeCase.nama_terlapor || activeCase.terlapor,
-      status: 'terlapor'
-    });
-  }
+  // 3. Terlapor / Calon Tersangka (prioritas: selectedSubjects -> caseSuspects/terlapor_list -> legacy fallback bila kosong)
+  const terlaporClean = resolveCaseTerlaporFallback(dbSuspects, activeCase, refs);
 
   // 4. Tersangka
   const rawTersangkaList = [
@@ -1000,21 +1635,9 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     ...(Array.isArray(refs.tersangka_list) ? refs.tersangka_list : [])
   ];
 
-  const dedupeSubjects = (arr) => {
-    const seen = new Set();
-    return arr.filter((item) => {
-      if (!item || !item.nama) return false;
-      const k = `${String(item.nama).trim().toLowerCase()}|${String(item.nik || '').trim()}`;
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  };
-
-  const pelaporClean = dedupeSubjects(rawPelaporList);
-  const saksiClean = dedupeSubjects(rawSaksiList);
-  const terlaporClean = dedupeSubjects(rawTerlaporList);
-  const tersangkaClean = dedupeSubjects(rawTersangkaList);
+  const pelaporClean = deduplicateSubjectRecords(rawPelaporList, 'Pelapor');
+  const saksiClean = deduplicateSubjectRecords(rawSaksiList, 'Saksi');
+  const tersangkaClean = deduplicateSubjectRecords(rawTersangkaList, 'Tersangka');
 
   populateSubjectPrefixVariables(context, 'PELAPOR', pelaporClean);
   populateSubjectPrefixVariables(context, 'KORBAN', pelaporClean);
@@ -1022,15 +1645,40 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   populateSubjectPrefixVariables(context, 'TERLAPOR', terlaporClean);
   populateSubjectPrefixVariables(context, 'TERSANGKA', tersangkaClean);
 
+  // Resolusi Per-Tersangka (TAP_TSK, SPRIN_KAP, SPRIN_HAN) tanpa pernah tertukar antar tersangka
+  const enrichedTersangkaClean = applyPerSuspectDocTags(context, tersangkaClean, arsipDocs);
+  if (enrichedTersangkaClean.length > 0) {
+    const normalizedEnrichedTsk = enrichedTersangkaClean.map((s, i) => ({
+      ...normalizeSubjectRecord(s, i, 'Tersangka'),
+      nomor_sp_tap: s.nomor_sp_tap || '',
+      no_sp_tap_tsk: s.no_sp_tap_tsk || '',
+      nomor_sp_tap_tsk: s.nomor_sp_tap || '',
+      tanggal_sp_tap: s.tanggal_sp_tap || '',
+      tgl_sp_tap: s.tanggal_sp_tap || '',
+      tgl_sp_tap_tsk: s.tgl_sp_tap_tsk || '',
+      no_sprin_kap: s.no_sprin_kap || '',
+      tgl_sprin_kap: s.tgl_sprin_kap || '',
+      no_sprin_han: s.no_sprin_han || '',
+      tgl_sprin_han: s.tgl_sprin_han || ''
+    }));
+    context.TERSANGKA = normalizedEnrichedTsk;
+    context.tersangka = normalizedEnrichedTsk;
+    context.TERSANGKA_LIST = normalizedEnrichedTsk;
+    context.tersangka_list = normalizedEnrichedTsk;
+    context.DAFTAR_TERSANGKA = normalizedEnrichedTsk;
+    context.daftar_tersangka = normalizedEnrichedTsk;
+  }
+
   // Target Subjek Universal (Jika dipilih dari Pemilih Subjek di Generator Mindik)
-  const targetSubjects = Array.isArray(options.selectedSubjects) && options.selectedSubjects.length > 0
+  const rawTargetSubjects = Array.isArray(options.selectedSubjects) && options.selectedSubjects.length > 0
     ? options.selectedSubjects
     : (options.activeSubject ? [options.activeSubject] : []);
+  const targetSubjects = deduplicateSubjectRecords(rawTargetSubjects, 'Subjek');
   if (targetSubjects.length > 0) {
     populateSubjectPrefixVariables(context, 'SUBJEK', targetSubjects);
   } else {
-    const defaultSubjek = tersangkaClean.length > 0
-      ? tersangkaClean
+    const defaultSubjek = enrichedTersangkaClean.length > 0
+      ? enrichedTersangkaClean
       : (terlaporClean.length > 0 ? terlaporClean : (saksiClean.length > 0 ? saksiClean : pelaporClean));
     populateSubjectPrefixVariables(context, 'SUBJEK', defaultSubjek);
   }
@@ -1096,7 +1744,7 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
         pelapor: pelaporClean.map((s, i) => normalizeSubjectRecord(s, i, 'Pelapor')),
         saksi: saksiClean.map((s, i) => normalizeSubjectRecord(s, i, 'Saksi')),
         terlapor: terlaporClean.map((s, i) => normalizeSubjectRecord(s, i, 'Terlapor')),
-        tersangka: tersangkaClean.map((s, i) => normalizeSubjectRecord(s, i, 'Tersangka'))
+        tersangka: enrichedTersangkaClean.map((s, i) => normalizeSubjectRecord(s, i, 'Tersangka'))
       }
     },
     enumerable: false
@@ -1162,25 +1810,25 @@ async function syncDataFromArchive(currentCase, suspectsList, formValues = {}) {
       }
     }
 
-    // 3. DEEP SCAN UNTUK S.TAP TERSANGKA
-    if (Array.isArray(suspectsList)) {
-      const semuaTap = arsip.filter(d =>
-        toCanonicalMindikCode(d.template_code || d.code, d.doc_title || d.title) === 'TAP_TSK'
-      );
-
-      suspectsList.forEach(s => {
-        if (!s || !s.nama) return;
-        const tap = semuaTap.find(d => {
-          const metaStr = JSON.stringify(d.meta_values || d.metadata || {}).toLowerCase();
-          const titleStr = (d.doc_title || '').toLowerCase();
-          return metaStr.includes(s.nama.toLowerCase()) || titleStr.includes(s.nama.toLowerCase());
-        }) || semuaTap[0];
-
-        if (tap) {
-          const { docNo: no, rawDocDate: tgl } = extractArchivedDocNumberAndDate(tap);
-          s.nomor_sp_tap = no || s.nomor_sp_tap;
-          s.tanggal_sp_tap = tgl || s.tanggal_sp_tap;
+    // 3. RESOLUSI 4-LAPIS PER-TERSANGKA UNTUK TAP_TSK, SPRIN_KAP & SPRIN_HAN
+    if (Array.isArray(suspectsList) && suspectsList.length > 0) {
+      const tapRes = resolvePerSuspectDocuments(suspectsList, arsip, 'TAP_TSK');
+      const kapRes = resolvePerSuspectDocuments(suspectsList, arsip, 'SPRIN_KAP');
+      const hanRes = resolvePerSuspectDocuments(suspectsList, arsip, 'SPRIN_HAN');
+      suspectsList.forEach((s, idx) => {
+        if (!s || typeof s !== 'object') return;
+        if (tapRes[idx]?.docNo) {
+          s.nomor_sp_tap = tapRes[idx].docNo;
+          s.no_sp_tap_tsk = tapRes[idx].docNo;
         }
+        if (tapRes[idx]?.rawDocDate) {
+          s.tanggal_sp_tap = tapRes[idx].rawDocDate;
+          s.tgl_sp_tap_tsk = tapRes[idx].rawDocDate;
+        }
+        if (kapRes[idx]?.docNo) s.no_sprin_kap = kapRes[idx].docNo;
+        if (kapRes[idx]?.rawDocDate) s.tgl_sprin_kap = kapRes[idx].rawDocDate;
+        if (hanRes[idx]?.docNo) s.no_sprin_han = hanRes[idx].docNo;
+        if (hanRes[idx]?.rawDocDate) s.tgl_sprin_han = hanRes[idx].rawDocDate;
       });
     }
   } catch (e) {
@@ -1738,15 +2386,21 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   let formValues = {};
   let activeVictim = null;
   let victimsList = [];
+  let archivedDocs = [];
+  let selectedSubjectsArg = [];
 
   // Deteksi fleksibel parameter object vs positional
-  if (arg1 && (arg1.activeCase !== undefined || arg1.formValues !== undefined || arg1.activeSuspect !== undefined || arg1.suspectsList !== undefined || arg1.activeVictim !== undefined || arg1.victimsList !== undefined || arg1.selectedVictim !== undefined)) {
+  if (arg1 && (arg1.activeCase !== undefined || arg1.formValues !== undefined || arg1.activeSuspect !== undefined || arg1.suspectsList !== undefined || arg1.activeVictim !== undefined || arg1.victimsList !== undefined || arg1.selectedVictim !== undefined || arg1.archivedDocs !== undefined || arg1.selectedSubjects !== undefined)) {
     activeCase = arg1.activeCase || {};
     activeSuspect = arg1.activeSuspect || null;
     suspectsList = arg1.suspectsList || [];
     activeVictim = arg1.activeVictim || arg1.selectedVictim || null;
     victimsList = Array.isArray(arg1.victimsList) ? arg1.victimsList : (Array.isArray(arg1.victims) ? arg1.victims : []);
     formValues = arg1.formValues || {};
+    archivedDocs = Array.isArray(arg1.archivedDocs)
+      ? arg1.archivedDocs
+      : (Array.isArray(activeCase?.archivedDocs) ? activeCase.archivedDocs : (Array.isArray(activeCase?.documents) ? activeCase.documents : []));
+    selectedSubjectsArg = Array.isArray(arg1.selectedSubjects) ? arg1.selectedSubjects : [];
   } else {
     activeCase = arg1 || {};
     activeSuspect = maybeSuspect || null;
@@ -1756,6 +2410,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
       : (activeSuspect ? [activeSuspect] : (activeCase.suspectsList || []));
     activeVictim = maybeVictim || null;
     victimsList = Array.isArray(maybeVictimsList) ? maybeVictimsList : [];
+    archivedDocs = Array.isArray(activeCase?.archivedDocs) ? activeCase.archivedDocs : (Array.isArray(activeCase?.documents) ? activeCase.documents : []);
   }
 
   // Bersihkan tanda kurung kurawal jika ada user yang mengetik { } di form
@@ -2022,8 +2677,22 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   // E. IDENTITAS PIHAK
   const namaPelapor = cleanInput.NAMA_PELAPOR || cleanInput.nama_pelapor || activeCase?.nama_pelapor || activeCase?.pelapor_name || '';
-  // NAMA_TERLAPOR murni mengambil dari Laporan Polisi (LP), tidak tertukar dengan nama tersangka
-  const namaTerlapor = cleanInput.NAMA_TERLAPOR || cleanInput.nama_terlapor || activeCase?.nama_terlapor || activeCase?.terlapor_name || activeCase?.terlapor || '';
+  const resolvedFallbackTerlaporInit = resolveCaseTerlaporFallback(
+    Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : (activeSuspect ? [activeSuspect] : []),
+    activeCase,
+    activeCase?.references || {}
+  );
+  const resolvedSelectedInit = (() => {
+    const rawSel = selectedSubjectsArg.length > 0
+      ? selectedSubjectsArg
+      : (Array.isArray(cleanInput.__SELECTED_SUBJECTS__) && cleanInput.__SELECTED_SUBJECTS__.length > 0
+          ? cleanInput.__SELECTED_SUBJECTS__
+          : (Array.isArray(formValues?.__SELECTED_SUBJECTS__) ? formValues.__SELECTED_SUBJECTS__ : []));
+    return deduplicateSubjectRecords(rawSel, 'Subjek');
+  })();
+  const initialTerlaporList = resolvedSelectedInit.length > 0 ? resolvedSelectedInit : resolvedFallbackTerlaporInit;
+  // NAMA_TERLAPOR bersumber strictly dari selectedSubjects atau daftar terlapor perkara (tidak pernah dari pelapor/penyidik/dummy)
+  const namaTerlapor = initialTerlaporList[0]?.nama || '';
   const namaTersangka = cleanInput.NAMA_TERSANGKA || cleanInput.nama_tersangka || activeSuspect?.nama || '';
   const nik = cleanInput.NIK || cleanInput.nik || activeSuspect?.nik || '';
   const jenisKelamin = cleanInput.JENIS_KELAMIN || cleanInput.jenis_kelamin || activeSuspect?.jenis_kelamin || 'Laki-laki';
@@ -2602,11 +3271,28 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     doc_date: tanggalSurat,
 
     // Dukungan Multi-Tersangka & Terlapor (Array Perulangan Dokumen Kolektif, misal SPDP)
-    tersangka_list: (Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : (activeSuspect ? [activeSuspect] : []))
-      .filter((s) => s.status === 'tersangka' || !s.status)
-      .map((s, idx) => {
+    tersangka_list: (() => {
+      const rawTskArr = deduplicateSubjectRecords(
+        [
+          ...(Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : (activeSuspect ? [activeSuspect] : []))
+            .filter((s) => s && (s.status === 'tersangka' || !s.status)),
+          ...(Array.isArray(activeCase?.tersangka_list) ? activeCase.tersangka_list : []),
+          ...(Array.isArray(activeCase?.references?.tersangka_list) ? activeCase.references.tersangka_list : [])
+        ],
+        'Tersangka'
+      );
+      const tapRes = resolvePerSuspectDocuments(rawTskArr, archivedDocs, 'TAP_TSK');
+      const kapRes = resolvePerSuspectDocuments(rawTskArr, archivedDocs, 'SPRIN_KAP');
+      const hanRes = resolvePerSuspectDocuments(rawTskArr, archivedDocs, 'SPRIN_HAN');
+      return rawTskArr.map((s, idx) => {
         const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
         const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
+        const sTapNo = tapRes[idx]?.docNo || '';
+        const sTapTgl = tapRes[idx]?.formattedDocDate || '';
+        const sKapNo = kapRes[idx]?.docNo || '';
+        const sKapTgl = kapRes[idx]?.formattedDocDate || '';
+        const sHanNo = hanRes[idx]?.docNo || '';
+        const sHanTgl = hanRes[idx]?.formattedDocDate || '';
         return {
           no: idx + 1,
           nama: s.nama || '',
@@ -2623,18 +3309,22 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
           status_kawin: s.status_pernikahan || s.marital_status || '',
           status_tersangka_label: s.status_tersangka_label || `Tersangka ${idx === 0 ? 'I' : idx === 1 ? 'II' : idx === 2 ? 'III' : idx === 3 ? 'IV' : idx + 1}`,
           urutan_tersangka: s.urutan_tersangka || (idx + 1),
-          nomor_sp_tap: s.nomor_sp_tap || s.no_sp_tap_tsk || '',
-          nomor_sp_tap_tsk: s.nomor_sp_tap || s.no_sp_tap_tsk || '',
-          tanggal_sp_tap: formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk || ''),
-          tgl_sp_tap_tsk: formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk || '')
+          nomor_sp_tap: sTapNo,
+          no_sp_tap_tsk: sTapNo,
+          nomor_sp_tap_tsk: sTapNo,
+          tanggal_sp_tap: sTapTgl,
+          tgl_sp_tap: sTapTgl,
+          tgl_sp_tap_tsk: sTapTgl,
+          no_sprin_kap: sKapNo,
+          tgl_sprin_kap: sKapTgl,
+          no_sprin_han: sHanNo,
+          tgl_sprin_han: sHanTgl
         };
-      }),
+      });
+    })(),
 
     terlapor_list: (() => {
-      const fromSuspects = (Array.isArray(suspectsList) && suspectsList.length > 0 ? suspectsList : [])
-        .filter((s) => s.status === 'terlapor');
-      const fromCase = Array.isArray(activeCase?.terlapor_list) ? activeCase.terlapor_list : [];
-      const combined = fromSuspects.length > 0 ? fromSuspects : fromCase;
+      const combined = resolveCaseTerlaporFallback(suspectsList, activeCase, activeCase?.references || {});
       return combined.map((s, idx) => {
         const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
         const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
@@ -2684,101 +3374,121 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     }))
   };
 
+  baseMap.TERSANGKA = baseMap.tersangka_list;
+  baseMap.tersangka = baseMap.tersangka_list;
+  baseMap.TERSANGKA_LIST = baseMap.tersangka_list;
+
   // PISAHKAN DAFTAR SUBJEK UNTUK TAG INDIVIDUAL TSK_1..5 DAN TERLAPOR_1..5
+  const isTerlaporDoc = canonicalTplCode === 'SPDP_TERLAPOR' ||
+    tplCode.includes('TERLAPOR') ||
+    tplName.includes('terlapor');
+
   const allSubjek = Array.isArray(suspectsList) && suspectsList.length > 0 
     ? suspectsList 
     : (activeSuspect ? [activeSuspect] : []);
 
-  const tersangkaList = allSubjek.filter((s) => s.status === 'tersangka' || !s.status);
-  const terlaporList = allSubjek.filter((s) => s.status === 'terlapor');
+  const allKnownSubjectsPool = [
+    ...allSubjek,
+    ...(Array.isArray(activeCase?.tersangka_list) ? activeCase.tersangka_list : []),
+    ...(Array.isArray(activeCase?.references?.tersangka_list) ? activeCase.references.tersangka_list : []),
+    ...(Array.isArray(activeCase?.terlapor_list) ? activeCase.terlapor_list : []),
+    ...(Array.isArray(activeCase?.references?.terlapor_list) ? activeCase.references.terlapor_list : []),
+    ...(allSubjek.length === 0 && activeCase?.person ? [activeCase.person] : []),
+    ...(allSubjek.length === 0 && namaTerlapor ? [{ nama: namaTerlapor }] : [])
+  ];
 
-  // Jika belum ada terlapor terdaftar di case_suspects tapi ada di LP
-  if (terlaporList.length === 0 && namaTerlapor) {
-    terlaporList.push({ nama: namaTerlapor });
-  }
+  const rawSelectedFromForm = selectedSubjectsArg.length > 0
+    ? selectedSubjectsArg
+    : (Array.isArray(cleanInput.__SELECTED_SUBJECTS__) && cleanInput.__SELECTED_SUBJECTS__.length > 0
+        ? cleanInput.__SELECTED_SUBJECTS__
+        : (Array.isArray(formValues?.__SELECTED_SUBJECTS__) ? formValues.__SELECTED_SUBJECTS__ : []));
 
-  // Tag Mandiri Tersangka 1 s/d 5
-  for (let i = 1; i <= 5; i++) {
-    const s = tersangkaList[i - 1] || {};
-    const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
-    const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
-    const sTtl = (s.tempat_lahir && sTglLahir) 
-      ? `${s.tempat_lahir}, ${formattedSTglLahir}` 
-      : (s.ttl || s.pob_dob || s.tempat_lahir || '');
-    const sUmur = s.umur ? (String(s.umur).includes('Tahun') ? String(s.umur) : `${s.umur} Tahun`) : '';
-    const sNomorSpTap = s.nomor_sp_tap || s.no_sp_tap_tsk || '';
-    const sTglSpTap = formatTanggalIndonesia(s.tanggal_sp_tap || s.tgl_sp_tap_tsk || '');
+  // Daftar subjek yang dicentang manual di UI (termasuk bila status di DB sudah menjadi 'tersangka')
+  const selectedSubjectsClean = deduplicateSubjectRecords(
+    rawSelectedFromForm.map(item => enrichSubjectWithPool(item, allKnownSubjectsPool)),
+    'Subjek'
+  );
 
-    baseMap[`TSK_${i}_NAMA`] = s.nama || '';
-    baseMap[`tsk_${i}_nama`] = s.nama || '';
-    baseMap[`TSK_${i}_NIK`] = s.nik || '';
-    baseMap[`tsk_${i}_nik`] = s.nik || '';
-    baseMap[`TSK_${i}_JK`] = s.jenis_kelamin || '';
-    baseMap[`tsk_${i}_jk`] = s.jenis_kelamin || '';
-    baseMap[`TSK_${i}_TEMPAT_LAHIR`] = s.tempat_lahir || '';
-    baseMap[`tsk_${i}_tempat_lahir`] = s.tempat_lahir || '';
-    baseMap[`TSK_${i}_TGL_LAHIR`] = formattedSTglLahir;
-    baseMap[`tsk_${i}_tgl_lahir`] = formattedSTglLahir;
-    baseMap[`TSK_${i}_TTL`] = sTtl;
-    baseMap[`tsk_${i}_ttl`] = sTtl;
-    baseMap[`TSK_${i}_UMUR`] = sUmur;
-    baseMap[`tsk_${i}_umur`] = sUmur;
-    baseMap[`TSK_${i}_PEKERJAAN`] = s.pekerjaan || '';
-    baseMap[`tsk_${i}_pekerjaan`] = s.pekerjaan || '';
-    baseMap[`TSK_${i}_KEWARGANEGARAAN`] = s.kewarganegaraan || (s.nama ? 'Indonesia' : '');
-    baseMap[`tsk_${i}_kewarganegaraan`] = s.kewarganegaraan || (s.nama ? 'Indonesia' : '');
-    baseMap[`TSK_${i}_PENDIDIKAN`] = s.pendidikan || '';
-    baseMap[`tsk_${i}_pendidikan`] = s.pendidikan || '';
-    baseMap[`TSK_${i}_AGAMA`] = s.agama || '';
-    baseMap[`tsk_${i}_agama`] = s.agama || '';
-    baseMap[`TSK_${i}_STATUS_NIKAH`] = s.status_pernikahan || s.status_kawin || s.marital_status || '';
-    baseMap[`tsk_${i}_status_nikah`] = s.status_pernikahan || s.status_kawin || s.marital_status || '';
-    baseMap[`TSK_${i}_ALAMAT`] = s.alamat || '';
-    baseMap[`tsk_${i}_alamat`] = s.alamat || '';
-    baseMap[`TSK_${i}_NOMOR_SP_TAP`] = sNomorSpTap;
-    baseMap[`tsk_${i}_nomor_sp_tap`] = sNomorSpTap;
-    baseMap[`TSK_${i}_NO_SP_TAP`] = sNomorSpTap;
-    baseMap[`tsk_${i}_no_sp_tap`] = sNomorSpTap;
-    baseMap[`TSK_${i}_TGL_SP_TAP`] = sTglSpTap;
-    baseMap[`tsk_${i}_tgl_sp_tap`] = sTglSpTap;
-  }
+  // Fallback gabungan unik Terlapor: hanya dari caseSuspects (termasuk 'tersangka' bila 'terlapor' murni kosong) + terlapor_list + legacy fallback bila kosong
+  const fallbackTerlaporClean = resolveCaseTerlaporFallback(allSubjek, activeCase, activeCase?.references || {})
+    .map(item => enrichSubjectWithPool(item, allKnownSubjectsPool));
+  const fallbackTerlaporDeduped = deduplicateSubjectRecords(fallbackTerlaporClean, 'Terlapor');
 
-  // Tag Mandiri Terlapor 1 s/d 5
-  for (let i = 1; i <= 5; i++) {
-    const t = terlaporList[i - 1] || {};
-    const tTglLahir = t.tgl_lahir || t.tanggal_lahir || '';
-    const formattedTTglLahir = formatTanggalIndonesia(tTglLahir);
-    const tTtl = (t.tempat_lahir && tTglLahir) 
-      ? `${t.tempat_lahir}, ${formattedTTglLahir}` 
-      : (t.ttl || t.pob_dob || t.tempat_lahir || '');
-    const tUmur = t.umur ? (String(t.umur).includes('Tahun') ? String(t.umur) : `${t.umur} Tahun`) : '';
+  // Prioritas utama: subjek terpilih di UI (__SELECTED_SUBJECTS__ / selectedSubjects), lalu fallback terlapor kasus
+  const effectiveTargetTerlapor = selectedSubjectsClean.length > 0
+    ? selectedSubjectsClean
+    : fallbackTerlaporDeduped;
 
-    baseMap[`TERLAPOR_${i}_NAMA`] = t.nama || '';
-    baseMap[`terlapor_${i}_nama`] = t.nama || '';
-    baseMap[`TERLAPOR_${i}_NIK`] = t.nik || '';
-    baseMap[`terlapor_${i}_nik`] = t.nik || '';
-    baseMap[`TERLAPOR_${i}_JK`] = t.jenis_kelamin || '';
-    baseMap[`terlapor_${i}_jk`] = t.jenis_kelamin || '';
-    baseMap[`TERLAPOR_${i}_TEMPAT_LAHIR`] = t.tempat_lahir || '';
-    baseMap[`terlapor_${i}_tempat_lahir`] = t.tempat_lahir || '';
-    baseMap[`TERLAPOR_${i}_TGL_LAHIR`] = formattedTTglLahir;
-    baseMap[`terlapor_${i}_tgl_lahir`] = formattedTTglLahir;
-    baseMap[`TERLAPOR_${i}_TTL`] = tTtl;
-    baseMap[`terlapor_${i}_ttl`] = tTtl;
-    baseMap[`TERLAPOR_${i}_UMUR`] = tUmur;
-    baseMap[`terlapor_${i}_umur`] = tUmur;
-    baseMap[`TERLAPOR_${i}_PEKERJAAN`] = t.pekerjaan || '';
-    baseMap[`terlapor_${i}_pekerjaan`] = t.pekerjaan || '';
-    baseMap[`TERLAPOR_${i}_KEWARGANEGARAAN`] = t.kewarganegaraan || (t.nama ? 'Indonesia' : '');
-    baseMap[`terlapor_${i}_kewarganegaraan`] = t.kewarganegaraan || (t.nama ? 'Indonesia' : '');
-    baseMap[`TERLAPOR_${i}_PENDIDIKAN`] = t.pendidikan || '';
-    baseMap[`terlapor_${i}_pendidikan`] = t.pendidikan || '';
-    baseMap[`TERLAPOR_${i}_AGAMA`] = t.agama || '';
-    baseMap[`terlapor_${i}_agama`] = t.agama || '';
-    baseMap[`TERLAPOR_${i}_STATUS_NIKAH`] = t.status_pernikahan || t.marital_status || '';
-    baseMap[`terlapor_${i}_status_nikah`] = t.status_pernikahan || t.marital_status || '';
-    baseMap[`TERLAPOR_${i}_ALAMAT`] = t.alamat || '';
-    baseMap[`terlapor_${i}_alamat`] = t.alamat || '';
+  const rawTersangkaCombined = [
+    ...allSubjek.filter((s) => s && (s.status === 'tersangka' || !s.status)),
+    ...(Array.isArray(activeCase?.tersangka_list) ? activeCase.tersangka_list : []),
+    ...(Array.isArray(activeCase?.references?.tersangka_list) ? activeCase.references.tersangka_list : [])
+  ].map(item => enrichSubjectWithPool(item, allKnownSubjectsPool));
+
+  const tersangkaList = (isTerlaporDoc && effectiveTargetTerlapor.length > 0)
+    ? effectiveTargetTerlapor
+    : deduplicateSubjectRecords(rawTersangkaCombined, 'Tersangka');
+  const terlaporList = effectiveTargetTerlapor;
+
+  // Tag Mandiri Tersangka 1 s/d 5 (11 field lengkap + semua permutasi & resolusi per-tersangka)
+  populateIndexedSubjectGroup(baseMap, tersangkaList, ['TSK', 'TERSANGKA'], allKnownSubjectsPool);
+  applyPerSuspectDocTags(baseMap, tersangkaList, archivedDocs);
+
+  // Tag Mandiri Terlapor & Subjek: isi seluruh tag tunggal (NAMA_TERLAPOR, TERLAPOR_NAMA, NIK_TERLAPOR, ...)
+  // identik dengan TERLAPOR_1_* serta slot berindeks 1..5 dan loop {#TERLAPOR}
+  populateSubjectPrefixVariables(baseMap, 'TERLAPOR', terlaporList, terlaporList[0] || null);
+  populateIndexedSubjectGroup(baseMap, terlaporList, ['TERLAPOR', 'SUBJEK'], allKnownSubjectsPool);
+  baseMap.terlapor_list = baseMap.TERLAPOR || [];
+  baseMap.subjek_list = baseMap.SUBJEK || [];
+  baseMap.tersangka_list = baseMap.TERSANGKA || baseMap.tersangka_list || [];
+
+  // Khusus template Terlapor tunggal/jamak yang memakai tag flat TERSANGKA / NAMA_TERSANGKA..ALAMAT:
+  if (isTerlaporDoc && terlaporList.length > 0) {
+    const primaryTerlapor = normalizeSubjectRecord(enrichSubjectWithPool(terlaporList[0], allKnownSubjectsPool), 0, 'Terlapor');
+    if (primaryTerlapor) {
+      baseMap.NAMA_TERSANGKA = primaryTerlapor.nama || '';
+      baseMap.nama_tersangka = primaryTerlapor.nama || '';
+      baseMap.NIK = primaryTerlapor.nik || '';
+      baseMap.nik = primaryTerlapor.nik || '';
+      baseMap.NO_IDENTITAS = primaryTerlapor.nik || '';
+      baseMap.no_identitas = primaryTerlapor.nik || '';
+      baseMap.NOMOR_IDENTITAS = primaryTerlapor.nik || '';
+      baseMap.nomor_identitas = primaryTerlapor.nik || '';
+      baseMap.KEWARGANEGARAAN = primaryTerlapor.kewarganegaraan || 'Indonesia';
+      baseMap.kewarganegaraan = primaryTerlapor.kewarganegaraan || 'Indonesia';
+      baseMap.JENIS_KELAMIN = primaryTerlapor.jenis_kelamin || '';
+      baseMap.jenis_kelamin = primaryTerlapor.jenis_kelamin || '';
+      baseMap.JK = primaryTerlapor.jenis_kelamin || '';
+      baseMap.jk = primaryTerlapor.jenis_kelamin || '';
+      baseMap.TEMPAT_LAHIR = primaryTerlapor.tempat_lahir || '';
+      baseMap.tempat_lahir = primaryTerlapor.tempat_lahir || '';
+      baseMap.TGL_LAHIR = primaryTerlapor.tgl_lahir || '';
+      baseMap.tgl_lahir = primaryTerlapor.tgl_lahir || '';
+      baseMap.TTL = primaryTerlapor.ttl || '';
+      baseMap.ttl = primaryTerlapor.ttl || '';
+      baseMap.TEMPAT_TANGGAL_LAHIR = primaryTerlapor.ttl || '';
+      baseMap.tempat_tanggal_lahir = primaryTerlapor.ttl || '';
+      baseMap.UMUR = primaryTerlapor.umur || '';
+      baseMap.umur = primaryTerlapor.umur || '';
+      baseMap.PEKERJAAN = primaryTerlapor.pekerjaan || '';
+      baseMap.pekerjaan = primaryTerlapor.pekerjaan || '';
+      baseMap.PENDIDIKAN = primaryTerlapor.pendidikan || '';
+      baseMap.pendidikan = primaryTerlapor.pendidikan || '';
+      baseMap.PENDIDIKAN_TERAKHIR = primaryTerlapor.pendidikan || '';
+      baseMap.pendidikan_terakhir = primaryTerlapor.pendidikan || '';
+      baseMap.AGAMA = primaryTerlapor.agama || '';
+      baseMap.agama = primaryTerlapor.agama || '';
+      baseMap.STATUS_KAWIN = primaryTerlapor.status_pernikahan || '';
+      baseMap.status_kawin = primaryTerlapor.status_pernikahan || '';
+      baseMap.STATUS_PERNIKAHAN = primaryTerlapor.status_pernikahan || '';
+      baseMap.status_pernikahan = primaryTerlapor.status_pernikahan || '';
+      baseMap.STATUS_NIKAH = primaryTerlapor.status_pernikahan || '';
+      baseMap.status_nikah = primaryTerlapor.status_pernikahan || '';
+      baseMap.ALAMAT = primaryTerlapor.alamat || '';
+      baseMap.alamat = primaryTerlapor.alamat || '';
+      baseMap.TEMPAT_TINGGAL = primaryTerlapor.alamat || '';
+      baseMap.tempat_tinggal = primaryTerlapor.alamat || '';
+    }
   }
 
   // Tag Mandiri Korban 1 s/d 5
@@ -3198,58 +3908,67 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   }
 
   // ==============================================================
-  // INJEKSI ABSOLUT: SPDP MULTI-TERSANGKA (Bypass State Frontend)
+  // INJEKSI ABSOLUT: SPDP MULTI-TERSANGKA (Deduplikasi + Resolusi Per-Tersangka Terisolasi)
   // ==============================================================
   const isSpdpMultiDoc = tplCode === 'SPDP_MORE_1_TSK' || (selectedTemplate && (selectedTemplate.title || selectedTemplate.name || '').toUpperCase().includes('LEBIH DARI 1 TERSANGKA'));
 
-  if (isSpdpMultiDoc && Array.isArray(suspectsList) && suspectsList.length > 0) {
-    const sahSuspects = suspectsList.filter(s => s && s.nama);
+  if (isSpdpMultiDoc && Array.isArray(tersangkaList) && tersangkaList.length > 0) {
+    const sahSuspectsRaw = deduplicateSubjectRecords(
+      tersangkaList.map(item => enrichSubjectWithPool(item, allKnownSubjectsPool)),
+      'Tersangka'
+    );
+    populateIndexedSubjectGroup(finalPayload, sahSuspectsRaw, ['TSK', 'TERSANGKA'], allKnownSubjectsPool);
+    const enrichedSahSuspects = applyPerSuspectDocTags(finalPayload, sahSuspectsRaw, archivedDocs);
 
-    for (let i = 1; i <= 5; i++) {
-      const s = sahSuspects[i - 1];
-      if (s) {
-        // Tarik semua alias untuk Nomor & Tanggal SP.Tap
-        finalPayload[`TSK_${i}_NOMOR_SP_TAP`] = s.nomor_sp_tap || s.no_sp_tap_tsk || s.no_sp_tap || s.nomor_sptap || s.no_sptap_tsk || '-';
-        
-        const rawTglSpTap = s.tanggal_sp_tap || s.tgl_sp_tap_tsk || s.tgl_sp_tap || s.tanggal_sptap || s.tgl_sptap_tsk;
-        finalPayload[`TSK_${i}_TGL_SP_TAP`] = rawTglSpTap ? formatTanggalIndonesia(rawTglSpTap) : '-';
-
-        finalPayload[`TSK_${i}_NAMA`] = s.nama || '-';
-        finalPayload[`TSK_${i}_NIK`] = s.nik || s.no_identitas || '-';
-        finalPayload[`TSK_${i}_KEWARGANEGARAAN`] = s.kewarganegaraan || 'Indonesia';
-        finalPayload[`TSK_${i}_JK`] = s.jenis_kelamin || s.jk || '-';
-        finalPayload[`TSK_${i}_TTL`] = (s.tempat_lahir || s.tgl_lahir) ? `${s.tempat_lahir || ''}, ${s.tgl_lahir || ''}` : '-';
-        finalPayload[`TSK_${i}_UMUR`] = s.umur ? `${s.umur}` : '-';
-        finalPayload[`TSK_${i}_PEKERJAAN`] = s.pekerjaan || '-';
-        finalPayload[`TSK_${i}_PENDIDIKAN`] = s.pendidikan || '-';
-        finalPayload[`TSK_${i}_AGAMA`] = s.agama || '-';
-        finalPayload[`TSK_${i}_STATUS_NIKAH`] = s.status_nikah || s.status_pernikahan || '-';
-        finalPayload[`TSK_${i}_ALAMAT`] = s.alamat || '-';
-      } else {
-        // Kosongkan sisa slot tersangka agar tag di dokumen Word terhapus bersih
-        finalPayload[`TSK_${i}_NOMOR_SP_TAP`] = '';
-        finalPayload[`TSK_${i}_TGL_SP_TAP`] = '';
-        finalPayload[`TSK_${i}_NAMA`] = '';
-        finalPayload[`TSK_${i}_NIK`] = '';
-        finalPayload[`TSK_${i}_KEWARGANEGARAAN`] = '';
-        finalPayload[`TSK_${i}_JK`] = '';
-        finalPayload[`TSK_${i}_TTL`] = '';
-        finalPayload[`TSK_${i}_UMUR`] = '';
-        finalPayload[`TSK_${i}_PEKERJAAN`] = '';
-        finalPayload[`TSK_${i}_PENDIDIKAN`] = '';
-        finalPayload[`TSK_${i}_AGAMA`] = '';
-        finalPayload[`TSK_${i}_STATUS_NIKAH`] = '';
-        finalPayload[`TSK_${i}_ALAMAT`] = '';
-      }
-      
-      // Daftarkan format huruf kecil (lowercase) agar mesin docxtemplater aman
-      const currentKeys = Object.keys(finalPayload).filter(k => k.startsWith(`TSK_${i}_`));
-      currentKeys.forEach(k => { 
-        finalPayload[k.toLowerCase()] = finalPayload[k]; 
-      });
-    }
+    const updatedLoopSuspects = enrichedSahSuspects.map((s, idx) => {
+      const sTglLahir = s.tgl_lahir || s.tanggal_lahir || '';
+      const formattedSTglLahir = formatTanggalIndonesia(sTglLahir);
+      return {
+        ...s,
+        no: idx + 1,
+        nama: s.nama || '',
+        nik: s.nik || '',
+        jenis_kelamin: s.jenis_kelamin || '',
+        ttl: (s.tempat_lahir && sTglLahir) ? `${s.tempat_lahir}, ${formattedSTglLahir}` : (s.ttl || s.pob_dob || s.tempat_lahir || ''),
+        tempat_lahir: s.tempat_lahir || '',
+        tgl_lahir: formattedSTglLahir,
+        umur: s.umur ? (String(s.umur).includes('Tahun') ? String(s.umur) : `${s.umur} Tahun`) : '',
+        agama: s.agama || '',
+        pekerjaan: s.pekerjaan || '',
+        pendidikan: s.pendidikan || '',
+        kewarganegaraan: s.kewarganegaraan || 'Indonesia',
+        status_kawin: s.status_pernikahan || s.marital_status || '',
+        status_tersangka_label: s.status_tersangka_label || `Tersangka ${idx === 0 ? 'I' : idx === 1 ? 'II' : idx === 2 ? 'III' : idx === 3 ? 'IV' : idx + 1}`,
+        urutan_tersangka: s.urutan_tersangka || (idx + 1),
+        nomor_sp_tap: s.nomor_sp_tap || '',
+        no_sp_tap_tsk: s.no_sp_tap_tsk || s.nomor_sp_tap || '',
+        nomor_sp_tap_tsk: s.nomor_sp_tap || '',
+        tanggal_sp_tap: s.tanggal_sp_tap || '',
+        tgl_sp_tap: s.tanggal_sp_tap || '',
+        tgl_sp_tap_tsk: s.tgl_sp_tap_tsk || s.tanggal_sp_tap || '',
+        no_sprin_kap: s.no_sprin_kap || '',
+        tgl_sprin_kap: s.tgl_sprin_kap || '',
+        no_sprin_han: s.no_sprin_han || '',
+        tgl_sprin_han: s.tgl_sprin_han || ''
+      };
+    });
+    finalPayload.tersangka_list = updatedLoopSuspects;
+    finalPayload.TERSANGKA_LIST = updatedLoopSuspects;
+    finalPayload.TERSANGKA = updatedLoopSuspects;
+    finalPayload.tersangka = updatedLoopSuspects;
   }
   // ==============================================================
+
+  // ==============================================================
+  // TANGGAL TERURAI UNIVERSAL (LP, RANTAI ARSIP, & SURAT AKTIF)
+  // ==============================================================
+  assignDecomposedDateTags(finalPayload, rawTanggalLp || tanggalLp, ['LP']);
+  assignDecomposedDateTags(finalPayload, rawTglSprinSidik || tglSprinSidik, ['SPRIN_SIDIK', 'SP_SIDIK', 'SIDIK']);
+  assignDecomposedDateTags(finalPayload, rawTglSprinGasSidik || tglSprinGasSidik, ['SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'GAS_SIDIK']);
+  assignDecomposedDateTags(finalPayload, rawTglSpdp || tglSpdp, ['SPDP', 'SPDP_TSK']);
+  assignDecomposedDateTags(finalPayload, rawTglSpTapTsk || tglSpTapTsk, ['TAP_TSK', 'SP_TAP_TSK', 'SP_TAP']);
+  assignDecomposedDateTags(finalPayload, rawTglSprinKap || tglSprinKap, ['SPRIN_KAP', 'SP_KAP']);
+  assignDecomposedDateTags(finalPayload, rawTglSprinHan || tglSprinHan, ['SPRIN_HAN', 'SP_HAN']);
 
   // ==============================================================
   // PENEGASAN MUTLAK TANGGAL SURAT AKTIF (SINGLE SOURCE OF TRUTH)
@@ -3268,6 +3987,8 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   });
   finalPayload.TANGGAL_SURAT_HEADER = formattedHeaderDate;
   finalPayload.tanggal_surat_header = formattedHeaderDate;
+
+  assignDecomposedDateTags(finalPayload, effectiveTanggalSurat || tanggalSurat, ['SURAT', 'DOC']);
 
   if (parsedActiveDate?.hari) {
     finalPayload.HARI_SURAT = parsedActiveDate.hari;
@@ -3293,6 +4014,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     finalPayload[`${kLower}_tanggal`] = tanggalSurat;
     finalPayload[`${canonicalTplCode}_TGL`] = tanggalSurat;
     finalPayload[`${kLower}_tgl`] = tanggalSurat;
+    assignDecomposedDateTags(finalPayload, effectiveTanggalSurat || tanggalSurat, [canonicalTplCode]);
   }
   if (canonicalTplCode.startsWith('SPDP') || canonicalTplCode === 'PENGIRIMAN_KEMBALI_SPDP_P20') {
     [
@@ -3303,6 +4025,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     ].forEach((k) => {
       finalPayload[k] = tanggalSurat;
     });
+    assignDecomposedDateTags(finalPayload, effectiveTanggalSurat || tanggalSurat, ['SPDP', 'SPDP_TSK']);
   } else if (isSprinSidikDoc) {
     [
       'TANGGAL_SPRIN_SIDIK', 'tanggal_sprin_sidik',
@@ -3312,6 +4035,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     ].forEach((k) => {
       finalPayload[k] = tanggalSurat;
     });
+    assignDecomposedDateTags(finalPayload, effectiveTanggalSurat || tanggalSurat, ['SPRIN_SIDIK', 'SP_SIDIK', 'SIDIK']);
   } else if (isSprinGasSidikDoc) {
     [
       'TANGGAL_SPRIN_GAS_SIDIK', 'tanggal_sprin_gas_sidik',
@@ -3323,6 +4047,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     ].forEach((k) => {
       finalPayload[k] = tanggalSurat;
     });
+    assignDecomposedDateTags(finalPayload, effectiveTanggalSurat || tanggalSurat, ['SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'GAS_SIDIK']);
   } else if (isSpTap) {
     [
       'TANGGAL_TAP_TSK', 'tanggal_tap_tsk',
@@ -3335,7 +4060,73 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     ].forEach((k) => {
       finalPayload[k] = tanggalSurat;
     });
+    assignDecomposedDateTags(finalPayload, effectiveTanggalSurat || tanggalSurat, ['TAP_TSK', 'SP_TAP_TSK', 'SP_TAP']);
   }
+
+  // Jaga konsistensi penuh tag subjek terpilih / terlapor (11 field x 4 permutasi x slot 1..5, tag tunggal, & loop array)
+  if (effectiveTargetTerlapor.length > 0 && (selectedSubjectsClean.length > 0 || isTerlaporDoc)) {
+    const groupsToLock = isTerlaporDoc ? ['TERLAPOR', 'SUBJEK', 'TSK', 'TERSANGKA'] : ['TERLAPOR', 'SUBJEK'];
+    populateSubjectPrefixVariables(finalPayload, 'TERLAPOR', effectiveTargetTerlapor, effectiveTargetTerlapor[0]);
+    populateSubjectPrefixVariables(finalPayload, 'SUBJEK', effectiveTargetTerlapor, effectiveTargetTerlapor[0]);
+    populateIndexedSubjectGroup(finalPayload, effectiveTargetTerlapor, groupsToLock, allKnownSubjectsPool);
+    finalPayload.terlapor_list = finalPayload.TERLAPOR || [];
+    finalPayload.subjek_list = finalPayload.SUBJEK || [];
+    if (isTerlaporDoc) {
+      applyPerSuspectDocTags(finalPayload, effectiveTargetTerlapor, archivedDocs);
+      populateSubjectPrefixVariables(finalPayload, 'TERSANGKA', effectiveTargetTerlapor, effectiveTargetTerlapor[0]);
+      const primaryTerlaporFinal = normalizeSubjectRecord(
+        enrichSubjectWithPool(effectiveTargetTerlapor[0], allKnownSubjectsPool),
+        0,
+        'Terlapor'
+      );
+      if (primaryTerlaporFinal) {
+        finalPayload.NAMA_TERSANGKA = primaryTerlaporFinal.nama || '';
+        finalPayload.nama_tersangka = primaryTerlaporFinal.nama || '';
+        finalPayload.NIK = primaryTerlaporFinal.nik || '';
+        finalPayload.nik = primaryTerlaporFinal.nik || '';
+        finalPayload.NO_IDENTITAS = primaryTerlaporFinal.nik || '';
+        finalPayload.no_identitas = primaryTerlaporFinal.nik || '';
+        finalPayload.NOMOR_IDENTITAS = primaryTerlaporFinal.nik || '';
+        finalPayload.nomor_identitas = primaryTerlaporFinal.nik || '';
+        finalPayload.KEWARGANEGARAAN = primaryTerlaporFinal.kewarganegaraan || 'Indonesia';
+        finalPayload.kewarganegaraan = primaryTerlaporFinal.kewarganegaraan || 'Indonesia';
+        finalPayload.JENIS_KELAMIN = primaryTerlaporFinal.jenis_kelamin || '';
+        finalPayload.jenis_kelamin = primaryTerlaporFinal.jenis_kelamin || '';
+        finalPayload.JK = primaryTerlaporFinal.jenis_kelamin || '';
+        finalPayload.jk = primaryTerlaporFinal.jenis_kelamin || '';
+        finalPayload.TEMPAT_LAHIR = primaryTerlaporFinal.tempat_lahir || '';
+        finalPayload.tempat_lahir = primaryTerlaporFinal.tempat_lahir || '';
+        finalPayload.TGL_LAHIR = primaryTerlaporFinal.tgl_lahir || '';
+        finalPayload.tgl_lahir = primaryTerlaporFinal.tgl_lahir || '';
+        finalPayload.TTL = primaryTerlaporFinal.ttl || '';
+        finalPayload.ttl = primaryTerlaporFinal.ttl || '';
+        finalPayload.TEMPAT_TANGGAL_LAHIR = primaryTerlaporFinal.ttl || '';
+        finalPayload.tempat_tanggal_lahir = primaryTerlaporFinal.ttl || '';
+        finalPayload.UMUR = primaryTerlaporFinal.umur || '';
+        finalPayload.umur = primaryTerlaporFinal.umur || '';
+        finalPayload.PEKERJAAN = primaryTerlaporFinal.pekerjaan || '';
+        finalPayload.pekerjaan = primaryTerlaporFinal.pekerjaan || '';
+        finalPayload.PENDIDIKAN = primaryTerlaporFinal.pendidikan || '';
+        finalPayload.pendidikan = primaryTerlaporFinal.pendidikan || '';
+        finalPayload.PENDIDIKAN_TERAKHIR = primaryTerlaporFinal.pendidikan || '';
+        finalPayload.pendidikan_terakhir = primaryTerlaporFinal.pendidikan || '';
+        finalPayload.AGAMA = primaryTerlaporFinal.agama || '';
+        finalPayload.agama = primaryTerlaporFinal.agama || '';
+        finalPayload.STATUS_KAWIN = primaryTerlaporFinal.status_pernikahan || '';
+        finalPayload.status_kawin = primaryTerlaporFinal.status_pernikahan || '';
+        finalPayload.STATUS_PERNIKAHAN = primaryTerlaporFinal.status_pernikahan || '';
+        finalPayload.status_pernikahan = primaryTerlaporFinal.status_pernikahan || '';
+        finalPayload.STATUS_NIKAH = primaryTerlaporFinal.status_pernikahan || '';
+        finalPayload.status_nikah = primaryTerlaporFinal.status_pernikahan || '';
+        finalPayload.ALAMAT = primaryTerlaporFinal.alamat || '';
+        finalPayload.alamat = primaryTerlaporFinal.alamat || '';
+        finalPayload.TEMPAT_TINGGAL = primaryTerlaporFinal.alamat || '';
+        finalPayload.tempat_tinggal = primaryTerlaporFinal.alamat || '';
+      }
+    }
+  }
+  delete finalPayload.__SELECTED_SUBJECTS__;
+  delete finalPayload.__selected_subjects__;
 
   // Bersihkan nilai null / undefined agar tidak merender teks 'null' atau 'undefined' di dokumen Word
   Object.keys(finalPayload).forEach((k) => {
@@ -3386,6 +4177,8 @@ export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig
   const activeVictim = options.activeVictim || options.selectedVictim || lpData.activeVictim || lpData.victims?.[0] || lpData.references?.victims?.[0] || null;
   const victimsList = options.victimsList || lpData.victimsList || lpData.victims || lpData.references?.victims || [];
   const docDate = options.docDate || '';
+  const archivedDocs = Array.isArray(options.archivedDocs) ? options.archivedDocs : [];
+  const selectedSubjects = Array.isArray(options.selectedSubjects) ? options.selectedSubjects : [];
 
   return buildMindikPayload({
     activeCase,
@@ -3395,7 +4188,9 @@ export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig
     victimsList,
     formValues,
     template,
-    docDate
+    docDate,
+    archivedDocs,
+    selectedSubjects
   });
 }
 
@@ -3583,6 +4378,9 @@ export async function generateDocxBlob({
 
   // 2d. Gabungkan universalContext dengan normalizedFormValues menggunakan mergeChainedWithForm
   //     agar buildMindikVariables menerima nilai rantai arsip + input aktif yang sedang diketik
+  const explicitSelectedSubjects = Array.isArray(normalizedFormValues.__SELECTED_SUBJECTS__)
+    ? normalizedFormValues.__SELECTED_SUBJECTS__
+    : [];
   const effectiveFormValues = mergeChainedWithForm(universalContext, normalizedFormValues, { formatDatesForDocx: true });
 
   // 3. Build data map & gabungkan dengan universalContext (basePayload + universalContext + manual formValues)
@@ -3592,8 +4390,20 @@ export async function generateDocxBlob({
     activeVictim,
     victimsList,
     template,
-    docDate: explicitActiveDocDate
+    docDate: explicitActiveDocDate,
+    archivedDocs: universalContext?._meta?.arsipDocs || [],
+    selectedSubjects: explicitSelectedSubjects
   });
+  const resolvedTerlaporList = baseDataMap.terlapor_list?.length
+    ? baseDataMap.terlapor_list
+    : (universalContext.TERLAPOR || []);
+  const resolvedSubjekList = baseDataMap.subjek_list?.length
+    ? baseDataMap.subjek_list
+    : (universalContext.SUBJEK || []);
+  const resolvedTersangkaList = baseDataMap.tersangka_list?.length
+    ? baseDataMap.tersangka_list
+    : (universalContext.TERSANGKA || []);
+
   const dataMap = mergeChainedWithForm(
     {
       ...universalContext,
@@ -3609,10 +4419,18 @@ export async function generateDocxBlob({
       penyidik: baseDataMap.tim_penyidik?.length ? baseDataMap.tim_penyidik : (universalContext.penyidik || []),
       SAKSI: universalContext.SAKSI || [],
       saksi: universalContext.saksi || [],
-      TERLAPOR: universalContext.TERLAPOR || baseDataMap.terlapor_list || [],
-      terlapor: universalContext.terlapor || baseDataMap.terlapor_list || [],
-      TERSANGKA: universalContext.TERSANGKA || baseDataMap.tersangka_list || [],
-      tersangka: universalContext.tersangka || baseDataMap.tersangka_list || [],
+      TERLAPOR: resolvedTerlaporList,
+      terlapor: resolvedTerlaporList,
+      TERLAPOR_LIST: resolvedTerlaporList,
+      terlapor_list: resolvedTerlaporList,
+      SUBJEK: resolvedSubjekList,
+      subjek: resolvedSubjekList,
+      SUBJEK_LIST: resolvedSubjekList,
+      subjek_list: resolvedSubjekList,
+      TERSANGKA: resolvedTersangkaList,
+      tersangka: resolvedTersangkaList,
+      TERSANGKA_LIST: resolvedTersangkaList,
+      tersangka_list: resolvedTersangkaList,
       PELAPOR: universalContext.PELAPOR || baseDataMap.korban_list || [],
       pelapor: universalContext.pelapor || baseDataMap.korban_list || [],
     },
@@ -3634,14 +4452,33 @@ export async function generateDocxBlob({
     'TANGGAL_DOKUMEN', 'tanggal_dokumen',
     'HARI_SURAT', 'hari_surat',
     'BULAN_SURAT', 'bulan_surat',
-    'TAHUN_SURAT', 'tahun_surat'
+    'TAHUN_SURAT', 'tahun_surat',
+    'TGL_ANGKA_SURAT', 'tgl_angka_surat',
+    'TANGGAL_ANGKA_SURAT', 'tanggal_angka_surat',
+    'TERBILANG_TAHUN_SURAT', 'terbilang_tahun_surat',
+    'TANGGAL_TERURAI_SURAT', 'tanggal_terurai_surat',
+    'HARI_DOC', 'hari_doc',
+    'TGL_ANGKA_DOC', 'tgl_angka_doc',
+    'TANGGAL_ANGKA_DOC', 'tanggal_angka_doc',
+    'BULAN_DOC', 'bulan_doc',
+    'TAHUN_DOC', 'tahun_doc',
+    'TERBILANG_TAHUN_DOC', 'terbilang_tahun_doc',
+    'TANGGAL_TERURAI_DOC', 'tanggal_terurai_doc'
   ]);
   Object.keys(universalContext).forEach((uKey) => {
     if (ACTIVE_SURAT_PROTECTED_KEYS.has(uKey)) return;
+    if (
+      /^(TERLAPOR|SUBJEK|TSK|TERSANGKA)_?\d+_|_(TERLAPOR|SUBJEK|TSK|TERSANGKA)_?\d+$/i.test(uKey) &&
+      (explicitSelectedSubjects.length > 0 || Object.prototype.hasOwnProperty.call(baseDataMap, uKey))
+    ) {
+      return;
+    }
     if (dataMap[uKey] === undefined || dataMap[uKey] === '' || dataMap[uKey] === '-') {
       dataMap[uKey] = universalContext[uKey];
     }
   });
+  delete dataMap.__SELECTED_SUBJECTS__;
+  delete dataMap.__selected_subjects__;
 
   // Kunci akhir tanggal surat aktif agar selalu sama persis dengan TANGGAL_SURAT dari form / docDate
   const ACTIVE_DATE_KEYS_FROM_BASE = [
@@ -3653,7 +4490,18 @@ export async function generateDocxBlob({
     'TANGGAL_SURAT_HEADER', 'tanggal_surat_header',
     'HARI_SURAT', 'hari_surat',
     'BULAN_SURAT', 'bulan_surat',
-    'TAHUN_SURAT', 'tahun_surat'
+    'TAHUN_SURAT', 'tahun_surat',
+    'TGL_ANGKA_SURAT', 'tgl_angka_surat',
+    'TANGGAL_ANGKA_SURAT', 'tanggal_angka_surat',
+    'TERBILANG_TAHUN_SURAT', 'terbilang_tahun_surat',
+    'TANGGAL_TERURAI_SURAT', 'tanggal_terurai_surat',
+    'HARI_DOC', 'hari_doc',
+    'TGL_ANGKA_DOC', 'tgl_angka_doc',
+    'TANGGAL_ANGKA_DOC', 'tanggal_angka_doc',
+    'BULAN_DOC', 'bulan_doc',
+    'TAHUN_DOC', 'tahun_doc',
+    'TERBILANG_TAHUN_DOC', 'terbilang_tahun_doc',
+    'TANGGAL_TERURAI_DOC', 'tanggal_terurai_doc'
   ];
   ACTIVE_DATE_KEYS_FROM_BASE.forEach((k) => {
     if (baseDataMap[k] !== undefined && baseDataMap[k] !== '') {

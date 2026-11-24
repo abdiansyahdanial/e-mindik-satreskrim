@@ -32,7 +32,9 @@ import {
   formatTanggalIndonesia,
   formatPangkatLengkap,
   normalizeSubjectRecord,
+  deduplicateSubjectRecords,
   populateSubjectPrefixVariables,
+  populateIndexedSubjectGroup,
   resolveChainedMindikContext,
   mergeChainedWithForm,
   extractArchivedDocNumberAndDate,
@@ -107,6 +109,8 @@ export default function MindikGeneratorView({
   const caseFetchSeqRef = useRef(0);
   const docsLoadedCaseIdRef = useRef('');
   const lastTemplateKeyRef = useRef('');
+  const prevAutoTemplateKeyRef = useRef('');
+  const lastAutoSelectTplKeyRef = useRef('');
   const chainedContextCacheRef = useRef({ key: '', scalar: null });
 
   // 1. Muat Template dari Supabase `document_templates`
@@ -147,6 +151,8 @@ export default function MindikGeneratorView({
   useEffect(() => {
     const fetchSeq = ++caseFetchSeqRef.current;
     docsLoadedCaseIdRef.current = '';
+    lastAutoSelectTplKeyRef.current = '';
+    prevAutoTemplateKeyRef.current = '';
     chainedContextCacheRef.current = { key: '', scalar: null };
 
     // Reset sinkron agar state perkara lama tidak pernah bocor ke perkara baru
@@ -280,25 +286,22 @@ export default function MindikGeneratorView({
       return { pelapor: [], saksi: [], terlapor: [], tersangka: [], all: [] };
     }
     const refs = currentCase.references || {};
-    const dedupe = (list, catKey, catLabel) => {
-      const seen = new Set();
-      const result = [];
-      (Array.isArray(list) ? list : []).forEach((item, idx) => {
-        if (!item || !item.nama) return;
-        const norm = normalizeSubjectRecord(item, idx, catLabel);
-        if (!norm || !norm.nama) return;
-        const sig = `${norm.nama.toLowerCase()}|${(norm.nik || '').toLowerCase()}`;
-        if (seen.has(sig)) return;
-        seen.add(sig);
-        result.push({
-          ...norm,
-          _uid: `${catKey}:${item.id || idx}:${norm.nama}`,
-          _category: catKey,
-          _categoryLabel: catLabel
-        });
-      });
-      return result;
+    const normKey = (item) => {
+      const nik = String(item?.nik || item?.no_identitas || '').trim();
+      const name = String(item?.nama || item?.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      return {
+        nik: nik && nik !== '-' ? nik.toLowerCase() : '',
+        name
+      };
     };
+
+    const decorateCategory = (dedupedList, catKey, catLabel) =>
+      dedupedList.map((norm, idx) => ({
+        ...norm,
+        _uid: `${catKey}:${norm.id || idx}:${norm.nama}`,
+        _category: catKey,
+        _categoryLabel: catLabel
+      }));
 
     // 1. Pelapor / Korban
     const rawPelapor = [
@@ -307,7 +310,7 @@ export default function MindikGeneratorView({
       ...(Array.isArray(currentCase.victims) ? currentCase.victims : []),
       ...(Array.isArray(refs.victims) ? refs.victims : [])
     ];
-    if (rawPelapor.length === 0 && (currentCase.nama_pelapor || currentCase.pelapor_name || currentCase.pelapor)) {
+    if (currentCase.nama_pelapor || currentCase.pelapor_name || currentCase.pelapor) {
       rawPelapor.push({
         nama: currentCase.nama_pelapor || currentCase.pelapor_name || currentCase.pelapor,
         alamat: currentCase.locus || ''
@@ -316,37 +319,71 @@ export default function MindikGeneratorView({
 
     // 2. Saksi
     const rawSaksi = [
+      ...caseSuspects.filter(s => s && s.status === 'saksi'),
       ...(Array.isArray(currentCase.saksi_list) ? currentCase.saksi_list : []),
       ...(Array.isArray(refs.saksi_list) ? refs.saksi_list : []),
-      ...(Array.isArray(currentCase.saksi) ? currentCase.saksi : []),
-      ...caseSuspects.filter(s => s && s.status === 'saksi')
+      ...(Array.isArray(currentCase.saksi) ? currentCase.saksi : [])
     ];
 
-    // 3. Terlapor (Calon Tersangka)
-    const rawTerlapor = [
-      ...caseSuspects.filter(s => s && s.status === 'terlapor'),
-      ...(Array.isArray(currentCase.terlapor_list) ? currentCase.terlapor_list : []),
-      ...(Array.isArray(refs.terlapor_list) ? refs.terlapor_list : [])
-    ];
-    if (rawTerlapor.length === 0 && (currentCase.nama_terlapor || currentCase.terlapor_name)) {
-      rawTerlapor.push({
-        nama: currentCase.nama_terlapor || currentCase.terlapor_name,
-        alamat: currentCase.locus || '',
-        status: 'terlapor'
-      });
-    }
-
-    // 4. Tersangka
+    // 3. Tersangka (prioritaskan record lengkap dari public.case_suspects)
     const rawTersangka = [
       ...caseSuspects.filter(s => s && (s.status === 'tersangka' || !s.status)),
       ...(Array.isArray(currentCase.tersangka_list) ? currentCase.tersangka_list : []),
       ...(Array.isArray(refs.tersangka_list) ? refs.tersangka_list : [])
     ];
 
-    const pelapor = dedupe(rawPelapor, 'PELAPOR', 'Pelapor / Korban');
-    const saksi = dedupe(rawSaksi, 'SAKSI', 'Saksi');
-    const terlapor = dedupe(rawTerlapor, 'TERLAPOR', 'Terlapor (Calon Tsk)');
-    const tersangka = dedupe(rawTersangka, 'TERSANGKA', 'Tersangka');
+    // 4. Terlapor (Calon Tersangka) — prioritaskan case_suspects + terlapor_list;
+    //    gunakan legacy currentCase.person / terlapor_name HANYA jika data terstruktur kosong
+    const structuredSuspectsForTerlapor = caseSuspects.filter(
+      s => s && (s.nama || s.name) && s.status !== 'saksi' && s.status !== 'pelapor'
+    );
+    const rawTerlapor = [
+      ...caseSuspects.filter(s => s && s.status === 'terlapor'),
+      ...(Array.isArray(currentCase.terlapor_list) ? currentCase.terlapor_list : []),
+      ...(Array.isArray(refs.terlapor_list) ? refs.terlapor_list : [])
+    ];
+    if (structuredSuspectsForTerlapor.length === 0 && rawTerlapor.length === 0) {
+      if (currentCase.person && currentCase.person.nama && currentCase.person.status !== 'saksi' && currentCase.person.status !== 'pelapor') {
+        rawTerlapor.push(currentCase.person);
+      }
+      const terlaporSingleName = currentCase.nama_terlapor || currentCase.terlapor_name || currentCase.terlapor || '';
+      if (terlaporSingleName && terlaporSingleName !== '-') {
+        rawTerlapor.push({
+          nama: terlaporSingleName,
+          alamat: currentCase.locus || '',
+          status: 'terlapor'
+        });
+      }
+    }
+
+    // Jika orang yang sama ada di terlapor dan sudah ditetapkan sebagai tersangka di case_suspects,
+    // gabungkan data non-kosongnya ke record tersangka dan hapus duplikatnya dari daftar terlapor.
+    const mergedTersangkaWithTerlapor = deduplicateSubjectRecords(
+      [
+        ...rawTersangka,
+        ...rawTerlapor.filter((tl) => {
+          const tk = normKey(tl);
+          return rawTersangka.some((ts) => {
+            const sk = normKey(ts);
+            return (tk.nik && sk.nik && tk.nik === sk.nik) || (tk.name && sk.name && tk.name === sk.name);
+          });
+        })
+      ],
+      'Tersangka'
+    );
+
+    const tskKeys = mergedTersangkaWithTerlapor.map(normKey);
+    const filteredRawTerlaporOnly = rawTerlapor.filter((tl) => {
+      const tk = normKey(tl);
+      return !tskKeys.some((sk) =>
+        (tk.nik && sk.nik && tk.nik === sk.nik) || (tk.name && sk.name && tk.name === sk.name)
+      );
+    });
+
+    const pelapor = decorateCategory(deduplicateSubjectRecords(rawPelapor, 'Pelapor / Korban'), 'PELAPOR', 'Pelapor / Korban');
+    const saksi = decorateCategory(deduplicateSubjectRecords(rawSaksi, 'Saksi'), 'SAKSI', 'Saksi');
+    const terlapor = decorateCategory(deduplicateSubjectRecords(filteredRawTerlaporOnly, 'Terlapor (Calon Tsk)'), 'TERLAPOR', 'Terlapor (Calon Tsk)');
+    const tersangka = decorateCategory(mergedTersangkaWithTerlapor, 'TERSANGKA', 'Tersangka');
 
     return {
       pelapor,
@@ -365,52 +402,114 @@ export default function MindikGeneratorView({
 
   // Fungsi injeksi penuh ketika subjek dipilih di Pemilih Subjek Universal
   const applyUniversalSelectedSubjects = (nextSubjects) => {
-    if (!Array.isArray(nextSubjects) || nextSubjects.length === 0) return;
-    const primary = nextSubjects[0];
+    const selectedList = Array.isArray(nextSubjects) ? nextSubjects : [];
+    const pool = [
+      ...(Array.isArray(caseSuspects) ? caseSuspects : []),
+      ...(Array.isArray(currentCase?.terlapor_list) ? currentCase.terlapor_list : []),
+      ...(Array.isArray(currentCase?.references?.terlapor_list) ? currentCase.references.terlapor_list : []),
+      ...(Array.isArray(currentCase?.tersangka_list) ? currentCase.tersangka_list : []),
+      ...(Array.isArray(currentCase?.references?.tersangka_list) ? currentCase.references.tersangka_list : []),
+      ...(currentCase?.person ? [currentCase.person] : [])
+    ];
+
+    const enrichSubj = (item) => {
+      if (!item || typeof item !== 'object') return item;
+      const itemId = item.id ? String(item.id).trim() : '';
+      const itemName = String(item.nama || item.name || '').trim().toLowerCase();
+      const matched = pool.find((cand) => {
+        if (!cand || typeof cand !== 'object') return false;
+        if (itemId && cand.id && String(cand.id).trim() === itemId) return true;
+        const cName = String(cand.nama || cand.name || '').trim().toLowerCase();
+        return Boolean(itemName && cName && cName === itemName);
+      });
+      if (!matched) return item;
+      const merged = { ...matched };
+      Object.keys(item).forEach((k) => {
+        const v = item[k];
+        if (v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim() !== '-') {
+          merged[k] = v;
+        }
+      });
+      return merged;
+    };
+
+    if (selectedList.length === 0) {
+      setFormValues(prev => {
+        const next = { ...prev };
+        delete next.__SELECTED_SUBJECTS__;
+        return next;
+      });
+      setIsSaved(false);
+      return;
+    }
+
+    const enrichedRaw = selectedList.map(enrichSubj);
+    const enrichedSubjects = deduplicateSubjectRecords(enrichedRaw, enrichedRaw[0]?._categoryLabel || 'Subjek')
+      .map((norm, i) => ({
+        ...enrichedRaw[i],
+        ...norm
+      }));
+    if (enrichedSubjects.length === 0) return;
+    const primary = enrichedSubjects[0];
 
     // Jika subjek punya id di caseSuspects, sinkronkan juga selectedSuspectId
     if (primary.id && caseSuspects.some(cs => String(cs.id) === String(primary.id))) {
       setSelectedSuspectId(primary.id);
     }
 
+    const activeTplTitleUpper = String(currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
+    const isTerlaporTemplate = activeCanonicalCode.includes('TERLAPOR') || activeTplTitleUpper.includes('TERLAPOR');
+
     setFormValues(prev => {
       const next = { ...prev };
-      // Isi penuh SUBJEK_* serta prefix kategori masing-masing (TERSANGKA_*, TERLAPOR_*, SAKSI_*, PELAPOR_*)
-      populateSubjectPrefixVariables(next, 'SUBJEK', nextSubjects, primary);
-      populateSubjectPrefixVariables(next, primary._category || 'TERSANGKA', nextSubjects, primary);
+      next.__SELECTED_SUBJECTS__ = enrichedSubjects;
 
-      // Untuk surat penetapan tersangka / upaya paksa yang memakai tag TERSANGKA_* walaupun yang dipilih masih berstatus Terlapor (Calon Tersangka):
-      if (primary._category === 'TERLAPOR' || primary._category === 'TERSANGKA') {
-        populateSubjectPrefixVariables(next, 'TERSANGKA', nextSubjects, primary);
-        populateSubjectPrefixVariables(next, 'TERLAPOR', nextSubjects, primary);
-        next.NAMA_TERSANGKA = primary.nama || '';
-        next.nama_tersangka = primary.nama || '';
-        next.NIK = primary.nik || '-';
-        next.nik = primary.nik || '-';
-        next.TEMPAT_LAHIR = primary.tempat_lahir || '';
-        next.tempat_lahir = primary.tempat_lahir || '';
-        next.TGL_LAHIR = primary.tgl_lahir || '';
-        next.tgl_lahir = primary.tgl_lahir || '';
-        next.TTL = primary.ttl || '';
-        next.ttl = primary.ttl || '';
-        next.UMUR = primary.umur || '';
-        next.umur = primary.umur || '';
-        next.JENIS_KELAMIN = primary.jenis_kelamin || 'Laki-laki';
-        next.jenis_kelamin = primary.jenis_kelamin || 'Laki-laki';
-        next.KEWARGANEGARAAN = primary.kewarganegaraan || 'Indonesia';
-        next.kewarganegaraan = primary.kewarganegaraan || 'Indonesia';
-        next.AGAMA = primary.agama || 'Islam';
-        next.agama = primary.agama || 'Islam';
-        next.PEKERJAAN = primary.pekerjaan || '';
-        next.pekerjaan = primary.pekerjaan || '';
-        next.PENDIDIKAN = primary.pendidikan || '';
-        next.pendidikan = primary.pendidikan || '';
-        next.ALAMAT = primary.alamat || '';
-        next.alamat = primary.alamat || '';
-        next.NO_HP = primary.no_hp || '';
-        next.no_hp = primary.no_hp || '';
-        if (primary.nomor_sp_tap) next.NO_SP_TAP_TSK = primary.nomor_sp_tap;
-        if (primary.tanggal_sp_tap) next.TGL_SP_TAP_TSK = primary.tanggal_sp_tap;
+      // Isi penuh TERLAPOR_1..5_*, SUBJEK_1..5_*, dan array loop {#TERLAPOR} / {#SUBJEK}
+      populateSubjectPrefixVariables(next, 'SUBJEK', enrichedSubjects, primary);
+      populateSubjectPrefixVariables(next, primary._category || 'TERLAPOR', enrichedSubjects, primary);
+      populateIndexedSubjectGroup(next, enrichedSubjects, ['TERLAPOR', 'SUBJEK'], pool);
+
+      if (isTerlaporTemplate) {
+        populateIndexedSubjectGroup(next, enrichedSubjects, ['TSK', 'TERSANGKA'], pool);
+      }
+
+      // Untuk surat penetapan tersangka / upaya paksa / SPDP yang memakai tag datar TERSANGKA_* atau NAMA_TERSANGKA..ALAMAT:
+      if (isTerlaporTemplate || primary._category === 'TERLAPOR' || primary._category === 'TERSANGKA') {
+        const normPrimary = normalizeSubjectRecord(primary, 0, primary._category || 'Terlapor') || primary;
+        populateSubjectPrefixVariables(next, 'TERSANGKA', enrichedSubjects, normPrimary);
+        populateSubjectPrefixVariables(next, 'TERLAPOR', enrichedSubjects, normPrimary);
+        next.NAMA_TERSANGKA = normPrimary.nama || '';
+        next.nama_tersangka = normPrimary.nama || '';
+        next.NIK = normPrimary.nik || '-';
+        next.nik = normPrimary.nik || '-';
+        next.TEMPAT_LAHIR = normPrimary.tempat_lahir || '';
+        next.tempat_lahir = normPrimary.tempat_lahir || '';
+        next.TGL_LAHIR = normPrimary.tgl_lahir || '';
+        next.tgl_lahir = normPrimary.tgl_lahir || '';
+        next.TTL = normPrimary.ttl || '';
+        next.ttl = normPrimary.ttl || '';
+        next.UMUR = normPrimary.umur || '';
+        next.umur = normPrimary.umur || '';
+        next.JENIS_KELAMIN = normPrimary.jenis_kelamin || 'Laki-laki';
+        next.jenis_kelamin = normPrimary.jenis_kelamin || 'Laki-laki';
+        next.KEWARGANEGARAAN = normPrimary.kewarganegaraan || 'Indonesia';
+        next.kewarganegaraan = normPrimary.kewarganegaraan || 'Indonesia';
+        next.AGAMA = normPrimary.agama || 'Islam';
+        next.agama = normPrimary.agama || 'Islam';
+        next.PEKERJAAN = normPrimary.pekerjaan || '';
+        next.pekerjaan = normPrimary.pekerjaan || '';
+        next.PENDIDIKAN = normPrimary.pendidikan || '';
+        next.pendidikan = normPrimary.pendidikan || '';
+        next.STATUS_KAWIN = normPrimary.status_pernikahan || '';
+        next.status_kawin = normPrimary.status_pernikahan || '';
+        next.STATUS_PERNIKAHAN = normPrimary.status_pernikahan || '';
+        next.status_pernikahan = normPrimary.status_pernikahan || '';
+        next.ALAMAT = normPrimary.alamat || '';
+        next.alamat = normPrimary.alamat || '';
+        next.NO_HP = normPrimary.no_hp || '';
+        next.no_hp = normPrimary.no_hp || '';
+        if (normPrimary.nomor_sp_tap) next.NO_SP_TAP_TSK = normPrimary.nomor_sp_tap;
+        if (normPrimary.tanggal_sp_tap) next.TGL_SP_TAP_TSK = normPrimary.tanggal_sp_tap;
       }
       return next;
     });
@@ -528,9 +627,10 @@ export default function MindikGeneratorView({
     return matched;
   }, [cases, caseSearchQuery, currentCase]);
 
-  // Update nilai profil tersangka ke formValues jika suspect berganti
+  // Update nilai profil tersangka ke formValues jika suspect berganti (kecuali bila sudah ada pilihan subjek aktif)
   useEffect(() => {
     if (!activeSuspect) return;
+    if (selectedTargetSubjectKeys.some(k => k !== '__NONE__')) return;
     setFormValues(prev => ({
       ...prev,
       NAMA_TERSANGKA: activeSuspect.nama || '',
@@ -632,7 +732,7 @@ export default function MindikGeneratorView({
     let isCancelled = false;
 
     const applyChainedToForm = (scalarChained) => {
-      // Hapus key generik surat aktif dari konteks rantai agar tidak pernah menimpa NOMOR_SURAT template tujuan
+      // Hapus key generik surat aktif & tag biodata subjek dari konteks rantai agar tidak membocorkan data lama antar-template
       const cleanScalarChained = { ...(scalarChained || {}) };
       delete cleanScalarChained.NOMOR_SURAT;
       delete cleanScalarChained.nomor_surat;
@@ -642,6 +742,11 @@ export default function MindikGeneratorView({
       delete cleanScalarChained.doc_no;
       delete cleanScalarChained.NOMOR_SURAT_HEADER;
       delete cleanScalarChained.nomor_surat_header;
+      Object.keys(cleanScalarChained).forEach((ck) => {
+        if (/^(TERLAPOR|TERSANGKA|TSK|SUBJEK)(_?\d+)?_|_(TERLAPOR|TERSANGKA|TSK|SUBJEK)(_?\d+)?$/i.test(ck)) {
+          delete cleanScalarChained[ck];
+        }
+      });
 
       setFormValues(prev => {
         const isNewTplState = prev._activeTemplateKey !== tplCaseKey || isTplOrCaseChanged;
@@ -649,6 +754,9 @@ export default function MindikGeneratorView({
         // Tanpa mengonversi tanggal ISO menjadi teks Indonesia di state form UI
         const nextValues = mergeChainedWithForm(cleanScalarChained, prev, { formatDatesForDocx: false });
         nextValues._activeTemplateKey = tplCaseKey;
+        if (isNewTplState && selectedTargetSubjectKeys.length === 0) {
+          delete nextValues.__SELECTED_SUBJECTS__;
+        }
 
         // Pastikan TANGGAL_SURAT selalu valid format ISO YYYY-MM-DD dan bersihkan stale header keys
         const existingArchivedDate = existingAnyDoc ? toIsoDateString(existingAnyDoc.tgl_surat) : '';
@@ -754,6 +862,19 @@ export default function MindikGeneratorView({
     return getSubjectModeForTemplate(activeCanonicalCode, currentTemplate?.title || currentTemplate?.name || '');
   }, [activeCanonicalCode, currentTemplate]);
 
+  const isTerlaporTemplateActive = useMemo(() => {
+    const rawCode = String(currentTemplate?.code || currentTemplate?.template_code || selectedTemplateCode || '').toUpperCase();
+    const rawTitle = String(currentTemplate?.title || currentTemplate?.name || '').toUpperCase();
+    return (
+      currentSubjectMode === 'terlapor' ||
+      activeCanonicalCode === 'SPDP_TERLAPOR' ||
+      rawCode.includes('TERLAPOR') ||
+      rawTitle.includes('TERLAPOR')
+    );
+  }, [currentSubjectMode, activeCanonicalCode, currentTemplate, selectedTemplateCode]);
+
+  const activeAutoSelectKey = `${currentCase?.id || ''}::${currentTemplate?.id || currentTemplate?.code || activeCanonicalCode}`;
+
   const ROMAN_MONTH_PATTERN = /^(.*\/)([^/]+)(\/(?:XII|XI|IX|X|VIII|VII|VI|IV|V|III|II|I)(?:\/|$).*)$/i;
 
   const extractNoUrutFromDocNo = (docNo) => {
@@ -810,22 +931,61 @@ export default function MindikGeneratorView({
     );
   }, [activeNumberPattern, formValues.NOMOR_SURAT]);
 
-  // Reset & sinkronkan No. Urut + filter kategori subjek otomatis saat berpindah template
+  // Reset & sinkronkan No. Urut + filter kategori + auto-select subjek relevan saat template/perkara aktif berubah
   useEffect(() => {
-    setNoUrutInput(extractNoUrutFromDocNo(formValues.NOMOR_SURAT));
-    setShowOptionalSubjectPicker(false);
-    if (currentSubjectMode === 'terlapor_to_tersangka' || currentSubjectMode === 'terlapor') {
-      setSelectedSubjectCategory('TERLAPOR');
-    } else if (currentSubjectMode === 'tersangka') {
-      setSelectedSubjectCategory('TERSANGKA');
-    } else if (currentSubjectMode === 'saksi') {
-      setSelectedSubjectCategory('SAKSI');
-    } else if (currentSubjectMode === 'pelapor_korban') {
-      setSelectedSubjectCategory('PELAPOR');
-    } else {
-      setSelectedSubjectCategory('ALL');
+    const isTplOrCaseChanged = prevAutoTemplateKeyRef.current !== activeAutoSelectKey;
+    if (isTplOrCaseChanged) {
+      prevAutoTemplateKeyRef.current = activeAutoSelectKey;
+      lastAutoSelectTplKeyRef.current = '';
+      setNoUrutInput(extractNoUrutFromDocNo(formValues.NOMOR_SURAT));
+      setShowOptionalSubjectPicker(false);
+      if (isTerlaporTemplateActive || currentSubjectMode === 'terlapor_to_tersangka') {
+        setSelectedSubjectCategory('TERLAPOR');
+      } else if (currentSubjectMode === 'tersangka') {
+        setSelectedSubjectCategory('TERSANGKA');
+      } else if (currentSubjectMode === 'saksi') {
+        setSelectedSubjectCategory('SAKSI');
+      } else if (currentSubjectMode === 'pelapor_korban') {
+        setSelectedSubjectCategory('PELAPOR');
+      } else {
+        setSelectedSubjectCategory('ALL');
+      }
     }
-  }, [activeCanonicalCode, currentCase?.id, currentSubjectMode]);
+
+    if (!currentCase || !currentTemplate) return;
+
+    const shouldAutoSelect =
+      lastAutoSelectTplKeyRef.current !== activeAutoSelectKey &&
+      (isTplOrCaseChanged || selectedTargetSubjectKeys.length === 0);
+
+    if (!shouldAutoSelect) return;
+
+    let poolTargets = [];
+    if (isTerlaporTemplateActive || currentSubjectMode === 'terlapor') {
+      poolTargets = allCaseSubjects.terlapor.length > 0 ? allCaseSubjects.terlapor : allCaseSubjects.tersangka;
+    } else if (currentSubjectMode === 'terlapor_to_tersangka') {
+      poolTargets = allCaseSubjects.terlapor.length > 0 ? allCaseSubjects.terlapor : allCaseSubjects.tersangka;
+    } else if (currentSubjectMode === 'tersangka') {
+      poolTargets = allCaseSubjects.tersangka.length > 0 ? allCaseSubjects.tersangka : allCaseSubjects.terlapor;
+    } else if (currentSubjectMode === 'saksi') {
+      poolTargets = allCaseSubjects.saksi;
+    } else if (currentSubjectMode === 'pelapor_korban') {
+      poolTargets = allCaseSubjects.pelapor;
+    }
+
+    if (poolTargets.length > 0) {
+      const tplText = `${currentTemplate?.code || currentTemplate?.template_code || ''} ${currentTemplate?.title || currentTemplate?.name || ''}`;
+      const isMultiSubjectTpl = /MORE_1|LEBIH_1|LEBIH_DARI_1|KOLEKTIF/i.test(tplText);
+      const chosenTargets = isMultiSubjectTpl ? poolTargets : poolTargets.slice(0, 1);
+
+      lastAutoSelectTplKeyRef.current = activeAutoSelectKey;
+      setSelectedTargetSubjectKeys(chosenTargets.map(s => s._uid));
+      applyUniversalSelectedSubjects(chosenTargets);
+    } else if (isTplOrCaseChanged && selectedTargetSubjectKeys.length > 0) {
+      setSelectedTargetSubjectKeys([]);
+      applyUniversalSelectedSubjects([]);
+    }
+  }, [activeAutoSelectKey, currentCase, currentTemplate, currentSubjectMode, isTerlaporTemplateActive, allCaseSubjects, selectedTargetSubjectKeys.length]);
 
   // Sinkronkan No. Urut saat NOMOR_SURAT berubah dari load arsip / ganti template
   useEffect(() => {
@@ -1056,17 +1216,34 @@ export default function MindikGeneratorView({
       const canonicalCode = toCanonicalMindikCode(tplCode, tplTitle);
 
       // =========================================================
-      // AUTO-PROMOTE & AUTO-UPDATE DATABASE TERSANGKA (TAP_TSK)
+      // AUTO-PROMOTE & RESOLUSI SUBJEK TARGET PER-DOKUMEN (INDIVIDUAL)
       // =========================================================
       const isTapTsk = canonicalCode === 'TAP_TSK';
+      const isSprinKapDoc = canonicalCode === 'SPRIN_KAP_DAN_BA' || canonicalCode === 'SPRIN_KAP' || canonicalCode === 'SP_KAP';
+      const isSprinHanDoc = canonicalCode === 'SPRIN_HAN_DAN_BA' || canonicalCode === 'SPRIN_HAN' || canonicalCode === 'SP_HAN';
+      const isIndividualSuspectDoc =
+        isTapTsk ||
+        isSprinKapDoc ||
+        isSprinHanDoc ||
+        canonicalCode.startsWith('PEMBERITAHUAN_TAP_TSK') ||
+        canonicalCode.startsWith('SPGL_TSK') ||
+        canonicalCode.includes('KAP') ||
+        canonicalCode.includes('HAN') ||
+        canonicalCode.includes('BAWA_TSK') ||
+        requiresSuspectTarget;
+
+      const selectedTargetsForDoc = selectedTargetSubjects.length > 0
+        ? selectedTargetSubjects
+        : (activeSuspect ? [activeSuspect] : []);
+
+      const resolvedTargetSuspectIds = [];
+      const resolvedTargetSuspectNames = [];
+      let promotedOrUpdatedTargets = [];
 
       if (isTapTsk) {
         try {
           const cleanDate = docDate;
-
-          const targetSubjectsToPromote = selectedTargetSubjects.length > 0
-            ? selectedTargetSubjects
-            : (activeSuspect ? [activeSuspect] : []);
+          const targetSubjectsToPromote = selectedTargetsForDoc;
 
           for (const subj of targetSubjectsToPromote) {
             if (!subj || !subj.nama) continue;
@@ -1088,9 +1265,12 @@ export default function MindikGeneratorView({
                   tgl_sp_tap_tsk: cleanDate
                 })
                 .eq('id', existingRow.id);
+              resolvedTargetSuspectIds.push(existingRow.id);
+              resolvedTargetSuspectNames.push(existingRow.nama || subj.nama);
+              promotedOrUpdatedTargets.push({ ...existingRow, nama: existingRow.nama || subj.nama });
             } else {
               // Promosikan Terlapor (Calon Tersangka) baru ke tabel case_suspects dengan status 'tersangka'
-              await supabase.from('case_suspects').insert([{
+              const { data: insertedRows } = await supabase.from('case_suspects').insert([{
                 case_id: currentCase.id,
                 nama: subj.nama,
                 nik: subj.nik || '-',
@@ -1109,7 +1289,11 @@ export default function MindikGeneratorView({
                 tanggal_sp_tap: cleanDate,
                 tgl_sp_tap_tsk: cleanDate,
                 created_at: new Date().toISOString()
-              }]);
+              }]).select();
+              const inserted = Array.isArray(insertedRows) && insertedRows[0] ? insertedRows[0] : subj;
+              if (inserted?.id) resolvedTargetSuspectIds.push(inserted.id);
+              resolvedTargetSuspectNames.push(inserted?.nama || subj.nama);
+              promotedOrUpdatedTargets.push(inserted);
             }
           }
 
@@ -1123,7 +1307,7 @@ export default function MindikGeneratorView({
             setCaseSuspects(refreshedSuspects);
           }
 
-          // Sinkronkan juga ke currentCase.references.tersangka_list
+          // Sinkronkan hanya entry tersangka yang dipromosikan di currentCase.references.tersangka_list
           const prevTskList = Array.isArray(currentCase.references?.tersangka_list)
             ? [...currentCase.references.tersangka_list]
             : [];
@@ -1151,6 +1335,45 @@ export default function MindikGeneratorView({
         } catch (err) {
           console.error('[Auto-Promote Tersangka Error]', err);
         }
+      } else if (isIndividualSuspectDoc) {
+        // Sinkronisasi kolom per-tersangka (HANYA baris tersangka terpilih pada surat upaya paksa / panggilan)
+        for (const subj of selectedTargetsForDoc) {
+          if (!subj || !subj.nama) continue;
+          const existingRow = caseSuspects.find(
+            (cs) => (subj.id && String(cs.id) === String(subj.id)) ||
+              (cs.nama && cs.nama.trim().toLowerCase() === subj.nama.trim().toLowerCase())
+          );
+          if (existingRow?.id) {
+            resolvedTargetSuspectIds.push(existingRow.id);
+            resolvedTargetSuspectNames.push(existingRow.nama || subj.nama);
+            promotedOrUpdatedTargets.push({ ...existingRow, nama: existingRow.nama || subj.nama });
+            if (isSprinKapDoc && docNo !== '-') {
+              await supabase
+                .from('case_suspects')
+                .update({ no_sprin_kap: docNo })
+                .eq('id', existingRow.id);
+            } else if (isSprinHanDoc && docNo !== '-') {
+              await supabase
+                .from('case_suspects')
+                .update({ no_sprin_han: docNo })
+                .eq('id', existingRow.id);
+            }
+          } else {
+            if (subj.id) resolvedTargetSuspectIds.push(subj.id);
+            resolvedTargetSuspectNames.push(subj.nama);
+            promotedOrUpdatedTargets.push(subj);
+          }
+        }
+        if ((isSprinKapDoc || isSprinHanDoc) && resolvedTargetSuspectIds.length > 0) {
+          const { data: refreshedSuspects } = await supabase
+            .from('case_suspects')
+            .select('*')
+            .eq('case_id', currentCase.id)
+            .order('created_at', { ascending: true });
+          if (Array.isArray(refreshedSuspects)) {
+            setCaseSuspects(refreshedSuspects);
+          }
+        }
       }
       // =========================================================
 
@@ -1161,12 +1384,28 @@ export default function MindikGeneratorView({
         }
       });
 
-      const suspectSnapshot = (caseSuspects && caseSuspects.length > 0)
-        ? caseSuspects
-        : (activeSuspect ? [activeSuspect] : null);
+      const primaryTargetObj = promotedOrUpdatedTargets[0] || selectedTargetsForDoc[0] || activeSuspect || null;
+      const targetSuspectIdFinal = resolvedTargetSuspectIds[0] || primaryTargetObj?.id || null;
+      const targetSuspectNameFinal =
+        resolvedTargetSuspectNames[0] ||
+        primaryTargetObj?.nama ||
+        formValues.TERSANGKA_NAMA ||
+        formValues.SUBJEK_NAMA ||
+        formValues.NAMA_TERSANGKA ||
+        '';
+      const targetSuspectIdsFinal = resolvedTargetSuspectIds.length > 0
+        ? resolvedTargetSuspectIds
+        : (targetSuspectIdFinal ? [targetSuspectIdFinal] : []);
+
+      const suspectSnapshot = isIndividualSuspectDoc
+        ? (promotedOrUpdatedTargets.length > 0 ? promotedOrUpdatedTargets : (primaryTargetObj ? [primaryTargetObj] : null))
+        : ((caseSuspects && caseSuspects.length > 0)
+            ? caseSuspects
+            : (activeSuspect ? [activeSuspect] : null));
 
       const {
         _activeTemplateKey: _omitTplKey,
+        __SELECTED_SUBJECTS__: _omitSelSubj,
         TANGGAL_SURAT_HEADER: _omitHdr1,
         tanggal_surat_header: _omitHdr2,
         ...cleanFormValuesForMeta
@@ -1191,6 +1430,11 @@ export default function MindikGeneratorView({
           nomor_lp: currentCase.nomor_lp || currentCase.no_lp || '',
           canonical_code: canonicalCode,
           original_template_code: tplCode,
+          ...(isIndividualSuspectDoc ? {
+            target_suspect_id: targetSuspectIdFinal,
+            target_suspect_name: targetSuspectNameFinal,
+            target_suspect_ids: targetSuspectIdsFinal
+          } : {}),
           chain_snapshot: chainSnapshot,
           suspect_data: suspectSnapshot
         },
@@ -2316,7 +2560,9 @@ export default function MindikGeneratorView({
                 {(() => {
                   const visibleSubjects = selectedSubjectCategory === 'ALL'
                     ? allCaseSubjects.all
-                    : allCaseSubjects.all.filter(s => s._category === selectedSubjectCategory);
+                    : (selectedSubjectCategory === 'TERLAPOR' && isTerlaporTemplateActive && allCaseSubjects.terlapor.length === 0 && allCaseSubjects.tersangka.length > 0
+                        ? allCaseSubjects.tersangka
+                        : allCaseSubjects.all.filter(s => s._category === selectedSubjectCategory));
 
                   if (visibleSubjects.length === 0) {
                     return (
@@ -2354,17 +2600,20 @@ export default function MindikGeneratorView({
                               type="checkbox"
                               checked={isChecked}
                               onChange={(e) => {
+                                const effectiveBaseKeys = selectedTargetSubjectKeys.length > 0
+                                  ? selectedTargetSubjectKeys.filter(k => k !== '__NONE__')
+                                  : allCaseSubjects.all
+                                      .filter(s => activeSuspect && s.nama === activeSuspect.nama)
+                                      .map(s => s._uid);
                                 let nextKeys;
                                 if (e.target.checked) {
-                                  nextKeys = [...new Set([...selectedTargetSubjectKeys, subj._uid])];
+                                  nextKeys = [...new Set([...effectiveBaseKeys, subj._uid])];
                                 } else {
-                                  nextKeys = selectedTargetSubjectKeys.filter(k => k !== subj._uid);
+                                  nextKeys = effectiveBaseKeys.filter(k => k !== subj._uid);
                                 }
-                                setSelectedTargetSubjectKeys(nextKeys);
+                                setSelectedTargetSubjectKeys(nextKeys.length > 0 ? nextKeys : ['__NONE__']);
                                 const nextSelectedObjs = allCaseSubjects.all.filter(s => nextKeys.includes(s._uid));
-                                if (nextSelectedObjs.length > 0) {
-                                  applyUniversalSelectedSubjects(nextSelectedObjs);
-                                }
+                                applyUniversalSelectedSubjects(nextSelectedObjs);
                               }}
                               style={{ accentColor: '#FF2A2A', cursor: 'pointer' }}
                             />
@@ -2423,13 +2672,17 @@ export default function MindikGeneratorView({
                 if (allowedOperatorInputKeys.has(k)) {
                   return false;
                 }
-                // 3. Seluruh pola rujukan dokumen arsip pendahulu & data induk LP (NOMOR_<KODE>, NO_<KODE>, TANGGAL_<KODE>, TGL_<KODE>, DASAR_<KODE>, <KODE>_NOMOR, <KODE>_TANGGAL)
+                // 3. Seluruh pola rujukan dokumen arsip pendahulu, tanggal terurai rantai, & data induk LP
                 if (
                   k.startsWith('NOMOR_') ||
                   k.startsWith('NO_') ||
                   k.startsWith('TANGGAL_') ||
                   k.startsWith('TGL_') ||
                   k.startsWith('DASAR_') ||
+                  k.startsWith('TGL_ANGKA_') ||
+                  k.startsWith('TANGGAL_ANGKA_') ||
+                  k.startsWith('TERBILANG_TAHUN_') ||
+                  k.startsWith('TANGGAL_TERURAI_') ||
                   k.endsWith('_NOMOR') ||
                   k.endsWith('_NO') ||
                   k.endsWith('_TANGGAL') ||
@@ -2437,8 +2690,26 @@ export default function MindikGeneratorView({
                 ) {
                   return true;
                 }
-                // 4. Kunci kode arsip dinamis yang sudah tersimpan di activeCaseDocs
+                // 3b. Tanggal terurai (HARI_*, BULAN_*, TAHUN_*) milik surat aktif & rantai arsip KUHAP
                 const archivedCodes = activeCaseDocs.map(d => (d.template_code || '').toUpperCase().trim()).filter(Boolean);
+                const chainDatePrefixes = new Set([
+                  'SURAT', 'DOC', 'LP',
+                  'SPRIN_SIDIK', 'SP_SIDIK', 'SIDIK', 'SURAT_PERINTAH_PENYIDIKAN',
+                  'SPGAS_SIDIK', 'SPRIN_GAS_SIDIK', 'SP_GAS_SIDIK', 'GAS_SIDIK',
+                  'SPDP', 'SPDP_TSK', 'SPDP_TERLAPOR',
+                  'TAP_TSK', 'SP_TAP_TSK', 'SP_TAP', 'S_TAP_TSK', 'PENETAPAN_TERSANGKA',
+                  'SPRIN_KAP', 'SP_KAP', 'SPRIN_KAP_DAN_BA',
+                  'SPRIN_HAN', 'SP_HAN', 'SPRIN_HAN_DAN_BA',
+                  'SPRIN_LIDIK', 'SP_LIDIK', 'SPGAS_LIDIK', 'LHP', 'LI',
+                  ...archivedCodes
+                ]);
+                for (const prefixMatch of ['HARI_', 'BULAN_', 'TAHUN_']) {
+                  if (k.startsWith(prefixMatch)) {
+                    const suffix = k.slice(prefixMatch.length);
+                    if (chainDatePrefixes.has(suffix)) return true;
+                  }
+                }
+                // 4. Kunci kode arsip dinamis yang sudah tersimpan di activeCaseDocs
                 for (const code of archivedCodes) {
                   if (
                     k === code ||

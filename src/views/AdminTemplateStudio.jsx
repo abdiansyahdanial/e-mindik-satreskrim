@@ -627,18 +627,20 @@ export default function AdminTemplateStudio({
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
-          {/* 1. Pola Rantai Dokumen Dinamis */}
+          {/* 1. Pola Rantai Dokumen Dinamis & Tanggal Terurai */}
           <div style={{ padding: '12px 14px', background: '#131924', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
             <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#FF3B3B', marginBottom: '6px' }}>
-              1. POLA RANTAI DOKUMEN DINAMIS (SEMUA KODE)
+              1. POLA RANTAI DOKUMEN DINAMIS &amp; TANGGAL TERURAI
             </div>
             <div style={{ fontSize: '11px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px', lineHeight: 1.45 }}>
               <div><code className="mono">{'{NOMOR_<KODE_TEMPLATE>}'}</code> / <code className="mono">{'{NO_<KODE_TEMPLATE>}'}</code></div>
               <div><code className="mono">{'{TANGGAL_<KODE_TEMPLATE>}'}</code> / <code className="mono">{'{TGL_<KODE_TEMPLATE>}'}</code></div>
-              <div><code className="mono">{'{DASAR_<KODE_TEMPLATE>}'}</code> (Kalimat dasar lengkap)</div>
-              <div><code className="mono">{'{#DAFTAR_DASAR_SURAT}{dasar}{/DAFTAR_DASAR_SURAT}'}</code></div>
+              <div>
+                Terurai: <code className="mono">{'{HARI_<KODE>}'}</code>, <code className="mono">{'{TGL_ANGKA_<KODE>}'}</code> / <code className="mono">{'{TANGGAL_ANGKA_<KODE>}'}</code>, <code className="mono">{'{BULAN_<KODE>}'}</code>, <code className="mono">{'{TAHUN_<KODE>}'}</code>, <code className="mono">{'{TERBILANG_TAHUN_<KODE>}'}</code>, <code className="mono">{'{TANGGAL_TERURAI_<KODE>}'}</code>
+              </div>
+              <div><code className="mono">{'{DASAR_<KODE_TEMPLATE>}'}</code> &amp; <code className="mono">{'{#DAFTAR_DASAR_SURAT}{dasar}{/DAFTAR_DASAR_SURAT}'}</code></div>
               <div style={{ fontSize: '10px', color: '#94A3B8', marginTop: '2px' }}>
-                Contoh: <code>{'{NOMOR_SPRIN_SIDIK}'}</code>, <code>{'{TANGGAL_SPDP}'}</code>, <code>{'{NOMOR_SP_TAP_TSK}'}</code>, <code>{'{NOMOR_BA_KONFRONTASI}'}</code>
+                Contoh: <code>{'{NOMOR_SPRIN_SIDIK}'}</code>, <code>{'{HARI_SPRIN_SIDIK}'}</code>, <code>{'{TGL_ANGKA_SPRIN_SIDIK}'}</code>, <code>{'{BULAN_SPRIN_SIDIK}'}</code>, <code>{'{TAHUN_SPRIN_SIDIK}'}</code>, <code>{'{HARI_SURAT}'}</code>, <code>{'{TANGGAL_TERURAI_LP}'}</code>
               </div>
             </div>
           </div>
@@ -649,7 +651,7 @@ export default function AdminTemplateStudio({
               2. DATA INDUK PERKARA, TIM PENYIDIK & BARANG BUKTI
             </div>
             <div style={{ fontSize: '11px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px', lineHeight: 1.45 }}>
-              <div><code className="mono">{'{NOMOR_SURAT}'}</code>, <code className="mono">{'{TANGGAL_SURAT}'}</code>, <code className="mono">{'{NOMOR_LP}'}</code>, <code className="mono">{'{TANGGAL_LP}'}</code></div>
+              <div><code className="mono">{'{NOMOR_SURAT}'}</code>, <code className="mono">{'{TANGGAL_SURAT}'}</code>, <code className="mono">{'{HARI_SURAT}'}</code>, <code className="mono">{'{BULAN_SURAT}'}</code>, <code className="mono">{'{NOMOR_LP}'}</code>, <code className="mono">{'{TANGGAL_LP}'}</code></div>
               <div><code className="mono">{'{TINDAK_PIDANA}'}</code>, <code className="mono">{'{PASAL}'}</code>, <code className="mono">{'{TEMPAT_KEJADIAN}'}</code>, <code className="mono">{'{WAKTU_KEJADIAN}'}</code></div>
               <div><code className="mono">{'{KRONOLOGI}'}</code>, <code className="mono">{'{URAIAN_SINGKAT}'}</code>, <code className="mono">{'{ATASAN_NAMA}'}</code>, <code className="mono">{'{ATASAN_PANGKAT}'}</code></div>
               <div><code className="mono">{'{PENYIDIK_1_NAMA}'}</code> s/d <code className="mono">{'{PENYIDIK_10_NAMA}'}</code> &amp; Loop <code className="mono">{'{#PENYIDIK}'}</code></div>
@@ -657,16 +659,16 @@ export default function AdminTemplateStudio({
             </div>
           </div>
 
-          {/* 3. Subjek Hukum Terpadu (13 Atribut KUHAP) */}
+          {/* 3. Subjek Hukum Terpadu & Dokumen Per-Tersangka */}
           <div style={{ padding: '12px 14px', background: '#131924', borderRadius: '12px', border: '1px solid rgba(148, 163, 184, 0.16)' }}>
             <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#FF3B3B', marginBottom: '6px' }}>
-              3. SUBJEK HUKUM KUHAP (PELAPOR, SAKSI, TERLAPOR, TERSANGKA)
+              3. SUBJEK HUKUM KUHAP &amp; RANTAI PER-TERSANGKA
             </div>
             <div style={{ fontSize: '11px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px', lineHeight: 1.45 }}>
               <div>Prefix: <code className="mono">TERSANGKA_*</code>, <code className="mono">TERLAPOR_*</code>, <code className="mono">SAKSI_*</code>, <code className="mono">PELAPOR_*</code>, <code className="mono">SUBJEK_*</code></div>
               <div>Atribut: <code className="mono">_NAMA</code>, <code className="mono">_ALIAS</code>, <code className="mono">_NIK</code>, <code className="mono">_TTL</code>, <code className="mono">_UMUR</code>, <code className="mono">_JENIS_KELAMIN</code>, <code className="mono">_PEKERJAAN</code>, <code className="mono">_AGAMA</code>, <code className="mono">_ALAMAT</code>, <code className="mono">_NO_HP</code></div>
-              <div>Blok Penuh: <code className="mono">{'{BIODATA_TERSANGKA_LENGKAP}'}</code>, <code className="mono">{'{BIODATA_SAKSI_LENGKAP}'}</code></div>
-              <div>Loop Multi-Subjek: <code className="mono">{'{#TERSANGKA}'}</code>, <code className="mono">{'{#TERLAPOR}'}</code>, <code className="mono">{'{#SAKSI}'}</code>, <code className="mono">{'{#PELAPOR}'}</code></div>
+              <div>Per-Tersangka (1–5): <code className="mono">{'{TSK_1_NOMOR_SP_TAP}'}</code>, <code className="mono">{'{TSK_1_TGL_SP_TAP}'}</code>, <code className="mono">{'{TSK_2_NOMOR_SP_TAP}'}</code>, <code className="mono">{'{TSK_1_NO_SPRIN_KAP}'}</code>, <code className="mono">{'{TSK_1_NO_SPRIN_HAN}'}</code></div>
+              <div>Loop Multi-Subjek: <code className="mono">{'{#TERSANGKA}'}</code> (<code className="mono">{'{nomor_sp_tap}'}</code>, <code className="mono">{'{tgl_sp_tap}'}</code>), <code className="mono">{'{#TERLAPOR}'}</code>, <code className="mono">{'{#SAKSI}'}</code>, <code className="mono">{'{#PELAPOR}'}</code></div>
             </div>
           </div>
         </div>
