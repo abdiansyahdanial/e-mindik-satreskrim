@@ -88,13 +88,27 @@ const CANONICAL_CODE_ALIASES = {
   SURAT_KETETAPAN_PENETAPAN_TERSANGKA: 'TAP_TSK',
   PENETAPAN_TERSANGKA: 'TAP_TSK',
 
-  // Level 3: Pemberitahuan TAP TSK & Panggilan Tersangka
+  // Level 2 & 3: Pemberitahuan TAP TSK & Panggilan Saksi / Tersangka
   PEMBERITAHUAN_TAP_TSK: 'PEMBERITAHUAN_TAP_TSK',
   PEMBERITAHUAN_TAP_TSK_KE_TSK: 'PEMBERITAHUAN_TAP_TSK',
   PEMBERITAHUAN_TAP_TSK_JPU: 'PEMBERITAHUAN_TAP_TSK_JPU',
   PEMBERITAHUAN_TAP_TSK_KE_JPU: 'PEMBERITAHUAN_TAP_TSK_JPU',
+  SPGL_SAKSI: 'SPGL_SAKSI_1',
+  SPGL_SAKSI_1: 'SPGL_SAKSI_1',
+  SURAT_PANGGILAN_SAKSI: 'SPGL_SAKSI_1',
+  SURAT_PANGGILAN_SAKSI_1: 'SPGL_SAKSI_1',
+  PANGGILAN_SAKSI_1: 'SPGL_SAKSI_1',
+  SPGL_SAKSI_2: 'SPGL_SAKSI_2',
+  SURAT_PANGGILAN_SAKSI_2: 'SPGL_SAKSI_2',
+  PANGGILAN_SAKSI_2: 'SPGL_SAKSI_2',
+  SPGL_TSK: 'SPGL_TSK_1',
   SPGL_TSK_1: 'SPGL_TSK_1',
+  SURAT_PANGGILAN_TERSANGKA: 'SPGL_TSK_1',
+  SURAT_PANGGILAN_TERSANGKA_1: 'SPGL_TSK_1',
+  PANGGILAN_TSK_1: 'SPGL_TSK_1',
   SPGL_TSK_2: 'SPGL_TSK_2',
+  SURAT_PANGGILAN_TERSANGKA_2: 'SPGL_TSK_2',
+  PANGGILAN_TSK_2: 'SPGL_TSK_2',
   SPRIN_BAWA_TSK_DAN_BA: 'SPRIN_BAWA_TSK_DAN_BA',
 
   // Level 3: Penangkapan & Penahanan
@@ -216,6 +230,23 @@ export function toCanonicalMindikCode(rawCode = '', title = '') {
     return 'TAP_TSK';
   }
 
+  // Deteksi Surat Panggilan Saksi & Tersangka (Ke-1 vs Ke-2) dari judul atau kode fleksibel
+  if (cleanCode.includes('PANGGIL') || cleanCode.startsWith('SPGL') || cleanTitle.includes('PANGGILAN')) {
+    const isSecondCall =
+      /(?:^|_)2$/.test(cleanCode) ||
+      cleanCode.includes('KE_2') ||
+      cleanCode.includes('KE2') ||
+      /\b(KE[-\s]?2|KEDUA|II)\b/.test(cleanTitle);
+    const isSaksiCall = cleanCode.includes('SAKSI') || cleanTitle.includes('SAKSI');
+    const isTskCall = cleanCode.includes('TSK') || cleanCode.includes('TERSANGKA') || cleanTitle.includes('TERSANGKA');
+    if (isSaksiCall) {
+      return isSecondCall ? 'SPGL_SAKSI_2' : 'SPGL_SAKSI_1';
+    }
+    if (isTskCall) {
+      return isSecondCall ? 'SPGL_TSK_2' : 'SPGL_TSK_1';
+    }
+  }
+
   if (cleanTitle.includes('SURAT PERINTAH PENYELIDIKAN') && !cleanTitle.includes('TUGAS')) {
     return 'SPRIN_LIDIK';
   }
@@ -306,6 +337,8 @@ export const PREREQUISITE_LABELS = {
   SPGAS_SIDIK: 'Surat Perintah Tugas Penyidikan (SP.Gas.Sidik)',
   SPDP: 'Surat Pemberitahuan Dimulainya Penyidikan (SPDP)',
   TAP_TSK: 'Surat Ketetapan Penetapan Tersangka (S.Tap.Tsk)',
+  SPGL_SAKSI_1: 'Surat Panggilan Saksi Ke-1 (S.Pgl Saksi I)',
+  SPGL_TSK_1: 'Surat Panggilan Tersangka Ke-1 (S.Pgl Tersangka I)',
   SPRIN_KAP_DAN_BA: 'Surat Perintah Penangkapan (SP.Kap)',
   SPRIN_HAN_DAN_BA: 'Surat Perintah Penahanan (SP.Han)'
 };
@@ -317,6 +350,8 @@ export const PREREQUISITE_SATISFIERS = {
   SPRIN_SIDIK: ['SPRIN_SIDIK', 'SPRIN_SIDIK_MORE_5'],
   SPGAS_SIDIK: ['SPGAS_SIDIK', 'SPGAS_SIDIK_MORE_5'],
   TAP_TSK: ['TAP_TSK'],
+  SPGL_SAKSI_1: ['SPGL_SAKSI_1', 'SPGL_SAKSI'],
+  SPGL_TSK_1: ['SPGL_TSK_1', 'SPGL_TSK'],
   SPDP: [
     'SPDP_TSK',
     'SPDP_MORE_1_TSK',
@@ -359,8 +394,14 @@ export const CHAIN_RULES = {
 
   // Saksi & Korban
   SPGL_SAKSI_1: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'saksi' },
-  SPGL_SAKSI_2: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'saksi' },
-  SPRIN_BAWA_SAKSI_DAN_BA: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'saksi' },
+  SPGL_SAKSI_2: {
+    level: 2,
+    required: ['SPRIN_SIDIK'],
+    recommended: ['SPGL_SAKSI_1'],
+    recommendedNote: 'Surat Panggilan Saksi Ke-1 (SPGL_SAKSI_1) untuk saksi terkait belum ditemukan di arsip perkara ini. Sebaiknya terbitkan Panggilan Saksi Ke-1 terlebih dahulu agar Nomor & Tanggal rujukan Panggilan Ke-1 terhubung otomatis.',
+    subjectMode: 'saksi'
+  },
+  SPRIN_BAWA_SAKSI_DAN_BA: { level: 2, required: ['SPRIN_SIDIK'], recommended: ['SPGL_SAKSI_1'], subjectMode: 'saksi' },
   BA_CARI_SAKSI: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'saksi' },
   HAK_SAKSI: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'saksi' },
   HAK_KORBAN: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'pelapor_korban' },
@@ -383,8 +424,14 @@ export const CHAIN_RULES = {
   PEMBERITAHUAN_TAP_TSK: { level: 3, required: ['SPRIN_SIDIK', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
   PEMBERITAHUAN_TAP_TSK_JPU: { level: 3, required: ['SPRIN_SIDIK', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
   SPGL_TSK_1: { level: 3, required: ['SPRIN_SIDIK', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
-  SPGL_TSK_2: { level: 3, required: ['SPRIN_SIDIK', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
-  SPRIN_BAWA_TSK_DAN_BA: { level: 3, required: ['SPRIN_SIDIK', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
+  SPGL_TSK_2: {
+    level: 3,
+    required: ['SPRIN_SIDIK', 'TAP_TSK'],
+    recommended: ['SPGL_TSK_1'],
+    recommendedNote: 'Surat Panggilan Tersangka Ke-1 (SPGL_TSK_1) untuk tersangka terkait belum ditemukan di arsip perkara ini. Sebaiknya terbitkan Panggilan Tersangka Ke-1 terlebih dahulu agar Nomor & Tanggal rujukan Panggilan Ke-1 terhubung otomatis.',
+    subjectMode: 'tersangka'
+  },
+  SPRIN_BAWA_TSK_DAN_BA: { level: 3, required: ['SPRIN_SIDIK', 'TAP_TSK'], recommended: ['SPGL_TSK_1'], subjectMode: 'tersangka' },
 
   // Kategori Penahanan & Penangkapan
   SPRIN_KAP_DAN_BA: { level: 3, required: ['SPRIN_SIDIK', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },

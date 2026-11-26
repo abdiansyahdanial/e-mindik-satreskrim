@@ -711,16 +711,31 @@ function extractDocTargetSuspectInfo(metaObj = {}) {
   };
 
   pushId(mv.target_suspect_id);
+  pushId(mv.target_subject_id);
+  pushId(mv.target_subject);
   if (Array.isArray(mv.target_suspect_ids)) {
     mv.target_suspect_ids.forEach(pushId);
   }
+  if (Array.isArray(mv.target_subject_ids)) {
+    mv.target_subject_ids.forEach(pushId);
+  }
   pushName(mv.target_suspect_name);
+  pushName(mv.target_subject_name);
+  pushName(mv.target_subject);
   pushName(mv.TERSANGKA_NAMA);
   pushName(mv.tersangka_nama);
   pushName(mv.SUBJEK_NAMA);
   pushName(mv.subjek_nama);
   pushName(mv.NAMA_TERSANGKA);
   pushName(mv.nama_tersangka);
+  pushName(mv.NAMA_TSK);
+  pushName(mv.nama_tsk);
+  pushName(mv.NAMA_SAKSI);
+  pushName(mv.nama_saksi);
+  pushName(mv.SAKSI_NAMA);
+  pushName(mv.saksi_nama);
+  pushName(mv.NAMA_DIPANGGIL);
+  pushName(mv.nama_dipanggil);
 
   if (mv.suspect_data && !Array.isArray(mv.suspect_data) && typeof mv.suspect_data === 'object') {
     pushId(mv.suspect_data.id);
@@ -731,6 +746,250 @@ function extractDocTargetSuspectInfo(metaObj = {}) {
   }
 
   return { ids, names };
+}
+
+/**
+ * Resolver Per-Subjek Dokumen Arsip Surat Panggilan Ke-1 (SPGL_SAKSI_1 atau SPGL_TSK_1).
+ * Prioritas #1: Dokumen arsip bernomor sah yang memiliki targetSubject / meta_values nama/ID
+ *               yang cocok (case-insensitive, trimmed) dengan Saksi/Tersangka terpilih.
+ * Prioritas #2: Dokumen arsip Panggilan Ke-1 terbaru pada perkara tersebut.
+ *
+ * @param {Array} archivedDocs - Daftar arsip dokumen perkara aktif (public.documents)
+ * @param {'SAKSI'|'TSK'} category - Kategori panggilan ('SAKSI' atau 'TSK')
+ * @param {object|string|null} targetSubject - Objek subjek terpilih atau nama subjek
+ */
+export function resolveFirstSummonsDocForSubject(archivedDocs = [], category = 'SAKSI', targetSubject = null) {
+  const isSaksiCat = String(category || '').toUpperCase().includes('SAKSI');
+  const targetId = (targetSubject && typeof targetSubject === 'object' && targetSubject.id)
+    ? String(targetSubject.id).trim()
+    : '';
+  const rawTargetName = typeof targetSubject === 'string'
+    ? targetSubject
+    : (targetSubject?.nama || targetSubject?.nama_lengkap || targetSubject?.name || '');
+  const targetName = String(rawTargetName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  const normalizeNameStr = (val) => String(val || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  const isFirstCallArchive = (doc) => {
+    if (!doc || typeof doc !== 'object') return false;
+    const rawCode = String(doc.template_code || doc.code || doc.document_type || doc.original_template_code || '').toUpperCase().trim();
+    const rawTitle = String(doc.doc_title || doc.title || doc.document_name || '').toUpperCase().trim();
+    const canon = toCanonicalMindikCode(rawCode, rawTitle);
+
+    const isExplicitSecond =
+      canon === 'SPGL_SAKSI_2' ||
+      canon === 'SPGL_TSK_2' ||
+      /(?:^|_)2$/.test(rawCode) ||
+      /\b(KE[-\s]?2|KEDUA|II)\b/.test(rawTitle);
+    if (isExplicitSecond) return false;
+
+    if (isSaksiCat) {
+      if (canon === 'SPGL_SAKSI_1' || rawCode === 'SPGL_SAKSI_1' || rawCode === 'SPGL_SAKSI' || rawCode === 'SURAT_PANGGILAN_SAKSI_1' || rawCode === 'PANGGILAN_SAKSI_1') {
+        return true;
+      }
+      if (rawTitle.includes('PANGGILAN') && rawTitle.includes('SAKSI')) {
+        return true;
+      }
+      return false;
+    } else {
+      if (canon === 'SPGL_TSK_1' || rawCode === 'SPGL_TSK_1' || rawCode === 'SPGL_TSK' || rawCode === 'SURAT_PANGGILAN_TERSANGKA_1' || rawCode === 'PANGGILAN_TSK_1') {
+        return true;
+      }
+      if (rawTitle.includes('PANGGILAN') && (rawTitle.includes('TERSANGKA') || rawTitle.includes('TSK'))) {
+        return true;
+      }
+      return false;
+    }
+  };
+
+  const candidates = (Array.isArray(archivedDocs) ? archivedDocs : [])
+    .filter(isFirstCallArchive)
+    .map((doc) => {
+      const ext = extractArchivedDocNumberAndDate(doc);
+      const mv = ext.metaObj || {};
+      const targetInfo = extractDocTargetSuspectInfo(mv);
+      const docSubjectNames = new Set(targetInfo.names.map(normalizeNameStr).filter(Boolean));
+      [
+        doc.target_subject,
+        doc.target_suspect_name,
+        mv.target_subject,
+        mv.target_subject_name,
+        mv.target_suspect_name,
+        mv.NAMA_SAKSI,
+        mv.nama_saksi,
+        mv.SAKSI_NAMA,
+        mv.saksi_nama,
+        mv.NAMA_TERSANGKA,
+        mv.nama_tersangka,
+        mv.TERSANGKA_NAMA,
+        mv.tersangka_nama,
+        mv.NAMA_TSK,
+        mv.nama_tsk,
+        mv.NAMA_DIPANGGIL,
+        mv.nama_dipanggil,
+        mv.SUBJEK_NAMA,
+        mv.subjek_nama
+      ].forEach((n) => {
+        const cleanN = normalizeNameStr(n);
+        if (cleanN && cleanN !== '-' && cleanN !== 'null' && cleanN !== 'undefined') {
+          docSubjectNames.add(cleanN);
+        }
+      });
+
+      const primaryDocSubjectName =
+        mv.target_subject_name ||
+        mv.target_suspect_name ||
+        (isSaksiCat ? (mv.NAMA_SAKSI || mv.SAKSI_NAMA) : (mv.NAMA_TERSANGKA || mv.NAMA_TSK || mv.TERSANGKA_NAMA)) ||
+        mv.NAMA_DIPANGGIL ||
+        mv.target_subject ||
+        '';
+
+      return {
+        doc,
+        docNo: ext.docNo,
+        rawDocDate: ext.rawDocDate,
+        formattedDocDate: ext.formattedDocDate || (ext.rawDocDate ? formatTanggalIndonesia(ext.rawDocDate) : ''),
+        targetIds: targetInfo.ids,
+        subjectNames: Array.from(docSubjectNames),
+        subjectDisplayName: String(primaryDocSubjectName || '').trim()
+      };
+    })
+    .filter((entry) => isValidOfficialDocNumber(entry.docNo))
+    .sort((a, b) => new Date(a.doc?.created_at || 0).getTime() - new Date(b.doc?.created_at || 0).getTime());
+
+  if (candidates.length === 0) {
+    return {
+      found: false,
+      matchedBySubject: false,
+      doc: null,
+      docNo: '',
+      rawDocDate: '',
+      formattedDocDate: '',
+      subjectName: rawTargetName || ''
+    };
+  }
+
+  // Prioritas 1: Cocok ID subjek
+  if (targetId) {
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      if (candidates[i].targetIds.includes(targetId)) {
+        return {
+          found: true,
+          matchedBySubject: true,
+          doc: candidates[i].doc,
+          docNo: candidates[i].docNo,
+          rawDocDate: candidates[i].rawDocDate,
+          formattedDocDate: candidates[i].formattedDocDate,
+          subjectName: candidates[i].subjectDisplayName || rawTargetName || ''
+        };
+      }
+    }
+  }
+
+  // Prioritas 2: Cocok nama subjek (case-insensitive, trimmed)
+  if (targetName) {
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      if (candidates[i].subjectNames.includes(targetName)) {
+        return {
+          found: true,
+          matchedBySubject: true,
+          doc: candidates[i].doc,
+          docNo: candidates[i].docNo,
+          rawDocDate: candidates[i].rawDocDate,
+          formattedDocDate: candidates[i].formattedDocDate,
+          subjectName: candidates[i].subjectDisplayName || rawTargetName || ''
+        };
+      }
+    }
+  }
+
+  // Prioritas 3 (Fallback): Jika belum ada match spesifik nama, ambil arsip Panggilan Ke-1 terbaru pada perkara tersebut
+  const latest = candidates[candidates.length - 1];
+  return {
+    found: true,
+    matchedBySubject: !targetName && !targetId,
+    doc: latest.doc,
+    docNo: latest.docNo,
+    rawDocDate: latest.rawDocDate,
+    formattedDocDate: latest.formattedDocDate,
+    subjectName: latest.subjectDisplayName || rawTargetName || ''
+  };
+}
+
+/**
+ * Menyuntikkan seluruh variasi ejaan tag Nomor & Tanggal Panggilan Ke-1 (Saksi maupun Tersangka)
+ * ke objek target (baik context maupun finalPayload).
+ */
+export function assignFirstSummonsReferenceTags(targetObj, category = 'SAKSI', docNo = '', formattedDate = '', rawDocDate = '', forFormUi = false) {
+  if (!targetObj || typeof targetObj !== 'object') return;
+  const isSaksiCat = String(category || '').toUpperCase().includes('SAKSI');
+  const cleanNo = isValidOfficialDocNumber(docNo) ? String(docNo).trim() : '';
+  const cleanFormattedDate = formattedDate || (rawDocDate ? formatTanggalIndonesia(rawDocDate) : '');
+  const dateValueToSet = forFormUi ? (cleanFormattedDate || rawDocDate || '') : cleanFormattedDate;
+
+  const setKeyBoth = (upperKey, val) => {
+    if (!val) return;
+    targetObj[upperKey] = val;
+    targetObj[upperKey.toLowerCase()] = val;
+  };
+
+  if (isSaksiCat) {
+    const noAliasesSaksi1 = [
+      'NO_SPGIL_SAKSI_1',
+      'NO_SPGL_SAKSI_1',
+      'NOMOR_SPGIL_SAKSI_1',
+      'NOMOR_SPGL_SAKSI_1',
+      'NOMOR_PANGGILAN_SAKSI_1',
+      'NO_PANGGILAN_SAKSI_1',
+      'NO_SURAT_PANGGILAN_SAKSI_1',
+      'NOMOR_SURAT_PANGGILAN_SAKSI_1'
+    ];
+    const tglAliasesSaksi1 = [
+      'TGL_SPGIL_SAKSI_1',
+      'TGL_SPGL_SAKSI_1',
+      'TANGGAL_SPGIL_SAKSI_1',
+      'TANGGAL_SPGL_SAKSI_1',
+      'TANGGAL_PANGGILAN_SAKSI_1',
+      'TGL_PANGGILAN_SAKSI_1',
+      'TGL_SURAT_PANGGILAN_SAKSI_1',
+      'TANGGAL_SURAT_PANGGILAN_SAKSI_1'
+    ];
+    if (cleanNo) noAliasesSaksi1.forEach((k) => setKeyBoth(k, cleanNo));
+    if (dateValueToSet) tglAliasesSaksi1.forEach((k) => setKeyBoth(k, dateValueToSet));
+    if (rawDocDate || cleanFormattedDate) {
+      assignDecomposedDateTags(targetObj, rawDocDate || cleanFormattedDate, ['SPGIL_SAKSI_1', 'SPGL_SAKSI_1', 'PANGGILAN_SAKSI_1']);
+    }
+  } else {
+    const noAliasesTsk1 = [
+      'NO_SPGIL_TSK_1',
+      'NO_SPGL_TSK_1',
+      'NOMOR_SPGIL_TSK_1',
+      'NOMOR_SPGL_TSK_1',
+      'NOMOR_PANGGILAN_TSK_1',
+      'NO_PANGGILAN_TSK_1',
+      'NO_SURAT_PANGGILAN_TSK_1',
+      'NOMOR_SURAT_PANGGILAN_TSK_1',
+      'NOMOR_PANGGILAN_TERSANGKA_1',
+      'NO_PANGGILAN_TERSANGKA_1'
+    ];
+    const tglAliasesTsk1 = [
+      'TGL_SPGIL_TSK_1',
+      'TGL_SPGL_TSK_1',
+      'TANGGAL_SPGIL_TSK_1',
+      'TANGGAL_SPGL_TSK_1',
+      'TANGGAL_PANGGILAN_TSK_1',
+      'TGL_PANGGILAN_TSK_1',
+      'TGL_SURAT_PANGGILAN_TSK_1',
+      'TANGGAL_SURAT_PANGGILAN_TSK_1',
+      'TANGGAL_PANGGILAN_TERSANGKA_1',
+      'TGL_PANGGILAN_TERSANGKA_1'
+    ];
+    if (cleanNo) noAliasesTsk1.forEach((k) => setKeyBoth(k, cleanNo));
+    if (dateValueToSet) tglAliasesTsk1.forEach((k) => setKeyBoth(k, dateValueToSet));
+    if (rawDocDate || cleanFormattedDate) {
+      assignDecomposedDateTags(targetObj, rawDocDate || cleanFormattedDate, ['SPGIL_TSK_1', 'SPGL_TSK_1', 'PANGGILAN_TSK_1']);
+    }
+  }
 }
 
 /**
@@ -1434,7 +1693,19 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     if (rawCode.includes('PANGGIL') || rawCode.startsWith('SPGL')) {
       const spglAliases = [rawCode, 'PANGGILAN', 'SPGL', 'SURAT_PANGGILAN'];
       if (rawCode.includes('TSK') || rawCode.includes('TERSANGKA')) {
-        spglAliases.push('SPGL_TSK', 'SPGL_TSK_1', 'SPGL_TSK_2', 'SURAT_PANGGILAN_TERSANGKA');
+        spglAliases.push('SPGL_TSK', 'SURAT_PANGGILAN_TERSANGKA');
+        if (rawCode === 'SPGL_TSK_1' || rawCode === 'SPGL_TSK') {
+          spglAliases.push('SPGL_TSK_1', 'SPGIL_TSK_1', 'PANGGILAN_TSK_1', 'PANGGILAN_TERSANGKA_1');
+        } else if (rawCode === 'SPGL_TSK_2') {
+          spglAliases.push('SPGL_TSK_2', 'SPGIL_TSK_2', 'PANGGILAN_TSK_2', 'PANGGILAN_TERSANGKA_2');
+        }
+      } else if (rawCode.includes('SAKSI')) {
+        spglAliases.push('SPGL_SAKSI', 'SURAT_PANGGILAN_SAKSI');
+        if (rawCode === 'SPGL_SAKSI_1' || rawCode === 'SPGL_SAKSI') {
+          spglAliases.push('SPGL_SAKSI_1', 'SPGIL_SAKSI_1', 'PANGGILAN_SAKSI_1');
+        } else if (rawCode === 'SPGL_SAKSI_2') {
+          spglAliases.push('SPGL_SAKSI_2', 'SPGIL_SAKSI_2', 'PANGGILAN_SAKSI_2');
+        }
       }
       assignDocumentAliases(spglAliases, docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
@@ -1714,6 +1985,45 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     populateSubjectPrefixVariables(context, 'SUBJEK', defaultSubjek);
   }
 
+  // Resolusi Per-Subjek Nomor & Tanggal Surat Panggilan Ke-1 (Saksi & Tersangka) dari arsip perkara aktif
+  const targetSaksiForSpgl1 =
+    targetSubjects.find(s => s && (s._category === 'SAKSI' || s.status === 'saksi')) ||
+    targetSubjects[0] ||
+    (activeFormValues?.NAMA_SAKSI ? { nama: activeFormValues.NAMA_SAKSI } : null) ||
+    saksiClean[0] ||
+    null;
+  const resolvedSpglSaksi1Ctx = resolveFirstSummonsDocForSubject(arsipDocs, 'SAKSI', targetSaksiForSpgl1);
+  if (resolvedSpglSaksi1Ctx.found && resolvedSpglSaksi1Ctx.docNo) {
+    assignFirstSummonsReferenceTags(
+      context,
+      'SAKSI',
+      resolvedSpglSaksi1Ctx.docNo,
+      resolvedSpglSaksi1Ctx.formattedDocDate,
+      resolvedSpglSaksi1Ctx.rawDocDate,
+      Boolean(options.forFormUi)
+    );
+  }
+
+  const targetTskForSpgl1 =
+    targetSubjects.find(s => s && (s._category === 'TERSANGKA' || s._category === 'TERLAPOR' || s.status === 'tersangka')) ||
+    targetSubjects[0] ||
+    (activeFormValues?.NAMA_TERSANGKA || activeFormValues?.NAMA_TSK
+      ? { nama: activeFormValues.NAMA_TERSANGKA || activeFormValues.NAMA_TSK }
+      : null) ||
+    enrichedTersangkaClean[0] ||
+    null;
+  const resolvedSpglTsk1Ctx = resolveFirstSummonsDocForSubject(arsipDocs, 'TSK', targetTskForSpgl1);
+  if (resolvedSpglTsk1Ctx.found && resolvedSpglTsk1Ctx.docNo) {
+    assignFirstSummonsReferenceTags(
+      context,
+      'TSK',
+      resolvedSpglTsk1Ctx.docNo,
+      resolvedSpglTsk1Ctx.formattedDocDate,
+      resolvedSpglTsk1Ctx.rawDocDate,
+      Boolean(options.forFormUi)
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // F. PRIORITAS INPUT MANUAL (activeFormValues SELALU MENANG ATAS DEFAULT ARSIP)
   //    Menggunakan mergeChainedWithForm agar string kosong ("") tidak menimpa rantai arsip
@@ -1741,6 +2051,28 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   const mergedContext = mergeChainedWithForm(context, activeFormValues, {
     formatDatesForDocx: !options.forFormUi
   });
+
+  // Pastikan rujukan Panggilan Ke-1 dari arsip selalu menimpa nilai kosong / placeholder '......' yang mungkin tersisa di formValues
+  if (resolvedSpglSaksi1Ctx.found && resolvedSpglSaksi1Ctx.docNo) {
+    assignFirstSummonsReferenceTags(
+      mergedContext,
+      'SAKSI',
+      resolvedSpglSaksi1Ctx.docNo,
+      resolvedSpglSaksi1Ctx.formattedDocDate,
+      resolvedSpglSaksi1Ctx.rawDocDate,
+      Boolean(options.forFormUi)
+    );
+  }
+  if (resolvedSpglTsk1Ctx.found && resolvedSpglTsk1Ctx.docNo) {
+    assignFirstSummonsReferenceTags(
+      mergedContext,
+      'TSK',
+      resolvedSpglTsk1Ctx.docNo,
+      resolvedSpglTsk1Ctx.formattedDocDate,
+      resolvedSpglTsk1Ctx.rawDocDate,
+      Boolean(options.forFormUi)
+    );
+  }
 
   // Otomatisasi Masa Berlaku 1x24 Jam (H+1 dari TANGGAL_SURAT) untuk SPRIN_KAP / SPRIN_KAP_DAN_BA
   const rawOptionTplCode = (
@@ -2784,9 +3116,10 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   let victimsList = [];
   let archivedDocs = [];
   let selectedSubjectsArg = [];
+  let personnelListArg = [];
 
   // Deteksi fleksibel parameter object vs positional
-  if (arg1 && (arg1.activeCase !== undefined || arg1.formValues !== undefined || arg1.activeSuspect !== undefined || arg1.suspectsList !== undefined || arg1.activeVictim !== undefined || arg1.victimsList !== undefined || arg1.selectedVictim !== undefined || arg1.archivedDocs !== undefined || arg1.selectedSubjects !== undefined)) {
+  if (arg1 && (arg1.activeCase !== undefined || arg1.formValues !== undefined || arg1.activeSuspect !== undefined || arg1.suspectsList !== undefined || arg1.activeVictim !== undefined || arg1.victimsList !== undefined || arg1.selectedVictim !== undefined || arg1.archivedDocs !== undefined || arg1.selectedSubjects !== undefined || arg1.personnelList !== undefined)) {
     activeCase = arg1.activeCase || {};
     activeSuspect = arg1.activeSuspect || null;
     suspectsList = arg1.suspectsList || [];
@@ -2797,6 +3130,9 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
       ? arg1.archivedDocs
       : (Array.isArray(activeCase?.archivedDocs) ? activeCase.archivedDocs : (Array.isArray(activeCase?.documents) ? activeCase.documents : []));
     selectedSubjectsArg = Array.isArray(arg1.selectedSubjects) ? arg1.selectedSubjects : [];
+    personnelListArg = Array.isArray(arg1.personnelList)
+      ? arg1.personnelList
+      : (Array.isArray(arg1.personnel) ? arg1.personnel : (Array.isArray(activeCase?.investigators) ? activeCase.investigators : []));
   } else {
     activeCase = arg1 || {};
     activeSuspect = maybeSuspect || null;
@@ -3379,6 +3715,136 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
         ? `Hari ${hariPelaksanaanHan} tanggal ${tglPelaksanaanHanFormatted}, sekitar Pukul ${jamPelaksanaanHanFormatted} WITA`
         : '');
 
+  // C.4. DATA KHUSUS SURAT PANGGILAN TERSANGKA (1 & 2) DAN SURAT PANGGILAN SAKSI (1 & 2)
+  const isSpglDoc =
+    canonicalTplCode.startsWith('SPGL_') ||
+    tplCode.startsWith('SPGL_') ||
+    tplCode.includes('PANGGIL') ||
+    tplName.includes('panggilan');
+  const isSpglSaksiDoc =
+    canonicalTplCode.startsWith('SPGL_SAKSI') ||
+    tplCode.startsWith('SPGL_SAKSI') ||
+    (isSpglDoc && (tplCode.includes('SAKSI') || tplName.includes('saksi')));
+  const isSpglTskDoc =
+    canonicalTplCode.startsWith('SPGL_TSK') ||
+    tplCode.startsWith('SPGL_TSK') ||
+    (isSpglDoc && (tplCode.includes('TSK') || tplCode.includes('TERSANGKA') || tplName.includes('tersangka')));
+
+  const rawTglPanggilanSource = pickNonEmpty(
+    cleanInput.TANGGAL_PANGGILAN_ISO,
+    cleanInput.tanggal_panggilan_iso,
+    !isPlaceholderVal(cleanInput.TANGGAL_PANGGILAN) ? cleanInput.TANGGAL_PANGGILAN : '',
+    !isPlaceholderVal(cleanInput.tanggal_panggilan) ? cleanInput.tanggal_panggilan : '',
+    !isPlaceholderVal(cleanInput.TGL_PANGGILAN) ? cleanInput.TGL_PANGGILAN : '',
+    !isPlaceholderVal(cleanInput.tgl_panggilan) ? cleanInput.tgl_panggilan : ''
+  ) || (isSpglDoc ? addDaysToIsoDate(activeRawDate, 3) : '');
+  const parsedPanggilan = parseDateParts(rawTglPanggilanSource);
+  const hariPanggilan = parsedPanggilan.hari
+    || (!isPlaceholderVal(cleanInput.HARI_PANGGILAN) ? String(cleanInput.HARI_PANGGILAN).trim() : '')
+    || (!isPlaceholderVal(cleanInput.hari_panggilan) ? String(cleanInput.hari_panggilan).trim() : '');
+  const tanggalPanggilanFormatted = formatTanggalIndonesia(rawTglPanggilanSource)
+    || parsedPanggilan.tanggalLengkap
+    || (!isPlaceholderVal(cleanInput.TANGGAL_PANGGILAN) ? String(cleanInput.TANGGAL_PANGGILAN).trim() : '');
+
+  const rawJamPanggilanSource = pickNonEmpty(
+    cleanInput.JAM_PANGGILAN_TIME,
+    cleanInput.jam_panggilan_time,
+    !isPlaceholderVal(cleanInput.JAM_PANGGILAN) ? cleanInput.JAM_PANGGILAN : '',
+    !isPlaceholderVal(cleanInput.jam_panggilan) ? cleanInput.jam_panggilan : ''
+  ) || (isSpglDoc ? '09:00' : '');
+  const cleanJamPolriPgl = formatJamPolri(rawJamPanggilanSource);
+  const jamPanggilanFormatted = cleanJamPolriPgl
+    ? (/(WITA|WIB|WIT)$/i.test(String(rawJamPanggilanSource).trim())
+        ? `${cleanJamPolriPgl} ${String(rawJamPanggilanSource).trim().match(/(WITA|WIB|WIT)$/i)[1].toUpperCase()}`
+        : `${cleanJamPolriPgl} WITA`)
+    : '';
+
+  const isOldLongRoomDefault = (v) => /ruangan Unit I Pidum Satreskrim Polres Kolaka Timur Jln\./i.test(String(v || ''));
+  const tempatPanggilan = pickNonEmpty(
+    !isPlaceholderVal(cleanInput.TEMPAT_PANGGILAN) && !isOldLongRoomDefault(cleanInput.TEMPAT_PANGGILAN) ? cleanInput.TEMPAT_PANGGILAN : '',
+    !isPlaceholderVal(cleanInput.tempat_panggilan) && !isOldLongRoomDefault(cleanInput.tempat_panggilan) ? cleanInput.tempat_panggilan : ''
+  ) || (isSpglDoc ? 'Ruang Unit Idik Satreskrim' : '');
+
+  // Resolusi Penyidik Pemanggil ({MENEMUI_SIAPA}) & Kontak ({NO_HP} / {HP_PENYIDIK}) dari Direktori Personel
+  const combinedPersonnelPool = [
+    ...(Array.isArray(personnelListArg) ? personnelListArg : []),
+    ...(Array.isArray(activeCase?.investigators) ? activeCase.investigators : []),
+    ...(Array.isArray(activeCase?.references?.investigators) ? activeCase.references.investigators : [])
+  ].filter(p => p && (p.nama || p.full_name));
+
+  const getOfficerPhone = (p) => {
+    if (!p || typeof p !== 'object') return '';
+    return pickNonEmpty(p.phone, p.no_hp, p.no_telepon, p.telepon, p.whatsapp, p.hp, p.kontak);
+  };
+  const stripLeadingRankFromName = (rawName = '') => {
+    return String(rawName || '')
+      .replace(/^(JENDERAL POLISI|JENDERAL POL|KOMJEN POL|IRJEN POL|BRIGJEN POL|KOMBES POL|AKBP|KOMPOL|AKP|IPTU|IPDA|AIPTU|AIPDA|BRIPKA|BRIGPOL|BRIGADIR|BRIPTU|BRIPDA|BHARAKA|BHARATU|BHARADA)\s+/i, '')
+      .trim();
+  };
+  const formatOfficerCallLabel = (p) => {
+    if (!p || typeof p !== 'object') return '';
+    const pkt = formatPangkatSingkat(p.pangkat || p.rank || '');
+    const cleanNm = stripLeadingRankFromName(p.nama || p.full_name || '');
+    if (!cleanNm) return '';
+    return pkt ? `${pkt} ${cleanNm}` : cleanNm;
+  };
+
+  const selectedPemanggilId = pickNonEmpty(cleanInput.SELECTED_PEMANGGIL_ID, cleanInput.selected_pemanggil_id);
+  let matchedPemanggilOfficer = null;
+  if (selectedPemanggilId) {
+    matchedPemanggilOfficer = combinedPersonnelPool.find(p =>
+      String(p.id || '') === selectedPemanggilId ||
+      String(p.user_id || '') === selectedPemanggilId ||
+      String(p.nrp || '') === selectedPemanggilId
+    ) || null;
+  }
+  const rawMenemuiInput = pickNonEmpty(
+    !isPlaceholderVal(cleanInput.MENEMUI_SIAPA) ? cleanInput.MENEMUI_SIAPA : '',
+    !isPlaceholderVal(cleanInput.menemui_siapa) ? cleanInput.menemui_siapa : ''
+  );
+  if (!matchedPemanggilOfficer && rawMenemuiInput) {
+    const cleanInputNm = stripLeadingRankFromName(rawMenemuiInput).toLowerCase();
+    matchedPemanggilOfficer = combinedPersonnelPool.find(p =>
+      stripLeadingRankFromName(p.nama || p.full_name || '').toLowerCase() === cleanInputNm
+    ) || null;
+  }
+  if (!matchedPemanggilOfficer && isSpglDoc) {
+    const defaultCasePenangan = getPenyidikPenangan(activeCase);
+    if (defaultCasePenangan?.nama) {
+      const cleanPenNm = stripLeadingRankFromName(defaultCasePenangan.nama).toLowerCase();
+      matchedPemanggilOfficer = combinedPersonnelPool.find(p =>
+        (defaultCasePenangan.nrp && String(p.nrp) === String(defaultCasePenangan.nrp)) ||
+        stripLeadingRankFromName(p.nama || p.full_name || '').toLowerCase() === cleanPenNm
+      ) || defaultCasePenangan;
+    } else if (combinedPersonnelPool.length > 0) {
+      matchedPemanggilOfficer = combinedPersonnelPool[0];
+    }
+  }
+
+  const normalizeMenemuiText = (rawText) => {
+    const str = String(rawText || '').trim();
+    if (!str) return '';
+    for (const [fullRank, abbrRank] of Object.entries(MAP_PANGKAT_SINGKAT)) {
+      if (str.toUpperCase().startsWith(fullRank + ' ')) {
+        return `${abbrRank} ${str.slice(fullRank.length).trim()}`;
+      }
+    }
+    return str;
+  };
+
+  const menemuiSiapa = matchedPemanggilOfficer
+    ? (rawMenemuiInput && !selectedPemanggilId ? normalizeMenemuiText(rawMenemuiInput) : formatOfficerCallLabel(matchedPemanggilOfficer))
+    : normalizeMenemuiText(rawMenemuiInput);
+
+  const noHpPenyidikPemanggil = pickNonEmpty(
+    !isPlaceholderVal(cleanInput.NO_HP_PENYIDIK) ? cleanInput.NO_HP_PENYIDIK : '',
+    !isPlaceholderVal(cleanInput.HP_PENYIDIK) ? cleanInput.HP_PENYIDIK : '',
+    !isPlaceholderVal(cleanInput.TELEPON_PENYIDIK) ? cleanInput.TELEPON_PENYIDIK : '',
+    !isPlaceholderVal(cleanInput.NO_HP) ? cleanInput.NO_HP : '',
+    !isPlaceholderVal(cleanInput.no_hp) ? cleanInput.no_hp : '',
+    getOfficerPhone(matchedPemanggilOfficer)
+  );
+
   // D. UNSUR YURIDIS & PERKARA
   const dasarPasalUu = cleanInput.DASAR_PASAL_UU || cleanInput.dasar_pasal_uu || activeCase?.dasar_pasal_uu || activeCase?.pasal_uu || '';
   const pasal = cleanInput.PASAL || cleanInput.pasal || activeCase?.pasal || '';
@@ -3716,6 +4182,30 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     tgl_han: tglHan,
     TANGGAL_LENGKAP_HAN: tglLengkapHan,
     tanggal_lengkap_han: tglLengkapHan,
+
+    // C.4. TAG SURAT PANGGILAN TERSANGKA & SAKSI (SPGL_TSK_1/2 & SPGL_SAKSI_1/2)
+    HARI_PANGGILAN: hariPanggilan,
+    hari_panggilan: hariPanggilan,
+    TANGGAL_PANGGILAN: tanggalPanggilanFormatted,
+    tanggal_panggilan: tanggalPanggilanFormatted,
+    TGL_PANGGILAN: tanggalPanggilanFormatted,
+    tgl_panggilan: tanggalPanggilanFormatted,
+    JAM_PANGGILAN: jamPanggilanFormatted,
+    jam_panggilan: jamPanggilanFormatted,
+    TEMPAT_PANGGILAN: tempatPanggilan,
+    tempat_panggilan: tempatPanggilan,
+    MENEMUI_SIAPA: menemuiSiapa,
+    menemui_siapa: menemuiSiapa,
+    NO_HP_PENYIDIK: noHpPenyidikPemanggil,
+    no_hp_penyidik: noHpPenyidikPemanggil,
+    HP_PENYIDIK: noHpPenyidikPemanggil,
+    hp_penyidik: noHpPenyidikPemanggil,
+    TELEPON_PENYIDIK: noHpPenyidikPemanggil,
+    telepon_penyidik: noHpPenyidikPemanggil,
+    ...(noHpPenyidikPemanggil ? {
+      NO_HP: noHpPenyidikPemanggil,
+      no_hp: noHpPenyidikPemanggil
+    } : {}),
 
     // D. UNSUR YURIDIS & PERKARA (Resmi UPPERCASE)
     DASAR_PASAL_UU: dasarPasalUu,
@@ -4185,6 +4675,11 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     ...(Array.isArray(activeCase?.references?.tersangka_list) ? activeCase.references.tersangka_list : []),
     ...(Array.isArray(activeCase?.terlapor_list) ? activeCase.terlapor_list : []),
     ...(Array.isArray(activeCase?.references?.terlapor_list) ? activeCase.references.terlapor_list : []),
+    ...(Array.isArray(activeCase?.saksi_list) ? activeCase.saksi_list : []),
+    ...(Array.isArray(activeCase?.references?.saksi_list) ? activeCase.references.saksi_list : []),
+    ...(Array.isArray(activeCase?.saksi) ? activeCase.saksi : []),
+    ...(Array.isArray(activeCase?.pelapor_list) ? activeCase.pelapor_list : []),
+    ...(Array.isArray(activeCase?.references?.pelapor_list) ? activeCase.references.pelapor_list : []),
     ...(allSubjek.length === 0 && activeCase?.person ? [activeCase.person] : []),
     ...(allSubjek.length === 0 && namaTerlapor ? [{ nama: namaTerlapor }] : [])
   ];
@@ -4887,9 +5382,43 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   assignDecomposedDateTags(finalPayload, effectiveTanggalSurat || tanggalSurat, ['SURAT', 'DOC']);
 
+  // Penegasan Tag Khusus Surat Panggilan Tersangka & Saksi (SPGL_TSK_1/2 & SPGL_SAKSI_1/2)
+  finalPayload.HARI_PANGGILAN = hariPanggilan;
+  finalPayload.hari_panggilan = hariPanggilan;
+  finalPayload.TANGGAL_PANGGILAN = tanggalPanggilanFormatted;
+  finalPayload.tanggal_panggilan = tanggalPanggilanFormatted;
+  finalPayload.TGL_PANGGILAN = tanggalPanggilanFormatted;
+  finalPayload.tgl_panggilan = tanggalPanggilanFormatted;
+  finalPayload.JAM_PANGGILAN = jamPanggilanFormatted;
+  finalPayload.jam_panggilan = jamPanggilanFormatted;
+  finalPayload.TEMPAT_PANGGILAN = tempatPanggilan;
+  finalPayload.tempat_panggilan = tempatPanggilan;
+  if (menemuiSiapa) {
+    finalPayload.MENEMUI_SIAPA = menemuiSiapa;
+    finalPayload.menemui_siapa = menemuiSiapa;
+  }
+  if (noHpPenyidikPemanggil) {
+    finalPayload.NO_HP_PENYIDIK = noHpPenyidikPemanggil;
+    finalPayload.no_hp_penyidik = noHpPenyidikPemanggil;
+    finalPayload.HP_PENYIDIK = noHpPenyidikPemanggil;
+    finalPayload.hp_penyidik = noHpPenyidikPemanggil;
+    finalPayload.TELEPON_PENYIDIK = noHpPenyidikPemanggil;
+    finalPayload.telepon_penyidik = noHpPenyidikPemanggil;
+    finalPayload.NO_HP = noHpPenyidikPemanggil;
+    finalPayload.no_hp = noHpPenyidikPemanggil;
+  }
+
+  // Kunci tanggal terurai surat aktif: {HARI_SURAT}, {TANGGAL_ANGKA_SURAT}, {TGL_ANGKA_SURAT}, {BULAN_SURAT}, {TAHUN_SURAT}
   if (parsedActiveDate?.hari) {
     finalPayload.HARI_SURAT = parsedActiveDate.hari;
     finalPayload.hari_surat = parsedActiveDate.hari;
+  }
+  if (parsedActiveDate?.tanggal) {
+    const tglAngkaStr = String(parseInt(parsedActiveDate.tanggal, 10) || parsedActiveDate.tanggal);
+    finalPayload.TANGGAL_ANGKA_SURAT = tglAngkaStr;
+    finalPayload.tanggal_angka_surat = tglAngkaStr;
+    finalPayload.TGL_ANGKA_SURAT = tglAngkaStr;
+    finalPayload.tgl_angka_surat = tglAngkaStr;
   }
   if (parsedActiveDate?.bulan) {
     finalPayload.BULAN_SURAT = parsedActiveDate.bulan;
@@ -4898,6 +5427,148 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   if (parsedActiveDate?.tahun) {
     finalPayload.TAHUN_SURAT = parsedActiveDate.tahun;
     finalPayload.tahun_surat = parsedActiveDate.tahun;
+  }
+
+  // Penegasan biodata Subjek Target untuk Surat Panggilan Saksi (SPGL_SAKSI_*) dan Surat Panggilan Tersangka (SPGL_TSK_*)
+  const rawSaksiPoolForSpgl = [
+    ...allSubjek.filter(s => s && s.status === 'saksi'),
+    ...(Array.isArray(activeCase?.saksi_list) ? activeCase.saksi_list : []),
+    ...(Array.isArray(activeCase?.references?.saksi_list) ? activeCase.references.saksi_list : []),
+    ...(Array.isArray(activeCase?.saksi) ? activeCase.saksi : [])
+  ];
+  const saksiFallbackClean = deduplicateSubjectRecords(rawSaksiPoolForSpgl, 'Saksi');
+  const targetSaksiListForSpgl = selectedSubjectsClean.length > 0 ? selectedSubjectsClean : saksiFallbackClean;
+
+  if (targetSaksiListForSpgl.length > 0 && (isSpglSaksiDoc || (selectedSubjectsClean.length > 0 && selectedSubjectsClean[0]?._category === 'SAKSI'))) {
+    const primarySaksi = normalizeSubjectRecord(enrichSubjectWithPool(targetSaksiListForSpgl[0], allKnownSubjectsPool), 0, 'Saksi');
+    populateSubjectPrefixVariables(finalPayload, 'SAKSI', targetSaksiListForSpgl, primarySaksi);
+    populateIndexedSubjectGroup(finalPayload, targetSaksiListForSpgl, ['SAKSI', 'SUBJEK'], allKnownSubjectsPool);
+    if (primarySaksi) {
+      finalPayload.NAMA_SAKSI = primarySaksi.nama || '';
+      finalPayload.nama_saksi = primarySaksi.nama || '';
+      finalPayload.SAKSI_NAMA = primarySaksi.nama || '';
+      finalPayload.saksi_nama = primarySaksi.nama || '';
+      finalPayload.NAMA_DIPANGGIL = primarySaksi.nama || '';
+      finalPayload.nama_dipanggil = primarySaksi.nama || '';
+      finalPayload.KERJA_SAKSI = primarySaksi.pekerjaan || '';
+      finalPayload.kerja_saksi = primarySaksi.pekerjaan || '';
+      finalPayload.PEKERJAAN_SAKSI = primarySaksi.pekerjaan || '';
+      finalPayload.pekerjaan_saksi = primarySaksi.pekerjaan || '';
+      finalPayload.SAKSI_PEKERJAAN = primarySaksi.pekerjaan || '';
+      finalPayload.saksi_pekerjaan = primarySaksi.pekerjaan || '';
+      finalPayload.ALAMAT_SAKSI = primarySaksi.alamat || '';
+      finalPayload.alamat_saksi = primarySaksi.alamat || '';
+      finalPayload.SAKSI_ALAMAT = primarySaksi.alamat || '';
+      finalPayload.saksi_alamat = primarySaksi.alamat || '';
+      finalPayload.TTL_SAKSI = primarySaksi.ttl || '';
+      finalPayload.ttl_saksi = primarySaksi.ttl || '';
+      finalPayload.SAKSI_TTL = primarySaksi.ttl || '';
+      finalPayload.saksi_ttl = primarySaksi.ttl || '';
+      finalPayload.NIK_SAKSI = primarySaksi.nik || '';
+      finalPayload.nik_saksi = primarySaksi.nik || '';
+      finalPayload.SAKSI_NIK = primarySaksi.nik || '';
+      finalPayload.saksi_nik = primarySaksi.nik || '';
+    }
+  }
+
+  const targetTskListForSpgl = selectedSubjectsClean.length > 0 ? selectedSubjectsClean : tersangkaList;
+  if (targetTskListForSpgl.length > 0) {
+    const primaryTskSpgl = normalizeSubjectRecord(enrichSubjectWithPool(targetTskListForSpgl[0], allKnownSubjectsPool), 0, 'Tersangka');
+    if (primaryTskSpgl) {
+      if (isSpglTskDoc || selectedSubjectsClean.length > 0) {
+        populateSubjectPrefixVariables(finalPayload, 'TERSANGKA', targetTskListForSpgl, primaryTskSpgl);
+        populateSubjectPrefixVariables(finalPayload, 'TSK', targetTskListForSpgl, primaryTskSpgl);
+      }
+      finalPayload.NAMA_TSK = primaryTskSpgl.nama || finalPayload.NAMA_TSK || '';
+      finalPayload.nama_tsk = finalPayload.NAMA_TSK;
+      finalPayload.NAMA_TERSANGKA = primaryTskSpgl.nama || finalPayload.NAMA_TERSANGKA || '';
+      finalPayload.nama_tersangka = finalPayload.NAMA_TERSANGKA;
+      finalPayload.KERJA_TSK = primaryTskSpgl.pekerjaan || finalPayload.KERJA_TSK || '';
+      finalPayload.kerja_tsk = finalPayload.KERJA_TSK;
+      finalPayload.PEKERJAAN_TSK = primaryTskSpgl.pekerjaan || finalPayload.PEKERJAAN_TSK || '';
+      finalPayload.pekerjaan_tsk = finalPayload.PEKERJAAN_TSK;
+      finalPayload.PEKERJAAN_TERSANGKA = primaryTskSpgl.pekerjaan || finalPayload.PEKERJAAN_TERSANGKA || '';
+      finalPayload.pekerjaan_tersangka = finalPayload.PEKERJAAN_TERSANGKA;
+      finalPayload.ALAMAT_TSK = primaryTskSpgl.alamat || finalPayload.ALAMAT_TSK || '';
+      finalPayload.alamat_tsk = finalPayload.ALAMAT_TSK;
+      finalPayload.ALAMAT_TERSANGKA = primaryTskSpgl.alamat || finalPayload.ALAMAT_TERSANGKA || '';
+      finalPayload.alamat_tersangka = finalPayload.ALAMAT_TERSANGKA;
+      if (isSpglTskDoc) {
+        finalPayload.NAMA_DIPANGGIL = primaryTskSpgl.nama || '';
+        finalPayload.nama_dipanggil = primaryTskSpgl.nama || '';
+        finalPayload.PEKERJAAN = primaryTskSpgl.pekerjaan || finalPayload.PEKERJAAN || '';
+        finalPayload.pekerjaan = finalPayload.PEKERJAAN;
+        finalPayload.ALAMAT = primaryTskSpgl.alamat || finalPayload.ALAMAT || '';
+        finalPayload.alamat = finalPayload.ALAMAT;
+      }
+    }
+  }
+  if (noHpPenyidikPemanggil) {
+    finalPayload.NO_HP = noHpPenyidikPemanggil;
+    finalPayload.no_hp = noHpPenyidikPemanggil;
+  }
+
+  // Resolusi Per-Subjek Rujukan Surat Panggilan Ke-1 -> Surat Panggilan Ke-2 (Saksi & Tersangka)
+  // Menimpa otomatis setiap nilai kosong/'' atau placeholder '......' di formValues
+  const activeSaksiTargetForSpgl1 =
+    (targetSaksiListForSpgl.length > 0 ? targetSaksiListForSpgl[0] : null) ||
+    (finalPayload.NAMA_SAKSI ? { nama: finalPayload.NAMA_SAKSI } : null);
+  const spglSaksi1Resolved = resolveFirstSummonsDocForSubject(archivedDocs, 'SAKSI', activeSaksiTargetForSpgl1);
+  const manualNoSpgilSaksi1 = pickNonEmpty(
+    isValidOfficialDocNumber(cleanInput.NO_SPGIL_SAKSI_1) ? cleanInput.NO_SPGIL_SAKSI_1 : '',
+    isValidOfficialDocNumber(cleanInput.NO_SPGL_SAKSI_1) ? cleanInput.NO_SPGL_SAKSI_1 : '',
+    isValidOfficialDocNumber(cleanInput.NOMOR_SPGIL_SAKSI_1) ? cleanInput.NOMOR_SPGIL_SAKSI_1 : '',
+    isValidOfficialDocNumber(cleanInput.NOMOR_PANGGILAN_SAKSI_1) ? cleanInput.NOMOR_PANGGILAN_SAKSI_1 : ''
+  );
+  const manualTglSpgilSaksi1Raw = pickNonEmpty(
+    !isPlaceholderVal(cleanInput.TGL_SPGIL_SAKSI_1) ? cleanInput.TGL_SPGIL_SAKSI_1 : '',
+    !isPlaceholderVal(cleanInput.TGL_SPGL_SAKSI_1) ? cleanInput.TGL_SPGL_SAKSI_1 : '',
+    !isPlaceholderVal(cleanInput.TANGGAL_SPGIL_SAKSI_1) ? cleanInput.TANGGAL_SPGIL_SAKSI_1 : '',
+    !isPlaceholderVal(cleanInput.TANGGAL_PANGGILAN_SAKSI_1) ? cleanInput.TANGGAL_PANGGILAN_SAKSI_1 : ''
+  );
+  const finalNoSpgilSaksi1 = spglSaksi1Resolved.docNo || manualNoSpgilSaksi1 || '';
+  const finalRawTglSpgilSaksi1 = spglSaksi1Resolved.rawDocDate || manualTglSpgilSaksi1Raw || '';
+  const finalFormattedTglSpgilSaksi1 = spglSaksi1Resolved.formattedDocDate || formatTanggalIndonesia(finalRawTglSpgilSaksi1) || '';
+  if (finalNoSpgilSaksi1 || finalFormattedTglSpgilSaksi1) {
+    assignFirstSummonsReferenceTags(
+      finalPayload,
+      'SAKSI',
+      finalNoSpgilSaksi1,
+      finalFormattedTglSpgilSaksi1,
+      finalRawTglSpgilSaksi1,
+      false
+    );
+  }
+
+  const activeTskTargetForSpgl1 =
+    (targetTskListForSpgl.length > 0 ? targetTskListForSpgl[0] : null) ||
+    activeSuspect ||
+    (finalPayload.NAMA_TERSANGKA || finalPayload.NAMA_TSK ? { nama: finalPayload.NAMA_TERSANGKA || finalPayload.NAMA_TSK } : null);
+  const spglTsk1Resolved = resolveFirstSummonsDocForSubject(archivedDocs, 'TSK', activeTskTargetForSpgl1);
+  const manualNoSpgilTsk1 = pickNonEmpty(
+    isValidOfficialDocNumber(cleanInput.NO_SPGIL_TSK_1) ? cleanInput.NO_SPGIL_TSK_1 : '',
+    isValidOfficialDocNumber(cleanInput.NO_SPGL_TSK_1) ? cleanInput.NO_SPGL_TSK_1 : '',
+    isValidOfficialDocNumber(cleanInput.NOMOR_SPGIL_TSK_1) ? cleanInput.NOMOR_SPGIL_TSK_1 : '',
+    isValidOfficialDocNumber(cleanInput.NOMOR_PANGGILAN_TSK_1) ? cleanInput.NOMOR_PANGGILAN_TSK_1 : ''
+  );
+  const manualTglSpgilTsk1Raw = pickNonEmpty(
+    !isPlaceholderVal(cleanInput.TGL_SPGIL_TSK_1) ? cleanInput.TGL_SPGIL_TSK_1 : '',
+    !isPlaceholderVal(cleanInput.TGL_SPGL_TSK_1) ? cleanInput.TGL_SPGL_TSK_1 : '',
+    !isPlaceholderVal(cleanInput.TANGGAL_SPGIL_TSK_1) ? cleanInput.TANGGAL_SPGIL_TSK_1 : '',
+    !isPlaceholderVal(cleanInput.TANGGAL_PANGGILAN_TSK_1) ? cleanInput.TANGGAL_PANGGILAN_TSK_1 : ''
+  );
+  const finalNoSpgilTsk1 = spglTsk1Resolved.docNo || manualNoSpgilTsk1 || '';
+  const finalRawTglSpgilTsk1 = spglTsk1Resolved.rawDocDate || manualTglSpgilTsk1Raw || '';
+  const finalFormattedTglSpgilTsk1 = spglTsk1Resolved.formattedDocDate || formatTanggalIndonesia(finalRawTglSpgilTsk1) || '';
+  if (finalNoSpgilTsk1 || finalFormattedTglSpgilTsk1) {
+    assignFirstSummonsReferenceTags(
+      finalPayload,
+      'TSK',
+      finalNoSpgilTsk1,
+      finalFormattedTglSpgilTsk1,
+      finalRawTglSpgilTsk1,
+      false
+    );
   }
 
   // Alias tanggal milik dokumen/template yang sedang aktif (bukan arsip lama)
@@ -5141,7 +5812,8 @@ export function buildMindikVariables(lpData = {}, formValues = {}, dynamicConfig
     template,
     docDate,
     archivedDocs,
-    selectedSubjects
+    selectedSubjects,
+    personnelList
   });
 }
 
@@ -5510,6 +6182,28 @@ export async function generateDocxBlob({
     'JAM_BA_HAN', 'jam_ba_han',
     'WAKTU_HAN', 'waktu_han',
     'WAKTU_PENAHANAN', 'waktu_penahanan',
+    'HARI_PANGGILAN', 'hari_panggilan',
+    'TANGGAL_PANGGILAN', 'tanggal_panggilan',
+    'TGL_PANGGILAN', 'tgl_panggilan',
+    'JAM_PANGGILAN', 'jam_panggilan',
+    'TEMPAT_PANGGILAN', 'tempat_panggilan',
+    'MENEMUI_SIAPA', 'menemui_siapa',
+    'NO_HP_PENYIDIK', 'no_hp_penyidik',
+    'HP_PENYIDIK', 'hp_penyidik',
+    'TELEPON_PENYIDIK', 'telepon_penyidik',
+    'NO_HP', 'no_hp',
+    'NAMA_SAKSI', 'nama_saksi',
+    'SAKSI_NAMA', 'saksi_nama',
+    'KERJA_SAKSI', 'kerja_saksi',
+    'PEKERJAAN_SAKSI', 'pekerjaan_saksi',
+    'ALAMAT_SAKSI', 'alamat_saksi',
+    'TTL_SAKSI', 'ttl_saksi',
+    'NIK_SAKSI', 'nik_saksi',
+    'NAMA_TSK', 'nama_tsk',
+    'KERJA_TSK', 'kerja_tsk',
+    'PEKERJAAN_TSK', 'pekerjaan_tsk',
+    'ALAMAT_TSK', 'alamat_tsk',
+    'NAMA_DIPANGGIL', 'nama_dipanggil',
     'ATASAN_PANGKAT', 'atasan_pangkat',
     'ATASAN_PANGKAT_NRP', 'atasan_pangkat_nrp',
     'KASAT_PANGKAT', 'kasat_pangkat',

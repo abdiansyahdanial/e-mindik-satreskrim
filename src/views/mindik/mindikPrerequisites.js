@@ -113,6 +113,28 @@ export function checkPrerequisite(targetCode, caseItem, activeCaseDocs = [], tar
         infoNotice = 'Perhatian Formil KUHAP: SP.Kap belum diterbitkan. Apabila tersangka tidak ditangkap, wajib diterbitkan Surat Panggilan Tersangka terlebih dahulu karena tersangka yang hadir menghadap penyidik harus berdasarkan Surat Perintah Penangkapan atau Surat Panggilan Tersangka.';
       }
     }
+  } else if (canonical === 'SPGL_SAKSI_2') {
+    const spglSaksi1Doc = resolveLatestArchiveDoc(safeDocs, ['SPGL_SAKSI_1', 'SPGL_SAKSI'], false);
+    if (spglSaksi1Doc) {
+      const spgl1No = getArchiveRowDocNumber(spglSaksi1Doc);
+      const spgl1Date = spglSaksi1Doc.formatted_date || spglSaksi1Doc.tgl_surat || '';
+      infoNoticeType = 'success';
+      infoNotice = `Rujukan Panggilan Ke-1 terhubung otomatis: Nomor ${spgl1No}${spgl1Date ? `, tanggal ${spgl1Date}` : ''}.`;
+    } else {
+      infoNoticeType = 'warning';
+      infoNotice = rule.recommendedNote || 'Surat Panggilan Saksi Ke-1 belum ditemukan di arsip perkara ini.';
+    }
+  } else if (canonical === 'SPGL_TSK_2') {
+    const spglTsk1Doc = resolveLatestArchiveDoc(safeDocs, ['SPGL_TSK_1', 'SPGL_TSK'], false);
+    if (spglTsk1Doc) {
+      const spgl1No = getArchiveRowDocNumber(spglTsk1Doc);
+      const spgl1Date = spglTsk1Doc.formatted_date || spglTsk1Doc.tgl_surat || '';
+      infoNoticeType = 'success';
+      infoNotice = `Rujukan Panggilan Ke-1 terhubung otomatis: Nomor ${spgl1No}${spgl1Date ? `, tanggal ${spgl1Date}` : ''}.`;
+    } else {
+      infoNoticeType = 'warning';
+      infoNotice = rule.recommendedNote || 'Surat Panggilan Tersangka Ke-1 belum ditemukan di arsip perkara ini.';
+    }
   } else if (missingRecommended.length > 0) {
     infoNotice = rule.recommendedNote || `Opsional: ${missingRecommended.map(m => m.label).join(', ')} belum diterbitkan.`;
   }

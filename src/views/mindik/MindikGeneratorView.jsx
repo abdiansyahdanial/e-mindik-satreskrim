@@ -21,6 +21,8 @@ import {
   X,
   UserCheck,
   ChevronRight,
+  ChevronDown,
+  Phone,
   Sparkles,
   Briefcase
 } from 'lucide-react';
@@ -36,6 +38,8 @@ import {
   formatJamPolri,
   getDetentionStageConfig,
   resolveChainedDetentionDates,
+  resolveFirstSummonsDocForSubject,
+  assignFirstSummonsReferenceTags,
   normalizeSubjectRecord,
   deduplicateSubjectRecords,
   populateSubjectPrefixVariables,
@@ -109,6 +113,78 @@ export default function MindikGeneratorView({
   const [isSaved, setIsSaved] = useState(false);
   const [feedbackNotice, setFeedbackNotice] = useState(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isPemanggilDropdownOpen, setIsPemanggilDropdownOpen] = useState(false);
+  const [pemanggilSearchQuery, setPemanggilSearchQuery] = useState('');
+  const pemanggilDropdownRef = useRef(null);
+
+  // Direktori Penyidik Pemanggil (Gabungan Direktori Personel Supabase & Tim Penyidik Perkara Aktif)
+  const directoryInvestigatorsList = useMemo(() => {
+    const rawPool = [
+      ...(Array.isArray(personnel) ? personnel : []),
+      ...(Array.isArray(currentCase?.investigators) ? currentCase.investigators : []),
+      ...(Array.isArray(currentCase?.references?.investigators) ? currentCase.references.investigators : [])
+    ];
+    if (currentCase?.penyidik_1_nama || currentCase?.penyidik_nama) {
+      rawPool.push({
+        id: 'case_penyidik_1',
+        nama: currentCase.penyidik_1_nama || currentCase.penyidik_nama,
+        pangkat: currentCase.penyidik_1_pangkat || currentCase.penyidik_pangkat || '',
+        nrp: currentCase.penyidik_1_nrp || currentCase.penyidik_nrp || '',
+        jabatan: currentCase.penyidik_1_jabatan || currentCase.penyidik_jabatan || 'Penyidik Pembantu',
+        phone: currentCase.penyidik_1_hp || currentCase.penyidik_hp || currentCase.no_hp_penyidik || ''
+      });
+    }
+    const seen = new Map();
+    rawPool.forEach((raw, idx) => {
+      if (!raw || typeof raw !== 'object') return;
+      const rawName = String(raw.nama || raw.name || '').trim();
+      if (!rawName || rawName === '-') return;
+      const rawRank = String(raw.pangkat || raw.rank || '').trim();
+      const pangkatSingkat = formatPangkatSingkat(rawRank);
+      const cleanNama = pangkatSingkat && rawName.toUpperCase().startsWith(`${pangkatSingkat} `)
+        ? rawName.slice(pangkatSingkat.length).trim()
+        : rawName;
+      const nrp = String(raw.nrp || '').trim();
+      const jabatan = String(raw.jabatan || raw.role || 'Penyidik Pembantu').trim();
+      const phone = String(
+        raw.phone || raw.no_hp || raw.no_telepon || raw.telepon || raw.whatsapp || raw.hp || ''
+      ).trim();
+      const dedupKey = (nrp && nrp !== '-') ? `nrp:${nrp.toLowerCase()}` : `name:${cleanNama.toLowerCase().replace(/\s+/g, ' ')}`;
+      const fullLabel = [pangkatSingkat, cleanNama].filter(Boolean).join(' ').trim();
+      const existing = seen.get(dedupKey);
+      if (!existing) {
+        seen.set(dedupKey, {
+          id: String(raw.id || dedupKey || `inv_${idx}`),
+          nama: cleanNama,
+          pangkat: rawRank,
+          pangkatSingkat,
+          fullLabel,
+          nrp,
+          jabatan,
+          phone: phone !== '-' ? phone : ''
+        });
+      } else {
+        if (!existing.phone && phone && phone !== '-') existing.phone = phone;
+        if ((!existing.nrp || existing.nrp === '-') && nrp && nrp !== '-') existing.nrp = nrp;
+        if (!existing.pangkatSingkat && pangkatSingkat) {
+          existing.pangkatSingkat = pangkatSingkat;
+          existing.fullLabel = [pangkatSingkat, existing.nama].filter(Boolean).join(' ').trim();
+        }
+      }
+    });
+    return Array.from(seen.values());
+  }, [personnel, currentCase]);
+
+  useEffect(() => {
+    if (!isPemanggilDropdownOpen) return undefined;
+    const handleClickOutside = (ev) => {
+      if (pemanggilDropdownRef.current && !pemanggilDropdownRef.current.contains(ev.target)) {
+        setIsPemanggilDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isPemanggilDropdownOpen]);
 
   // Refs anti race-condition & deduplikasi pemanggilan buildUniversalCaseContext
   const caseFetchSeqRef = useRef(0);
@@ -478,13 +554,64 @@ export default function MindikGeneratorView({
         populateIndexedSubjectGroup(next, enrichedSubjects, ['TSK', 'TERSANGKA'], pool);
       }
 
+      const rawCodeSubjNow = (currentTemplate?.code || currentTemplate?.template_code || '').toUpperCase().trim();
+      const isSpglSubjTpl =
+        activeCanonicalCode.startsWith('SPGL_') ||
+        rawCodeSubjNow.startsWith('SPGL_') ||
+        rawCodeSubjNow.includes('PANGGIL');
+      const isSpglSaksiSubjTpl =
+        activeCanonicalCode.startsWith('SPGL_SAKSI') ||
+        rawCodeSubjNow.startsWith('SPGL_SAKSI') ||
+        rawCodeSubjNow.includes('PANGGILAN_SAKSI') ||
+        primary._category === 'SAKSI';
+
+      if (isSpglSaksiSubjTpl) {
+        const normSaksi = normalizeSubjectRecord(primary, 0, 'Saksi') || primary;
+        populateSubjectPrefixVariables(next, 'SAKSI', enrichedSubjects, normSaksi);
+        next.NAMA_SAKSI = normSaksi.nama || '';
+        next.SAKSI_NAMA = normSaksi.nama || '';
+        next.NAMA_DIPANGGIL = normSaksi.nama || '';
+        next.KERJA_SAKSI = normSaksi.pekerjaan || '';
+        next.PEKERJAAN_SAKSI = normSaksi.pekerjaan || '';
+        next.ALAMAT_SAKSI = normSaksi.alamat || '';
+        next.TTL_SAKSI = normSaksi.ttl || '';
+        next.NIK_SAKSI = normSaksi.nik || '-';
+        const spglSaksi1Match = resolveFirstSummonsDocForSubject(activeCaseDocs, 'SAKSI', normSaksi);
+        if (spglSaksi1Match.found && spglSaksi1Match.docNo) {
+          assignFirstSummonsReferenceTags(
+            next,
+            'SAKSI',
+            spglSaksi1Match.docNo,
+            spglSaksi1Match.formattedDocDate,
+            spglSaksi1Match.rawDocDate,
+            true
+          );
+        }
+      }
+
       // Untuk surat penetapan tersangka / upaya paksa / SPDP yang memakai tag datar TERSANGKA_* atau NAMA_TERSANGKA..ALAMAT:
-      if (isTerlaporTemplate || primary._category === 'TERLAPOR' || primary._category === 'TERSANGKA') {
+      if (isTerlaporTemplate || primary._category === 'TERLAPOR' || primary._category === 'TERSANGKA' || activeCanonicalCode.startsWith('SPGL_TSK')) {
         const normPrimary = normalizeSubjectRecord(primary, 0, primary._category || 'Terlapor') || primary;
         populateSubjectPrefixVariables(next, 'TERSANGKA', enrichedSubjects, normPrimary);
         populateSubjectPrefixVariables(next, 'TERLAPOR', enrichedSubjects, normPrimary);
         next.NAMA_TERSANGKA = normPrimary.nama || '';
         next.nama_tersangka = normPrimary.nama || '';
+        next.NAMA_TSK = normPrimary.nama || '';
+        next.NAMA_DIPANGGIL = normPrimary.nama || '';
+        next.KERJA_TSK = normPrimary.pekerjaan || '';
+        next.PEKERJAAN_TSK = normPrimary.pekerjaan || '';
+        next.ALAMAT_TSK = normPrimary.alamat || '';
+        const spglTsk1Match = resolveFirstSummonsDocForSubject(activeCaseDocs, 'TSK', normPrimary);
+        if (spglTsk1Match.found && spglTsk1Match.docNo) {
+          assignFirstSummonsReferenceTags(
+            next,
+            'TSK',
+            spglTsk1Match.docNo,
+            spglTsk1Match.formattedDocDate,
+            spglTsk1Match.rawDocDate,
+            true
+          );
+        }
         next.NIK = normPrimary.nik || '-';
         next.nik = normPrimary.nik || '-';
         next.TEMPAT_LAHIR = normPrimary.tempat_lahir || '';
@@ -511,8 +638,10 @@ export default function MindikGeneratorView({
         next.status_pernikahan = normPrimary.status_pernikahan || '';
         next.ALAMAT = normPrimary.alamat || '';
         next.alamat = normPrimary.alamat || '';
-        next.NO_HP = normPrimary.no_hp || '';
-        next.no_hp = normPrimary.no_hp || '';
+        if (!isSpglSubjTpl) {
+          next.NO_HP = normPrimary.no_hp || '';
+          next.no_hp = normPrimary.no_hp || '';
+        }
         if (normPrimary.nomor_sp_tap) next.NO_SP_TAP_TSK = normPrimary.nomor_sp_tap;
         if (normPrimary.tanggal_sp_tap) next.TGL_SP_TAP_TSK = normPrimary.tanggal_sp_tap;
 
@@ -908,6 +1037,77 @@ export default function MindikGeneratorView({
           }
           if (isNewTplState || !nextValues.JAM_PELAKSANAAN_HAN_TIME) {
             nextValues.JAM_PELAKSANAAN_HAN_TIME = '08:30';
+          }
+        }
+
+        const isSpglTpl =
+          canonicalCode.startsWith('SPGL_') ||
+          rawUpperCode.startsWith('SPGL_') ||
+          rawUpperCode.includes('PANGGIL');
+        if (isSpglTpl) {
+          const defaultTglPglIso = addDaysToIsoDate(finalIsoDate, 3) || finalIsoDate;
+          if (isNewTplState || !toIsoDateString(nextValues.TANGGAL_PANGGILAN_ISO)) {
+            nextValues.TANGGAL_PANGGILAN_ISO = defaultTglPglIso;
+          }
+          const activeTglPglIso = toIsoDateString(nextValues.TANGGAL_PANGGILAN_ISO) || defaultTglPglIso;
+          const parsedPglInit = parseDateParts(activeTglPglIso);
+          nextValues.HARI_PANGGILAN = parsedPglInit.hari || '';
+          nextValues.TANGGAL_PANGGILAN = activeTglPglIso ? formatTanggalIndonesia(activeTglPglIso) : '';
+          nextValues.TGL_PANGGILAN = nextValues.TANGGAL_PANGGILAN;
+
+          if (isNewTplState || !nextValues.JAM_PANGGILAN_TIME) {
+            nextValues.JAM_PANGGILAN_TIME = '09:00';
+          }
+          const formattedJamPglInit = formatJamPolri(nextValues.JAM_PANGGILAN_TIME || '09:00') || '09.00';
+          nextValues.JAM_PANGGILAN = `${formattedJamPglInit} WITA`;
+
+          const curTempatPgl = String(nextValues.TEMPAT_PANGGILAN || '').trim();
+          const isOldOrPlaceholderTempatPgl =
+            !curTempatPgl ||
+            /^(\.{2,}|\u2026+|-)$/.test(curTempatPgl) ||
+            curTempatPgl.toLowerCase() === 'ruang pemeriksaan sat reskrim polres kolaka timur';
+          if (isOldOrPlaceholderTempatPgl) {
+            nextValues.TEMPAT_PANGGILAN = 'Ruang Unit Idik Satreskrim';
+          }
+
+          if (isNewTplState || !nextValues.MENEMUI_SIAPA || /^(\.{2,}|\u2026+|-)$/.test(String(nextValues.MENEMUI_SIAPA).trim())) {
+            const caseLeadName = String(currentCase?.penyidik_1_nama || currentCase?.penyidik_nama || '').trim().toLowerCase();
+            const caseLeadNrp = String(currentCase?.penyidik_1_nrp || currentCase?.penyidik_nrp || '').trim();
+            const defaultInv =
+              directoryInvestigatorsList.find(inv => (caseLeadNrp && inv.nrp === caseLeadNrp) || (caseLeadName && inv.nama.toLowerCase() === caseLeadName)) ||
+              directoryInvestigatorsList[0] ||
+              null;
+            if (defaultInv) {
+              nextValues.SELECTED_PEMANGGIL_ID = defaultInv.id;
+              nextValues.MENEMUI_SIAPA = defaultInv.fullLabel;
+              nextValues.NO_HP = defaultInv.phone || '';
+              nextValues.no_hp = defaultInv.phone || '';
+              nextValues.NO_HP_PENYIDIK = defaultInv.phone || '';
+              nextValues.HP_PENYIDIK = defaultInv.phone || '';
+              nextValues.TELEPON_PENYIDIK = defaultInv.phone || '';
+            }
+          }
+
+          // Resolusi otomatis rujukan Panggilan Ke-1 saat membuka template Surat Panggilan (khususnya SPGL_SAKSI_2 & SPGL_TSK_2)
+          const isSpglSaksiInit = canonicalCode.startsWith('SPGL_SAKSI') || rawUpperCode.includes('SAKSI');
+          const initTargetSubj =
+            (Array.isArray(nextValues.__SELECTED_SUBJECTS__) && nextValues.__SELECTED_SUBJECTS__[0]) ||
+            (isSpglSaksiInit ? allCaseSubjects.saksi[0] : (activeSuspect || caseSuspects[0] || allCaseSubjects.tersangka[0])) ||
+            null;
+          const resolvedCall1Init = resolveFirstSummonsDocForSubject(
+            activeCaseDocs,
+            isSpglSaksiInit ? 'SAKSI' : 'TSK',
+            initTargetSubj
+          );
+          if (resolvedCall1Init.found && resolvedCall1Init.docNo) {
+            assignFirstSummonsReferenceTags(
+              nextValues,
+              isSpglSaksiInit ? 'SAKSI' : 'TSK',
+              resolvedCall1Init.docNo,
+              resolvedCall1Init.formattedDocDate,
+              resolvedCall1Init.rawDocDate,
+              true
+            );
           }
         }
 
@@ -1368,6 +1568,47 @@ export default function MindikGeneratorView({
             }
           }
         }
+
+        const isSpglNow =
+          activeCanonicalCode.startsWith('SPGL_') ||
+          rawCodeNow.startsWith('SPGL_') ||
+          rawCodeNow.includes('PANGGIL');
+        if (isSpglNow && syncedDate) {
+          const prevDefaultPgl = prevDate ? addDaysToIsoDate(prevDate, 3) : '';
+          if (!next.TANGGAL_PANGGILAN_ISO || next.TANGGAL_PANGGILAN_ISO === prevDefaultPgl) {
+            const nextPglIso = addDaysToIsoDate(syncedDate, 3) || syncedDate;
+            const parsedNextPgl = parseDateParts(nextPglIso);
+            next.TANGGAL_PANGGILAN_ISO = nextPglIso;
+            next.HARI_PANGGILAN = parsedNextPgl.hari || '';
+            next.TANGGAL_PANGGILAN = formatTanggalIndonesia(nextPglIso);
+            next.TGL_PANGGILAN = next.TANGGAL_PANGGILAN;
+          }
+        }
+      }
+
+      if (key === 'TANGGAL_PANGGILAN_ISO') {
+        const syncedPglIso = toIsoDateString(value) || value || '';
+        const parsedPgl = parseDateParts(syncedPglIso);
+        next.TANGGAL_PANGGILAN_ISO = syncedPglIso;
+        next.HARI_PANGGILAN = parsedPgl.hari || '';
+        next.TANGGAL_PANGGILAN = syncedPglIso ? formatTanggalIndonesia(syncedPglIso) : '';
+        next.TGL_PANGGILAN = next.TANGGAL_PANGGILAN;
+      }
+
+      if (key === 'JAM_PANGGILAN_TIME') {
+        const rawTime = String(value || '09:00').trim();
+        const formattedJam = formatJamPolri(rawTime) || '09.00';
+        next.JAM_PANGGILAN_TIME = rawTime;
+        next.JAM_PANGGILAN = `${formattedJam} WITA`;
+      }
+
+      if (key === 'NO_HP' || key === 'NO_HP_PENYIDIK' || key === 'HP_PENYIDIK') {
+        const hpVal = String(value ?? '');
+        next.NO_HP = hpVal;
+        next.no_hp = hpVal;
+        next.NO_HP_PENYIDIK = hpVal;
+        next.HP_PENYIDIK = hpVal;
+        next.TELEPON_PENYIDIK = hpVal;
       }
 
       if (key === 'MULAI_DITAHAN' || key === 'TGL_MULAI_HAN' || key === 'TANGGAL_MULAI_HAN') {
@@ -1443,12 +1684,18 @@ export default function MindikGeneratorView({
       const isTapTsk = canonicalCode === 'TAP_TSK';
       const isSprinKapDoc = canonicalCode === 'SPRIN_KAP_DAN_BA' || canonicalCode === 'SPRIN_KAP' || canonicalCode === 'SP_KAP';
       const isSprinHanDoc = canonicalCode === 'SPRIN_HAN_DAN_BA' || canonicalCode === 'SPRIN_HAN' || canonicalCode === 'SP_HAN';
+      const isSpglSaksiDocSave = canonicalCode.startsWith('SPGL_SAKSI') || tplCode.toUpperCase().includes('PANGGILAN_SAKSI');
+      const isSpglTskDocSave = canonicalCode.startsWith('SPGL_TSK') || tplCode.toUpperCase().includes('PANGGILAN_TERSANGKA');
+      const isIndividualWitnessDoc =
+        isSpglSaksiDocSave ||
+        canonicalCode.includes('SAKSI') ||
+        currentSubjectMode === 'saksi';
       const isIndividualSuspectDoc =
         isTapTsk ||
         isSprinKapDoc ||
         isSprinHanDoc ||
         canonicalCode.startsWith('PEMBERITAHUAN_TAP_TSK') ||
-        canonicalCode.startsWith('SPGL_TSK') ||
+        isSpglTskDocSave ||
         canonicalCode.includes('KAP') ||
         canonicalCode.includes('HAN') ||
         canonicalCode.includes('BAWA_TSK') ||
@@ -1611,13 +1858,21 @@ export default function MindikGeneratorView({
       const targetSuspectNameFinal =
         resolvedTargetSuspectNames[0] ||
         primaryTargetObj?.nama ||
-        formValues.TERSANGKA_NAMA ||
-        formValues.SUBJEK_NAMA ||
-        formValues.NAMA_TERSANGKA ||
-        '';
+        (isIndividualWitnessDoc
+          ? (formValues.NAMA_SAKSI || formValues.SAKSI_NAMA || formValues.NAMA_DIPANGGIL || '')
+          : (formValues.TERSANGKA_NAMA || formValues.SUBJEK_NAMA || formValues.NAMA_TERSANGKA || formValues.NAMA_TSK || formValues.NAMA_DIPANGGIL || ''));
       const targetSuspectIdsFinal = resolvedTargetSuspectIds.length > 0
         ? resolvedTargetSuspectIds
         : (targetSuspectIdFinal ? [targetSuspectIdFinal] : []);
+      const targetSubjectNameFinal =
+        primaryTargetObj?.nama ||
+        targetSuspectNameFinal ||
+        formValues.NAMA_SAKSI ||
+        formValues.NAMA_TERSANGKA ||
+        formValues.NAMA_TSK ||
+        formValues.NAMA_DIPANGGIL ||
+        '';
+      const targetSubjectIdFinal = primaryTargetObj?.id || targetSuspectIdFinal || null;
 
       const suspectSnapshot = isIndividualSuspectDoc
         ? (promotedOrUpdatedTargets.length > 0 ? promotedOrUpdatedTargets : (primaryTargetObj ? [primaryTargetObj] : null))
@@ -1691,6 +1946,21 @@ export default function MindikGeneratorView({
             target_suspect_id: targetSuspectIdFinal,
             target_suspect_name: targetSuspectNameFinal,
             target_suspect_ids: targetSuspectIdsFinal
+          } : {}),
+          ...((isIndividualSuspectDoc || isIndividualWitnessDoc || targetSubjectNameFinal) ? {
+            target_subject: targetSubjectNameFinal,
+            target_subject_id: targetSubjectIdFinal,
+            target_subject_name: targetSubjectNameFinal,
+            ...(isSpglSaksiDocSave || isIndividualWitnessDoc ? {
+              NAMA_SAKSI: formValues.NAMA_SAKSI || targetSubjectNameFinal,
+              SAKSI_NAMA: formValues.SAKSI_NAMA || targetSubjectNameFinal,
+              NAMA_DIPANGGIL: formValues.NAMA_DIPANGGIL || targetSubjectNameFinal
+            } : {}),
+            ...(isSpglTskDocSave || isIndividualSuspectDoc ? {
+              NAMA_TERSANGKA: formValues.NAMA_TERSANGKA || targetSuspectNameFinal,
+              NAMA_TSK: formValues.NAMA_TSK || targetSuspectNameFinal,
+              NAMA_DIPANGGIL: formValues.NAMA_DIPANGGIL || targetSuspectNameFinal
+            } : {})
           } : {}),
           chain_snapshot: chainSnapshot,
           suspect_data: suspectSnapshot
@@ -2613,6 +2883,53 @@ export default function MindikGeneratorView({
                 }
               }
 
+              const isSpglSaksi2Banner =
+                activeCanonicalCode === 'SPGL_SAKSI_2' ||
+                rawCodeBanner === 'SPGL_SAKSI_2' ||
+                (rawCodeBanner.includes('SAKSI') && /(?:^|_)2$/.test(rawCodeBanner));
+              const isSpglTsk2Banner =
+                activeCanonicalCode === 'SPGL_TSK_2' ||
+                rawCodeBanner === 'SPGL_TSK_2' ||
+                ((rawCodeBanner.includes('TSK') || rawCodeBanner.includes('TERSANGKA')) && /(?:^|_)2$/.test(rawCodeBanner));
+
+              let spgl2ChainNotice = null;
+              if (activeChainStatus.allowed && (isSpglSaksi2Banner || isSpglTsk2Banner)) {
+                const targetForSpgl2 = isSpglSaksi2Banner
+                  ? (selectedTargetSubjects[0] || allCaseSubjects.saksi[0] || (formValues.NAMA_SAKSI ? { nama: formValues.NAMA_SAKSI } : null))
+                  : (selectedTargetSubjects[0] || activeSuspect || caseSuspects[0] || allCaseSubjects.tersangka[0] || (formValues.NAMA_TERSANGKA ? { nama: formValues.NAMA_TERSANGKA } : null));
+                const targetDisplayName = String(
+                  targetForSpgl2?.nama ||
+                  (isSpglSaksi2Banner ? formValues.NAMA_SAKSI : (formValues.NAMA_TERSANGKA || formValues.NAMA_TSK)) ||
+                  ''
+                ).trim();
+                const resolvedCall1Banner = resolveFirstSummonsDocForSubject(
+                  activeCaseDocs,
+                  isSpglSaksi2Banner ? 'SAKSI' : 'TSK',
+                  targetForSpgl2
+                );
+                const hasSpecificMatch = targetDisplayName
+                  ? (resolvedCall1Banner.found && resolvedCall1Banner.matchedBySubject)
+                  : resolvedCall1Banner.found;
+
+                if (hasSpecificMatch && resolvedCall1Banner.docNo) {
+                  const subjLabel = resolvedCall1Banner.subjectName || targetDisplayName || (isSpglSaksi2Banner ? 'Saksi Terpilih' : 'Tersangka Terpilih');
+                  spgl2ChainNotice = {
+                    type: 'success',
+                    text: `Rujukan Panggilan Ke-1 terhubung otomatis: Nomor ${resolvedCall1Banner.docNo}, tanggal ${resolvedCall1Banner.formattedDocDate || '-'} (a.n. ${subjLabel}).`
+                  };
+                } else {
+                  const roleLabel = isSpglSaksi2Banner ? 'Surat Panggilan Saksi Ke-1' : 'Surat Panggilan Tersangka Ke-1';
+                  spgl2ChainNotice = {
+                    type: 'warning',
+                    text: targetDisplayName
+                      ? `${roleLabel} atas nama ${targetDisplayName} belum ditemukan di arsip perkara ini. Silakan terbitkan Panggilan Ke-1 terlebih dahulu agar Nomor & Tanggal rujukan Panggilan Ke-1 terisi otomatis.`
+                      : `${roleLabel} belum ditemukan di arsip perkara ini. Pilih subjek hukum atau terbitkan Panggilan Ke-1 terlebih dahulu.`
+                  };
+                }
+              }
+
+              const activeTopNotice = spHanFormalNotice || spgl2ChainNotice;
+
               return (
                 <>
                   {!activeChainStatus.allowed ? (
@@ -2633,23 +2950,23 @@ export default function MindikGeneratorView({
                         <div style={{ marginTop: '2px', lineHeight: 1.45 }}>{activeChainStatus.reason}</div>
                       </div>
                     </div>
-                  ) : spHanFormalNotice ? (
+                  ) : activeTopNotice ? (
                     <div style={{
                       padding: '10px 13px',
                       borderRadius: '9px',
-                      background: spHanFormalNotice.type === 'success' ? 'rgba(16, 185, 129, 0.10)' : 'rgba(245, 158, 11, 0.10)',
-                      border: spHanFormalNotice.type === 'success' ? '1px solid rgba(16, 185, 129, 0.38)' : '1px solid rgba(245, 158, 11, 0.38)',
+                      background: activeTopNotice.type === 'success' ? 'rgba(16, 185, 129, 0.10)' : 'rgba(245, 158, 11, 0.10)',
+                      border: activeTopNotice.type === 'success' ? '1px solid rgba(16, 185, 129, 0.38)' : '1px solid rgba(245, 158, 11, 0.38)',
                       display: 'flex',
                       alignItems: 'flex-start',
                       gap: '9px',
                       fontSize: '11.5px',
-                      color: spHanFormalNotice.type === 'success' ? '#A7F3D0' : '#FDE68A',
+                      color: activeTopNotice.type === 'success' ? '#A7F3D0' : '#FDE68A',
                       lineHeight: 1.45
                     }}>
-                      {spHanFormalNotice.type === 'success'
+                      {activeTopNotice.type === 'success'
                         ? <CheckCircle2 size={15} color="#10B981" style={{ flexShrink: 0, marginTop: '1px' }} />
                         : <AlertTriangle size={15} color="#F59E0B" style={{ flexShrink: 0, marginTop: '1px' }} />}
-                      <span>{spHanFormalNotice.text}</span>
+                      <span>{activeTopNotice.text}</span>
                     </div>
                   ) : activeChainStatus.infoNotice ? (
                     <div style={{
@@ -3040,13 +3357,52 @@ export default function MindikGeneratorView({
               const detentionStageUi = getDetentionStageConfig(rawCodeNow || activeCanonicalCode, titleNow);
               const isDetentionActive = detentionStageUi.isDetentionDoc;
               const isBaHanActive = isDetentionActive && detentionStageUi.hasBa;
+              const isSpglActive =
+                activeCanonicalCode.startsWith('SPGL_') ||
+                rawCodeNow.startsWith('SPGL_') ||
+                rawCodeNow.includes('PANGGIL');
 
               // Filter keluar seluruh variabel rujukan dokumen pendahulu & arsip yang sudah terinjeksi otomatis di latar belakang
               const isAutoChainedReferenceField = (rawKey) => {
                 const k = String(rawKey || '').toUpperCase().trim();
                 if (!k) return true;
-                // 1. Field Nomor & Tanggal Surat utama yang sudah punya input khusus di atas
-                if (['NOMOR_SURAT', 'NO_SURAT', 'DOC_NO', 'TANGGAL_SURAT', 'DOC_DATE', 'TGL_SURAT', 'NOMOR_SURAT_HEADER', 'TANGGAL_SURAT_HEADER'].includes(k)) {
+                // 1. Field Nomor & Tanggal Surat utama yang sudah punya input khusus di atas, termasuk BULAN_SURAT & TAHUN_SURAT otomatis
+                if ([
+                  'NOMOR_SURAT', 'NO_SURAT', 'DOC_NO', 'TANGGAL_SURAT', 'DOC_DATE', 'TGL_SURAT',
+                  'NOMOR_SURAT_HEADER', 'TANGGAL_SURAT_HEADER',
+                  'HARI_SURAT', 'TANGGAL_ANGKA_SURAT', 'TGL_ANGKA_SURAT', 'BULAN_SURAT', 'TAHUN_SURAT'
+                ].includes(k)) {
+                  return true;
+                }
+                // 1a. Sembunyikan seluruh field terpecah Surat Panggilan & rujukan Panggilan Ke-1 saat SPGL_TSK_* / SPGL_SAKSI_* aktif
+                if (
+                  k.startsWith('NO_SPGIL_') ||
+                  k.startsWith('TGL_SPGIL_') ||
+                  k.startsWith('NOMOR_SPGIL_') ||
+                  k.startsWith('TANGGAL_SPGIL_') ||
+                  k.startsWith('NO_SPGL_') ||
+                  k.startsWith('TGL_SPGL_') ||
+                  k.startsWith('NOMOR_SPGL_') ||
+                  k.startsWith('TANGGAL_SPGL_') ||
+                  k.startsWith('NOMOR_PANGGILAN_') ||
+                  k.startsWith('TANGGAL_PANGGILAN_SAKSI_') ||
+                  k.startsWith('TANGGAL_PANGGILAN_TSK_') ||
+                  k.startsWith('TANGGAL_PANGGILAN_TERSANGKA_')
+                ) {
+                  return true;
+                }
+                if (isSpglActive && [
+                  'HARI_PANGGILAN', 'TANGGAL_PANGGILAN', 'TGL_PANGGILAN', 'TANGGAL_PANGGILAN_ISO',
+                  'JAM_PANGGILAN', 'JAM_PANGGILAN_TIME', 'TEMPAT_PANGGILAN',
+                  'MENEMUI_SIAPA', 'NO_HP', 'NO_HP_PENYIDIK', 'HP_PENYIDIK', 'TELEPON_PENYIDIK', 'SELECTED_PEMANGGIL_ID',
+                  'BULAN_SURAT', 'TAHUN_SURAT',
+                  'NAMA_SAKSI', 'SAKSI_NAMA', 'KERJA_SAKSI', 'PEKERJAAN_SAKSI', 'ALAMAT_SAKSI', 'TTL_SAKSI', 'NIK_SAKSI',
+                  'NAMA_TSK', 'KERJA_TSK', 'PEKERJAAN_TSK', 'ALAMAT_TSK', 'NAMA_DIPANGGIL',
+                  'NO_SPGIL_SAKSI_1', 'TGL_SPGIL_SAKSI_1', 'NO_SPGL_SAKSI_1', 'TGL_SPGL_SAKSI_1',
+                  'NOMOR_SPGIL_SAKSI_1', 'TANGGAL_SPGIL_SAKSI_1', 'NOMOR_PANGGILAN_SAKSI_1', 'TANGGAL_PANGGILAN_SAKSI_1',
+                  'NO_SPGIL_TSK_1', 'TGL_SPGIL_TSK_1', 'NO_SPGL_TSK_1', 'TGL_SPGL_TSK_1',
+                  'NOMOR_SPGIL_TSK_1', 'TANGGAL_SPGIL_TSK_1', 'NOMOR_PANGGILAN_TSK_1', 'TANGGAL_PANGGILAN_TSK_1'
+                ].includes(k)) {
                   return true;
                 }
                 // 1b. Sembunyikan MASA_BERLAKU / SPRIN_MASA_BERLAKU_KAP saat SPRIN_KAP / SPRIN_KAP_DAN_BA aktif (dihitung otomatis H+1)
@@ -3081,12 +3437,8 @@ export default function MindikGeneratorView({
                 if (k === 'TERBILANG_TAHUN' || k.startsWith('TERBILANG_TAHUN_') || k.endsWith('_TERBILANG')) {
                   return true;
                 }
-                // 2. Field yang tetap BOLEH diinput operator pada template tertentu (tanggal jadwal panggilan, gelar perkara, BA lainnya)
+                // 2. Field yang tetap BOLEH diinput operator pada template tertentu (tanggal jadwal gelar perkara, BA lainnya)
                 const allowedOperatorInputKeys = new Set([
-                  'TANGGAL_PANGGILAN',
-                  'HARI_PANGGILAN',
-                  'JAM_PANGGILAN',
-                  'TEMPAT_PANGGILAN',
                   'TANGGAL_GELAR_PERKARA',
                   'TANGGAL_BA',
                   'TANGGAL_BA_BAWA'
@@ -3183,10 +3535,412 @@ export default function MindikGeneratorView({
               const tglPelaksanaanHanPreview = effectiveTglPelaksanaanHan ? formatTanggalIndonesia(effectiveTglPelaksanaanHan) : '-';
               const jamPelaksanaanHanPreview = formatJamPolri(effectiveJamPelaksanaanHan) || '08.30';
 
-              if (!isBaKapActive && !isDetentionActive && operatorDynamicFields.length === 0) return null;
+              const defaultSpglDateIso = formValues.TANGGAL_SURAT ? (addDaysToIsoDate(formValues.TANGGAL_SURAT, 3) || toIsoDateString(formValues.TANGGAL_SURAT)) : '';
+              const effectiveTglPanggilanIso = toIsoDateString(formValues.TANGGAL_PANGGILAN_ISO) || defaultSpglDateIso || '';
+              const effectiveJamPanggilanTime = formValues.JAM_PANGGILAN_TIME || '09:00';
+              const effectiveTempatPanggilan =
+                (formValues.TEMPAT_PANGGILAN && !/^(\.{2,}|\u2026+|-)$/.test(String(formValues.TEMPAT_PANGGILAN).trim()))
+                  ? formValues.TEMPAT_PANGGILAN
+                  : 'Ruang Unit Idik Satreskrim';
+              const parsedPanggilanPreview = parseDateParts(effectiveTglPanggilanIso);
+              const hariPanggilanPreview = parsedPanggilanPreview.hari || '-';
+              const tglPanggilanPreview = effectiveTglPanggilanIso ? formatTanggalIndonesia(effectiveTglPanggilanIso) : '-';
+              const jamPanggilanPreview = formatJamPolri(effectiveJamPanggilanTime) || '09.00';
+
+              const selectedPemanggilOfficer =
+                directoryInvestigatorsList.find(inv => String(inv.id) === String(formValues.SELECTED_PEMANGGIL_ID)) ||
+                directoryInvestigatorsList.find(inv => inv.fullLabel === String(formValues.MENEMUI_SIAPA || '').trim()) ||
+                directoryInvestigatorsList[0] ||
+                null;
+              const effectiveMenemuiSiapa =
+                formValues.MENEMUI_SIAPA ||
+                selectedPemanggilOfficer?.fullLabel ||
+                '';
+              const effectiveNoHpPemanggil =
+                formValues.NO_HP ??
+                formValues.NO_HP_PENYIDIK ??
+                formValues.HP_PENYIDIK ??
+                selectedPemanggilOfficer?.phone ??
+                '';
+              const filteredDirectoryInvestigators = directoryInvestigatorsList.filter((inv) => {
+                const q = pemanggilSearchQuery.trim().toLowerCase();
+                if (!q) return true;
+                return (
+                  inv.fullLabel.toLowerCase().includes(q) ||
+                  inv.nrp.toLowerCase().includes(q) ||
+                  inv.jabatan.toLowerCase().includes(q) ||
+                  inv.phone.toLowerCase().includes(q)
+                );
+              });
+
+              const handleSelectPemanggilOfficer = (inv) => {
+                if (!inv) return;
+                setFormValues((prev) => ({
+                  ...prev,
+                  SELECTED_PEMANGGIL_ID: inv.id,
+                  MENEMUI_SIAPA: inv.fullLabel,
+                  NO_HP: inv.phone || '',
+                  no_hp: inv.phone || '',
+                  NO_HP_PENYIDIK: inv.phone || '',
+                  HP_PENYIDIK: inv.phone || '',
+                  TELEPON_PENYIDIK: inv.phone || ''
+                }));
+                setIsPemanggilDropdownOpen(false);
+                setPemanggilSearchQuery('');
+                setIsSaved(false);
+              };
+
+              if (!isBaKapActive && !isDetentionActive && !isSpglActive && operatorDynamicFields.length === 0) return null;
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {isSpglActive && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Blok A — 1. Jadwal & Tempat Menghadap */}
+                      <div style={{
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: '#161D2A',
+                        border: '1px solid rgba(255, 42, 42, 0.30)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '10px'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                              1. Jadwal &amp; Tempat Menghadap
+                            </div>
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              background: 'rgba(16, 185, 129, 0.14)',
+                              border: '1px solid rgba(16, 185, 129, 0.38)',
+                              color: '#6EE7B7'
+                            }}>
+                              Otomatis Hari &amp; Format WITA
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                Tanggal Menghadap
+                              </label>
+                              <input
+                                type="date"
+                                value={effectiveTglPanggilanIso ?? ''}
+                                onChange={(e) => handleInputChange('TANGGAL_PANGGILAN_ISO', e.target.value)}
+                                className="form-input mono"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '12px',
+                                  background: '#0B0E14',
+                                  borderColor: 'rgba(148, 163, 184, 0.24)',
+                                  color: '#FFFFFF'
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                Jam Menghadap (WITA)
+                              </label>
+                              <input
+                                type="time"
+                                value={effectiveJamPanggilanTime ?? '09:00'}
+                                onChange={(e) => handleInputChange('JAM_PANGGILAN_TIME', e.target.value)}
+                                className="form-input mono"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '12px',
+                                  background: '#0B0E14',
+                                  borderColor: 'rgba(148, 163, 184, 0.24)',
+                                  color: '#FFFFFF'
+                                }}
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                Tempat Menghadap
+                              </label>
+                              <input
+                                type="text"
+                                value={effectiveTempatPanggilan ?? ''}
+                                onChange={(e) => handleInputChange('TEMPAT_PANGGILAN', e.target.value)}
+                                placeholder="Ruang Unit Idik Satreskrim"
+                                className="form-input"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '12px',
+                                  background: '#0B0E14',
+                                  borderColor: 'rgba(148, 163, 184, 0.24)',
+                                  color: '#FFFFFF'
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          background: '#0B0E14',
+                          border: '1px solid rgba(16, 185, 129, 0.28)',
+                          fontSize: '11px',
+                          color: '#94A3B8',
+                          lineHeight: 1.45
+                        }}>
+                          Tercetak di surat:{' '}
+                          <strong style={{ color: '#FFFFFF' }}>
+                            pada hari {hariPanggilanPreview} tanggal {tglPanggilanPreview}, pukul {jamPanggilanPreview} WITA
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Blok B — 2. Penyidik Pemanggil & Kontak Koordinasi ({MENEMUI_SIAPA} & {NO_HP}) */}
+                      <div
+                        ref={pemanggilDropdownRef}
+                        style={{
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          background: '#161D2A',
+                          border: '1px solid rgba(255, 42, 42, 0.30)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          position: 'relative'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                              2. Penyidik Pemanggil &amp; Kontak Koordinasi
+                            </div>
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              background: 'rgba(255, 42, 42, 0.14)',
+                              border: '1px solid rgba(255, 42, 42, 0.40)',
+                              color: '#FCA5A5'
+                            }}>
+                              Direktori Personel ({directoryInvestigatorsList.length})
+                            </span>
+                          </div>
+
+                          {/* Custom Tactical Dropdown Midnight Crimson */}
+                          <div style={{ position: 'relative' }}>
+                            <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                              Pilih Penyidik Pemanggil (Otomatis Pangkat Singkat &amp; No. HP)
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setIsPemanggilDropdownOpen(prev => !prev)}
+                              style={{
+                                width: '100%',
+                                padding: '8px 11px',
+                                borderRadius: '8px',
+                                background: '#0B0E14',
+                                border: isPemanggilDropdownOpen
+                                  ? '1px solid #FF2A2A'
+                                  : '1px solid rgba(255, 42, 42, 0.35)',
+                                boxShadow: isPemanggilDropdownOpen ? '0 0 0 2px rgba(255, 42, 42, 0.18)' : 'none',
+                                color: '#FFFFFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left'
+                              }}
+                            >
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {effectiveMenemuiSiapa || 'Pilih Penyidik dari Direktori Personel...'}
+                                </div>
+                                <div className="mono" style={{ fontSize: '10.5px', color: '#94A3B8', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  <span>NRP: {selectedPemanggilOfficer?.nrp || '-'}</span>
+                                  <span>•</span>
+                                  <span style={{ color: effectiveNoHpPemanggil ? '#6EE7B7' : '#F59E0B' }}>
+                                    HP: {effectiveNoHpPemanggil || 'Belum ada No. HP'}
+                                  </span>
+                                </div>
+                              </div>
+                              <ChevronDown
+                                size={15}
+                                color="#FF2A2A"
+                                style={{
+                                  flexShrink: 0,
+                                  transform: isPemanggilDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                  transition: 'transform 0.15s ease'
+                                }}
+                              />
+                            </button>
+
+                            {isPemanggilDropdownOpen && (
+                              <div style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 6px)',
+                                left: 0,
+                                right: 0,
+                                zIndex: 70,
+                                background: '#11161F',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(255, 42, 42, 0.45)',
+                                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.78)',
+                                padding: '8px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px'
+                              }}>
+                                <div style={{ position: 'relative' }}>
+                                  <Search size={13} color="#94A3B8" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)' }} />
+                                  <input
+                                    type="text"
+                                    value={pemanggilSearchQuery}
+                                    onChange={(e) => setPemanggilSearchQuery(e.target.value)}
+                                    placeholder="Cari nama penyidik, pangkat, NRP, atau No. HP..."
+                                    className="form-input"
+                                    style={{
+                                      width: '100%',
+                                      paddingLeft: '28px',
+                                      fontSize: '11.5px',
+                                      background: '#0B0E14',
+                                      borderColor: 'rgba(148, 163, 184, 0.24)',
+                                      color: '#FFFFFF'
+                                    }}
+                                  />
+                                </div>
+
+                                <div style={{ maxHeight: '210px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {filteredDirectoryInvestigators.length === 0 ? (
+                                    <div style={{ padding: '10px', fontSize: '11px', color: '#94A3B8', textAlign: 'center' }}>
+                                      Tidak ada personel yang cocok.
+                                    </div>
+                                  ) : (
+                                    filteredDirectoryInvestigators.map((inv) => {
+                                      const isSelectedInv =
+                                        String(inv.id) === String(formValues.SELECTED_PEMANGGIL_ID) ||
+                                        inv.fullLabel === effectiveMenemuiSiapa;
+                                      return (
+                                        <button
+                                          key={inv.id}
+                                          type="button"
+                                          onClick={() => handleSelectPemanggilOfficer(inv)}
+                                          style={{
+                                            width: '100%',
+                                            padding: '7px 9px',
+                                            borderRadius: '7px',
+                                            background: isSelectedInv ? 'rgba(255, 42, 42, 0.16)' : '#0B0E14',
+                                            border: isSelectedInv
+                                              ? '1px solid rgba(255, 42, 42, 0.55)'
+                                              : '1px solid rgba(148, 163, 184, 0.14)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: '8px',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                          }}
+                                        >
+                                          <div style={{ minWidth: 0, flex: 1 }}>
+                                            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                              <span>{inv.fullLabel}</span>
+                                              {inv.nrp && (
+                                                <span className="mono" style={{
+                                                  fontSize: '10px',
+                                                  padding: '1px 6px',
+                                                  borderRadius: '4px',
+                                                  background: 'rgba(148, 163, 184, 0.14)',
+                                                  color: '#CBD5E1'
+                                                }}>
+                                                  NRP {inv.nrp}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="mono" style={{ fontSize: '10.5px', marginTop: '2px', color: inv.phone ? '#6EE7B7' : '#F59E0B' }}>
+                                              {inv.phone ? `HP: ${inv.phone}` : 'Belum ada No. HP di Direktori'}
+                                            </div>
+                                          </div>
+                                          {isSelectedInv && <Check size={14} color="#FF2A2A" style={{ flexShrink: 0 }} />}
+                                        </button>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                Menemui Penyidik ({'{MENEMUI_SIAPA}'})
+                              </label>
+                              <input
+                                type="text"
+                                value={effectiveMenemuiSiapa ?? ''}
+                                onChange={(e) => handleInputChange('MENEMUI_SIAPA', e.target.value)}
+                                placeholder="Contoh: BRIPKA MUH. ABDIANSYAH DANIAL, S.H."
+                                className="form-input"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '12px',
+                                  background: '#0B0E14',
+                                  borderColor: 'rgba(148, 163, 184, 0.24)',
+                                  color: '#FFFFFF'
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                Nomor HP Koordinasi ({'{NO_HP}'})
+                              </label>
+                              <div style={{ position: 'relative' }}>
+                                <Phone size={12} color="#6EE7B7" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)' }} />
+                                <input
+                                  type="text"
+                                  value={effectiveNoHpPemanggil ?? ''}
+                                  onChange={(e) => handleInputChange('NO_HP', e.target.value)}
+                                  placeholder="0812-xxxx-xxxx"
+                                  className="form-input mono"
+                                  style={{
+                                    width: '100%',
+                                    paddingLeft: '27px',
+                                    fontSize: '12px',
+                                    background: '#0B0E14',
+                                    borderColor: 'rgba(16, 185, 129, 0.35)',
+                                    color: '#FFFFFF'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          background: '#0B0E14',
+                          border: '1px solid rgba(148, 163, 184, 0.18)',
+                          fontSize: '11px',
+                          color: '#94A3B8',
+                          lineHeight: 1.45
+                        }}>
+                          Tercetak di surat:{' '}
+                          <strong style={{ color: '#FFFFFF' }}>
+                            Menemui {effectiveMenemuiSiapa || '...'} ({effectiveNoHpPemanggil || 'No. HP belum diisi'})
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {isDetentionActive && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {/* Blok A: Masa & Tempat Penahanan (Otomatis Inklusif) */}

@@ -58,53 +58,25 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "S.Pgl/Saksi.1/..../I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "NAMA_SAKSI", label: "Nama Saksi", type: "text", default: "…....", required: true },
-    { tag: "KERJA_SAKSI", label: "Pekerjaan Saksi", type: "text", default: "…....", required: true },
-    { tag: "ALAMAT_SAKSI", label: "Alamat Saksi", type: "text", default: "…....", required: true },
-    { tag: "TANGGAL_PANGGILAN", label: "Tanggal Panggilan", type: "date", default: "... Januari 2026", required: true },
-    { tag: "HARI_PANGGILAN", label: "Hari Panggilan", type: "text", default: "Senin", required: true },
-    { tag: "JAM_PANGGILAN", label: "Jam Panggilan", type: "text", default: "09.00 WITA", required: true },
-    { tag: "TEMPAT_PANGGILAN", label: "Tempat Menghadap", type: "text", default: "ruangan Unit I Pidum Satreskrim Polres Kolaka Timur Jln. Muh. Nur Latamoro No. 115, Kelurahan Rate-Rate Kecamatan Tirawuta Kabupaten Kolaka Timur", required: true },
-    { tag: "MENEMUI_SIAPA", label: "Menghadap Kepada", type: "text", default: "BRIPKA MUH. ABDIANSYAH DANIAL, S.H.", required: true }
+    { tag: "TEMPAT_PANGGILAN", label: "Tempat Menghadap", type: "text", default: "Ruang Unit Idik Satreskrim", required: true }
   ],
   SPGL_TSK_1: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "S.Pgl/Tsk.1/..../I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "NAMA_TSK", label: "Nama Tersangka", type: "text", default: "…....", required: true },
-    { tag: "KERJA_TSK", label: "Pekerjaan Tersangka", type: "text", default: "…....", required: true },
-    { tag: "ALAMAT_TSK", label: "Alamat Tersangka", type: "text", default: "…....", required: true },
-    { tag: "TANGGAL_PANGGILAN", label: "Tanggal Panggilan", type: "date", default: "... Januari 2026", required: true },
-    { tag: "HARI_PANGGILAN", label: "Hari Panggilan", type: "text", default: "Senin", required: true },
-    { tag: "JAM_PANGGILAN", label: "Jam Panggilan", type: "text", default: "09.00 WITA", required: true },
-    { tag: "TEMPAT_PANGGILAN", label: "Tempat Menghadap", type: "text", default: "ruangan Unit I Pidum Satreskrim Polres Kolaka Timur Jln. Muh. Nur Latamoro No. 115, Kelurahan Rate-Rate Kecamatan Tirawuta Kabupaten Kolaka Timur", required: true },
-    { tag: "MENEMUI_SIAPA", label: "Menghadap Kepada", type: "text", default: "BRIPKA MUH. ABDIANSYAH DANIAL, S.H.", required: true }
+    { tag: "TEMPAT_PANGGILAN", label: "Tempat Menghadap", type: "text", default: "Ruang Unit Idik Satreskrim", required: true }
   ],
   SPGL_SAKSI_2: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "S.Pgl/Saksi.2/..../I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "NAMA_SAKSI", label: "Nama Saksi", type: "text", default: "…....", required: true },
-    { tag: "KERJA_SAKSI", label: "Pekerjaan Saksi", type: "text", default: "…....", required: true },
-    { tag: "ALAMAT_SAKSI", label: "Alamat Saksi", type: "text", default: "…....", required: true },
-    { tag: "TANGGAL_PANGGILAN", label: "Tanggal Panggilan", type: "date", default: "... Januari 2026", required: true },
-    { tag: "HARI_PANGGILAN", label: "Hari Panggilan", type: "text", default: "Senin", required: true },
-    { tag: "JAM_PANGGILAN", label: "Jam Panggilan", type: "text", default: "09.00 WITA", required: true },
-    { tag: "TEMPAT_PANGGILAN", label: "Tempat Menghadap", type: "text", default: "ruangan Unit I Pidum Satreskrim Polres Kolaka Timur Jln. Muh. Nur Latamoro No. 115, Kelurahan Rate-Rate Kecamatan Tirawuta Kabupaten Kolaka Timur", required: true },
-    { tag: "MENEMUI_SIAPA", label: "Menghadap Kepada", type: "text", default: "BRIPKA MUH. ABDIANSYAH DANIAL, S.H.", required: true }
+    { tag: "TEMPAT_PANGGILAN", label: "Tempat Menghadap", type: "text", default: "Ruang Unit Idik Satreskrim", required: true }
   ],
   SPGL_TSK_2: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "S.Pgl/Tsk.2/..../I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "NAMA_TSK", label: "Nama Tersangka", type: "text", default: "…....", required: true },
-    { tag: "KERJA_TSK", label: "Pekerjaan Tersangka", type: "text", default: "…....", required: true },
-    { tag: "ALAMAT_TSK", label: "Alamat Tersangka", type: "text", default: "…....", required: true },
-    { tag: "TANGGAL_PANGGILAN", label: "Tanggal Panggilan", type: "date", default: "... Januari 2026", required: true },
-    { tag: "HARI_PANGGILAN", label: "Hari Panggilan", type: "text", default: "Senin", required: true },
-    { tag: "JAM_PANGGILAN", label: "Jam Panggilan", type: "text", default: "09.00 WITA", required: true },
-    { tag: "TEMPAT_PANGGILAN", label: "Tempat Menghadap", type: "text", default: "ruangan Unit I Pidum Satreskrim Polres Kolaka Timur Jln. Muh. Nur Latamoro No. 115, Kelurahan Rate-Rate Kecamatan Tirawuta Kabupaten Kolaka Timur", required: true },
-    { tag: "MENEMUI_SIAPA", label: "Menghadap Kepada", type: "text", default: "BRIPKA MUH. ABDIANSYAH DANIAL, S.H.", required: true }
+    { tag: "TEMPAT_PANGGILAN", label: "Tempat Menghadap", type: "text", default: "Ruang Unit Idik Satreskrim", required: true }
   ],
   HAK_KORBAN: [
     { tag: "HARI_BA", label: "Hari Berita Acara", type: "text", default: "…......", required: true },
