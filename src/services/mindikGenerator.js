@@ -1189,17 +1189,25 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   setBothCase('UNIT_PENANGAN', unitPenangan);
   setBothCase('TEMPAT_SURAT', tempatSurat);
 
-  // Pejabat Penandatangan / Atasan (Kasat Reskrim)
+  // Pejabat Penandatangan / Atasan (Kasat Reskrim) - Pangkat Singkat Resmi
   const atasanNama = activeCase.kasat_nama || activeCase.atasan_nama || '';
-  const atasanPangkat = toPangkatSingkat(activeCase.kasat_pangkat || activeCase.atasan_pangkat || '');
+  const atasanPangkat = formatPangkatSingkat(activeCase.kasat_pangkat || activeCase.atasan_pangkat || '');
   const atasanNrp = activeCase.kasat_nrp || activeCase.atasan_nrp || '';
   const atasanJabatan = activeCase.kasat_jabatan || activeCase.atasan_jabatan || 'Kasat Reskrim';
+  const kapolresPangkat = formatPangkatSingkat(activeCase.kapolres_pangkat || '');
 
   setBothCase('ATASAN_NAMA', atasanNama);
   setBothCase('ATASAN_PANGKAT', atasanPangkat);
   setBothCase('ATASAN_NRP', atasanNrp);
   setBothCase('ATASAN_JABATAN', atasanJabatan);
   setBothCase('ATASAN_PANGKAT_NRP', atasanPangkat && atasanNrp ? `${atasanPangkat} / ${atasanNrp}` : (atasanPangkat || atasanNrp));
+  setBothCase('KASAT_NAMA', atasanNama);
+  setBothCase('KASAT_PANGKAT', atasanPangkat);
+  setBothCase('KASAT_NRP', atasanNrp);
+  setBothCase('KASAT_JABATAN', atasanJabatan);
+  if (kapolresPangkat) {
+    setBothCase('KAPOLRES_PANGKAT', kapolresPangkat);
+  }
 
   // ---------------------------------------------------------------------------
   // B. RESOLUSI RANTAI DOKUMEN OTOMATIS (DYNAMIC DOCUMENT CHAIN)
@@ -1508,7 +1516,7 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     const fromArr = rawInvList[i - 1] || {};
     const pNama = (fromCasePropNama || fromArr.nama || '').trim();
     const pPangkatRaw = activeCase[`penyidik_${i}_pangkat`] || fromArr.pangkat || '';
-    const pPangkat = toPangkatSingkat(pPangkatRaw);
+    const pPangkat = formatPangkatSingkat(pPangkatRaw);
     const pNrp = (activeCase[`penyidik_${i}_nrp`] || fromArr.nrp || '').trim();
     const pJabatan = (activeCase[`penyidik_${i}_jabatan`] || fromArr.jabatan || (pNama ? (i === 1 ? 'Kanit' : 'Penyidik Pembantu') : '')).trim();
     const pPangkatNrp = pPangkat && pNrp ? `${pPangkat} / ${pNrp}` : (pPangkat || pNrp || '');
@@ -1525,12 +1533,31 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
         nama: pNama,
         pangkat: pPangkat,
         pangkat_singkat: pPangkat,
-        pangkat_lengkap: toPangkatLengkap(pPangkatRaw),
+        pangkat_lengkap: pPangkat,
         nrp: pNrp,
         jabatan: pJabatan,
         pangkat_nrp: pPangkatNrp
       });
     }
+  }
+
+  const primaryPenyidik = teamList[0] || {};
+  if (primaryPenyidik.nama) {
+    setBothCase('PENYIDIK_NAMA', primaryPenyidik.nama);
+    setBothCase('PENYIDIK_PANGKAT', formatPangkatSingkat(primaryPenyidik.pangkat));
+    setBothCase('PENYIDIK_NRP', primaryPenyidik.nrp);
+    setBothCase('PENYIDIK_JABATAN', primaryPenyidik.jabatan);
+    setBothCase('PENYIDIK_PANGKAT_NRP', primaryPenyidik.pangkat_nrp);
+  }
+  const penanganCtx = getPenyidikPenangan(activeCase) || primaryPenyidik;
+  if (penanganCtx?.nama) {
+    const penPkt = formatPangkatSingkat(penanganCtx.pangkat || '');
+    const penNrp = (penanganCtx.nrp || '').trim();
+    setBothCase('PENYIDIK_PENANGAN_NAMA', penanganCtx.nama);
+    setBothCase('PENYIDIK_PENANGAN_PANGKAT', penPkt);
+    setBothCase('PENYIDIK_PENANGAN_NRP', penNrp);
+    setBothCase('PENYIDIK_PENANGAN_JABATAN', penanganCtx.jabatan || 'Penyidik');
+    setBothCase('PENYIDIK_PENANGAN_PANGKAT_NRP', penPkt && penNrp ? `${penPkt} / ${penNrp}` : (penPkt || penNrp));
   }
 
   context.PENYIDIK = teamList;
@@ -1710,6 +1737,36 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   const mergedContext = mergeChainedWithForm(context, activeFormValues, {
     formatDatesForDocx: !options.forFormUi
   });
+
+  // Otomatisasi Masa Berlaku 1x24 Jam (H+1 dari TANGGAL_SURAT) untuk SPRIN_KAP / SPRIN_KAP_DAN_BA
+  const rawOptionTplCode = (
+    options.template?.code ||
+    options.template?.template_code ||
+    options.templateCode ||
+    activeFormValues?.TEMPLATE_CODE ||
+    activeFormValues?.template_code ||
+    ''
+  ).toUpperCase().trim();
+  const canonicalOptionTplCode = toCanonicalMindikCode(
+    rawOptionTplCode,
+    options.template?.title || options.template?.name || ''
+  );
+  const isSprinKapOption =
+    canonicalOptionTplCode === 'SPRIN_KAP' ||
+    canonicalOptionTplCode === 'SPRIN_KAP_DAN_BA' ||
+    rawOptionTplCode === 'SPRIN_KAP' ||
+    rawOptionTplCode === 'SPRIN_KAP_DAN_BA';
+  const rawActiveDateForKap = activeFormValues?.TANGGAL_SURAT || activeFormValues?.DOC_DATE || activeFormValues?.TGL_SURAT || options.docDate || '';
+  if (isSprinKapOption && rawActiveDateForKap) {
+    const masaBerlakuIsoCtx = addDaysToIsoDate(rawActiveDateForKap, 1);
+    const masaBerlakuValCtx = options.forFormUi ? masaBerlakuIsoCtx : formatTanggalIndonesia(masaBerlakuIsoCtx);
+    if (masaBerlakuValCtx) {
+      ['MASA_BERLAKU', 'MASA_BERLAKU_KAP', 'SPRIN_MASA_BERLAKU', 'SPRIN_MASA_BERLAKU_KAP', 'TANGGAL_BERLAKU'].forEach((mk) => {
+        mergedContext[mk] = masaBerlakuValCtx;
+        mergedContext[mk.toLowerCase()] = masaBerlakuValCtx;
+      });
+    }
+  }
 
   // Debug log wajib untuk verifikasi di Console browser
   const resolvedKeys = Object.keys(mergedContext).filter((k) => {
@@ -1907,15 +1964,61 @@ export function terbilangAngka(n) {
 }
 
 export const terbilang = terbilangAngka;
+export const angkaKeTerbilang = terbilangAngka;
 
 /**
- * Mengonversi angka tahun (contoh: 2024 -> "dua ribu dua puluh empat", 2026 -> "dua ribu dua puluh enam").
+ * Mengonversi angka tahun (contoh: 2024 -> "dua ribu dua puluh empat", 2025 -> "dua ribu dua puluh lima", 2026 -> "dua ribu dua puluh enam", 2000 -> "dua ribu").
  */
-export function terbilangTahun(tahunInput) {
+export function tahunKeTerbilang(tahunInput) {
   if (!tahunInput) return '';
-  const num = parseInt(String(tahunInput).replace(/\D/g, ''), 10);
-  if (isNaN(num)) return '';
+  const str = String(tahunInput).trim();
+  const fourDigitMatch = str.match(/\b(19\d{2}|20\d{2}|21\d{2})\b/);
+  const num = fourDigitMatch ? parseInt(fourDigitMatch[1], 10) : parseInt(str.replace(/\D/g, ''), 10);
+  if (isNaN(num) || num <= 0) return '';
   return terbilangAngka(num).toLowerCase().trim();
+}
+
+export const terbilangTahun = tahunKeTerbilang;
+
+/**
+ * Menambahkan `days` hari pada tanggal ISO (atau teks tanggal Indonesia) secara aman tanpa pergeseran zona waktu (UTC).
+ * Contoh: addDaysToIsoDate('2026-11-30', 1) -> '2026-12-01', addDaysToIsoDate('2026-12-31', 1) -> '2027-01-01'.
+ */
+export function addDaysToIsoDate(isoDateStr, days = 1) {
+  const cleanIso = toIsoDateString(isoDateStr);
+  if (!cleanIso) return '';
+  const match = cleanIso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '';
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10) - 1;
+  const day = parseInt(match[3], 10);
+  const delta = Number.isFinite(Number(days)) ? Math.trunc(Number(days)) : 1;
+
+  const utcDate = new Date(Date.UTC(year, month, day + delta));
+  if (isNaN(utcDate.getTime())) return '';
+
+  const outYear = String(utcDate.getUTCFullYear());
+  const outMonth = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
+  const outDay = String(utcDate.getUTCDate()).padStart(2, '0');
+  return `${outYear}-${outMonth}-${outDay}`;
+}
+
+/**
+ * Normalisasi format jam naskah dinas Polri (mengubah "09:00" atau "09.00 WITA" menjadi "09.00").
+ */
+export function formatJamPolri(rawTime) {
+  if (!rawTime) return '';
+  let str = String(rawTime).trim();
+  if (!str || /^(\.{3,}|\u2026+)$/.test(str)) return '';
+  if (/^\d{4}-\d{2}-\d{2}T/i.test(str)) {
+    str = str.split(/T/i)[1]?.split('.')[0] || str;
+  }
+  str = str.replace(/\s*(WITA|WIB|WIT)\s*$/i, '').trim();
+  const hhmm = str.match(/^(\d{1,2})[:.](\d{2})/);
+  if (hhmm) {
+    return `${hhmm[1].padStart(2, '0')}.${hhmm[2]}`;
+  }
+  return str.replace(/:/g, '.');
 }
 
 /**
@@ -2074,12 +2177,11 @@ export const formatTanggalSuratHeader = (teksTanggal) => {
 };
 
 /**
- * Kamus Pangkat Lengkap Polri:
- * Digunakan untuk ekspansi singkatan pangkat menjadi nama pangkat resmi tanpa singkatan
- * pada kolom tanda tangan Atasan (Kasat Reskrim) dan bukti penyerahan surat (Penyidik Penangan).
+ * Kamus Pangkat Polri (Pemetaan Nama Lengkap <-> Singkatan Resmi Naskah Dinas Polri).
  */
 export const MAP_PANGKAT_LENGKAP = {
   // Perwira Tinggi (Pati)
+  'JENDERAL POL': 'JENDERAL POLISI',
   'JENDERAL POLISI': 'JENDERAL POLISI',
   'JENDERAL': 'JENDERAL POLISI',
   'KOMJEN POL': 'KOMISARIS JENDERAL POLISI',
@@ -2104,8 +2206,8 @@ export const MAP_PANGKAT_LENGKAP = {
   'AIPTU': 'AJUN INSPEKTUR POLISI SATU',
   'AIPDA': 'AJUN INSPEKTUR POLISI DUA',
   'BRIPKA': 'BRIGADIR POLISI KEPALA',
-  'BRIGADIR': 'BRIGADIR POLISI',
   'BRIGPOL': 'BRIGADIR POLISI',
+  'BRIGADIR': 'BRIGADIR POLISI',
   'BRIPTU': 'BRIGADIR POLISI SATU',
   'BRIPDA': 'BRIGADIR POLISI DUA',
 
@@ -2118,67 +2220,86 @@ export const MAP_PANGKAT_LENGKAP = {
   'BHARADA': 'BHAYANGKARA DUA'
 };
 
-/**
- * Helper konversi singkatan pangkat Polri ke format teks pangkat lengkap/resmi.
- * Menangani variasi tanda baca (titik) atau sinonim umum Polri.
- */
-export const formatPangkatLengkap = (pangkat) => {
-  if (!pangkat) return '';
-  let str = String(pangkat).trim().toUpperCase();
-  // Hilangkan tanda baca titik (contoh: "A.K.P." -> "AKP", "IPDA." -> "IPDA")
-  let cleanKey = str.replace(/\./g, '').trim();
-
-  // 1. Pencocokan langsung dengan kamus pangkat resmi
-  if (MAP_PANGKAT_LENGKAP[cleanKey]) {
-    return MAP_PANGKAT_LENGKAP[cleanKey];
-  }
-
-  // 2. Jika sudah berformat nama lengkap resmi
-  const allFullValues = Object.values(MAP_PANGKAT_LENGKAP);
-  if (allFullValues.includes(str) || allFullValues.includes(cleanKey)) {
-    return str;
-  }
-
-  // 3. Pencocokan jika terdapat kata tambahan atau awalan singkatan (misal: "IPDA POL", "AKP RESKRIM")
-  for (const [abbr, full] of Object.entries(MAP_PANGKAT_LENGKAP)) {
-    if (cleanKey.startsWith(abbr + ' ') || cleanKey.startsWith(abbr + '/')) {
-      return full;
-    }
-  }
-
-  return cleanKey || str;
+export const MAP_PANGKAT_SINGKAT = {
+  'BHAYANGKARA DUA': 'BHARADA',
+  'BHARADA': 'BHARADA',
+  'BHAYANGKARA SATU': 'BHARATU',
+  'BHARATU': 'BHARATU',
+  'BHAYANGKARA KEPALA': 'BHARAKA',
+  'BHARAKA': 'BHARAKA',
+  'AJUN BRIGADIR POLISI DUA': 'ABRIPDA',
+  'ABRIPDA': 'ABRIPDA',
+  'AJUN BRIGADIR POLISI SATU': 'ABRIPTU',
+  'ABRIPTU': 'ABRIPTU',
+  'AJUN BRIGADIR POLISI': 'ABRIP',
+  'ABRIP': 'ABRIP',
+  'BRIGADIR POLISI DUA': 'BRIPDA',
+  'BRIPDA': 'BRIPDA',
+  'BRIGADIR POLISI SATU': 'BRIPTU',
+  'BRIPTU': 'BRIPTU',
+  'BRIGADIR POLISI': 'BRIGPOL',
+  'BRIGPOL': 'BRIGPOL',
+  'BRIGADIR': 'BRIGPOL',
+  'BRIGADIR POLISI KEPALA': 'BRIPKA',
+  'BRIPKA': 'BRIPKA',
+  'AJUN INSPEKTUR POLISI DUA': 'AIPDA',
+  'AIPDA': 'AIPDA',
+  'AJUN INSPEKTUR POLISI SATU': 'AIPTU',
+  'AIPTU': 'AIPTU',
+  'INSPEKTUR POLISI DUA': 'IPDA',
+  'IPDA': 'IPDA',
+  'INSPEKTUR POLISI SATU': 'IPTU',
+  'IPTU': 'IPTU',
+  'AJUN KOMISARIS POLISI': 'AKP',
+  'AKP': 'AKP',
+  'KOMISARIS POLISI': 'KOMPOL',
+  'KOMPOL': 'KOMPOL',
+  'AJUN KOMISARIS BESAR POLISI': 'AKBP',
+  'AKBP': 'AKBP',
+  'KOMISARIS BESAR POLISI': 'KOMBES POL',
+  'KOMBES POL': 'KOMBES POL',
+  'KOMBES': 'KOMBES POL',
+  'BRIGADIR JENDERAL POLISI': 'BRIGJEN POL',
+  'BRIGJEN POL': 'BRIGJEN POL',
+  'BRIGJEN': 'BRIGJEN POL',
+  'INSPEKTUR JENDERAL POLISI': 'IRJEN POL',
+  'IRJEN POL': 'IRJEN POL',
+  'IRJEN': 'IRJEN POL',
+  'KOMISARIS JENDERAL POLISI': 'KOMJEN POL',
+  'KOMJEN POL': 'KOMJEN POL',
+  'KOMJEN': 'KOMJEN POL',
+  'JENDERAL POLISI': 'JENDERAL POL',
+  'JENDERAL POL': 'JENDERAL POL',
+  'JENDERAL': 'JENDERAL POL'
 };
 
 /**
- * Alias helper resmi toPangkatLengkap sesuai naskah dinas
+ * Helper konversi semua variasi nama pangkat Polri (panjang maupun singkatan)
+ * menjadi singkatan resmi seragam (`IPDA`, `AKP`, `BRIPKA`, `KOMBES POL`, dll.)
+ * baik pada batang tubuh maupun blok tanda tangan bawah.
  */
-export const toPangkatLengkap = formatPangkatLengkap;
+export const formatPangkatSingkat = (rawPangkat) => {
+  if (!rawPangkat) return '';
+  const str = String(rawPangkat).trim().toUpperCase();
+  const cleanKey = str.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  if (!cleanKey) return '';
 
-/**
- * Helper konversi nama pangkat ke format singkatan resmi naskah dinas
- * (khusus untuk batang tubuh / tabel tugas personel tim penyidik).
- */
-export const toPangkatSingkat = (pangkat) => {
-  if (!pangkat) return '';
-  const str = String(pangkat).trim().toUpperCase();
-  const cleanKey = str.replace(/\./g, '').trim();
-
-  // 1. Jika sudah merupakan singkatan resmi di kamus
-  if (MAP_PANGKAT_LENGKAP[cleanKey]) {
-    return cleanKey;
+  if (MAP_PANGKAT_SINGKAT[cleanKey]) {
+    return MAP_PANGKAT_SINGKAT[cleanKey];
   }
 
-  // 2. Jika merupakan nama pangkat lengkap, cari singkatannya
-  for (const [abbr, full] of Object.entries(MAP_PANGKAT_LENGKAP)) {
-    if (full === cleanKey || full === str) {
+  for (const [fullOrKey, abbr] of Object.entries(MAP_PANGKAT_SINGKAT)) {
+    if (cleanKey === fullOrKey) {
       return abbr;
     }
   }
 
-  return cleanKey || str;
+  return cleanKey;
 };
 
-export const formatPangkatSingkat = toPangkatSingkat;
+export const toPangkatSingkat = formatPangkatSingkat;
+export const formatPangkatLengkap = formatPangkatSingkat;
+export const toPangkatLengkap = formatPangkatSingkat;
 
 /**
  * Helper untuk mendeteksi personel yang ditunjuk sebagai Penyidik Penangan Perkara.
@@ -2510,7 +2631,14 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     (isKapDoc && cleanInput.TEMPAT_KAP ? cleanInput.TEMPAT_KAP : (isHanDoc && cleanInput.TEMPAT_HAN ? cleanInput.TEMPAT_HAN : 'Tirawuta'));
   const tujuanSurat = cleanInput.TUJUAN_SURAT || cleanInput.tujuan_surat || cleanInput.DOC_TARGET || '';
   const alamatTujuan = cleanInput.ALAMAT_TUJUAN || cleanInput.alamat_tujuan || cleanInput.DOC_TARGET_ADDR || '';
-  const rawMasaBerlaku = cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '';
+  const isSprinKapAutoDoc =
+    canonicalTplCode === 'SPRIN_KAP' ||
+    canonicalTplCode === 'SPRIN_KAP_DAN_BA' ||
+    tplCode === 'SPRIN_KAP' ||
+    tplCode === 'SPRIN_KAP_DAN_BA';
+  const rawMasaBerlaku = isSprinKapAutoDoc
+    ? (addDaysToIsoDate(activeRawDate, 1) || cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '')
+    : (cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '');
   const masaBerlaku = formatTanggalIndonesia(rawMasaBerlaku);
 
   // B. RUJUKAN TINGKAT PERKARA (dari activeCase / input form)
@@ -2635,18 +2763,69 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const tglTapHanPn2 = formatTanggalIndonesia(rawTglTapHanPn2);
 
   // C.1. DATA KHUSUS PENANGKAPAN (BA_KAP & SPRIN_KAP_DAN_BA)
-  const isKapTemplate = tplCode.includes('KAP');
-  const rawTglKap = cleanInput.TANGGAL_KAP || cleanInput.tanggal_kap || cleanInput.TGL_KAP || cleanInput.tgl_kap || activeSuspect?.tgl_sprin_kap || (isKapTemplate ? rawTanggalSurat : '');
+  const isKapTemplate = tplCode.includes('KAP') || canonicalTplCode.includes('KAP');
+  const isPlaceholderVal = (v) => !v || /^(\.{2,}|\u2026+|-|\s*)$/.test(String(v).trim());
+  const rawTglBaKapInput = pickNonEmpty(
+    cleanInput.TANGGAL_BA_KAP,
+    cleanInput.tanggal_ba_kap,
+    !isPlaceholderVal(cleanInput.TANGGAL_KAP) && toIsoDateString(cleanInput.TANGGAL_KAP) ? cleanInput.TANGGAL_KAP : '',
+    !isPlaceholderVal(cleanInput.tanggal_kap) && toIsoDateString(cleanInput.tanggal_kap) ? cleanInput.tanggal_kap : '',
+    !isPlaceholderVal(cleanInput.TGL_KAP) && toIsoDateString(cleanInput.TGL_KAP) ? cleanInput.TGL_KAP : '',
+    !isPlaceholderVal(cleanInput.tgl_kap) && toIsoDateString(cleanInput.tgl_kap) ? cleanInput.tgl_kap : ''
+  );
+  const rawTglKap = rawTglBaKapInput || activeRawDate || activeSuspect?.tgl_sprin_kap || '';
   const parsedKap = parseDateParts(rawTglKap);
-  const hariKap = parsedKap.hari || '';
-  const tglKap = parsedKap.tanggal || '';
-  const bulanKap = parsedKap.bulan || '';
-  const tahunKap = parsedKap.tahun || '';
-  const terbilangTahunKap = parsedKap.terbilangTahun || '';
+  const hariKap = (!isPlaceholderVal(cleanInput.HARI_KAP) && !rawTglBaKapInput && parsedKap.hari === '')
+    ? String(cleanInput.HARI_KAP).trim()
+    : (parsedKap.hari || parsedActiveDate.hari || '');
+  const tglKap = (!isPlaceholderVal(cleanInput.TANGGAL_KAP) && /^\d{1,2}$/.test(String(cleanInput.TANGGAL_KAP).trim()) && !rawTglBaKapInput)
+    ? String(parseInt(cleanInput.TANGGAL_KAP, 10))
+    : (parsedKap.tanggal || parsedActiveDate.tanggal || '');
+  const bulanKap = (!isPlaceholderVal(cleanInput.BULAN_KAP) && !rawTglBaKapInput && parsedKap.bulan === '')
+    ? String(cleanInput.BULAN_KAP).trim()
+    : (parsedKap.bulan || parsedActiveDate.bulan || '');
+  const tahunKap = parsedKap.tahun || (!isPlaceholderVal(cleanInput.TAHUN_KAP) ? String(cleanInput.TAHUN_KAP).trim() : '') || parsedActiveDate.tahun || String(new Date().getFullYear());
+  const terbilangTahunKap = tahunKeTerbilang(Number(tahunKap)) || parsedKap.terbilangTahun || parsedActiveDate.terbilangTahun || '';
   const tglLengkapKap = parsedKap.tanggalLengkap || (rawTglKap ? formatTanggalIndonesia(rawTglKap) : '');
-  const rawJamKap = cleanInput.JAM_KAP || cleanInput.jam_kap || cleanInput.WAKTU_KAP || cleanInput.waktu_kap || (isKapTemplate ? '10.00 WITA' : '');
-  const jamKap = formatWaktuJam(rawJamKap);
-  const tempatKap = cleanInput.TEMPAT_KAP || cleanInput.tempat_kap || (isKapTemplate ? 'Kab. Kolaka Timur' : '');
+  const rawJamBaKapInput = pickNonEmpty(
+    cleanInput.JAM_BA_KAP_TIME,
+    cleanInput.jam_ba_kap_time,
+    !isPlaceholderVal(cleanInput.JAM_KAP) ? cleanInput.JAM_KAP : '',
+    !isPlaceholderVal(cleanInput.jam_kap) ? cleanInput.jam_kap : ''
+  ) || (isKapTemplate ? '09:00' : '');
+  const jamKap = formatJamPolri(rawJamBaKapInput) || (isKapTemplate ? '09.00' : '');
+  const tempatKap = (!isPlaceholderVal(cleanInput.TEMPAT_KAP) ? String(cleanInput.TEMPAT_KAP).trim() : '')
+    || (!isPlaceholderVal(cleanInput.tempat_kap) ? String(cleanInput.tempat_kap).trim() : '')
+    || (isKapTemplate ? 'Kab. Kolaka Timur' : '');
+
+  // Waktu Penangkapan (Saat Tersangka Ditangkap) -> {WAKTU_KAP}
+  const rawTglPenangkapan = pickNonEmpty(
+    cleanInput.TANGGAL_PENANGKAPAN,
+    cleanInput.tanggal_penangkapan
+  ) || activeRawDate;
+  const parsedPenangkapan = parseDateParts(rawTglPenangkapan);
+  const hariPenangkapan = parsedPenangkapan.hari || parsedActiveDate.hari || hariKap || '';
+  const tglPenangkapanFormatted = formatTanggalIndonesia(rawTglPenangkapan) || parsedPenangkapan.tanggalLengkap || tanggalSurat || '';
+  const rawJamPenangkapan = pickNonEmpty(
+    cleanInput.JAM_PENANGKAPAN_TIME,
+    cleanInput.jam_penangkapan_time,
+    cleanInput.JAM_PENANGKAPAN,
+    cleanInput.jam_penangkapan
+  ) || '08:00';
+  const jamPenangkapanFormatted = formatJamPolri(rawJamPenangkapan) || '08.00';
+  const hasExplicitPenangkapanInputs = Boolean(
+    cleanInput.TANGGAL_PENANGKAPAN ||
+    cleanInput.tanggal_penangkapan ||
+    cleanInput.JAM_PENANGKAPAN_TIME ||
+    cleanInput.jam_penangkapan_time
+  );
+  const customWaktuKapRaw = pickNonEmpty(cleanInput.WAKTU_KAP, cleanInput.waktu_kap);
+  const isDefaultPlaceholderWaktuKap = !customWaktuKapRaw || /\.{2,}|\u2026+/.test(customWaktuKapRaw);
+  const waktuKap = (!hasExplicitPenangkapanInputs && customWaktuKapRaw && !isDefaultPlaceholderWaktuKap)
+    ? customWaktuKapRaw
+    : (hariPenangkapan && tglPenangkapanFormatted
+        ? `Hari ${hariPenangkapan} tanggal ${tglPenangkapanFormatted}, sekitar Pukul ${jamPenangkapanFormatted} WITA`
+        : '');
 
   // C.2. DATA KHUSUS SPRIN & BA PENAHANAN (SPRIN_HAN / BA_HAN / SPRIN_HAN_DAN_BA)
   const isHanTemplate = tplCode.includes('HAN');
@@ -2839,6 +3018,14 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     TUJUAN_SURAT: tujuanSurat,
     ALAMAT_TUJUAN: alamatTujuan,
     MASA_BERLAKU: masaBerlaku,
+    MASA_BERLAKU_KAP: masaBerlaku,
+    masa_berlaku_kap: masaBerlaku,
+    SPRIN_MASA_BERLAKU: masaBerlaku,
+    sprin_masa_berlaku: masaBerlaku,
+    SPRIN_MASA_BERLAKU_KAP: masaBerlaku,
+    sprin_masa_berlaku_kap: masaBerlaku,
+    TANGGAL_BERLAKU: masaBerlaku,
+    tanggal_berlaku: masaBerlaku,
 
     // B. RUJUKAN TINGKAT PERKARA (Resmi UPPERCASE)
     NOMOR_LP: nomorLp,
@@ -2886,8 +3073,14 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     tahun_kap: tahunKap,
     TERBILANG_TAHUN_KAP: terbilangTahunKap,
     terbilang_tahun_kap: terbilangTahunKap,
+    TERBILANG_TAHUN_BA_KAP: terbilangTahunKap,
+    terbilang_tahun_ba_kap: terbilangTahunKap,
+    TAHUN_KAP_TERBILANG: terbilangTahunKap,
+    tahun_kap_terbilang: terbilangTahunKap,
     JAM_KAP: jamKap,
     jam_kap: jamKap,
+    WAKTU_KAP: waktuKap,
+    waktu_kap: waktuKap,
     TEMPAT_KAP: tempatKap,
     tempat_kap: tempatKap,
     TGL_KAP: tglKap,
@@ -3597,10 +3790,31 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.TANGGAL_SURAT_HEADER = formatTanggalSuratHeader(finalPayload.TANGGAL_SURAT || tanggalSurat);
   finalPayload.tanggal_surat_header = finalPayload.TANGGAL_SURAT_HEADER;
 
-  // 1. Pangkat Atasan
-  const atasanPangkatRawFinal = activeCase?.atasan_pangkat || activeCase?.kasat_pangkat || finalPayload.ATASAN_PANGKAT || '';
-  finalPayload.ATASAN_PANGKAT = atasanPangkatRawFinal.trim();
+  // 1. Pangkat Atasan & Kasat / Kapolres (Pangkat Singkat Resmi)
+  const atasanPangkatRawFinal = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.atasan_pangkat || activeCase?.kasat_pangkat || finalPayload.ATASAN_PANGKAT || '';
+  finalPayload.ATASAN_PANGKAT = (formatPangkatSingkat(atasanPangkatRawFinal) || atasanPangkatRawFinal).trim();
   finalPayload.atasan_pangkat = finalPayload.ATASAN_PANGKAT;
+
+  const kasatPangkatRawFinal = cleanInput.KASAT_PANGKAT || cleanInput.kasat_pangkat || activeCase?.kasat_pangkat || finalPayload.KASAT_PANGKAT || finalPayload.ATASAN_PANGKAT || '';
+  finalPayload.KASAT_PANGKAT = (formatPangkatSingkat(kasatPangkatRawFinal) || kasatPangkatRawFinal).trim();
+  finalPayload.kasat_pangkat = finalPayload.KASAT_PANGKAT;
+
+  if (finalPayload.KAPOLRES_PANGKAT || finalPayload.kapolres_pangkat || activeCase?.kapolres_pangkat) {
+    const kapolresRaw = finalPayload.KAPOLRES_PANGKAT || finalPayload.kapolres_pangkat || activeCase?.kapolres_pangkat || '';
+    finalPayload.KAPOLRES_PANGKAT = (formatPangkatSingkat(kapolresRaw) || kapolresRaw).trim();
+    finalPayload.kapolres_pangkat = finalPayload.KAPOLRES_PANGKAT;
+  }
+
+  for (let i = 1; i <= 5; i++) {
+    const rawPi = finalPayload[`PENYIDIK_${i}_PANGKAT`] || finalPayload[`penyidik_${i}_pangkat`] || activeCase?.[`penyidik_${i}_pangkat`] || '';
+    const pktPi = (formatPangkatSingkat(rawPi) || rawPi).trim();
+    finalPayload[`PENYIDIK_${i}_PANGKAT`] = pktPi;
+    finalPayload[`penyidik_${i}_pangkat`] = pktPi;
+    const nrpPi = finalPayload[`PENYIDIK_${i}_NRP`] || finalPayload[`penyidik_${i}_nrp`] || activeCase?.[`penyidik_${i}_nrp`] || '';
+    const pktNrpPi = pktPi && nrpPi ? `${pktPi} / ${nrpPi}` : (pktPi || nrpPi || '');
+    finalPayload[`PENYIDIK_${i}_PANGKAT_NRP`] = pktNrpPi;
+    finalPayload[`penyidik_${i}_pangkat_nrp`] = pktNrpPi;
+  }
 
   // 2. Penyidik Penangan Perkara (Pangkat Singkat Baku untuk Bukti Penyerahan Surat)
   const penanganFinal = getPenyidikPenangan(activeCase) || activeCase?.penyidik_1 || {
@@ -3787,16 +4001,34 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.hari_kap = hariKap;
   finalPayload.TANGGAL_KAP = tglKap;
   finalPayload.tanggal_kap = tglKap;
+  finalPayload.TGL_KAP = tglKap;
+  finalPayload.tgl_kap = tglKap;
   finalPayload.BULAN_KAP = bulanKap;
   finalPayload.bulan_kap = bulanKap;
   finalPayload.TAHUN_KAP = tahunKap;
   finalPayload.tahun_kap = tahunKap;
   finalPayload.TERBILANG_TAHUN_KAP = terbilangTahunKap;
   finalPayload.terbilang_tahun_kap = terbilangTahunKap;
+  finalPayload.TERBILANG_TAHUN_BA_KAP = terbilangTahunKap;
+  finalPayload.terbilang_tahun_ba_kap = terbilangTahunKap;
+  finalPayload.TAHUN_KAP_TERBILANG = terbilangTahunKap;
+  finalPayload.tahun_kap_terbilang = terbilangTahunKap;
   finalPayload.JAM_KAP = jamKap;
   finalPayload.jam_kap = jamKap;
+  if (waktuKap) {
+    finalPayload.WAKTU_KAP = waktuKap;
+    finalPayload.waktu_kap = waktuKap;
+  }
   finalPayload.TEMPAT_KAP = tempatKap;
   finalPayload.tempat_kap = tempatKap;
+
+  // Penegasan Masa Berlaku 1x24 Jam otomatis (H+1) untuk SPRIN_KAP / SPRIN_KAP_DAN_BA
+  if (isSprinKapAutoDoc && masaBerlaku) {
+    ['MASA_BERLAKU', 'MASA_BERLAKU_KAP', 'SPRIN_MASA_BERLAKU', 'SPRIN_MASA_BERLAKU_KAP', 'TANGGAL_BERLAKU'].forEach((mk) => {
+      finalPayload[mk] = masaBerlaku;
+      finalPayload[mk.toLowerCase()] = masaBerlaku;
+    });
+  }
 
   // Penegasan Tag Khusus Sprin Penahanan (Huruf Besar & Kecil)
   finalPayload.TANGGAL_MULAI_HAN = tglMulaiHanFormatted;
@@ -4132,6 +4364,47 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   Object.keys(finalPayload).forEach((k) => {
     if (finalPayload[k] === null || finalPayload[k] === undefined || finalPayload[k] === 'null' || finalPayload[k] === 'undefined') {
       finalPayload[k] = '';
+    }
+  });
+
+  // ==============================================================
+  // SAPU JAGAT AKHIR: KUNCI MUTLAK TERBILANG_TAHUN_KAP & SELURUH TERBILANG_TAHUN_*
+  // Memastikan nilai kosong "" dari formValues TIDAK PERNAH mengosongkan {TERBILANG_TAHUN_KAP}
+  // maupun tag {TERBILANG_TAHUN_<SUFFIX>} lainnya.
+  // ==============================================================
+  const effectiveTahunKapFinal = String(finalPayload.TAHUN_KAP || finalPayload.tahun_kap || tahunKap || parsedActiveDate?.tahun || new Date().getFullYear()).trim();
+  const computedTerbilangKapFinal = tahunKeTerbilang(Number(effectiveTahunKapFinal)) || terbilangTahunKap || tahunKeTerbilang(new Date().getFullYear());
+  if (computedTerbilangKapFinal) {
+    finalPayload.TERBILANG_TAHUN_KAP = computedTerbilangKapFinal;
+    finalPayload.terbilang_tahun_kap = computedTerbilangKapFinal;
+    finalPayload.TERBILANG_TAHUN_BA_KAP = computedTerbilangKapFinal;
+    finalPayload.terbilang_tahun_ba_kap = computedTerbilangKapFinal;
+    finalPayload.TAHUN_KAP_TERBILANG = computedTerbilangKapFinal;
+    finalPayload.tahun_kap_terbilang = computedTerbilangKapFinal;
+  }
+
+  Object.keys(finalPayload).forEach((key) => {
+    const upperKey = key.toUpperCase();
+    if (upperKey === 'TAHUN' || upperKey.startsWith('TAHUN_') || upperKey.endsWith('_TAHUN')) {
+      const yearVal = finalPayload[key];
+      const yearMatch = String(yearVal || '').trim().match(/^(19\d{2}|20\d{2}|21\d{2})$/);
+      if (yearMatch) {
+        const terbilangStr = tahunKeTerbilang(Number(yearMatch[1]));
+        if (terbilangStr) {
+          const terbilangKey = upperKey === 'TAHUN' ? 'TERBILANG_TAHUN' : `TERBILANG_${upperKey}`;
+          if (!finalPayload[terbilangKey] || String(finalPayload[terbilangKey]).trim() === '') {
+            finalPayload[terbilangKey] = terbilangStr;
+            finalPayload[terbilangKey.toLowerCase()] = terbilangStr;
+          }
+          if (upperKey.startsWith('TAHUN_')) {
+            const altKey = `${upperKey}_TERBILANG`;
+            if (!finalPayload[altKey] || String(finalPayload[altKey]).trim() === '') {
+              finalPayload[altKey] = terbilangStr;
+              finalPayload[altKey.toLowerCase()] = terbilangStr;
+            }
+          }
+        }
+      }
     }
   });
 
@@ -4501,7 +4774,31 @@ export async function generateDocxBlob({
     'BULAN_DOC', 'bulan_doc',
     'TAHUN_DOC', 'tahun_doc',
     'TERBILANG_TAHUN_DOC', 'terbilang_tahun_doc',
-    'TANGGAL_TERURAI_DOC', 'tanggal_terurai_doc'
+    'TANGGAL_TERURAI_DOC', 'tanggal_terurai_doc',
+    'HARI_KAP', 'hari_kap',
+    'TANGGAL_KAP', 'tanggal_kap',
+    'TGL_KAP', 'tgl_kap',
+    'BULAN_KAP', 'bulan_kap',
+    'TAHUN_KAP', 'tahun_kap',
+    'TERBILANG_TAHUN_KAP', 'terbilang_tahun_kap',
+    'TERBILANG_TAHUN_BA_KAP', 'terbilang_tahun_ba_kap',
+    'TAHUN_KAP_TERBILANG', 'tahun_kap_terbilang',
+    'JAM_KAP', 'jam_kap',
+    'WAKTU_KAP', 'waktu_kap',
+    'TEMPAT_KAP', 'tempat_kap',
+    'MASA_BERLAKU', 'masa_berlaku',
+    'MASA_BERLAKU_KAP', 'masa_berlaku_kap',
+    'SPRIN_MASA_BERLAKU', 'sprin_masa_berlaku',
+    'SPRIN_MASA_BERLAKU_KAP', 'sprin_masa_berlaku_kap',
+    'TANGGAL_BERLAKU', 'tanggal_berlaku',
+    'ATASAN_PANGKAT', 'atasan_pangkat',
+    'ATASAN_PANGKAT_NRP', 'atasan_pangkat_nrp',
+    'KASAT_PANGKAT', 'kasat_pangkat',
+    'KAPOLRES_PANGKAT', 'kapolres_pangkat',
+    'PENYIDIK_PANGKAT', 'penyidik_pangkat',
+    'PENYIDIK_PANGKAT_NRP', 'penyidik_pangkat_nrp',
+    'PENYIDIK_PENANGAN_PANGKAT', 'penyidik_penangan_pangkat',
+    'PENYIDIK_PENANGAN_PANGKAT_NRP', 'penyidik_penangan_pangkat_nrp'
   ];
   ACTIVE_DATE_KEYS_FROM_BASE.forEach((k) => {
     if (baseDataMap[k] !== undefined && baseDataMap[k] !== '') {

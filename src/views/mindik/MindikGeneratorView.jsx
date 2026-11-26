@@ -30,7 +30,10 @@ import { checkPrerequisite } from './mindikPrerequisites';
 import {
   generateAndDownloadDocx,
   formatTanggalIndonesia,
-  formatPangkatLengkap,
+  formatPangkatSingkat,
+  addDaysToIsoDate,
+  parseDateParts,
+  formatJamPolri,
   normalizeSubjectRecord,
   deduplicateSubjectRecords,
   populateSubjectPrefixVariables,
@@ -181,15 +184,15 @@ export default function MindikGeneratorView({
       TANGGAL_LP: currentCase.tanggal_lp || currentCase.sprin_date || todayStr,
       tanggal_lp: currentCase.tanggal_lp || currentCase.sprin_date || todayStr,
       KASAT_NAMA: currentCase.kasat_nama || '',
-      KASAT_PANGKAT: formatPangkatLengkap(currentCase.kasat_pangkat || ''),
+      KASAT_PANGKAT: formatPangkatSingkat(currentCase.kasat_pangkat || ''),
       KASAT_NRP: currentCase.kasat_nrp || '',
       KASAT_JABATAN: currentCase.kasat_jabatan || 'Kasat Reskrim',
       ATASAN_NAMA: currentCase.kasat_nama || '',
-      ATASAN_PANGKAT: formatPangkatLengkap(currentCase.kasat_pangkat || ''),
+      ATASAN_PANGKAT: formatPangkatSingkat(currentCase.kasat_pangkat || ''),
       ATASAN_NRP: currentCase.kasat_nrp || '',
       ATASAN_JABATAN: currentCase.kasat_jabatan || 'Kasat Reskrim',
       PENYIDIK_NAMA: currentCase.penyidik_1_nama || '',
-      PENYIDIK_PANGKAT: formatPangkatLengkap(currentCase.penyidik_1_pangkat || ''),
+      PENYIDIK_PANGKAT: formatPangkatSingkat(currentCase.penyidik_1_pangkat || ''),
       PENYIDIK_NRP: currentCase.penyidik_1_nrp || '',
       PENYIDIK_JABATAN: currentCase.penyidik_1_jabatan || '',
       NO_SPRIN_SIDIK: currentCase.no_sprin_sidik || '',
@@ -778,6 +781,44 @@ export default function MindikGeneratorView({
         delete nextValues.TANGGAL_DOKUMEN;
         delete nextValues.tanggal_dokumen;
 
+        const isSprinKapTpl =
+          canonicalCode === 'SPRIN_KAP' ||
+          canonicalCode === 'SPRIN_KAP_DAN_BA' ||
+          rawUpperCode === 'SPRIN_KAP' ||
+          rawUpperCode === 'SPRIN_KAP_DAN_BA';
+        const isBaKapTpl =
+          isSprinKapTpl ||
+          canonicalCode === 'BA_KAP' ||
+          rawUpperCode === 'BA_KAP';
+
+        if (isSprinKapTpl && finalIsoDate) {
+          const autoMasaIso = addDaysToIsoDate(finalIsoDate, 1) || finalIsoDate;
+          nextValues.MASA_BERLAKU = autoMasaIso;
+          nextValues.masa_berlaku = autoMasaIso;
+          nextValues.MASA_BERLAKU_KAP = autoMasaIso;
+          nextValues.SPRIN_MASA_BERLAKU = autoMasaIso;
+          nextValues.SPRIN_MASA_BERLAKU_KAP = autoMasaIso;
+          nextValues.TANGGAL_BERLAKU = autoMasaIso;
+        }
+
+        if (isBaKapTpl) {
+          if (isNewTplState || !toIsoDateString(nextValues.TANGGAL_BA_KAP)) {
+            nextValues.TANGGAL_BA_KAP = finalIsoDate;
+          }
+          if (isNewTplState || !nextValues.JAM_BA_KAP_TIME) {
+            nextValues.JAM_BA_KAP_TIME = '09:00';
+          }
+          if (isNewTplState || !toIsoDateString(nextValues.TANGGAL_PENANGKAPAN)) {
+            nextValues.TANGGAL_PENANGKAPAN = finalIsoDate;
+          }
+          if (isNewTplState || !nextValues.JAM_PENANGKAPAN_TIME) {
+            nextValues.JAM_PENANGKAPAN_TIME = '08:00';
+          }
+          if (!nextValues.TEMPAT_KAP || /^(\.{2,}|\u2026+)$/.test(String(nextValues.TEMPAT_KAP).trim())) {
+            nextValues.TEMPAT_KAP = currentCase?.locus || 'Kab. Kolaka Timur';
+          }
+        }
+
         // Reset terkontrol NOMOR_SURAT saat template/perkara berganti,
         // atau perbarui jika arsip sah baru dimuat & input saat ini masih kosong/placeholder.
         if (
@@ -1171,6 +1212,7 @@ export default function MindikGeneratorView({
       }
       if (['TANGGAL_SURAT', 'DOC_DATE', 'TGL_SURAT', 'tanggal_surat', 'doc_date', 'tgl_surat'].includes(key)) {
         const syncedDate = toIsoDateString(value) || value || '';
+        const prevDate = prev.TANGGAL_SURAT;
         next.TANGGAL_SURAT = syncedDate;
         next.tanggal_surat = syncedDate;
         next.DOC_DATE = syncedDate;
@@ -1183,6 +1225,32 @@ export default function MindikGeneratorView({
         delete next.tanggal_naskah;
         delete next.TANGGAL_DOKUMEN;
         delete next.tanggal_dokumen;
+
+        const rawCodeNow = (currentTemplate?.code || currentTemplate?.template_code || '').toUpperCase().trim();
+        const isSprinKapNow =
+          activeCanonicalCode === 'SPRIN_KAP' ||
+          activeCanonicalCode === 'SPRIN_KAP_DAN_BA' ||
+          rawCodeNow === 'SPRIN_KAP' ||
+          rawCodeNow === 'SPRIN_KAP_DAN_BA';
+        const isBaKapNow = isSprinKapNow || activeCanonicalCode === 'BA_KAP' || rawCodeNow === 'BA_KAP';
+
+        if (isSprinKapNow && syncedDate) {
+          const autoMasaIso = addDaysToIsoDate(syncedDate, 1) || syncedDate;
+          next.MASA_BERLAKU = autoMasaIso;
+          next.masa_berlaku = autoMasaIso;
+          next.MASA_BERLAKU_KAP = autoMasaIso;
+          next.SPRIN_MASA_BERLAKU = autoMasaIso;
+          next.SPRIN_MASA_BERLAKU_KAP = autoMasaIso;
+          next.TANGGAL_BERLAKU = autoMasaIso;
+        }
+        if (isBaKapNow && syncedDate) {
+          if (!next.TANGGAL_BA_KAP || next.TANGGAL_BA_KAP === prevDate) {
+            next.TANGGAL_BA_KAP = syncedDate;
+          }
+          if (!next.TANGGAL_PENANGKAPAN || next.TANGGAL_PENANGKAPAN === prevDate) {
+            next.TANGGAL_PENANGKAPAN = syncedDate;
+          }
+        }
       }
       return next;
     });
@@ -2426,6 +2494,31 @@ export default function MindikGeneratorView({
                     {formValues.TANGGAL_SURAT ? formatTanggalIndonesia(formValues.TANGGAL_SURAT) : '-'}
                   </strong>
                 </div>
+                {(() => {
+                  const rawCodeNow = (currentTemplate?.code || currentTemplate?.template_code || '').toUpperCase().trim();
+                  const isSprinKapActive =
+                    activeCanonicalCode === 'SPRIN_KAP' ||
+                    activeCanonicalCode === 'SPRIN_KAP_DAN_BA' ||
+                    rawCodeNow === 'SPRIN_KAP' ||
+                    rawCodeNow === 'SPRIN_KAP_DAN_BA';
+                  if (!isSprinKapActive) return null;
+                  const masaIso = formValues.TANGGAL_SURAT ? addDaysToIsoDate(formValues.TANGGAL_SURAT, 1) : '';
+                  const masaText = masaIso ? formatTanggalIndonesia(masaIso) : '-';
+                  return (
+                    <div style={{
+                      marginTop: '3px',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid rgba(16, 185, 129, 0.35)',
+                      fontSize: '10.5px',
+                      color: '#6EE7B7',
+                      fontWeight: 600
+                    }}>
+                      Masa berlaku 1x24 jam otomatis s.d. <strong style={{ color: '#FFFFFF' }}>{masaText}</strong>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -2638,12 +2731,41 @@ export default function MindikGeneratorView({
 
             {/* Dynamic Fields dari Template Studio (Grid 2 Kolom, variabel rujukan otomatis tetap disembunyikan) */}
             {(() => {
+              const rawCodeNow = (currentTemplate?.code || currentTemplate?.template_code || '').toUpperCase().trim();
+              const isSprinKapActive =
+                activeCanonicalCode === 'SPRIN_KAP' ||
+                activeCanonicalCode === 'SPRIN_KAP_DAN_BA' ||
+                rawCodeNow === 'SPRIN_KAP' ||
+                rawCodeNow === 'SPRIN_KAP_DAN_BA';
+              const isBaKapActive =
+                activeCanonicalCode === 'SPRIN_KAP_DAN_BA' ||
+                activeCanonicalCode === 'BA_KAP' ||
+                rawCodeNow === 'SPRIN_KAP_DAN_BA' ||
+                rawCodeNow === 'BA_KAP';
+
               // Filter keluar seluruh variabel rujukan dokumen pendahulu & arsip yang sudah terinjeksi otomatis di latar belakang
               const isAutoChainedReferenceField = (rawKey) => {
                 const k = String(rawKey || '').toUpperCase().trim();
                 if (!k) return true;
                 // 1. Field Nomor & Tanggal Surat utama yang sudah punya input khusus di atas
                 if (['NOMOR_SURAT', 'NO_SURAT', 'DOC_NO', 'TANGGAL_SURAT', 'DOC_DATE', 'TGL_SURAT', 'NOMOR_SURAT_HEADER', 'TANGGAL_SURAT_HEADER'].includes(k)) {
+                  return true;
+                }
+                // 1b. Sembunyikan MASA_BERLAKU / SPRIN_MASA_BERLAKU_KAP saat SPRIN_KAP / SPRIN_KAP_DAN_BA aktif (dihitung otomatis H+1)
+                if (isSprinKapActive && ['MASA_BERLAKU', 'MASA_BERLAKU_KAP', 'SPRIN_MASA_BERLAKU', 'SPRIN_MASA_BERLAKU_KAP', 'TANGGAL_BERLAKU'].includes(k)) {
+                  return true;
+                }
+                // 1c. Sembunyikan seluruh input terpecah BA KAP dari Field Tambahan umum karena dirakit melalui 2 Sub-Blok khusus di bawah
+                if (isBaKapActive && [
+                  'HARI_KAP', 'TANGGAL_KAP', 'TGL_KAP', 'BULAN_KAP', 'TAHUN_KAP',
+                  'TERBILANG_TAHUN_KAP', 'TERBILANG_TAHUN_BA_KAP', 'TAHUN_KAP_TERBILANG',
+                  'JAM_KAP', 'WAKTU_KAP', 'TEMPAT_KAP',
+                  'TANGGAL_BA_KAP', 'JAM_BA_KAP_TIME', 'TANGGAL_PENANGKAPAN', 'JAM_PENANGKAPAN_TIME'
+                ].includes(k)) {
+                  return true;
+                }
+                // 1d. Sembunyikan seluruh TERBILANG_TAHUN_* dari input manual
+                if (k === 'TERBILANG_TAHUN' || k.startsWith('TERBILANG_TAHUN_') || k.endsWith('_TERBILANG')) {
                   return true;
                 }
                 // 2. Field yang tetap BOLEH diinput operator pada template tertentu (tanggal jadwal panggilan, mulai/akhir penahanan, gelar perkara)
@@ -2664,7 +2786,6 @@ export default function MindikGeneratorView({
                   'TGL_AKHIR_HAN_PN1',
                   'TGL_MULAI_JANG_HAN_PN2',
                   'TGL_AKHIR_HAN_PN2',
-                  'TANGGAL_KAP',
                   'TANGGAL_HAN',
                   'TANGGAL_BA',
                   'TANGGAL_BA_BAWA'
@@ -2728,48 +2849,208 @@ export default function MindikGeneratorView({
               const operatorDynamicFields = (Array.isArray(currentTemplate?.dynamic_fields) ? currentTemplate.dynamic_fields : [])
                 .filter(f => !isAutoChainedReferenceField(f.field_key || f.key));
 
-              if (operatorDynamicFields.length === 0) return null;
+              const effectiveTglBaKap = toIsoDateString(formValues.TANGGAL_BA_KAP) || toIsoDateString(formValues.TANGGAL_SURAT) || '';
+              const effectiveJamBaKap = formValues.JAM_BA_KAP_TIME || '09:00';
+              const effectiveTglPenangkapan = toIsoDateString(formValues.TANGGAL_PENANGKAPAN) || toIsoDateString(formValues.TANGGAL_SURAT) || '';
+              const effectiveJamPenangkapan = formValues.JAM_PENANGKAPAN_TIME || '08:00';
+              const parsedPenangkapanPreview = parseDateParts(effectiveTglPenangkapan);
+              const hariPenangkapanPreview = parsedPenangkapanPreview.hari || '-';
+              const tglPenangkapanPreview = effectiveTglPenangkapan ? formatTanggalIndonesia(effectiveTglPenangkapan) : '-';
+              const jamPenangkapanPreview = formatJamPolri(effectiveJamPenangkapan) || '08.00';
+
+              if (!isBaKapActive && operatorDynamicFields.length === 0) return null;
 
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#CBD5E1', letterSpacing: '0.04em' }}>
-                      FIELD TAMBAHAN FORMAT INI ({operatorDynamicFields.length})
-                    </span>
-                    <span style={{ fontSize: '10.5px', color: '#94A3B8' }}>
-                      Rujukan dokumen pendahulu disuntikkan otomatis
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {operatorDynamicFields.map((f, idx) => {
-                      const key = f.field_key || f.key || `field_${idx}`;
-                      const label = f.label || f.field_label || key;
-                      const isDateField = f.field_type === 'date' || key === 'MASA_BERLAKU';
-                      const inputValue = isDateField ? (toIsoDateString(formValues[key]) || '') : (formValues[key] ?? '');
-
-                      return (
-                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {isBaKapActive && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Sub-Blok 1: Waktu BA Penangkapan & Tempat Penangkapan */}
+                      <div style={{
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: '#161D2A',
+                        border: '1px solid rgba(255, 42, 42, 0.30)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}>
+                        <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                          1. Waktu BA Penangkapan &amp; Tempat Penangkapan
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                              Tanggal BA KAP
+                            </label>
+                            <input
+                              type="date"
+                              value={effectiveTglBaKap ?? ''}
+                              onChange={(e) => handleInputChange('TANGGAL_BA_KAP', e.target.value)}
+                              className="form-input mono"
+                              style={{
+                                width: '100%',
+                                fontSize: '12px',
+                                background: '#0B0E14',
+                                borderColor: 'rgba(148, 163, 184, 0.24)',
+                                color: '#FFFFFF'
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                              Jam BA KAP (WITA)
+                            </label>
+                            <input
+                              type="time"
+                              value={effectiveJamBaKap ?? '09:00'}
+                              onChange={(e) => handleInputChange('JAM_BA_KAP_TIME', e.target.value)}
+                              className="form-input mono"
+                              style={{
+                                width: '100%',
+                                fontSize: '12px',
+                                background: '#0B0E14',
+                                borderColor: 'rgba(148, 163, 184, 0.24)',
+                                color: '#FFFFFF'
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div>
                           <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
-                            {label}
+                            Tempat Penangkapan
                           </label>
                           <input
-                            type={isDateField ? 'date' : 'text'}
-                            value={inputValue ?? ''}
-                            onChange={(e) => handleInputChange(key, e.target.value)}
-                            className={`form-input ${isDateField ? 'mono' : ''}`}
-                            placeholder={f.placeholder || ''}
+                            type="text"
+                            value={formValues.TEMPAT_KAP ?? ''}
+                            onChange={(e) => handleInputChange('TEMPAT_KAP', e.target.value)}
+                            placeholder="Contoh: Desa Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur"
+                            className="form-input"
                             style={{
                               width: '100%',
                               fontSize: '12px',
                               background: '#0B0E14',
-                              borderColor: 'rgba(148, 163, 184, 0.22)',
+                              borderColor: 'rgba(148, 163, 184, 0.24)',
                               color: '#FFFFFF'
                             }}
                           />
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+
+                      {/* Sub-Blok 2: Waktu Penangkapan (Saat Tersangka Ditangkap) */}
+                      <div style={{
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: '#161D2A',
+                        border: '1px solid rgba(255, 42, 42, 0.30)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '10px'
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                            2. Waktu Penangkapan (Saat Tersangka Ditangkap)
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                Tanggal Penangkapan
+                              </label>
+                              <input
+                                type="date"
+                                value={effectiveTglPenangkapan ?? ''}
+                                onChange={(e) => handleInputChange('TANGGAL_PENANGKAPAN', e.target.value)}
+                                className="form-input mono"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '12px',
+                                  background: '#0B0E14',
+                                  borderColor: 'rgba(148, 163, 184, 0.24)',
+                                  color: '#FFFFFF'
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                Jam Penangkapan (WITA)
+                              </label>
+                              <input
+                                type="time"
+                                value={effectiveJamPenangkapan ?? '08:00'}
+                                onChange={(e) => handleInputChange('JAM_PENANGKAPAN_TIME', e.target.value)}
+                                className="form-input mono"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '12px',
+                                  background: '#0B0E14',
+                                  borderColor: 'rgba(148, 163, 184, 0.24)',
+                                  color: '#FFFFFF'
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          background: '#0B0E14',
+                          border: '1px solid rgba(148, 163, 184, 0.18)',
+                          fontSize: '11px',
+                          color: '#94A3B8',
+                          lineHeight: 1.45
+                        }}>
+                          Tercetak di BA:{' '}
+                          <strong style={{ color: '#FFFFFF' }}>
+                            Pada Hari {hariPenangkapanPreview} tanggal {tglPenangkapanPreview}, sekitar Pukul {jamPenangkapanPreview} WITA
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {operatorDynamicFields.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#CBD5E1', letterSpacing: '0.04em' }}>
+                          FIELD TAMBAHAN FORMAT INI ({operatorDynamicFields.length})
+                        </span>
+                        <span style={{ fontSize: '10.5px', color: '#94A3B8' }}>
+                          Rujukan dokumen pendahulu disuntikkan otomatis
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {operatorDynamicFields.map((f, idx) => {
+                          const key = f.field_key || f.key || `field_${idx}`;
+                          const label = f.label || f.field_label || key;
+                          const isDateField = f.field_type === 'date' || key === 'MASA_BERLAKU';
+                          const inputValue = isDateField ? (toIsoDateString(formValues[key]) || '') : (formValues[key] ?? '');
+
+                          return (
+                            <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                {label}
+                              </label>
+                              <input
+                                type={isDateField ? 'date' : 'text'}
+                                value={inputValue ?? ''}
+                                onChange={(e) => handleInputChange(key, e.target.value)}
+                                className={`form-input ${isDateField ? 'mono' : ''}`}
+                                placeholder={f.placeholder || ''}
+                                style={{
+                                  width: '100%',
+                                  fontSize: '12px',
+                                  background: '#0B0E14',
+                                  borderColor: 'rgba(148, 163, 184, 0.22)',
+                                  color: '#FFFFFF'
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}

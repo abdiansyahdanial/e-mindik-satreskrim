@@ -280,14 +280,7 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Sprin - Nomor Surat", type: "text", default: "SP.Kap/......./I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Sprin - Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Sprin - Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "MASA_BERLAKU", label: "Sprin - Masa Berlaku Kap", type: "date", default: "", required: true },
-    { tag: "HARI_KAP", label: "BA - Hari BA KAP", type: "text", default: "…......", required: true },
-    { tag: "TANGGAL_KAP", label: "BA - Tanggal BA KAP", type: "text", default: "…......", required: true },
-    { tag: "BULAN_KAP", label: "BA - Bulan BA KAP", type: "text", default: "…......", required: true },
-    { tag: "TAHUN_KAP", label: "BA - Tahun BA KAP", type: "text", default: "2026", required: true },
-    { tag: "JAM_KAP", label: "BA - Jam BA KAP", type: "text", default: "…......", required: true },
-    { tag: "TEMPAT_KAP", label: "BA - Tempat Penangkapan", type: "text", default: "…......", required: true },
-    { tag: "WAKTU_KAP", label: "BA - Waktu Penangkapan", type: "text", default: "Hari ........ tanggal ........., sekitar Pukul ........ WITA", required: true }
+    { tag: "TEMPAT_KAP", label: "BA - Tempat Penangkapan", type: "text", default: "Kab. Kolaka Timur", required: true }
   ],
   SPGAS_KAP: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "SP.Gas.Kap/......./I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
