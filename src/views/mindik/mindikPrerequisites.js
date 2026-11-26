@@ -98,7 +98,22 @@ export function checkPrerequisite(targetCode, caseItem, activeCaseDocs = [], tar
   }
 
   let infoNotice = '';
-  if (missingRecommended.length > 0) {
+  let infoNoticeType = 'warning';
+  if (canonical === 'SPRIN_HAN_DAN_BA' || canonical === 'SPRIN_HAN' || canonical === 'BA_HAN') {
+    const hasSpKap = isReqSatisfied('SPRIN_KAP_DAN_BA');
+    if (!hasSpKap) {
+      const spglTskDoc = resolveLatestArchiveDoc(safeDocs, ['SPGL_TSK_1', 'SPGL_TSK_2', 'SPGL_TSK', 'SPRIN_BAWA_TSK_DAN_BA'], false);
+      if (spglTskDoc) {
+        const spglNo = getArchiveRowDocNumber(spglTskDoc);
+        const spglDate = spglTskDoc.formatted_date || spglTskDoc.tgl_surat || '';
+        infoNoticeType = 'success';
+        infoNotice = `Dasar formil kehadiran tersangka terpenuhi melalui Surat Panggilan Tersangka Nomor: ${spglNo}${spglDate ? ` (${spglDate})` : ''} (SP.Kap tidak diperlukan apabila tersangka hadir memenuhi panggilan).`;
+      } else {
+        infoNoticeType = 'warning';
+        infoNotice = 'Perhatian Formil KUHAP: SP.Kap belum diterbitkan. Apabila tersangka tidak ditangkap, wajib diterbitkan Surat Panggilan Tersangka terlebih dahulu karena tersangka yang hadir menghadap penyidik harus berdasarkan Surat Perintah Penangkapan atau Surat Panggilan Tersangka.';
+      }
+    }
+  } else if (missingRecommended.length > 0) {
     infoNotice = rule.recommendedNote || `Opsional: ${missingRecommended.map(m => m.label).join(', ')} belum diterbitkan.`;
   }
 
@@ -116,6 +131,7 @@ export function checkPrerequisite(targetCode, caseItem, activeCaseDocs = [], tar
     missingPrerequisites: [],
     recommendedMissing: missingRecommended,
     infoNotice,
+    infoNoticeType,
     badge,
     reason: ''
   };

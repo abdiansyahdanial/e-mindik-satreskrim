@@ -342,15 +342,7 @@ export const MINDIK_PRESETS = {
     { tag: "NOMOR_SURAT", label: "Sprin - Nomor Surat", type: "text", default: "SP.Han/......./I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Sprin - Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Sprin - Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "TEMPAT_HAN", label: "Sprin - Tempat Penahanan", type: "text", default: "rumah tahanan Negara ..... cabang ..... (Satker)", required: true },
-    { tag: "TGL_MULAI_HAN", label: "Sprin - Mulai Ditahan", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TGL_AKHIR_HAN", label: "Sprin - Akhir Ditahan", type: "date", default: "... Januari 2026", required: true },
-    { tag: "HARI_HAN", label: "BA - Hari BA HAN", type: "text", default: "…......", required: true },
-    { tag: "TANGGAL_HAN", label: "BA - Tanggal BA HAN", type: "text", default: "…......", required: true },
-    { tag: "BULAN_HAN", label: "BA - Bulan BA HAN", type: "text", default: "…......", required: true },
-    { tag: "TAHUN_HAN", label: "BA - Tahun BA HAN", type: "text", default: "2026", required: true },
-    { tag: "JAM_HAN", label: "BA - Jam BA HAN", type: "text", default: "…......", required: true },
-    { tag: "WAKTU_HAN", label: "BA - Waktu Penahanan", type: "text", default: "hari ……. tanggal ………., sekitar Pukul ……. WITA", required: true }
+    { tag: "TEMPAT_HAN", label: "Sprin - Tempat Penahanan", type: "text", default: "Rumah Tahanan Negara Polres Kolaka Timur", required: true }
   ],
   MINTA_PANJANG_HAN_40_KN: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "B/PU/      /I/RES.0.0./2026/Satreskrim", required: true },
@@ -358,24 +350,14 @@ export const MINDIK_PRESETS = {
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
     { tag: "TUJUAN_SURAT", label: "Tujuan Surat", type: "text", default: "KEPALA KEJAKSAAN NEGERI KOLAKA", required: true },
     { tag: "ALAMAT_TUJUAN", label: "Alamat Surat", type: "text", default: "Kolaka", required: true },
-    { tag: "TGL_AKHIR_HAN_PENYIDIK", label: "Tgl Akhir Penahanan Penyidik", type: "date", default: "… Januari 2026", required: true },
-    { tag: "TEMPAT_HAN", label: "Tempat Penahanan", type: "text", default: "rumah tahanan Negara ..... cabang ..... (Satker)", required: true },
-    { tag: "TGL_MULAI_JANG_HAN_PU", label: "Mulai Panjang PU", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TGL_AKHIR_HAN_PU", label: "Akhir Panjang PU", type: "date", default: "... Januari 2026", required: true }
+    { tag: "TEMPAT_HAN", label: "Tempat Penahanan", type: "text", default: "Rumah Tahanan Negara Polres Kolaka Timur", required: true }
   ],
   SPRIN_PANJANG_HAN_40_KN_DAN_BA: [
     { tag: "NOMOR_SURAT", label: "Sprin - Nomor Surat", type: "text", default: "SP.Panjang.Han/PU/......./I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
     { tag: "TANGGAL_SURAT", label: "Sprin - Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "PANJANG_HAN_KN", label: "Sprin - Surat Panjang KN", type: "text", default: "B-…./P.3.12/Eoh.1/…./2026, tanggal …. Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Sprin - Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "TEMPAT_HAN", label: "Sprin - Tempat Penahanan", type: "text", default: "rumah tahanan Negara ..... cabang ..... (Satker)", required: true },
-    { tag: "TGL_MULAI_JANG_HAN_PU", label: "Sprin - Mulai Panjang PU", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TGL_AKHIR_HAN_PU", label: "Sprin - Akhir Panjang PU", type: "date", default: "... Januari 2026", required: true },
-    { tag: "HARI_HAN", label: "BA - Hari BA HAN", type: "text", default: "…......", required: true },
-    { tag: "TANGGAL_HAN", label: "BA - Tanggal BA HAN", type: "text", default: "…......", required: true },
-    { tag: "BULAN_HAN", label: "BA - Bulan BA HAN", type: "text", default: "…......", required: true },
-    { tag: "TAHUN_HAN", label: "BA - Tahun BA HAN", type: "text", default: "2026", required: true },
-    { tag: "JAM_HAN", label: "BA - Jam BA HAN", type: "text", default: "…......", required: true }
+    { tag: "TEMPAT_HAN", label: "Sprin - Tempat Penahanan", type: "text", default: "Rumah Tahanan Negara Polres Kolaka Timur", required: true }
   ],
   MINTA_PANJANG_HAN_30_KPN1: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "B/PN.1/      /I/RES.0.0./2026/Satreskrim", required: true },
@@ -383,10 +365,7 @@ export const MINDIK_PRESETS = {
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
     { tag: "TUJUAN_SURAT", label: "Tujuan Surat", type: "text", default: "KETUA PENGADILAN NEGERI KOLAKA", required: true },
     { tag: "ALAMAT_TUJUAN", label: "Alamat Surat", type: "text", default: "Kolaka", required: true },
-    { tag: "TGL_AKHIR_HAN_PU", label: "Tgl Akhir Penahanan PU", type: "date", default: "… Januari 2026", required: true },
-    { tag: "TEMPAT_HAN", label: "Tempat Penahanan", type: "text", default: "rumah tahanan Negara ..... cabang ..... (Satker)", required: true },
-    { tag: "TGL_MULAI_JANG_HAN_PN1", label: "Mulai Panjang PN1", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TGL_AKHIR_HAN_PN1", label: "Akhir Panjang PN1", type: "date", default: "... Januari 2026", required: true }
+    { tag: "TEMPAT_HAN", label: "Tempat Penahanan", type: "text", default: "Rumah Tahanan Negara Polres Kolaka Timur", required: true }
   ],
   SPRIN_PANJANG_HAN_30_KPN1_DAN_BA: [
     { tag: "NOMOR_SURAT", label: "Sprin - Nomor Surat", type: "text", default: "SP.Panjang.Han/PN.1/.../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
@@ -394,14 +373,7 @@ export const MINDIK_PRESETS = {
     { tag: "PANJANG_HAN_KN", label: "Sprin - Surat Panjang KN", type: "text", default: "B-…./P.3.12/Eoh.1/…./2026, tanggal …. Januari 2026", required: true },
     { tag: "TAP_HAN_PN_1", label: "Sprin - Surat Ketetapan PN1", type: "text", default: "…./PenPid.B-HAN/2026/PN Kka, tanggal …. Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Sprin - Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "TEMPAT_HAN", label: "Sprin - Tempat Penahanan", type: "text", default: "rumah tahanan Negara ..... cabang ..... (Satker)", required: true },
-    { tag: "TGL_MULAI_JANG_HAN_PN1", label: "Sprin - Mulai Panjang PN1", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TGL_AKHIR_HAN_PN1", label: "Sprin - Akhir Panjang PN1", type: "date", default: "... Januari 2026", required: true },
-    { tag: "HARI_HAN", label: "BA - Hari BA HAN", type: "text", default: "…......", required: true },
-    { tag: "TANGGAL_HAN", label: "BA - Tanggal BA HAN", type: "text", default: "…......", required: true },
-    { tag: "BULAN_HAN", label: "BA - Bulan BA HAN", type: "text", default: "…......", required: true },
-    { tag: "TAHUN_HAN", label: "BA - Tahun BA HAN", type: "text", default: "2026", required: true },
-    { tag: "JAM_HAN", label: "BA - Jam BA HAN", type: "text", default: "…......", required: true }
+    { tag: "TEMPAT_HAN", label: "Sprin - Tempat Penahanan", type: "text", default: "Rumah Tahanan Negara Polres Kolaka Timur", required: true }
   ],
   MINTA_PANJANG_HAN_30_KPN2: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "B/PN.2/      /I/RES.0.0./2026/Satreskrim", required: true },
@@ -409,10 +381,7 @@ export const MINDIK_PRESETS = {
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
     { tag: "TUJUAN_SURAT", label: "Tujuan Surat", type: "text", default: "KETUA PENGADILAN NEGERI KOLAKA", required: true },
     { tag: "ALAMAT_TUJUAN", label: "Alamat Surat", type: "text", default: "Kolaka", required: true },
-    { tag: "TGL_AKHIR_HAN_PN1", label: "Tgl Akhir Penahanan PN1", type: "date", default: "… Januari 2026", required: true },
-    { tag: "TEMPAT_HAN", label: "Tempat Penahanan", type: "text", default: "rumah tahanan Negara ..... cabang ..... (Satker)", required: true },
-    { tag: "TGL_MULAI_JANG_HAN_PN2", label: "Mulai Panjang PN2", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TGL_AKHIR_HAN_PN2", label: "Akhir Panjang PN2", type: "date", default: "... Januari 2026", required: true }
+    { tag: "TEMPAT_HAN", label: "Tempat Penahanan", type: "text", default: "Rumah Tahanan Negara Polres Kolaka Timur", required: true }
   ],
   SPRIN_PANJANG_HAN_30_KPN2_DAN_BA: [
     { tag: "NOMOR_SURAT", label: "Sprin - Nomor Surat", type: "text", default: "SP.Panjang.Han/PN.2/.../I/RES.0.0/2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },
@@ -421,14 +390,7 @@ export const MINDIK_PRESETS = {
     { tag: "TAP_HAN_PN_1", label: "Sprin - Surat Panjang PN1", type: "text", default: "…./PenPid.B-HAN/2026/PN Kka, tanggal …. Januari 2026", required: true },
     { tag: "TAP_HAN_PN_2", label: "Sprin - Surat Panjang PN2", type: "text", default: "…./PenPid.B-HAN/2026/PN Kka, tanggal …. Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Sprin - Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "TEMPAT_HAN", label: "Sprin - Tempat Penahanan", type: "text", default: "rumah tahanan Negara ..... cabang ..... (Satker)", required: true },
-    { tag: "TGL_MULAI_JANG_HAN_PN2", label: "Sprin - Mulai Panjang PN2", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TGL_AKHIR_HAN_PN2", label: "Sprin - Akhir Panjang PN2", type: "date", default: "... Januari 2026", required: true },
-    { tag: "HARI_HAN", label: "BA - Hari BA HAN", type: "text", default: "…......", required: true },
-    { tag: "TANGGAL_HAN", label: "BA - Tanggal BA HAN", type: "text", default: "…......", required: true },
-    { tag: "BULAN_HAN", label: "BA - Bulan BA HAN", type: "text", default: "…......", required: true },
-    { tag: "TAHUN_HAN", label: "BA - Tahun BA HAN", type: "text", default: "2026", required: true },
-    { tag: "JAM_HAN", label: "BA - Jam BA HAN", type: "text", default: "…......", required: true }
+    { tag: "TEMPAT_HAN", label: "Sprin - Tempat Penahanan", type: "text", default: "Rumah Tahanan Negara Polres Kolaka Timur", required: true }
   ],
   SAMPUL_BERKAS_PERKARA: [
     { tag: "NOMOR_SURAT", label: "Nomor Berkas Perkara", type: "text", default: "BP/..../I/RES.0.0./2026/Satreskrim/Polres Koltim/Polda Sultra", required: true },

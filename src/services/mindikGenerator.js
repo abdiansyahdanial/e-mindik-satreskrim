@@ -1432,7 +1432,11 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
 
     // - Tahap Upaya Paksa & Panggilan
     if (rawCode.includes('PANGGIL') || rawCode.startsWith('SPGL')) {
-      assignDocumentAliases([rawCode, 'PANGGILAN', 'SPGL', 'SURAT_PANGGILAN'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
+      const spglAliases = [rawCode, 'PANGGILAN', 'SPGL', 'SURAT_PANGGILAN'];
+      if (rawCode.includes('TSK') || rawCode.includes('TERSANGKA')) {
+        spglAliases.push('SPGL_TSK', 'SPGL_TSK_1', 'SPGL_TSK_2', 'SURAT_PANGGILAN_TERSANGKA');
+      }
+      assignDocumentAliases(spglAliases, docNo, docDateFormatted, dasarKalimat, rawDocDate);
     }
     if (rawCode === 'SPRIN_KAP_DAN_BA' || (rawCode.includes('KAP') && !rawCode.includes('UNGKAP'))) {
       assignDocumentAliases([rawCode, 'SPRIN_KAP_DAN_BA', 'SP_KAP', 'SPRIN_KAP', 'BA_KAP', 'SURAT_PERINTAH_PENANGKAPAN'], docNo, docDateFormatted, dasarKalimat, rawDocDate);
@@ -2107,34 +2111,305 @@ export function parseDateParts(dateInput) {
 }
 
 /**
- * Kalkulasi otomatis tanggal berakhir masa penahanan (KUHAP: 20 hari).
- * Menambahkan durasiHari - 1 (19 hari) dari tanggal mulai karena hari pertama dihitung mulai.
- * Mengembalikan format ISO YYYY-MM-DD untuk integrasi date picker.
+ * Kalkulasi otomatis tanggal berakhir masa penahanan inklusif (tanggal mulai sudah terhitung sebagai hari ke-1).
+ * Rumus: akhirIso = addDaysToIsoDate(mulaiIso, durasiHari - 1).
+ * Mengembalikan format ISO YYYY-MM-DD tanpa pergeseran zona waktu.
  */
 export function hitungTanggalAkhirPenahanan(tanggalMulaiStr, durasiHari = 20) {
-  if (!tanggalMulaiStr) return '';
-  let y, m, d;
-  const isoMatch = String(tanggalMulaiStr).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (isoMatch) {
-    y = parseInt(isoMatch[1], 10);
-    m = parseInt(isoMatch[2], 10) - 1;
-    d = parseInt(isoMatch[3], 10);
-  } else {
-    const dt = new Date(tanggalMulaiStr);
-    if (isNaN(dt.getTime())) return '';
-    y = dt.getFullYear();
-    m = dt.getMonth();
-    d = dt.getDate();
-  }
-  
-  const startDate = new Date(y, m, d);
-  const daysToAdd = Math.max(1, durasiHari) - 1;
-  startDate.setDate(startDate.getDate() + daysToAdd);
+  const cleanMulaiIso = toIsoDateString(tanggalMulaiStr);
+  if (!cleanMulaiIso) return '';
+  const daysToAdd = Math.max(1, Number(durasiHari) || 20) - 1;
+  return addDaysToIsoDate(cleanMulaiIso, daysToAdd);
+}
 
-  const endYear = startDate.getFullYear();
-  const endMonth = String(startDate.getMonth() + 1).padStart(2, '0');
-  const endDay = String(startDate.getDate()).padStart(2, '0');
-  return `${endYear}-${endMonth}-${endDay}`;
+/**
+ * Klasifikasi tahap penahanan / perpanjangan penahanan berdasarkan kode template & judul.
+ * Mengembalikan { isDetentionDoc, stage, durationDays, lamaText, hasBa, isPnStage }
+ * - stage: 'SP_HAN' (20 hari), 'PU' (40 hari), 'PN1' (30 hari), 'PN2' (30 hari), atau null
+ */
+export function getDetentionStageConfig(rawCode = '', title = '') {
+  const upCode = String(rawCode || '').toUpperCase().trim();
+  const upTitle = String(title || '').toUpperCase().trim();
+  const canon = toCanonicalMindikCode(upCode, upTitle);
+  const combined = `${upCode} ${canon} ${upTitle}`;
+
+  const isPn2 =
+    canon === 'MINTA_PANJANG_HAN_30_KPN2' ||
+    canon === 'SPRIN_PANJANG_HAN_30_KPN2_DAN_BA' ||
+    /\b(PN_?2|KPN_?2|TAHAP_?2_?KPN|30_HARI_2_KPN)\b/.test(combined) ||
+    (combined.includes('HAN') && (combined.includes('PN 2') || combined.includes('PN.2') || combined.includes('PN_2') || combined.includes('KPN2') || combined.includes('KPN 2') || combined.includes('KE-2')));
+
+  if (isPn2) {
+    const hasBa = canon === 'SPRIN_PANJANG_HAN_30_KPN2_DAN_BA' || upCode.includes('DAN_BA') || upCode.startsWith('SPRIN_') || upCode.startsWith('BA_');
+    return {
+      isDetentionDoc: true,
+      stage: 'PN2',
+      durationDays: 30,
+      lamaText: '30 (tiga puluh) hari',
+      hasBa,
+      isPnStage: true
+    };
+  }
+
+  const isPn1 =
+    canon === 'MINTA_PANJANG_HAN_30_KPN1' ||
+    canon === 'SPRIN_PANJANG_HAN_30_KPN1_DAN_BA' ||
+    /\b(PN_?1|KPN_?1|TAHAP_?1_?KPN|30_HARI_1_KPN)\b/.test(combined) ||
+    (combined.includes('HAN') && (combined.includes('PN 1') || combined.includes('PN.1') || combined.includes('PN_1') || combined.includes('KPN1') || combined.includes('KPN 1') || combined.includes('PENGADILAN NEGERI')));
+
+  if (isPn1) {
+    const hasBa = canon === 'SPRIN_PANJANG_HAN_30_KPN1_DAN_BA' || upCode.includes('DAN_BA') || upCode.startsWith('SPRIN_') || upCode.startsWith('BA_');
+    return {
+      isDetentionDoc: true,
+      stage: 'PN1',
+      durationDays: 30,
+      lamaText: '30 (tiga puluh) hari',
+      hasBa,
+      isPnStage: true
+    };
+  }
+
+  const isPu =
+    canon === 'MINTA_PANJANG_HAN_40_KN' ||
+    canon === 'SPRIN_PANJANG_HAN_40_KN_DAN_BA' ||
+    (combined.includes('HAN') && (
+      combined.includes('PANJANG') ||
+      combined.includes('PERPANJANG') ||
+      combined.includes('40') ||
+      combined.includes('_PU') ||
+      combined.includes('_KN') ||
+      combined.includes('KEJARI') ||
+      combined.includes('PENUNTUT UMUM')
+    ));
+
+  if (isPu) {
+    const hasBa = canon === 'SPRIN_PANJANG_HAN_40_KN_DAN_BA' || upCode.includes('DAN_BA') || upCode.startsWith('SPRIN_') || upCode.startsWith('BA_');
+    return {
+      isDetentionDoc: true,
+      stage: 'PU',
+      durationDays: 40,
+      lamaText: '40 (empat puluh) hari',
+      hasBa,
+      isPnStage: false
+    };
+  }
+
+  const isSpHan =
+    canon === 'SPRIN_HAN_DAN_BA' ||
+    upCode === 'SPRIN_HAN' ||
+    upCode === 'SP_HAN' ||
+    upCode === 'BA_HAN' ||
+    upCode === 'SPRIN_HAN_DAN_BA' ||
+    (combined.includes('PENAHANAN') && !combined.includes('PENGANTAR') && !combined.includes('TAHAP'));
+
+  if (isSpHan) {
+    return {
+      isDetentionDoc: true,
+      stage: 'SP_HAN',
+      durationDays: 20,
+      lamaText: '20 (dua puluh) hari',
+      hasBa: true,
+      isPnStage: false
+    };
+  }
+
+  return {
+    isDetentionDoc: false,
+    stage: null,
+    durationDays: 20,
+    lamaText: '20 (dua puluh) hari',
+    hasBa: false,
+    isPnStage: false
+  };
+}
+
+/**
+ * Mencari dokumen arsip terbaru untuk suatu daftar tahap/kode yang cocok dengan tersangka terpilih
+ * (prioritas: cocok ID tersangka -> cocok nama tersangka -> fallback dokumen sah terbaru di arsip).
+ */
+function findLatestSuspectStageDoc(archivedDocs = [], matcherFn, targetSuspect = null) {
+  const safeDocs = (Array.isArray(archivedDocs) ? archivedDocs : [])
+    .filter((doc) => {
+      if (!doc) return false;
+      const rawUp = String(doc.template_code || doc.code || doc.document_type || '').toUpperCase().trim();
+      const titleUp = String(doc.doc_title || doc.title || doc.document_name || '').toUpperCase().trim();
+      const canon = toCanonicalMindikCode(rawUp, titleUp);
+      return matcherFn(canon, rawUp, titleUp, doc);
+    })
+    .map((doc) => {
+      const ext = extractArchivedDocNumberAndDate(doc);
+      return {
+        doc,
+        docNo: ext.docNo,
+        rawDocDate: ext.rawDocDate,
+        formattedDocDate: ext.formattedDocDate,
+        metaObj: ext.metaObj || {},
+        target: extractDocTargetSuspectInfo(ext.metaObj || {})
+      };
+    })
+    .filter((entry) => isValidOfficialDocNumber(entry.docNo) || Object.keys(entry.metaObj).length > 0)
+    .sort((a, b) => new Date(a.doc?.created_at || 0).getTime() - new Date(b.doc?.created_at || 0).getTime());
+
+  if (safeDocs.length === 0) return null;
+
+  const sId = targetSuspect?.id ? String(targetSuspect.id).trim() : '';
+  const sName = String(targetSuspect?.nama || targetSuspect?.nama_lengkap || '').trim().toLowerCase();
+
+  if (sId) {
+    for (let i = safeDocs.length - 1; i >= 0; i--) {
+      if (safeDocs[i].target.ids.includes(sId)) return safeDocs[i];
+    }
+  }
+  if (sName) {
+    for (let i = safeDocs.length - 1; i >= 0; i--) {
+      if (safeDocs[i].target.names.includes(sName)) return safeDocs[i];
+    }
+  }
+  // Fallback ke dokumen sah terbaru tanpa target spesifik atau dokumen terakhir
+  for (let i = safeDocs.length - 1; i >= 0; i--) {
+    if (safeDocs[i].target.ids.length === 0 && safeDocs[i].target.names.length === 0) {
+      return safeDocs[i];
+    }
+  }
+  return safeDocs[safeDocs.length - 1];
+}
+
+/**
+ * Resolusi otomatis tanggal mulai & akhir penahanan inklusif berantai (SP.Han 20 hari -> PU 40 hari -> PN1 30 hari -> PN2 30 hari)
+ * untuk tersangka terpilih berdasarkan arsip perkara.
+ *
+ * Rumus Inklusif (tanggal mulai dihitung hari ke-1):
+ * - Akhir tahap = addDaysToIsoDate(mulaiIso, durasiHari - 1)
+ * - Mulai tahap berikutnya = addDaysToIsoDate(akhirTahapSebelumnya, 1)
+ */
+export function resolveChainedDetentionDates({
+  templateCode = '',
+  templateTitle = '',
+  tanggalSuratIso = '',
+  archivedDocs = [],
+  targetSuspect = null,
+  explicitStartIso = '',
+  explicitEndIso = ''
+} = {}) {
+  const stageCfg = getDetentionStageConfig(templateCode, templateTitle);
+  const fallbackBaseIso = toIsoDateString(tanggalSuratIso) || new Date().toISOString().split('T')[0];
+
+  const extractStageBounds = (entry, stageDuration, startKeys = [], endKeys = []) => {
+    if (!entry) return { startIso: '', endIso: '' };
+    const mv = entry.metaObj || {};
+    let sIso = '';
+    for (const k of [...startKeys, 'MULAI_DITAHAN_ISO', 'MULAI_DITAHAN', 'TANGGAL_MULAI_DITAHAN', 'TGL_MULAI_HAN', 'TANGGAL_MULAI_HAN']) {
+      const cand = toIsoDateString(mv[k] || mv[k.toLowerCase()]);
+      if (cand) {
+        sIso = cand;
+        break;
+      }
+    }
+    if (!sIso) {
+      sIso = toIsoDateString(entry.rawDocDate);
+    }
+
+    let eIso = '';
+    for (const k of [...endKeys, 'AKHIR_DITAHAN_ISO', 'AKHIR_DITAHAN', 'TANGGAL_AKHIR_DITAHAN', 'TGL_AKHIR_HAN', 'TANGGAL_AKHIR_HAN']) {
+      const cand = toIsoDateString(mv[k] || mv[k.toLowerCase()]);
+      if (cand) {
+        eIso = cand;
+        break;
+      }
+    }
+    if (!eIso && sIso) {
+      eIso = addDaysToIsoDate(sIso, stageDuration - 1);
+    }
+    return { startIso: sIso, endIso: eIso };
+  };
+
+  // 1. Cari arsip Tahap 1: SP.Han (20 hari)
+  const spHanEntry = findLatestSuspectStageDoc(
+    archivedDocs,
+    (canon, rawUp) => canon === 'SPRIN_HAN_DAN_BA' || rawUp === 'SPRIN_HAN' || rawUp === 'SP_HAN' || rawUp === 'BA_HAN',
+    targetSuspect
+  );
+  const spHanBounds = extractStageBounds(
+    spHanEntry,
+    20,
+    ['TGL_MULAI_HAN', 'TANGGAL_MULAI_HAN', 'MULAI_DITAHAN'],
+    ['TGL_AKHIR_HAN', 'TANGGAL_AKHIR_HAN', 'TGL_AKHIR_HAN_PENYIDIK', 'AKHIR_DITAHAN']
+  );
+  if (!spHanBounds.startIso && targetSuspect?.tgl_sprin_han) {
+    const sCand = toIsoDateString(targetSuspect.tgl_sprin_han);
+    if (sCand) {
+      spHanBounds.startIso = sCand;
+      spHanBounds.endIso = addDaysToIsoDate(sCand, 19);
+    }
+  }
+
+  // 2. Cari arsip Tahap 2: Perpanjangan PU / Kejari (40 hari)
+  const puEntry = findLatestSuspectStageDoc(
+    archivedDocs,
+    (canon, rawUp, titleUp) => getDetentionStageConfig(rawUp || canon, titleUp).stage === 'PU',
+    targetSuspect
+  );
+  const puBounds = extractStageBounds(
+    puEntry,
+    40,
+    ['TGL_MULAI_JANG_HAN_PU', 'TANGGAL_MULAI_JANG_HAN_PU', 'MULAI_PERPANJANGAN', 'MULAI_DITAHAN'],
+    ['TGL_AKHIR_HAN_PU', 'TANGGAL_AKHIR_HAN_PU', 'AKHIR_PERPANJANGAN', 'AKHIR_DITAHAN']
+  );
+  // Jika arsip PU belum memiliki tanggal akhir namun SP.Han ada, turunkan berantai
+  if (!puBounds.startIso && spHanBounds.endIso) {
+    puBounds.startIso = addDaysToIsoDate(spHanBounds.endIso, 1);
+    puBounds.endIso = addDaysToIsoDate(puBounds.startIso, 39);
+  }
+
+  // 3. Cari arsip Tahap 3: Perpanjangan PN 1 (30 hari)
+  const pn1Entry = findLatestSuspectStageDoc(
+    archivedDocs,
+    (canon, rawUp, titleUp) => getDetentionStageConfig(rawUp || canon, titleUp).stage === 'PN1',
+    targetSuspect
+  );
+  const pn1Bounds = extractStageBounds(
+    pn1Entry,
+    30,
+    ['TGL_MULAI_JANG_HAN_PN1', 'TANGGAL_MULAI_JANG_HAN_PN1', 'MULAI_PERPANJANGAN', 'MULAI_DITAHAN'],
+    ['TGL_AKHIR_HAN_PN1', 'TANGGAL_AKHIR_HAN_PN1', 'AKHIR_PERPANJANGAN', 'AKHIR_DITAHAN']
+  );
+  if (!pn1Bounds.startIso && puBounds.endIso) {
+    pn1Bounds.startIso = addDaysToIsoDate(puBounds.endIso, 1);
+    pn1Bounds.endIso = addDaysToIsoDate(pn1Bounds.startIso, 29);
+  }
+
+  // Hitung default mulai & akhir untuk tahap aktif
+  let defaultStartIso = fallbackBaseIso;
+  if (stageCfg.stage === 'SP_HAN') {
+    defaultStartIso = fallbackBaseIso;
+  } else if (stageCfg.stage === 'PU') {
+    defaultStartIso = spHanBounds.endIso ? addDaysToIsoDate(spHanBounds.endIso, 1) : fallbackBaseIso;
+  } else if (stageCfg.stage === 'PN1') {
+    defaultStartIso = puBounds.endIso ? addDaysToIsoDate(puBounds.endIso, 1) : fallbackBaseIso;
+  } else if (stageCfg.stage === 'PN2') {
+    defaultStartIso = pn1Bounds.endIso ? addDaysToIsoDate(pn1Bounds.endIso, 1) : fallbackBaseIso;
+  }
+
+  const cleanExplicitStart = toIsoDateString(explicitStartIso);
+  const cleanExplicitEnd = toIsoDateString(explicitEndIso);
+
+  const mulaiIso = cleanExplicitStart || defaultStartIso;
+  const akhirIso = cleanExplicitEnd || (mulaiIso ? addDaysToIsoDate(mulaiIso, stageCfg.durationDays - 1) : '');
+
+  return {
+    ...stageCfg,
+    mulaiIso,
+    akhirIso,
+    defaultStartIso,
+    defaultEndIso: defaultStartIso ? addDaysToIsoDate(defaultStartIso, stageCfg.durationDays - 1) : '',
+    akhirHanPenyidikIso: stageCfg.stage === 'SP_HAN' ? akhirIso : (spHanBounds.endIso || ''),
+    mulaiHanPuIso: stageCfg.stage === 'PU' ? mulaiIso : (puBounds.startIso || ''),
+    akhirHanPuIso: stageCfg.stage === 'PU' ? akhirIso : (puBounds.endIso || ''),
+    mulaiHanPn1Iso: stageCfg.stage === 'PN1' ? mulaiIso : (pn1Bounds.startIso || ''),
+    akhirHanPn1Iso: stageCfg.stage === 'PN1' ? akhirIso : (pn1Bounds.endIso || ''),
+    mulaiHanPn2Iso: stageCfg.stage === 'PN2' ? mulaiIso : '',
+    akhirHanPn2Iso: stageCfg.stage === 'PN2' ? akhirIso : ''
+  };
 }
 
 /**
@@ -2827,24 +3102,282 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
         ? `Hari ${hariPenangkapan} tanggal ${tglPenangkapanFormatted}, sekitar Pukul ${jamPenangkapanFormatted} WITA`
         : '');
 
-  // C.2. DATA KHUSUS SPRIN & BA PENAHANAN (SPRIN_HAN / BA_HAN / SPRIN_HAN_DAN_BA)
-  const isHanTemplate = tplCode.includes('HAN');
-  const rawTglMulaiHan = cleanInput.TANGGAL_MULAI_HAN || cleanInput.tanggal_mulai_han || cleanInput.TGL_MULAI_HAN || cleanInput.tgl_mulai_han || activeSuspect?.tgl_sprin_han || (isHanTemplate ? rawTanggalSurat : '');
-  const rawTglAkhirHan = cleanInput.TANGGAL_AKHIR_HAN || cleanInput.tanggal_akhir_han || cleanInput.TGL_AKHIR_HAN || cleanInput.tgl_akhir_han || (rawTglMulaiHan ? hitungTanggalAkhirPenahanan(rawTglMulaiHan, 20) : '');
+  // C.2. DATA KHUSUS SPRIN & BA PENAHANAN + PERPANJANGAN PENAHANAN BERANTAI INKLUSIF
+  // (SP.Han 20 Hari -> Perpanjangan PU 40 Hari -> Perpanjangan PN 1 30 Hari -> Perpanjangan PN 2 30 Hari)
+  const detentionStageCfg = getDetentionStageConfig(tplCode || canonicalTplCode, tplName);
+  const isHanTemplate = detentionStageCfg.isDetentionDoc || tplCode.includes('HAN') || canonicalTplCode.includes('HAN');
+  const targetSuspectForDetention =
+    (Array.isArray(selectedSubjectsArg) && selectedSubjectsArg[0]) ||
+    (Array.isArray(cleanInput.__SELECTED_SUBJECTS__) && cleanInput.__SELECTED_SUBJECTS__[0]) ||
+    activeSuspect ||
+    (Array.isArray(suspectsList) && suspectsList[0]) ||
+    null;
+
+  const pickStageStartCandidate = () => {
+    if (detentionStageCfg.stage === 'PU') {
+      return pickNonEmpty(
+        cleanInput.MULAI_DITAHAN,
+        cleanInput.mulai_ditahan,
+        cleanInput.TANGGAL_MULAI_DITAHAN,
+        cleanInput.tanggal_mulai_ditahan,
+        cleanInput.TGL_MULAI_JANG_HAN_PU,
+        cleanInput.tgl_mulai_jang_han_pu,
+        cleanInput.TANGGAL_MULAI_JANG_HAN_PU,
+        cleanInput.MULAI_PERPANJANGAN,
+        cleanInput.mulai_perpanjangan,
+        cleanInput.TANGGAL_MULAI_HAN,
+        cleanInput.TGL_MULAI_HAN
+      );
+    }
+    if (detentionStageCfg.stage === 'PN1') {
+      return pickNonEmpty(
+        cleanInput.MULAI_DITAHAN,
+        cleanInput.mulai_ditahan,
+        cleanInput.TANGGAL_MULAI_DITAHAN,
+        cleanInput.tanggal_mulai_ditahan,
+        cleanInput.TGL_MULAI_JANG_HAN_PN1,
+        cleanInput.tgl_mulai_jang_han_pn1,
+        cleanInput.TANGGAL_MULAI_JANG_HAN_PN1,
+        cleanInput.MULAI_PERPANJANGAN,
+        cleanInput.mulai_perpanjangan,
+        cleanInput.TANGGAL_MULAI_HAN,
+        cleanInput.TGL_MULAI_HAN
+      );
+    }
+    if (detentionStageCfg.stage === 'PN2') {
+      return pickNonEmpty(
+        cleanInput.MULAI_DITAHAN,
+        cleanInput.mulai_ditahan,
+        cleanInput.TANGGAL_MULAI_DITAHAN,
+        cleanInput.tanggal_mulai_ditahan,
+        cleanInput.TGL_MULAI_JANG_HAN_PN2,
+        cleanInput.tgl_mulai_jang_han_pn2,
+        cleanInput.TANGGAL_MULAI_JANG_HAN_PN2,
+        cleanInput.MULAI_PERPANJANGAN,
+        cleanInput.mulai_perpanjangan,
+        cleanInput.TANGGAL_MULAI_HAN,
+        cleanInput.TGL_MULAI_HAN
+      );
+    }
+    return pickNonEmpty(
+      cleanInput.MULAI_DITAHAN,
+      cleanInput.mulai_ditahan,
+      cleanInput.TANGGAL_MULAI_DITAHAN,
+      cleanInput.tanggal_mulai_ditahan,
+      cleanInput.TANGGAL_MULAI_HAN,
+      cleanInput.tanggal_mulai_han,
+      cleanInput.TGL_MULAI_HAN,
+      cleanInput.tgl_mulai_han,
+      cleanInput.SPRIN_MULAI_DITAHAN
+    );
+  };
+
+  const pickStageEndCandidate = () => {
+    if (detentionStageCfg.stage === 'PU') {
+      return pickNonEmpty(
+        cleanInput.AKHIR_DITAHAN,
+        cleanInput.akhir_ditahan,
+        cleanInput.TANGGAL_AKHIR_DITAHAN,
+        cleanInput.tanggal_akhir_ditahan,
+        cleanInput.TGL_AKHIR_HAN_PU,
+        cleanInput.tgl_akhir_han_pu,
+        cleanInput.TANGGAL_AKHIR_HAN_PU,
+        cleanInput.AKHIR_PERPANJANGAN,
+        cleanInput.akhir_perpanjangan,
+        cleanInput.TANGGAL_AKHIR_HAN,
+        cleanInput.TGL_AKHIR_HAN
+      );
+    }
+    if (detentionStageCfg.stage === 'PN1') {
+      return pickNonEmpty(
+        cleanInput.AKHIR_DITAHAN,
+        cleanInput.akhir_ditahan,
+        cleanInput.TANGGAL_AKHIR_DITAHAN,
+        cleanInput.tanggal_akhir_ditahan,
+        cleanInput.TGL_AKHIR_HAN_PN1,
+        cleanInput.tgl_akhir_han_pn1,
+        cleanInput.TANGGAL_AKHIR_HAN_PN1,
+        cleanInput.AKHIR_PERPANJANGAN,
+        cleanInput.akhir_perpanjangan,
+        cleanInput.TANGGAL_AKHIR_HAN,
+        cleanInput.TGL_AKHIR_HAN
+      );
+    }
+    if (detentionStageCfg.stage === 'PN2') {
+      return pickNonEmpty(
+        cleanInput.AKHIR_DITAHAN,
+        cleanInput.akhir_ditahan,
+        cleanInput.TANGGAL_AKHIR_DITAHAN,
+        cleanInput.tanggal_akhir_ditahan,
+        cleanInput.TGL_AKHIR_HAN_PN2,
+        cleanInput.tgl_akhir_han_pn2,
+        cleanInput.TANGGAL_AKHIR_HAN_PN2,
+        cleanInput.AKHIR_PERPANJANGAN,
+        cleanInput.akhir_perpanjangan,
+        cleanInput.TANGGAL_AKHIR_HAN,
+        cleanInput.TGL_AKHIR_HAN
+      );
+    }
+    return pickNonEmpty(
+      cleanInput.AKHIR_DITAHAN,
+      cleanInput.akhir_ditahan,
+      cleanInput.TANGGAL_AKHIR_DITAHAN,
+      cleanInput.tanggal_akhir_ditahan,
+      cleanInput.TANGGAL_AKHIR_HAN,
+      cleanInput.tanggal_akhir_han,
+      cleanInput.TGL_AKHIR_HAN,
+      cleanInput.tgl_akhir_han,
+      cleanInput.SPRIN_AKHIR_DITAHAN
+    );
+  };
+
+  const explicitStartCandidate = pickStageStartCandidate();
+  const explicitEndCandidate = pickStageEndCandidate();
+
+  const resolvedDetention = resolveChainedDetentionDates({
+    templateCode: tplCode || canonicalTplCode,
+    templateTitle: tplName,
+    tanggalSuratIso: activeRawDate,
+    archivedDocs,
+    targetSuspect: targetSuspectForDetention,
+    explicitStartIso: !isPlaceholderVal(explicitStartCandidate) ? explicitStartCandidate : '',
+    explicitEndIso: !isPlaceholderVal(explicitEndCandidate) ? explicitEndCandidate : ''
+  });
+
+  const rawTglMulaiHan = resolvedDetention.mulaiIso || (isHanTemplate ? activeRawDate : '');
+  const rawTglAkhirHan = resolvedDetention.akhirIso || (rawTglMulaiHan ? hitungTanggalAkhirPenahanan(rawTglMulaiHan, resolvedDetention.durationDays || 20) : '');
   const tglMulaiHanFormatted = rawTglMulaiHan ? formatTanggalIndonesia(rawTglMulaiHan) : '';
   const tglAkhirHanFormatted = rawTglAkhirHan ? formatTanggalIndonesia(rawTglAkhirHan) : '';
-  const tempatHan = cleanInput.TEMPAT_HAN || cleanInput.tempat_han || cleanInput.TEMPAT_RUTAN_HAN || cleanInput.tempat_rutan_han || (isHanTemplate ? 'Rumah Tahanan Negara (Rutan) Polres Kolaka Timur' : '');
+  const lamaPenahananText = pickNonEmpty(cleanInput.LAMA_PENAHANAN, cleanInput.lama_penahanan, cleanInput.MASA_PENAHANAN, cleanInput.masa_penahanan) || resolvedDetention.lamaText || '20 (dua puluh) hari';
 
-  const rawTglHan = cleanInput.TANGGAL_HAN || cleanInput.tanggal_han || cleanInput.TGL_HAN || cleanInput.tgl_han || rawTglMulaiHan || (isHanTemplate ? rawTanggalSurat : '');
+  // Tanggal rujukan lintas-tahap penahanan (Penyidik -> PU -> PN 1 -> PN 2)
+  const tglAkhirHanPenyidikFormatted = formatTanggalIndonesia(
+    (!isPlaceholderVal(cleanInput.TGL_AKHIR_HAN_PENYIDIK) ? cleanInput.TGL_AKHIR_HAN_PENYIDIK : '') ||
+    resolvedDetention.akhirHanPenyidikIso ||
+    (detentionStageCfg.stage === 'SP_HAN' ? rawTglAkhirHan : '')
+  );
+  const tglMulaiJangHanPuFormatted = formatTanggalIndonesia(
+    (!isPlaceholderVal(cleanInput.TGL_MULAI_JANG_HAN_PU) ? cleanInput.TGL_MULAI_JANG_HAN_PU : '') ||
+    resolvedDetention.mulaiHanPuIso ||
+    (detentionStageCfg.stage === 'PU' ? rawTglMulaiHan : '')
+  );
+  const tglAkhirHanPuFormatted = formatTanggalIndonesia(
+    (!isPlaceholderVal(cleanInput.TGL_AKHIR_HAN_PU) ? cleanInput.TGL_AKHIR_HAN_PU : '') ||
+    resolvedDetention.akhirHanPuIso ||
+    (detentionStageCfg.stage === 'PU' ? rawTglAkhirHan : '')
+  );
+  const tglMulaiJangHanPn1Formatted = formatTanggalIndonesia(
+    (!isPlaceholderVal(cleanInput.TGL_MULAI_JANG_HAN_PN1) ? cleanInput.TGL_MULAI_JANG_HAN_PN1 : '') ||
+    resolvedDetention.mulaiHanPn1Iso ||
+    (detentionStageCfg.stage === 'PN1' ? rawTglMulaiHan : '')
+  );
+  const tglAkhirHanPn1Formatted = formatTanggalIndonesia(
+    (!isPlaceholderVal(cleanInput.TGL_AKHIR_HAN_PN1) ? cleanInput.TGL_AKHIR_HAN_PN1 : '') ||
+    resolvedDetention.akhirHanPn1Iso ||
+    (detentionStageCfg.stage === 'PN1' ? rawTglAkhirHan : '')
+  );
+  const tglMulaiJangHanPn2Formatted = formatTanggalIndonesia(
+    (!isPlaceholderVal(cleanInput.TGL_MULAI_JANG_HAN_PN2) ? cleanInput.TGL_MULAI_JANG_HAN_PN2 : '') ||
+    resolvedDetention.mulaiHanPn2Iso ||
+    (detentionStageCfg.stage === 'PN2' ? rawTglMulaiHan : '')
+  );
+  const tglAkhirHanPn2Formatted = formatTanggalIndonesia(
+    (!isPlaceholderVal(cleanInput.TGL_AKHIR_HAN_PN2) ? cleanInput.TGL_AKHIR_HAN_PN2 : '') ||
+    resolvedDetention.akhirHanPn2Iso ||
+    (detentionStageCfg.stage === 'PN2' ? rawTglAkhirHan : '')
+  );
+
+  // Rujukan Surat Panggilan Tersangka (jika tersangka hadir menghadap penyidik lewat panggilan, bukan SP.Kap)
+  const spglTskArchiveEntry = findLatestSuspectStageDoc(
+    archivedDocs,
+    (canon, rawUp) => canon === 'SPGL_TSK_1' || canon === 'SPGL_TSK_2' || rawUp.startsWith('SPGL_TSK'),
+    targetSuspectForDetention
+  );
+  const noSpglTsk = pickNonEmpty(cleanInput.NO_SPGL_TSK, cleanInput.no_spgl_tsk, cleanInput.NOMOR_SPGL_TSK, spglTskArchiveEntry?.docNo);
+  const rawTglSpglTsk = pickNonEmpty(cleanInput.TGL_SPGL_TSK, cleanInput.tgl_spgl_tsk, cleanInput.TANGGAL_SPGL_TSK, spglTskArchiveEntry?.rawDocDate);
+  const tglSpglTsk = formatTanggalIndonesia(rawTglSpglTsk);
+
+  const isPlaceholderTempatHan = (v) => !v || /^(\.{2,}|\u2026+|-|\s*)$/.test(String(v).trim()) || /rumah tahanan Negara \.{2,}/i.test(String(v));
+  const rawTempatHanCandidate = pickNonEmpty(
+    !isPlaceholderTempatHan(cleanInput.TEMPAT_PENAHANAN) ? cleanInput.TEMPAT_PENAHANAN : '',
+    !isPlaceholderTempatHan(cleanInput.tempat_penahanan) ? cleanInput.tempat_penahanan : '',
+    !isPlaceholderTempatHan(cleanInput.TEMPAT_HAN) ? cleanInput.TEMPAT_HAN : '',
+    !isPlaceholderTempatHan(cleanInput.tempat_han) ? cleanInput.tempat_han : '',
+    !isPlaceholderTempatHan(cleanInput.TEMPAT_RUTAN_HAN) ? cleanInput.TEMPAT_RUTAN_HAN : '',
+    !isPlaceholderTempatHan(cleanInput.tempat_rutan_han) ? cleanInput.tempat_rutan_han : ''
+  );
+  const tempatHan = rawTempatHanCandidate || 'Rumah Tahanan Negara Polres Kolaka Timur';
+
+  // Blok B: Waktu BA Penahanan (HARI_BA_HAN / HARI_HAN, TANGGAL_BA_HAN / TANGGAL_HAN, BULAN_BA_HAN / BULAN_HAN, TAHUN_BA_HAN / TAHUN_HAN, TERBILANG_TAHUN_BA_HAN / TERBILANG_TAHUN_HAN, JAM_BA_HAN / JAM_HAN)
+  const rawTglBaHanInput = pickNonEmpty(
+    cleanInput.TANGGAL_BA_HAN_DATE,
+    cleanInput.tanggal_ba_han_date,
+    !isPlaceholderVal(cleanInput.TANGGAL_BA_HAN) && toIsoDateString(cleanInput.TANGGAL_BA_HAN) ? cleanInput.TANGGAL_BA_HAN : '',
+    !isPlaceholderVal(cleanInput.TANGGAL_HAN) && toIsoDateString(cleanInput.TANGGAL_HAN) ? cleanInput.TANGGAL_HAN : '',
+    !isPlaceholderVal(cleanInput.tanggal_han) && toIsoDateString(cleanInput.tanggal_han) ? cleanInput.tanggal_han : '',
+    !isPlaceholderVal(cleanInput.TGL_HAN) && toIsoDateString(cleanInput.TGL_HAN) ? cleanInput.TGL_HAN : ''
+  );
+  const rawTglHan = rawTglBaHanInput || activeRawDate || rawTglMulaiHan || '';
   const parsedHan = parseDateParts(rawTglHan);
-  const hariHan = parsedHan.hari || '';
-  const tglHan = parsedHan.tanggal || '';
-  const bulanHan = parsedHan.bulan || '';
-  const tahunHan = parsedHan.tahun || '';
-  const terbilangTahunHan = parsedHan.terbilangTahun || '';
+  const hariHan = (!isPlaceholderVal(cleanInput.HARI_BA_HAN) && !rawTglBaHanInput && parsedHan.hari === '')
+    ? String(cleanInput.HARI_BA_HAN).trim()
+    : ((!isPlaceholderVal(cleanInput.HARI_HAN) && !rawTglBaHanInput && parsedHan.hari === '')
+        ? String(cleanInput.HARI_HAN).trim()
+        : (parsedHan.hari || parsedActiveDate.hari || ''));
+  const tglHan = (!isPlaceholderVal(cleanInput.TANGGAL_BA_HAN) && /^\d{1,2}$/.test(String(cleanInput.TANGGAL_BA_HAN).trim()) && !rawTglBaHanInput)
+    ? String(parseInt(cleanInput.TANGGAL_BA_HAN, 10))
+    : ((!isPlaceholderVal(cleanInput.TANGGAL_HAN) && /^\d{1,2}$/.test(String(cleanInput.TANGGAL_HAN).trim()) && !rawTglBaHanInput)
+        ? String(parseInt(cleanInput.TANGGAL_HAN, 10))
+        : (parsedHan.tanggal || parsedActiveDate.tanggal || ''));
+  const bulanHan = (!isPlaceholderVal(cleanInput.BULAN_BA_HAN) && !rawTglBaHanInput && parsedHan.bulan === '')
+    ? String(cleanInput.BULAN_BA_HAN).trim()
+    : ((!isPlaceholderVal(cleanInput.BULAN_HAN) && !rawTglBaHanInput && parsedHan.bulan === '')
+        ? String(cleanInput.BULAN_HAN).trim()
+        : (parsedHan.bulan || parsedActiveDate.bulan || ''));
+  const tahunHan = parsedHan.tahun
+    || (!isPlaceholderVal(cleanInput.TAHUN_BA_HAN) ? String(cleanInput.TAHUN_BA_HAN).trim() : '')
+    || (!isPlaceholderVal(cleanInput.TAHUN_HAN) ? String(cleanInput.TAHUN_HAN).trim() : '')
+    || parsedActiveDate.tahun
+    || String(new Date().getFullYear());
+  const terbilangTahunHan = tahunKeTerbilang(Number(tahunHan)) || parsedHan.terbilangTahun || parsedActiveDate.terbilangTahun || '';
   const tglLengkapHan = parsedHan.tanggalLengkap || (rawTglHan ? formatTanggalIndonesia(rawTglHan) : '');
-  const rawJamHan = cleanInput.JAM_HAN || cleanInput.jam_han || cleanInput.WAKTU_HAN || cleanInput.waktu_han || (isHanTemplate ? '10.00 WITA' : '');
-  const jamHan = formatWaktuJam(rawJamHan);
+  const rawJamBaHanInput = pickNonEmpty(
+    cleanInput.JAM_BA_HAN_TIME,
+    cleanInput.jam_ba_han_time,
+    !isPlaceholderVal(cleanInput.JAM_BA_HAN) ? cleanInput.JAM_BA_HAN : '',
+    !isPlaceholderVal(cleanInput.JAM_HAN) ? cleanInput.JAM_HAN : '',
+    !isPlaceholderVal(cleanInput.jam_han) ? cleanInput.jam_han : ''
+  ) || (isHanTemplate ? '09:00' : '');
+  const jamHan = formatJamPolri(rawJamBaHanInput) || (isHanTemplate ? '09.00' : '');
+
+  // Blok C: Waktu Pelaksanaan Penahanan -> {WAKTU_HAN} / {WAKTU_PENAHANAN}
+  const rawTglPelaksanaanHan = pickNonEmpty(
+    cleanInput.TANGGAL_PELAKSANAAN_HAN,
+    cleanInput.tanggal_pelaksanaan_han
+  ) || rawTglMulaiHan || activeRawDate;
+  const parsedPelaksanaanHan = parseDateParts(rawTglPelaksanaanHan);
+  const hariPelaksanaanHan = parsedPelaksanaanHan.hari || hariHan || parsedActiveDate.hari || '';
+  const tglPelaksanaanHanFormatted = formatTanggalIndonesia(rawTglPelaksanaanHan) || parsedPelaksanaanHan.tanggalLengkap || tglMulaiHanFormatted || tanggalSurat || '';
+  const rawJamPelaksanaanHan = pickNonEmpty(
+    cleanInput.JAM_PELAKSANAAN_HAN_TIME,
+    cleanInput.jam_pelaksanaan_han_time,
+    cleanInput.JAM_PENAHANAN_TIME,
+    cleanInput.jam_penahanan_time
+  ) || '08:30';
+  const jamPelaksanaanHanFormatted = formatJamPolri(rawJamPelaksanaanHan) || '08.30';
+  const hasExplicitPelaksanaanHanInputs = Boolean(
+    cleanInput.TANGGAL_PELAKSANAAN_HAN ||
+    cleanInput.tanggal_pelaksanaan_han ||
+    cleanInput.JAM_PELAKSANAAN_HAN_TIME ||
+    cleanInput.jam_pelaksanaan_han_time
+  );
+  const customWaktuHanRaw = pickNonEmpty(cleanInput.WAKTU_HAN, cleanInput.waktu_han, cleanInput.WAKTU_PENAHANAN, cleanInput.waktu_penahanan);
+  const isDefaultPlaceholderWaktuHan = !customWaktuHanRaw || /\.{2,}|\u2026+/.test(customWaktuHanRaw);
+  const waktuHan = (!hasExplicitPelaksanaanHanInputs && customWaktuHanRaw && !isDefaultPlaceholderWaktuHan)
+    ? customWaktuHanRaw
+    : (hariPelaksanaanHan && tglPelaksanaanHanFormatted
+        ? `Hari ${hariPelaksanaanHan} tanggal ${tglPelaksanaanHanFormatted}, sekitar Pukul ${jamPelaksanaanHanFormatted} WITA`
+        : '');
 
   // D. UNSUR YURIDIS & PERKARA
   const dasarPasalUu = cleanInput.DASAR_PASAL_UU || cleanInput.dasar_pasal_uu || activeCase?.dasar_pasal_uu || activeCase?.pasal_uu || '';
@@ -3088,31 +3621,97 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     TANGGAL_LENGKAP_KAP: tglLengkapKap,
     tanggal_lengkap_kap: tglLengkapKap,
 
-    // C.2. TAG SPRIN PENAHANAN (SPRIN_HAN & SPRIN_HAN_DAN_BA)
+    // C.2. TAG SPRIN PENAHANAN & PERPANJANGAN PENAHANAN INKLUSIF BERANTAI
+    MULAI_DITAHAN: tglMulaiHanFormatted,
+    mulai_ditahan: tglMulaiHanFormatted,
+    TANGGAL_MULAI_DITAHAN: tglMulaiHanFormatted,
+    tanggal_mulai_ditahan: tglMulaiHanFormatted,
     TANGGAL_MULAI_HAN: tglMulaiHanFormatted,
     tanggal_mulai_han: tglMulaiHanFormatted,
-    TANGGAL_AKHIR_HAN: tglAkhirHanFormatted,
-    tanggal_akhir_han: tglAkhirHanFormatted,
-    TEMPAT_HAN: tempatHan,
-    tempat_han: tempatHan,
     TGL_MULAI_HAN: tglMulaiHanFormatted,
     tgl_mulai_han: tglMulaiHanFormatted,
+    SPRIN_MULAI_DITAHAN: tglMulaiHanFormatted,
+    sprin_mulai_ditahan: tglMulaiHanFormatted,
+    MULAI_PERPANJANGAN: tglMulaiHanFormatted,
+    mulai_perpanjangan: tglMulaiHanFormatted,
+    AKHIR_DITAHAN: tglAkhirHanFormatted,
+    akhir_ditahan: tglAkhirHanFormatted,
+    TANGGAL_AKHIR_DITAHAN: tglAkhirHanFormatted,
+    tanggal_akhir_ditahan: tglAkhirHanFormatted,
+    TANGGAL_AKHIR_HAN: tglAkhirHanFormatted,
+    tanggal_akhir_han: tglAkhirHanFormatted,
     TGL_AKHIR_HAN: tglAkhirHanFormatted,
     tgl_akhir_han: tglAkhirHanFormatted,
+    SPRIN_AKHIR_DITAHAN: tglAkhirHanFormatted,
+    sprin_akhir_ditahan: tglAkhirHanFormatted,
+    AKHIR_PERPANJANGAN: tglAkhirHanFormatted,
+    akhir_perpanjangan: tglAkhirHanFormatted,
+    LAMA_PENAHANAN: lamaPenahananText,
+    lama_penahanan: lamaPenahananText,
+    MASA_PENAHANAN: lamaPenahananText,
+    masa_penahanan: lamaPenahananText,
+    TGL_AKHIR_HAN_PENYIDIK: tglAkhirHanPenyidikFormatted || tglAkhirHanFormatted,
+    tgl_akhir_han_penyidik: tglAkhirHanPenyidikFormatted || tglAkhirHanFormatted,
+    TGL_MULAI_JANG_HAN_PU: tglMulaiJangHanPuFormatted || tglMulaiHanFormatted,
+    tgl_mulai_jang_han_pu: tglMulaiJangHanPuFormatted || tglMulaiHanFormatted,
+    TGL_AKHIR_HAN_PU: tglAkhirHanPuFormatted || tglAkhirHanFormatted,
+    tgl_akhir_han_pu: tglAkhirHanPuFormatted || tglAkhirHanFormatted,
+    TGL_MULAI_JANG_HAN_PN1: tglMulaiJangHanPn1Formatted || tglMulaiHanFormatted,
+    tgl_mulai_jang_han_pn1: tglMulaiJangHanPn1Formatted || tglMulaiHanFormatted,
+    TGL_AKHIR_HAN_PN1: tglAkhirHanPn1Formatted || tglAkhirHanFormatted,
+    tgl_akhir_han_pn1: tglAkhirHanPn1Formatted || tglAkhirHanFormatted,
+    TGL_MULAI_JANG_HAN_PN2: tglMulaiJangHanPn2Formatted || tglMulaiHanFormatted,
+    tgl_mulai_jang_han_pn2: tglMulaiJangHanPn2Formatted || tglMulaiHanFormatted,
+    TGL_AKHIR_HAN_PN2: tglAkhirHanPn2Formatted || tglAkhirHanFormatted,
+    tgl_akhir_han_pn2: tglAkhirHanPn2Formatted || tglAkhirHanFormatted,
+    TEMPAT_HAN: tempatHan,
+    tempat_han: tempatHan,
+    TEMPAT_PENAHANAN: tempatHan,
+    tempat_penahanan: tempatHan,
+    TEMPAT_RUTAN_HAN: tempatHan,
+    tempat_rutan_han: tempatHan,
+    NO_SPGL_TSK: noSpglTsk,
+    no_spgl_tsk: noSpglTsk,
+    NOMOR_SPGL_TSK: noSpglTsk,
+    nomor_spgl_tsk: noSpglTsk,
+    TGL_SPGL_TSK: tglSpglTsk,
+    tgl_spgl_tsk: tglSpglTsk,
+    TANGGAL_SPGL_TSK: tglSpglTsk,
+    tanggal_spgl_tsk: tglSpglTsk,
 
-    // C.3. TAG BA PENAHANAN (BA_HAN & SPRIN_HAN_DAN_BA)
+    // C.3. TAG BA PENAHANAN (BA_HAN, SPRIN_HAN_DAN_BA, & SPRIN_PANJANG_HAN_*_DAN_BA)
     HARI_HAN: hariHan,
     hari_han: hariHan,
+    HARI_BA_HAN: hariHan,
+    hari_ba_han: hariHan,
     TANGGAL_HAN: tglHan,
     tanggal_han: tglHan,
+    TANGGAL_BA_HAN: tglHan,
+    tanggal_ba_han: tglHan,
     BULAN_HAN: bulanHan,
     bulan_han: bulanHan,
+    BULAN_BA_HAN: bulanHan,
+    bulan_ba_han: bulanHan,
     TAHUN_HAN: tahunHan,
     tahun_han: tahunHan,
+    TAHUN_BA_HAN: tahunHan,
+    tahun_ba_han: tahunHan,
     TERBILANG_TAHUN_HAN: terbilangTahunHan,
     terbilang_tahun_han: terbilangTahunHan,
+    TERBILANG_TAHUN_BA_HAN: terbilangTahunHan,
+    terbilang_tahun_ba_han: terbilangTahunHan,
+    TAHUN_HAN_TERBILANG: terbilangTahunHan,
+    tahun_han_terbilang: terbilangTahunHan,
+    TAHUN_BA_HAN_TERBILANG: terbilangTahunHan,
+    tahun_ba_han_terbilang: terbilangTahunHan,
     JAM_HAN: jamHan,
     jam_han: jamHan,
+    JAM_BA_HAN: jamHan,
+    jam_ba_han: jamHan,
+    WAKTU_HAN: waktuHan,
+    waktu_han: waktuHan,
+    WAKTU_PENAHANAN: waktuHan,
+    waktu_penahanan: waktuHan,
     TGL_HAN: tglHan,
     tgl_han: tglHan,
     TANGGAL_LENGKAP_HAN: tglLengkapHan,
@@ -4030,27 +4629,93 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     });
   }
 
-  // Penegasan Tag Khusus Sprin Penahanan (Huruf Besar & Kecil)
-  finalPayload.TANGGAL_MULAI_HAN = tglMulaiHanFormatted;
-  finalPayload.tanggal_mulai_han = tglMulaiHanFormatted;
-  finalPayload.TANGGAL_AKHIR_HAN = tglAkhirHanFormatted;
-  finalPayload.tanggal_akhir_han = tglAkhirHanFormatted;
+  // Penegasan Tag Khusus Sprin Penahanan & Perpanjangan Penahanan (Huruf Besar & Kecil)
+  [
+    'MULAI_DITAHAN', 'TANGGAL_MULAI_DITAHAN', 'TANGGAL_MULAI_HAN', 'TGL_MULAI_HAN', 'SPRIN_MULAI_DITAHAN', 'MULAI_PERPANJANGAN'
+  ].forEach((k) => {
+    finalPayload[k] = tglMulaiHanFormatted;
+    finalPayload[k.toLowerCase()] = tglMulaiHanFormatted;
+  });
+  [
+    'AKHIR_DITAHAN', 'TANGGAL_AKHIR_DITAHAN', 'TANGGAL_AKHIR_HAN', 'TGL_AKHIR_HAN', 'SPRIN_AKHIR_DITAHAN', 'AKHIR_PERPANJANGAN'
+  ].forEach((k) => {
+    finalPayload[k] = tglAkhirHanFormatted;
+    finalPayload[k.toLowerCase()] = tglAkhirHanFormatted;
+  });
+  finalPayload.LAMA_PENAHANAN = lamaPenahananText;
+  finalPayload.lama_penahanan = lamaPenahananText;
+  finalPayload.MASA_PENAHANAN = lamaPenahananText;
+  finalPayload.masa_penahanan = lamaPenahananText;
+  finalPayload.TGL_AKHIR_HAN_PENYIDIK = tglAkhirHanPenyidikFormatted || tglAkhirHanFormatted;
+  finalPayload.tgl_akhir_han_penyidik = finalPayload.TGL_AKHIR_HAN_PENYIDIK;
+  finalPayload.TGL_MULAI_JANG_HAN_PU = tglMulaiJangHanPuFormatted || tglMulaiHanFormatted;
+  finalPayload.tgl_mulai_jang_han_pu = finalPayload.TGL_MULAI_JANG_HAN_PU;
+  finalPayload.TGL_AKHIR_HAN_PU = tglAkhirHanPuFormatted || tglAkhirHanFormatted;
+  finalPayload.tgl_akhir_han_pu = finalPayload.TGL_AKHIR_HAN_PU;
+  finalPayload.TGL_MULAI_JANG_HAN_PN1 = tglMulaiJangHanPn1Formatted || tglMulaiHanFormatted;
+  finalPayload.tgl_mulai_jang_han_pn1 = finalPayload.TGL_MULAI_JANG_HAN_PN1;
+  finalPayload.TGL_AKHIR_HAN_PN1 = tglAkhirHanPn1Formatted || tglAkhirHanFormatted;
+  finalPayload.tgl_akhir_han_pn1 = finalPayload.TGL_AKHIR_HAN_PN1;
+  finalPayload.TGL_MULAI_JANG_HAN_PN2 = tglMulaiJangHanPn2Formatted || tglMulaiHanFormatted;
+  finalPayload.tgl_mulai_jang_han_pn2 = finalPayload.TGL_MULAI_JANG_HAN_PN2;
+  finalPayload.TGL_AKHIR_HAN_PN2 = tglAkhirHanPn2Formatted || tglAkhirHanFormatted;
+  finalPayload.tgl_akhir_han_pn2 = finalPayload.TGL_AKHIR_HAN_PN2;
   finalPayload.TEMPAT_HAN = tempatHan;
   finalPayload.tempat_han = tempatHan;
+  finalPayload.TEMPAT_PENAHANAN = tempatHan;
+  finalPayload.tempat_penahanan = tempatHan;
+  finalPayload.TEMPAT_RUTAN_HAN = tempatHan;
+  finalPayload.tempat_rutan_han = tempatHan;
+  if (noSpglTsk) {
+    finalPayload.NO_SPGL_TSK = noSpglTsk;
+    finalPayload.no_spgl_tsk = noSpglTsk;
+    finalPayload.NOMOR_SPGL_TSK = noSpglTsk;
+    finalPayload.nomor_spgl_tsk = noSpglTsk;
+  }
+  if (tglSpglTsk) {
+    finalPayload.TGL_SPGL_TSK = tglSpglTsk;
+    finalPayload.tgl_spgl_tsk = tglSpglTsk;
+    finalPayload.TANGGAL_SPGL_TSK = tglSpglTsk;
+    finalPayload.tanggal_spgl_tsk = tglSpglTsk;
+  }
 
   // Penegasan Tag Khusus BA Penahanan (Huruf Besar & Kecil)
   finalPayload.HARI_HAN = hariHan;
   finalPayload.hari_han = hariHan;
+  finalPayload.HARI_BA_HAN = hariHan;
+  finalPayload.hari_ba_han = hariHan;
   finalPayload.TANGGAL_HAN = tglHan;
   finalPayload.tanggal_han = tglHan;
+  finalPayload.TANGGAL_BA_HAN = tglHan;
+  finalPayload.tanggal_ba_han = tglHan;
+  finalPayload.TGL_HAN = tglHan;
+  finalPayload.tgl_han = tglHan;
   finalPayload.BULAN_HAN = bulanHan;
   finalPayload.bulan_han = bulanHan;
+  finalPayload.BULAN_BA_HAN = bulanHan;
+  finalPayload.bulan_ba_han = bulanHan;
   finalPayload.TAHUN_HAN = tahunHan;
   finalPayload.tahun_han = tahunHan;
+  finalPayload.TAHUN_BA_HAN = tahunHan;
+  finalPayload.tahun_ba_han = tahunHan;
   finalPayload.TERBILANG_TAHUN_HAN = terbilangTahunHan;
   finalPayload.terbilang_tahun_han = terbilangTahunHan;
+  finalPayload.TERBILANG_TAHUN_BA_HAN = terbilangTahunHan;
+  finalPayload.terbilang_tahun_ba_han = terbilangTahunHan;
+  finalPayload.TAHUN_HAN_TERBILANG = terbilangTahunHan;
+  finalPayload.tahun_han_terbilang = terbilangTahunHan;
+  finalPayload.TAHUN_BA_HAN_TERBILANG = terbilangTahunHan;
+  finalPayload.tahun_ba_han_terbilang = terbilangTahunHan;
   finalPayload.JAM_HAN = jamHan;
   finalPayload.jam_han = jamHan;
+  finalPayload.JAM_BA_HAN = jamHan;
+  finalPayload.jam_ba_han = jamHan;
+  if (waktuHan) {
+    finalPayload.WAKTU_HAN = waktuHan;
+    finalPayload.waktu_han = waktuHan;
+    finalPayload.WAKTU_PENAHANAN = waktuHan;
+    finalPayload.waktu_penahanan = waktuHan;
+  }
 
   // D. TAG RANTAI BERKAS PERKARA (SAMPUL BP, PENGANTAR TAHAP 1, PENGANTAR KEMBALI P-19, TAHAP 2)
   const isSampulBp = tplCode === 'SAMPUL_BERKAS_PERKARA' || tplCode === 'SAMPUL_BP' || tplName.includes('sampul berkas perkara');
@@ -4381,6 +5046,19 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     finalPayload.terbilang_tahun_ba_kap = computedTerbilangKapFinal;
     finalPayload.TAHUN_KAP_TERBILANG = computedTerbilangKapFinal;
     finalPayload.tahun_kap_terbilang = computedTerbilangKapFinal;
+  }
+
+  const effectiveTahunHanFinal = String(finalPayload.TAHUN_BA_HAN || finalPayload.TAHUN_HAN || finalPayload.tahun_han || tahunHan || parsedActiveDate?.tahun || new Date().getFullYear()).trim();
+  const computedTerbilangHanFinal = tahunKeTerbilang(Number(effectiveTahunHanFinal)) || terbilangTahunHan || tahunKeTerbilang(new Date().getFullYear());
+  if (computedTerbilangHanFinal) {
+    finalPayload.TERBILANG_TAHUN_HAN = computedTerbilangHanFinal;
+    finalPayload.terbilang_tahun_han = computedTerbilangHanFinal;
+    finalPayload.TERBILANG_TAHUN_BA_HAN = computedTerbilangHanFinal;
+    finalPayload.terbilang_tahun_ba_han = computedTerbilangHanFinal;
+    finalPayload.TAHUN_HAN_TERBILANG = computedTerbilangHanFinal;
+    finalPayload.tahun_han_terbilang = computedTerbilangHanFinal;
+    finalPayload.TAHUN_BA_HAN_TERBILANG = computedTerbilangHanFinal;
+    finalPayload.tahun_ba_han_terbilang = computedTerbilangHanFinal;
   }
 
   Object.keys(finalPayload).forEach((key) => {
@@ -4791,6 +5469,47 @@ export async function generateDocxBlob({
     'SPRIN_MASA_BERLAKU', 'sprin_masa_berlaku',
     'SPRIN_MASA_BERLAKU_KAP', 'sprin_masa_berlaku_kap',
     'TANGGAL_BERLAKU', 'tanggal_berlaku',
+    'MULAI_DITAHAN', 'mulai_ditahan',
+    'TANGGAL_MULAI_DITAHAN', 'tanggal_mulai_ditahan',
+    'TANGGAL_MULAI_HAN', 'tanggal_mulai_han',
+    'TGL_MULAI_HAN', 'tgl_mulai_han',
+    'SPRIN_MULAI_DITAHAN', 'sprin_mulai_ditahan',
+    'MULAI_PERPANJANGAN', 'mulai_perpanjangan',
+    'AKHIR_DITAHAN', 'akhir_ditahan',
+    'TANGGAL_AKHIR_DITAHAN', 'tanggal_akhir_ditahan',
+    'TANGGAL_AKHIR_HAN', 'tanggal_akhir_han',
+    'TGL_AKHIR_HAN', 'tgl_akhir_han',
+    'SPRIN_AKHIR_DITAHAN', 'sprin_akhir_ditahan',
+    'AKHIR_PERPANJANGAN', 'akhir_perpanjangan',
+    'LAMA_PENAHANAN', 'lama_penahanan',
+    'MASA_PENAHANAN', 'masa_penahanan',
+    'TGL_AKHIR_HAN_PENYIDIK', 'tgl_akhir_han_penyidik',
+    'TGL_MULAI_JANG_HAN_PU', 'tgl_mulai_jang_han_pu',
+    'TGL_AKHIR_HAN_PU', 'tgl_akhir_han_pu',
+    'TGL_MULAI_JANG_HAN_PN1', 'tgl_mulai_jang_han_pn1',
+    'TGL_AKHIR_HAN_PN1', 'tgl_akhir_han_pn1',
+    'TGL_MULAI_JANG_HAN_PN2', 'tgl_mulai_jang_han_pn2',
+    'TGL_AKHIR_HAN_PN2', 'tgl_akhir_han_pn2',
+    'TEMPAT_HAN', 'tempat_han',
+    'TEMPAT_PENAHANAN', 'tempat_penahanan',
+    'TEMPAT_RUTAN_HAN', 'tempat_rutan_han',
+    'HARI_HAN', 'hari_han',
+    'HARI_BA_HAN', 'hari_ba_han',
+    'TANGGAL_HAN', 'tanggal_han',
+    'TANGGAL_BA_HAN', 'tanggal_ba_han',
+    'TGL_HAN', 'tgl_han',
+    'BULAN_HAN', 'bulan_han',
+    'BULAN_BA_HAN', 'bulan_ba_han',
+    'TAHUN_HAN', 'tahun_han',
+    'TAHUN_BA_HAN', 'tahun_ba_han',
+    'TERBILANG_TAHUN_HAN', 'terbilang_tahun_han',
+    'TERBILANG_TAHUN_BA_HAN', 'terbilang_tahun_ba_han',
+    'TAHUN_HAN_TERBILANG', 'tahun_han_terbilang',
+    'TAHUN_BA_HAN_TERBILANG', 'tahun_ba_han_terbilang',
+    'JAM_HAN', 'jam_han',
+    'JAM_BA_HAN', 'jam_ba_han',
+    'WAKTU_HAN', 'waktu_han',
+    'WAKTU_PENAHANAN', 'waktu_penahanan',
     'ATASAN_PANGKAT', 'atasan_pangkat',
     'ATASAN_PANGKAT_NRP', 'atasan_pangkat_nrp',
     'KASAT_PANGKAT', 'kasat_pangkat',

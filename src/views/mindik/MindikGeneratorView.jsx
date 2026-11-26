@@ -34,6 +34,8 @@ import {
   addDaysToIsoDate,
   parseDateParts,
   formatJamPolri,
+  getDetentionStageConfig,
+  resolveChainedDetentionDates,
   normalizeSubjectRecord,
   deduplicateSubjectRecords,
   populateSubjectPrefixVariables,
@@ -513,6 +515,30 @@ export default function MindikGeneratorView({
         next.no_hp = normPrimary.no_hp || '';
         if (normPrimary.nomor_sp_tap) next.NO_SP_TAP_TSK = normPrimary.nomor_sp_tap;
         if (normPrimary.tanggal_sp_tap) next.TGL_SP_TAP_TSK = normPrimary.tanggal_sp_tap;
+
+        const rawCodeSubj = (currentTemplate?.code || currentTemplate?.template_code || '').toUpperCase().trim();
+        const titleSubj = currentTemplate?.title || currentTemplate?.name || '';
+        const detCfgSubj = getDetentionStageConfig(rawCodeSubj || activeCanonicalCode, titleSubj);
+        if (detCfgSubj.isDetentionDoc) {
+          const detChainSubj = resolveChainedDetentionDates({
+            templateCode: rawCodeSubj || activeCanonicalCode,
+            templateTitle: titleSubj,
+            tanggalSuratIso: next.TANGGAL_SURAT,
+            archivedDocs: activeCaseDocs,
+            targetSuspect: normPrimary
+          });
+          if (detChainSubj.mulaiIso) {
+            next.MULAI_DITAHAN = detChainSubj.mulaiIso;
+            next.TANGGAL_MULAI_HAN = detChainSubj.mulaiIso;
+            next.TGL_MULAI_HAN = detChainSubj.mulaiIso;
+            next.TANGGAL_PELAKSANAAN_HAN = detChainSubj.mulaiIso;
+          }
+          if (detChainSubj.akhirIso) {
+            next.AKHIR_DITAHAN = detChainSubj.akhirIso;
+            next.TANGGAL_AKHIR_HAN = detChainSubj.akhirIso;
+            next.TGL_AKHIR_HAN = detChainSubj.akhirIso;
+          }
+        }
       }
       return next;
     });
@@ -816,6 +842,72 @@ export default function MindikGeneratorView({
           }
           if (!nextValues.TEMPAT_KAP || /^(\.{2,}|\u2026+)$/.test(String(nextValues.TEMPAT_KAP).trim())) {
             nextValues.TEMPAT_KAP = currentCase?.locus || 'Kab. Kolaka Timur';
+          }
+        }
+
+        const detStageTpl = getDetentionStageConfig(
+          rawUpperCode || canonicalCode,
+          currentTemplate.title || currentTemplate.name || ''
+        );
+        if (detStageTpl.isDetentionDoc) {
+          const targetSuspectInit =
+            (Array.isArray(nextValues.__SELECTED_SUBJECTS__) && nextValues.__SELECTED_SUBJECTS__[0]) ||
+            activeSuspect ||
+            caseSuspects[0] ||
+            null;
+          const existingArchivedMeta = existingAnyDoc?.meta_values || {};
+          const archivedMulaiIso = toIsoDateString(
+            existingArchivedMeta.MULAI_DITAHAN_ISO ||
+            existingArchivedMeta.MULAI_DITAHAN ||
+            existingArchivedMeta.TGL_MULAI_HAN
+          );
+          const archivedAkhirIso = toIsoDateString(
+            existingArchivedMeta.AKHIR_DITAHAN_ISO ||
+            existingArchivedMeta.AKHIR_DITAHAN ||
+            existingArchivedMeta.TGL_AKHIR_HAN
+          );
+
+          const resolvedDetInit = resolveChainedDetentionDates({
+            templateCode: rawUpperCode || canonicalCode,
+            templateTitle: currentTemplate.title || currentTemplate.name || '',
+            tanggalSuratIso: finalIsoDate,
+            archivedDocs: activeCaseDocs,
+            targetSuspect: targetSuspectInit,
+            explicitStartIso: isNewTplState ? archivedMulaiIso : toIsoDateString(nextValues.MULAI_DITAHAN),
+            explicitEndIso: isNewTplState ? archivedAkhirIso : toIsoDateString(nextValues.AKHIR_DITAHAN)
+          });
+
+          const mulaiHanIsoInit = resolvedDetInit.mulaiIso || finalIsoDate;
+          const akhirHanIsoInit = resolvedDetInit.akhirIso || addDaysToIsoDate(mulaiHanIsoInit, detStageTpl.durationDays - 1);
+
+          nextValues.MULAI_DITAHAN = mulaiHanIsoInit;
+          nextValues.TANGGAL_MULAI_DITAHAN = mulaiHanIsoInit;
+          nextValues.TANGGAL_MULAI_HAN = mulaiHanIsoInit;
+          nextValues.TGL_MULAI_HAN = mulaiHanIsoInit;
+          nextValues.AKHIR_DITAHAN = akhirHanIsoInit;
+          nextValues.TANGGAL_AKHIR_DITAHAN = akhirHanIsoInit;
+          nextValues.TANGGAL_AKHIR_HAN = akhirHanIsoInit;
+          nextValues.TGL_AKHIR_HAN = akhirHanIsoInit;
+          nextValues.LAMA_PENAHANAN = detStageTpl.lamaText;
+          nextValues.MASA_PENAHANAN = detStageTpl.lamaText;
+
+          const curTempatHan = String(nextValues.TEMPAT_PENAHANAN || nextValues.TEMPAT_HAN || '').trim();
+          const isPlaceholderRutan = !curTempatHan || /^(\.{2,}|\u2026+|-)$/.test(curTempatHan) || /rumah tahanan Negara \.{2,}/i.test(curTempatHan);
+          const finalTempatHan = isPlaceholderRutan ? 'Rumah Tahanan Negara Polres Kolaka Timur' : curTempatHan;
+          nextValues.TEMPAT_PENAHANAN = finalTempatHan;
+          nextValues.TEMPAT_HAN = finalTempatHan;
+
+          if (isNewTplState || !toIsoDateString(nextValues.TANGGAL_BA_HAN_DATE)) {
+            nextValues.TANGGAL_BA_HAN_DATE = finalIsoDate;
+          }
+          if (isNewTplState || !nextValues.JAM_BA_HAN_TIME) {
+            nextValues.JAM_BA_HAN_TIME = '09:00';
+          }
+          if (isNewTplState || !toIsoDateString(nextValues.TANGGAL_PELAKSANAAN_HAN)) {
+            nextValues.TANGGAL_PELAKSANAAN_HAN = mulaiHanIsoInit;
+          }
+          if (isNewTplState || !nextValues.JAM_PELAKSANAAN_HAN_TIME) {
+            nextValues.JAM_PELAKSANAAN_HAN_TIME = '08:30';
           }
         }
 
@@ -1251,6 +1343,68 @@ export default function MindikGeneratorView({
             next.TANGGAL_PENANGKAPAN = syncedDate;
           }
         }
+
+        const detStageNow = getDetentionStageConfig(
+          rawCodeNow || activeCanonicalCode,
+          currentTemplate?.title || currentTemplate?.name || ''
+        );
+        if (detStageNow.isDetentionDoc && syncedDate) {
+          if (!next.TANGGAL_BA_HAN_DATE || next.TANGGAL_BA_HAN_DATE === prevDate) {
+            next.TANGGAL_BA_HAN_DATE = syncedDate;
+          }
+          // Untuk SP.Han (Tahap 1), jika Mulai Ditahan masih mengikuti Tanggal Surat sebelumnya, geser otomatis bersama Akhir Ditahan (20 hari inklusif)
+          if (detStageNow.stage === 'SP_HAN' && (!next.MULAI_DITAHAN || next.MULAI_DITAHAN === prevDate)) {
+            const nextAkhir = addDaysToIsoDate(syncedDate, detStageNow.durationDays - 1) || syncedDate;
+            next.MULAI_DITAHAN = syncedDate;
+            next.TANGGAL_MULAI_DITAHAN = syncedDate;
+            next.TANGGAL_MULAI_HAN = syncedDate;
+            next.TGL_MULAI_HAN = syncedDate;
+            next.AKHIR_DITAHAN = nextAkhir;
+            next.TANGGAL_AKHIR_DITAHAN = nextAkhir;
+            next.TANGGAL_AKHIR_HAN = nextAkhir;
+            next.TGL_AKHIR_HAN = nextAkhir;
+            if (!next.TANGGAL_PELAKSANAAN_HAN || next.TANGGAL_PELAKSANAAN_HAN === prevDate) {
+              next.TANGGAL_PELAKSANAAN_HAN = syncedDate;
+            }
+          }
+        }
+      }
+
+      if (key === 'MULAI_DITAHAN' || key === 'TGL_MULAI_HAN' || key === 'TANGGAL_MULAI_HAN') {
+        const syncedMulai = toIsoDateString(value) || value || '';
+        const prevMulai = prev.MULAI_DITAHAN;
+        const rawCodeNow = (currentTemplate?.code || currentTemplate?.template_code || '').toUpperCase().trim();
+        const detStageNow = getDetentionStageConfig(
+          rawCodeNow || activeCanonicalCode,
+          currentTemplate?.title || currentTemplate?.name || ''
+        );
+        const autoAkhir = syncedMulai ? addDaysToIsoDate(syncedMulai, (detStageNow.durationDays || 20) - 1) : '';
+        next.MULAI_DITAHAN = syncedMulai;
+        next.TANGGAL_MULAI_DITAHAN = syncedMulai;
+        next.TANGGAL_MULAI_HAN = syncedMulai;
+        next.TGL_MULAI_HAN = syncedMulai;
+        if (autoAkhir) {
+          next.AKHIR_DITAHAN = autoAkhir;
+          next.TANGGAL_AKHIR_DITAHAN = autoAkhir;
+          next.TANGGAL_AKHIR_HAN = autoAkhir;
+          next.TGL_AKHIR_HAN = autoAkhir;
+        }
+        if (!next.TANGGAL_PELAKSANAAN_HAN || next.TANGGAL_PELAKSANAAN_HAN === prevMulai) {
+          next.TANGGAL_PELAKSANAAN_HAN = syncedMulai;
+        }
+      }
+
+      if (key === 'AKHIR_DITAHAN' || key === 'TGL_AKHIR_HAN' || key === 'TANGGAL_AKHIR_HAN') {
+        const syncedAkhir = toIsoDateString(value) || value || '';
+        next.AKHIR_DITAHAN = syncedAkhir;
+        next.TANGGAL_AKHIR_DITAHAN = syncedAkhir;
+        next.TANGGAL_AKHIR_HAN = syncedAkhir;
+        next.TGL_AKHIR_HAN = syncedAkhir;
+      }
+
+      if (key === 'TEMPAT_PENAHANAN' || key === 'TEMPAT_HAN') {
+        next.TEMPAT_PENAHANAN = value;
+        next.TEMPAT_HAN = value;
       }
       return next;
     });
@@ -1479,6 +1633,40 @@ export default function MindikGeneratorView({
         ...cleanFormValuesForMeta
       } = formValues;
 
+      const detStageForSave = getDetentionStageConfig(tplCode || canonicalCode, tplTitle);
+      const savedDetentionMeta = {};
+      if (detStageForSave.isDetentionDoc) {
+        const resolvedForSave = resolveChainedDetentionDates({
+          templateCode: tplCode || canonicalCode,
+          templateTitle: tplTitle,
+          tanggalSuratIso: docDate,
+          archivedDocs: activeCaseDocs,
+          targetSuspect: primaryTargetObj,
+          explicitStartIso: formValues.MULAI_DITAHAN || formValues.TGL_MULAI_HAN || formValues.TANGGAL_MULAI_HAN,
+          explicitEndIso: formValues.AKHIR_DITAHAN || formValues.TGL_AKHIR_HAN || formValues.TANGGAL_AKHIR_HAN
+        });
+        const mulaiIsoSave = resolvedForSave.mulaiIso || docDate;
+        const akhirIsoSave = resolvedForSave.akhirIso || addDaysToIsoDate(mulaiIsoSave, detStageForSave.durationDays - 1);
+        const mulaiTextSave = formatTanggalIndonesia(mulaiIsoSave);
+        const akhirTextSave = formatTanggalIndonesia(akhirIsoSave);
+        const tempatHanSave = formValues.TEMPAT_PENAHANAN || formValues.TEMPAT_HAN || 'Rumah Tahanan Negara Polres Kolaka Timur';
+
+        savedDetentionMeta.MULAI_DITAHAN_ISO = mulaiIsoSave;
+        savedDetentionMeta.AKHIR_DITAHAN_ISO = akhirIsoSave;
+        savedDetentionMeta.MULAI_DITAHAN = mulaiTextSave;
+        savedDetentionMeta.TANGGAL_MULAI_DITAHAN = mulaiTextSave;
+        savedDetentionMeta.TANGGAL_MULAI_HAN = mulaiTextSave;
+        savedDetentionMeta.TGL_MULAI_HAN = mulaiTextSave;
+        savedDetentionMeta.AKHIR_DITAHAN = akhirTextSave;
+        savedDetentionMeta.TANGGAL_AKHIR_DITAHAN = akhirTextSave;
+        savedDetentionMeta.TANGGAL_AKHIR_HAN = akhirTextSave;
+        savedDetentionMeta.TGL_AKHIR_HAN = akhirTextSave;
+        savedDetentionMeta.LAMA_PENAHANAN = detStageForSave.lamaText;
+        savedDetentionMeta.MASA_PENAHANAN = detStageForSave.lamaText;
+        savedDetentionMeta.TEMPAT_PENAHANAN = tempatHanSave;
+        savedDetentionMeta.TEMPAT_HAN = tempatHanSave;
+      }
+
       const dbDocumentPayload = {
         id: crypto.randomUUID(),
         case_id: String(currentCase.id),
@@ -1488,6 +1676,7 @@ export default function MindikGeneratorView({
         doc_number: docNo,
         meta_values: {
           ...cleanFormValuesForMeta,
+          ...savedDetentionMeta,
           NOMOR_SURAT: docNo,
           TANGGAL_SURAT: docDate,
           tanggal_surat: docDate,
@@ -2362,41 +2551,146 @@ export default function MindikGeneratorView({
               </span>
             </div>
 
-            {/* Banner Prasyarat Terkunci / Info Rantai */}
-            {!activeChainStatus.allowed ? (
-              <div style={{
-                padding: '11px 14px',
-                borderRadius: '9px',
-                background: 'rgba(255, 42, 42, 0.12)',
-                border: '1px solid rgba(255, 42, 42, 0.42)',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-                fontSize: '12px',
-                color: '#CBD5E1'
-              }}>
-                <AlertCircle size={16} color="#FF2A2A" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <div>
-                  <strong style={{ color: '#FFFFFF' }}>Akses Penerbitan Terkunci:</strong>
-                  <div style={{ marginTop: '2px', lineHeight: 1.45 }}>{activeChainStatus.reason}</div>
-                </div>
-              </div>
-            ) : activeChainStatus.infoNotice ? (
-              <div style={{
-                padding: '9px 12px',
-                borderRadius: '8px',
-                background: 'rgba(245, 158, 11, 0.08)',
-                border: '1px solid rgba(245, 158, 11, 0.32)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '11.5px',
-                color: '#FDE68A'
-              }}>
-                <Info size={15} color="#F59E0B" style={{ flexShrink: 0 }} />
-                <span>{activeChainStatus.infoNotice}</span>
-              </div>
-            ) : null}
+            {/* Banner Prasyarat Terkunci / Info Rantai Formil KUHAP / Peringatan Syarat >= 9 Tahun PN 1 & PN 2 */}
+            {(() => {
+              const rawCodeBanner = (currentTemplate?.code || currentTemplate?.template_code || '').toUpperCase().trim();
+              const titleBanner = currentTemplate?.title || currentTemplate?.name || '';
+              const detStageBanner = getDetentionStageConfig(rawCodeBanner || activeCanonicalCode, titleBanner);
+              const isSpHanBanner = detStageBanner.stage === 'SP_HAN';
+              const isPnBanner =
+                detStageBanner.isPnStage ||
+                /\b(PN_?1|PN_?2|KPN_?1|KPN_?2)\b/i.test(`${rawCodeBanner} ${activeCanonicalCode} ${titleBanner}`);
+
+              const targetSubjBanner = selectedTargetSubjects[0] || activeSuspect || caseSuspects[0] || null;
+              const targetIdBanner = targetSubjBanner?.id ? String(targetSubjBanner.id).trim() : '';
+              const targetNameBanner = String(targetSubjBanner?.nama || targetSubjBanner?.nama_lengkap || '').trim().toLowerCase();
+
+              const findMatchingSuspectArchiveDoc = (codesList = []) => {
+                const codeSet = new Set(codesList.map(c => toCanonicalMindikCode(c)));
+                const matching = (Array.isArray(activeCaseDocs) ? activeCaseDocs : [])
+                  .filter((d) => {
+                    if (!d) return false;
+                    const c = toCanonicalMindikCode(d.template_code || d.code, d.doc_title || d.title);
+                    const raw = String(d.template_code || d.code || '').toUpperCase().trim();
+                    return codeSet.has(c) || codesList.includes(raw);
+                  })
+                  .filter((d) => isValidOfficialDocNumber(d.doc_number))
+                  .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+
+                if (matching.length === 0) return null;
+                for (let i = matching.length - 1; i >= 0; i--) {
+                  const mv = matching[i].meta_values || {};
+                  const mId = mv.target_suspect_id ? String(mv.target_suspect_id).trim() : '';
+                  const mIds = Array.isArray(mv.target_suspect_ids) ? mv.target_suspect_ids.map(String) : [];
+                  const mName = String(mv.target_suspect_name || mv.TERSANGKA_NAMA || mv.NAMA_TERSANGKA || '').trim().toLowerCase();
+                  if (targetIdBanner && (mId === targetIdBanner || mIds.includes(targetIdBanner))) {
+                    return matching[i];
+                  }
+                  if (targetNameBanner && mName && mName === targetNameBanner) {
+                    return matching[i];
+                  }
+                }
+                return matching[matching.length - 1];
+              };
+
+              let spHanFormalNotice = null;
+              if (activeChainStatus.allowed && isSpHanBanner) {
+                const spKapDocFound = findMatchingSuspectArchiveDoc(['SPRIN_KAP_DAN_BA', 'SPRIN_KAP', 'SP_KAP']);
+                if (!spKapDocFound) {
+                  const spglTskDocFound = findMatchingSuspectArchiveDoc(['SPGL_TSK_1', 'SPGL_TSK_2', 'SPGL_TSK', 'SPRIN_BAWA_TSK_DAN_BA']);
+                  if (spglTskDocFound) {
+                    const spglDateStr = spglTskDocFound.formatted_date || (spglTskDocFound.tgl_surat ? formatTanggalIndonesia(spglTskDocFound.tgl_surat) : '');
+                    spHanFormalNotice = {
+                      type: 'success',
+                      text: `Dasar formil kehadiran tersangka terpenuhi melalui Surat Panggilan Tersangka Nomor: ${spglTskDocFound.doc_number}${spglDateStr ? `, tanggal ${spglDateStr}` : ''} (SP.Kap tidak diperlukan karena tersangka hadir menghadap penyidik berdasarkan Surat Panggilan Tersangka).`
+                    };
+                  } else {
+                    spHanFormalNotice = {
+                      type: 'warning',
+                      text: 'Perhatian Formil KUHAP: SP.Kap belum diterbitkan. Apabila tersangka tidak ditangkap, wajib diterbitkan Surat Panggilan Tersangka terlebih dahulu karena tersangka yang hadir menghadap penyidik harus berdasarkan Surat Perintah Penangkapan atau Surat Panggilan Tersangka.'
+                    };
+                  }
+                }
+              }
+
+              return (
+                <>
+                  {!activeChainStatus.allowed ? (
+                    <div style={{
+                      padding: '11px 14px',
+                      borderRadius: '9px',
+                      background: 'rgba(255, 42, 42, 0.12)',
+                      border: '1px solid rgba(255, 42, 42, 0.42)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      fontSize: '12px',
+                      color: '#CBD5E1'
+                    }}>
+                      <AlertCircle size={16} color="#FF2A2A" style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <strong style={{ color: '#FFFFFF' }}>Akses Penerbitan Terkunci:</strong>
+                        <div style={{ marginTop: '2px', lineHeight: 1.45 }}>{activeChainStatus.reason}</div>
+                      </div>
+                    </div>
+                  ) : spHanFormalNotice ? (
+                    <div style={{
+                      padding: '10px 13px',
+                      borderRadius: '9px',
+                      background: spHanFormalNotice.type === 'success' ? 'rgba(16, 185, 129, 0.10)' : 'rgba(245, 158, 11, 0.10)',
+                      border: spHanFormalNotice.type === 'success' ? '1px solid rgba(16, 185, 129, 0.38)' : '1px solid rgba(245, 158, 11, 0.38)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '9px',
+                      fontSize: '11.5px',
+                      color: spHanFormalNotice.type === 'success' ? '#A7F3D0' : '#FDE68A',
+                      lineHeight: 1.45
+                    }}>
+                      {spHanFormalNotice.type === 'success'
+                        ? <CheckCircle2 size={15} color="#10B981" style={{ flexShrink: 0, marginTop: '1px' }} />
+                        : <AlertTriangle size={15} color="#F59E0B" style={{ flexShrink: 0, marginTop: '1px' }} />}
+                      <span>{spHanFormalNotice.text}</span>
+                    </div>
+                  ) : activeChainStatus.infoNotice ? (
+                    <div style={{
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      border: '1px solid rgba(245, 158, 11, 0.32)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '11.5px',
+                      color: '#FDE68A'
+                    }}>
+                      <Info size={15} color="#F59E0B" style={{ flexShrink: 0 }} />
+                      <span>{activeChainStatus.infoNotice}</span>
+                    </div>
+                  ) : null}
+
+                  {isPnBanner && (
+                    <div style={{
+                      padding: '11px 14px',
+                      borderRadius: '9px',
+                      background: 'linear-gradient(135deg, rgba(255, 42, 42, 0.14) 0%, rgba(245, 158, 11, 0.10) 100%)',
+                      border: '1px solid rgba(255, 42, 42, 0.48)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      fontSize: '11.5px',
+                      color: '#FDE68A',
+                      lineHeight: 1.48
+                    }}>
+                      <AlertTriangle size={16} color="#FF2A2A" style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <strong style={{ color: '#FFFFFF' }}>PERINGATAN SYARAT FORMIL PN 1 &amp; PN 2:</strong>{' '}
+                        Perpanjangan penahanan oleh Ketua Pengadilan Negeri (PN Tahap 1 dan PN Tahap 2) HANYA dapat diajukan/diberikan terhadap tersangka yang disangka melakukan tindak pidana yang diancam dengan pidana penjara 9 (sembilan) tahun atau lebih (atau tindak pidana khusus yang dikecualikan undang-undang). Pastikan pasal yang disangkakan memenuhi syarat ancaman pidana ≥ 9 tahun sebelum menerbitkan administrasi ini.
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Input Utama: Smart Nomor Surat (No. Urut + Full Number) & Tanggal Surat */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4" style={{
@@ -2732,6 +3026,7 @@ export default function MindikGeneratorView({
             {/* Dynamic Fields dari Template Studio (Grid 2 Kolom, variabel rujukan otomatis tetap disembunyikan) */}
             {(() => {
               const rawCodeNow = (currentTemplate?.code || currentTemplate?.template_code || '').toUpperCase().trim();
+              const titleNow = currentTemplate?.title || currentTemplate?.name || '';
               const isSprinKapActive =
                 activeCanonicalCode === 'SPRIN_KAP' ||
                 activeCanonicalCode === 'SPRIN_KAP_DAN_BA' ||
@@ -2742,6 +3037,9 @@ export default function MindikGeneratorView({
                 activeCanonicalCode === 'BA_KAP' ||
                 rawCodeNow === 'SPRIN_KAP_DAN_BA' ||
                 rawCodeNow === 'BA_KAP';
+              const detentionStageUi = getDetentionStageConfig(rawCodeNow || activeCanonicalCode, titleNow);
+              const isDetentionActive = detentionStageUi.isDetentionDoc;
+              const isBaHanActive = isDetentionActive && detentionStageUi.hasBa;
 
               // Filter keluar seluruh variabel rujukan dokumen pendahulu & arsip yang sudah terinjeksi otomatis di latar belakang
               const isAutoChainedReferenceField = (rawKey) => {
@@ -2764,29 +3062,32 @@ export default function MindikGeneratorView({
                 ].includes(k)) {
                   return true;
                 }
+                // 1c-2. Sembunyikan seluruh field pecahan Masa Penahanan & BA Penahanan saat template penahanan/perpanjangan aktif (ditampilkan pada Blok A/B/C)
+                if (isDetentionActive && [
+                  'MULAI_DITAHAN', 'TANGGAL_MULAI_DITAHAN', 'TGL_MULAI_HAN', 'TANGGAL_MULAI_HAN', 'SPRIN_MULAI_DITAHAN', 'MULAI_PERPANJANGAN',
+                  'AKHIR_DITAHAN', 'TANGGAL_AKHIR_DITAHAN', 'TGL_AKHIR_HAN', 'TANGGAL_AKHIR_HAN', 'SPRIN_AKHIR_DITAHAN', 'AKHIR_PERPANJANGAN',
+                  'TGL_AKHIR_HAN_PENYIDIK', 'TGL_MULAI_JANG_HAN_PU', 'TGL_AKHIR_HAN_PU',
+                  'TGL_MULAI_JANG_HAN_PN1', 'TGL_AKHIR_HAN_PN1', 'TGL_MULAI_JANG_HAN_PN2', 'TGL_AKHIR_HAN_PN2',
+                  'LAMA_PENAHANAN', 'MASA_PENAHANAN',
+                  'TEMPAT_PENAHANAN', 'TEMPAT_HAN', 'TEMPAT_RUTAN_HAN',
+                  'HARI_BA_HAN', 'TANGGAL_BA_HAN', 'BULAN_BA_HAN', 'TAHUN_BA_HAN', 'TERBILANG_TAHUN_BA_HAN', 'JAM_BA_HAN',
+                  'HARI_HAN', 'TANGGAL_HAN', 'TGL_HAN', 'BULAN_HAN', 'TAHUN_HAN', 'TERBILANG_TAHUN_HAN', 'JAM_HAN',
+                  'WAKTU_HAN', 'WAKTU_PENAHANAN',
+                  'TANGGAL_BA_HAN_DATE', 'JAM_BA_HAN_TIME', 'TANGGAL_PELAKSANAAN_HAN', 'JAM_PELAKSANAAN_HAN_TIME'
+                ].includes(k)) {
+                  return true;
+                }
                 // 1d. Sembunyikan seluruh TERBILANG_TAHUN_* dari input manual
                 if (k === 'TERBILANG_TAHUN' || k.startsWith('TERBILANG_TAHUN_') || k.endsWith('_TERBILANG')) {
                   return true;
                 }
-                // 2. Field yang tetap BOLEH diinput operator pada template tertentu (tanggal jadwal panggilan, mulai/akhir penahanan, gelar perkara)
+                // 2. Field yang tetap BOLEH diinput operator pada template tertentu (tanggal jadwal panggilan, gelar perkara, BA lainnya)
                 const allowedOperatorInputKeys = new Set([
                   'TANGGAL_PANGGILAN',
                   'HARI_PANGGILAN',
                   'JAM_PANGGILAN',
                   'TEMPAT_PANGGILAN',
                   'TANGGAL_GELAR_PERKARA',
-                  'TGL_MULAI_HAN',
-                  'TANGGAL_MULAI_HAN',
-                  'TGL_AKHIR_HAN',
-                  'TANGGAL_AKHIR_HAN',
-                  'TGL_AKHIR_HAN_PENYIDIK',
-                  'TGL_MULAI_JANG_HAN_PU',
-                  'TGL_AKHIR_HAN_PU',
-                  'TGL_MULAI_JANG_HAN_PN1',
-                  'TGL_AKHIR_HAN_PN1',
-                  'TGL_MULAI_JANG_HAN_PN2',
-                  'TGL_AKHIR_HAN_PN2',
-                  'TANGGAL_HAN',
                   'TANGGAL_BA',
                   'TANGGAL_BA_BAWA'
                 ]);
@@ -2858,13 +3159,275 @@ export default function MindikGeneratorView({
               const tglPenangkapanPreview = effectiveTglPenangkapan ? formatTanggalIndonesia(effectiveTglPenangkapan) : '-';
               const jamPenangkapanPreview = formatJamPolri(effectiveJamPenangkapan) || '08.00';
 
-              if (!isBaKapActive && operatorDynamicFields.length === 0) return null;
+              const targetSubjDetUi = selectedTargetSubjects[0] || activeSuspect || caseSuspects[0] || null;
+              const resolvedDetUi = isDetentionActive
+                ? resolveChainedDetentionDates({
+                    templateCode: rawCodeNow || activeCanonicalCode,
+                    templateTitle: titleNow,
+                    tanggalSuratIso: formValues.TANGGAL_SURAT,
+                    archivedDocs: activeCaseDocs,
+                    targetSuspect: targetSubjDetUi,
+                    explicitStartIso: toIsoDateString(formValues.MULAI_DITAHAN || formValues.TGL_MULAI_HAN || formValues.TANGGAL_MULAI_HAN),
+                    explicitEndIso: toIsoDateString(formValues.AKHIR_DITAHAN || formValues.TGL_AKHIR_HAN || formValues.TANGGAL_AKHIR_HAN)
+                  })
+                : null;
+              const effectiveMulaiHanIso = resolvedDetUi?.mulaiIso || toIsoDateString(formValues.TANGGAL_SURAT) || '';
+              const effectiveAkhirHanIso = resolvedDetUi?.akhirIso || (effectiveMulaiHanIso ? addDaysToIsoDate(effectiveMulaiHanIso, (detentionStageUi.durationDays || 20) - 1) : '');
+              const effectiveTempatHan = formValues.TEMPAT_PENAHANAN ?? formValues.TEMPAT_HAN ?? 'Rumah Tahanan Negara Polres Kolaka Timur';
+              const effectiveTglBaHan = toIsoDateString(formValues.TANGGAL_BA_HAN_DATE) || toIsoDateString(formValues.TANGGAL_SURAT) || '';
+              const effectiveJamBaHan = formValues.JAM_BA_HAN_TIME || '09:00';
+              const effectiveTglPelaksanaanHan = toIsoDateString(formValues.TANGGAL_PELAKSANAAN_HAN) || effectiveMulaiHanIso || '';
+              const effectiveJamPelaksanaanHan = formValues.JAM_PELAKSANAAN_HAN_TIME || '08:30';
+              const parsedPelaksanaanHanPreview = parseDateParts(effectiveTglPelaksanaanHan);
+              const hariPelaksanaanHanPreview = parsedPelaksanaanHanPreview.hari || '-';
+              const tglPelaksanaanHanPreview = effectiveTglPelaksanaanHan ? formatTanggalIndonesia(effectiveTglPelaksanaanHan) : '-';
+              const jamPelaksanaanHanPreview = formatJamPolri(effectiveJamPelaksanaanHan) || '08.30';
+
+              if (!isBaKapActive && !isDetentionActive && operatorDynamicFields.length === 0) return null;
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {isDetentionActive && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {/* Blok A: Masa & Tempat Penahanan (Otomatis Inklusif) */}
+                      <div style={{
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: '#161D2A',
+                        border: '1px solid rgba(255, 42, 42, 0.30)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                            Masa &amp; Tempat Penahanan (Otomatis {detentionStageUi.durationDays} Hari Inklusif)
+                          </div>
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            background: 'rgba(16, 185, 129, 0.14)',
+                            border: '1px solid rgba(16, 185, 129, 0.38)',
+                            color: '#6EE7B7'
+                          }}>
+                            {detentionStageUi.stage === 'SP_HAN'
+                              ? 'Tahap 1: SP.Han Penyidik (20 Hari)'
+                              : detentionStageUi.stage === 'PU'
+                                ? 'Tahap 2: Perpanjangan PU / Kejari (40 Hari — H+1 SP.Han)'
+                                : detentionStageUi.stage === 'PN1'
+                                  ? 'Tahap 3: Perpanjangan Ketua PN 1 (30 Hari — H+1 PU)'
+                                  : 'Tahap 4: Perpanjangan Ketua PN 2 (30 Hari — H+1 PN 1)'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                          <div className="md:col-span-3">
+                            <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                              Mulai Ditahan
+                            </label>
+                            <input
+                              type="date"
+                              value={effectiveMulaiHanIso ?? ''}
+                              onChange={(e) => handleInputChange('MULAI_DITAHAN', e.target.value)}
+                              className="form-input mono"
+                              style={{
+                                width: '100%',
+                                fontSize: '12px',
+                                background: '#0B0E14',
+                                borderColor: 'rgba(148, 163, 184, 0.24)',
+                                color: '#FFFFFF'
+                              }}
+                            />
+                          </div>
+                          <div className="md:col-span-4">
+                            <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                              Akhir Ditahan (Otomatis {detentionStageUi.durationDays} Hari Inklusif)
+                            </label>
+                            <input
+                              type="date"
+                              value={effectiveAkhirHanIso ?? ''}
+                              onChange={(e) => handleInputChange('AKHIR_DITAHAN', e.target.value)}
+                              className="form-input mono"
+                              style={{
+                                width: '100%',
+                                fontSize: '12px',
+                                background: '#0B0E14',
+                                borderColor: 'rgba(16, 185, 129, 0.38)',
+                                color: '#FFFFFF'
+                              }}
+                            />
+                          </div>
+                          <div className="md:col-span-5">
+                            <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                              Tempat Penahanan
+                            </label>
+                            <input
+                              type="text"
+                              value={effectiveTempatHan ?? ''}
+                              onChange={(e) => handleInputChange('TEMPAT_PENAHANAN', e.target.value)}
+                              placeholder="Rumah Tahanan Negara Polres Kolaka Timur"
+                              className="form-input"
+                              style={{
+                                width: '100%',
+                                fontSize: '12px',
+                                background: '#0B0E14',
+                                borderColor: 'rgba(148, 163, 184, 0.24)',
+                                color: '#FFFFFF'
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{
+                          padding: '7px 10px',
+                          borderRadius: '7px',
+                          background: '#0B0E14',
+                          border: '1px solid rgba(16, 185, 129, 0.28)',
+                          fontSize: '11px',
+                          color: '#6EE7B7'
+                        }}>
+                          Perhitungan inklusif (tanggal mulai dihitung hari ke-1):{' '}
+                          <strong style={{ color: '#FFFFFF' }}>
+                            {effectiveMulaiHanIso ? formatTanggalIndonesia(effectiveMulaiHanIso) : '-'} s.d. {effectiveAkhirHanIso ? formatTanggalIndonesia(effectiveAkhirHanIso) : '-'} ({detentionStageUi.durationDays} hari)
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Blok B & Blok C: Waktu BA Penahanan & Waktu Pelaksanaan Penahanan */}
+                      {isBaHanActive && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* Blok B — 1. Waktu BA Penahanan */}
+                          <div style={{
+                            padding: '12px 14px',
+                            borderRadius: '10px',
+                            background: '#161D2A',
+                            border: '1px solid rgba(255, 42, 42, 0.30)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                          }}>
+                            <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                              1. Waktu BA Penahanan
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              <div>
+                                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                  Tanggal BA HAN
+                                </label>
+                                <input
+                                  type="date"
+                                  value={effectiveTglBaHan ?? ''}
+                                  onChange={(e) => handleInputChange('TANGGAL_BA_HAN_DATE', e.target.value)}
+                                  className="form-input mono"
+                                  style={{
+                                    width: '100%',
+                                    fontSize: '12px',
+                                    background: '#0B0E14',
+                                    borderColor: 'rgba(148, 163, 184, 0.24)',
+                                    color: '#FFFFFF'
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                  Jam BA HAN (WITA)
+                                </label>
+                                <input
+                                  type="time"
+                                  value={effectiveJamBaHan ?? '09:00'}
+                                  onChange={(e) => handleInputChange('JAM_BA_HAN_TIME', e.target.value)}
+                                  className="form-input mono"
+                                  style={{
+                                    width: '100%',
+                                    fontSize: '12px',
+                                    background: '#0B0E14',
+                                    borderColor: 'rgba(148, 163, 184, 0.24)',
+                                    color: '#FFFFFF'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Blok C — 2. Waktu Pelaksanaan Penahanan */}
+                          <div style={{
+                            padding: '12px 14px',
+                            borderRadius: '10px',
+                            background: '#161D2A',
+                            border: '1px solid rgba(255, 42, 42, 0.30)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            gap: '10px'
+                          }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                                2. Waktu Pelaksanaan Penahanan
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                  <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                    Tanggal Pelaksanaan Penahanan
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={effectiveTglPelaksanaanHan ?? ''}
+                                    onChange={(e) => handleInputChange('TANGGAL_PELAKSANAAN_HAN', e.target.value)}
+                                    className="form-input mono"
+                                    style={{
+                                      width: '100%',
+                                      fontSize: '12px',
+                                      background: '#0B0E14',
+                                      borderColor: 'rgba(148, 163, 184, 0.24)',
+                                      color: '#FFFFFF'
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                    Jam Penahanan (WITA)
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={effectiveJamPelaksanaanHan ?? '08:30'}
+                                    onChange={(e) => handleInputChange('JAM_PELAKSANAAN_HAN_TIME', e.target.value)}
+                                    className="form-input mono"
+                                    style={{
+                                      width: '100%',
+                                      fontSize: '12px',
+                                      background: '#0B0E14',
+                                      borderColor: 'rgba(148, 163, 184, 0.24)',
+                                      color: '#FFFFFF'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              background: '#0B0E14',
+                              border: '1px solid rgba(148, 163, 184, 0.18)',
+                              fontSize: '11px',
+                              color: '#94A3B8',
+                              lineHeight: 1.45
+                            }}>
+                              Tercetak di BA:{' '}
+                              <strong style={{ color: '#FFFFFF' }}>
+                                Hari {hariPelaksanaanHanPreview} tanggal {tglPelaksanaanHanPreview}, sekitar Pukul {jamPelaksanaanHanPreview} WITA
+                              </strong>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {isBaKapActive && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {/* Sub-Blok 1: Waktu BA Penangkapan & Tempat Penangkapan */}
+                      {/* Sub-Blok 1: Waktu BA Penangkapan */}
                       <div style={{
                         padding: '12px 14px',
                         borderRadius: '10px',
@@ -2875,7 +3438,7 @@ export default function MindikGeneratorView({
                         gap: '10px'
                       }}>
                         <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
-                          1. Waktu BA Penangkapan &amp; Tempat Penangkapan
+                          1. Waktu BA Penangkapan
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <div>
@@ -2915,28 +3478,9 @@ export default function MindikGeneratorView({
                             />
                           </div>
                         </div>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
-                            Tempat Penangkapan
-                          </label>
-                          <input
-                            type="text"
-                            value={formValues.TEMPAT_KAP ?? ''}
-                            onChange={(e) => handleInputChange('TEMPAT_KAP', e.target.value)}
-                            placeholder="Contoh: Desa Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur"
-                            className="form-input"
-                            style={{
-                              width: '100%',
-                              fontSize: '12px',
-                              background: '#0B0E14',
-                              borderColor: 'rgba(148, 163, 184, 0.24)',
-                              color: '#FFFFFF'
-                            }}
-                          />
-                        </div>
                       </div>
 
-                      {/* Sub-Blok 2: Waktu Penangkapan (Saat Tersangka Ditangkap) */}
+                      {/* Sub-Blok 2: Waktu & Tempat Penangkapan (Saat Tersangka Ditangkap) */}
                       <div style={{
                         padding: '12px 14px',
                         borderRadius: '10px',
@@ -2949,7 +3493,7 @@ export default function MindikGeneratorView({
                       }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
-                            2. Waktu Penangkapan (Saat Tersangka Ditangkap)
+                            2. Waktu &amp; Tempat Penangkapan (Saat Tersangka Ditangkap)
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div>
@@ -2988,6 +3532,25 @@ export default function MindikGeneratorView({
                                 }}
                               />
                             </div>
+                            <div className="sm:col-span-2">
+                              <label className="form-label" style={{ fontSize: '11px', fontWeight: 600, color: '#CBD5E1', marginBottom: '4px', display: 'block' }}>
+                                Tempat Penangkapan
+                              </label>
+                              <input
+                                type="text"
+                                value={formValues.TEMPAT_KAP ?? ''}
+                                onChange={(e) => handleInputChange('TEMPAT_KAP', e.target.value)}
+                                placeholder="Contoh: Desa Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur"
+                                className="form-input"
+                                style={{
+                                  width: '100%',
+                                  fontSize: '12px',
+                                  background: '#0B0E14',
+                                  borderColor: 'rgba(148, 163, 184, 0.24)',
+                                  color: '#FFFFFF'
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
 
@@ -3002,7 +3565,7 @@ export default function MindikGeneratorView({
                         }}>
                           Tercetak di BA:{' '}
                           <strong style={{ color: '#FFFFFF' }}>
-                            Pada Hari {hariPenangkapanPreview} tanggal {tglPenangkapanPreview}, sekitar Pukul {jamPenangkapanPreview} WITA
+                            bertempat di {formValues.TEMPAT_KAP || '...'}, Pada Hari {hariPenangkapanPreview} tanggal {tglPenangkapanPreview}, sekitar Pukul {jamPenangkapanPreview} WITA
                           </strong>
                         </div>
                       </div>
