@@ -806,8 +806,16 @@ export function assignDecomposedDateTags(targetObj, rawDateValue, prefixes = [])
     setTag(`HARI_${pUpper}`, hari);
     setTag(`TGL_ANGKA_${pUpper}`, tglAngka);
     setTag(`TANGGAL_ANGKA_${pUpper}`, tglAngka);
+    setTag(`TANGGAL_${pUpper}_HARI`, tglAngka);
+    setTag(`TGL_${pUpper}_HARI`, tglAngka);
     setTag(`BULAN_${pUpper}`, bulan);
+    setTag(`BULAN_${pUpper}_UPPER`, bulan ? bulan.toUpperCase() : '');
+    setTag(`TANGGAL_${pUpper}_BULAN`, bulan);
+    setTag(`TANGGAL_${pUpper}_BULAN_UPPER`, bulan ? bulan.toUpperCase() : '');
+    setTag(`TGL_${pUpper}_BULAN`, bulan);
     setTag(`TAHUN_${pUpper}`, tahun);
+    setTag(`TANGGAL_${pUpper}_TAHUN`, tahun);
+    setTag(`TGL_${pUpper}_TAHUN`, tahun);
     setTag(`TERBILANG_TAHUN_${pUpper}`, terbilangThn);
     setTag(`TANGGAL_TERURAI_${pUpper}`, terurai);
   });
@@ -2286,10 +2294,61 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   setBothCase('TEMPAT_SURAT', tempatSurat);
 
   // Pejabat Penandatangan / Atasan (Kasat Reskrim) - Pangkat Singkat Resmi
-  const atasanNama = activeCase.kasat_nama || activeCase.atasan_nama || '';
-  const atasanPangkat = formatPangkatSingkat(activeCase.kasat_pangkat || activeCase.atasan_pangkat || '');
-  const atasanNrp = activeCase.kasat_nrp || activeCase.atasan_nrp || '';
-  const atasanJabatan = activeCase.kasat_jabatan || activeCase.atasan_jabatan || 'Kasat Reskrim';
+  // Resolusi berlapis: activeCase -> references -> arsip dokumen perkara -> Direktori Personel -> Konfigurasi Default Kasat Reskrim
+  const personnelPoolForAtasanCtx = [
+    ...(Array.isArray(options.personnelList) ? options.personnelList : []),
+    ...(Array.isArray(options.personnel) ? options.personnel : []),
+    ...(Array.isArray(activeCase.investigators) ? activeCase.investigators : []),
+    ...(Array.isArray(activeCase.references?.investigators) ? activeCase.references.investigators : [])
+  ];
+  const directoryKasatCtx = personnelPoolForAtasanCtx.find((p) => {
+    if (!p || typeof p !== 'object') return false;
+    const roleUp = String(p.role || '').toUpperCase();
+    const jabUp = String(p.jabatan || '').toUpperCase();
+    return roleUp === 'KASAT' || jabUp.includes('KASAT') || jabUp.includes('KEPALA SATUAN');
+  }) || null;
+
+  let archivedAtasanNamaCtx = '';
+  let archivedAtasanPangkatCtx = '';
+  let archivedAtasanNrpCtx = '';
+  for (let i = arsipDocs.length - 1; i >= 0; i--) {
+    const mv = arsipDocs[i]?.meta_values || arsipDocs[i]?.metadata || {};
+    if (mv && typeof mv === 'object') {
+      if (!archivedAtasanNamaCtx) archivedAtasanNamaCtx = mv.ATASAN_NAMA || mv.KASAT_NAMA || mv.atasan_nama || mv.kasat_nama || '';
+      if (!archivedAtasanPangkatCtx) archivedAtasanPangkatCtx = mv.ATASAN_PANGKAT || mv.KASAT_PANGKAT || mv.atasan_pangkat || mv.kasat_pangkat || '';
+      if (!archivedAtasanNrpCtx) archivedAtasanNrpCtx = mv.ATASAN_NRP || mv.KASAT_NRP || mv.atasan_nrp || mv.kasat_nrp || '';
+    }
+  }
+
+  const atasanNama = (
+    activeCase.kasat_nama ||
+    activeCase.atasan_nama ||
+    activeCase.references?.kasat_nama ||
+    activeCase.references?.atasan_nama ||
+    archivedAtasanNamaCtx ||
+    directoryKasatCtx?.nama ||
+    'Wahyu Hidayat, S.H.'
+  ).replace(/^(AKBP|KOMPOL|AKP|IPTU|IPDA)\s+/i, '').trim();
+  const atasanPangkat = formatPangkatSingkat(
+    activeCase.kasat_pangkat ||
+    activeCase.atasan_pangkat ||
+    activeCase.references?.kasat_pangkat ||
+    activeCase.references?.atasan_pangkat ||
+    archivedAtasanPangkatCtx ||
+    directoryKasatCtx?.pangkat ||
+    extractLeadingPangkatFromLabel(activeCase.kasat_nama || directoryKasatCtx?.nama || '') ||
+    'IPTU'
+  ) || 'IPTU';
+  const atasanNrp = (
+    activeCase.kasat_nrp ||
+    activeCase.atasan_nrp ||
+    activeCase.references?.kasat_nrp ||
+    activeCase.references?.atasan_nrp ||
+    archivedAtasanNrpCtx ||
+    directoryKasatCtx?.nrp ||
+    '78120567'
+  ).trim();
+  const atasanJabatan = activeCase.kasat_jabatan || activeCase.atasan_jabatan || activeCase.references?.kasat_jabatan || 'Kasat Reskrim';
   const kapolresPangkat = formatPangkatSingkat(activeCase.kapolres_pangkat || '');
 
   setBothCase('ATASAN_NAMA', atasanNama);
@@ -2301,6 +2360,12 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
   setBothCase('KASAT_PANGKAT', atasanPangkat);
   setBothCase('KASAT_NRP', atasanNrp);
   setBothCase('KASAT_JABATAN', atasanJabatan);
+  setBothCase('KASAT_PANGKAT_NRP', atasanPangkat && atasanNrp ? `${atasanPangkat} / ${atasanNrp}` : (atasanPangkat || atasanNrp));
+  setBothCase('PEMBERI_PERINTAH_NAMA', atasanNama);
+  setBothCase('PEMBERI_PERINTAH_PANGKAT', atasanPangkat);
+  setBothCase('PEMBERI_PERINTAH_NRP', atasanNrp);
+  setBothCase('PEMBERI_PERINTAH_JABATAN', atasanJabatan);
+  setBothCase('PEMBERI_PERINTAH_PANGKAT_NRP', atasanPangkat && atasanNrp ? `${atasanPangkat} / ${atasanNrp}` : (atasanPangkat || atasanNrp));
   if (kapolresPangkat) {
     setBothCase('KAPOLRES_PANGKAT', kapolresPangkat);
   }
@@ -3104,8 +3169,18 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     'TANGGAL_NASKAH', 'tanggal_naskah',
     'TANGGAL_DOKUMEN', 'tanggal_dokumen',
     'HARI_SURAT', 'hari_surat',
+    'TANGGAL_SURAT_HARI', 'tanggal_surat_hari',
+    'TGL_SURAT_HARI', 'tgl_surat_hari',
+    'TANGGAL_ANGKA_SURAT', 'tanggal_angka_surat',
+    'TGL_ANGKA_SURAT', 'tgl_angka_surat',
     'BULAN_SURAT', 'bulan_surat',
-    'TAHUN_SURAT', 'tahun_surat'
+    'BULAN_SURAT_UPPER', 'bulan_surat_upper',
+    'TANGGAL_SURAT_BULAN', 'tanggal_surat_bulan',
+    'TANGGAL_SURAT_BULAN_UPPER', 'tanggal_surat_bulan_upper',
+    'TGL_SURAT_BULAN', 'tgl_surat_bulan',
+    'TAHUN_SURAT', 'tahun_surat',
+    'TANGGAL_SURAT_TAHUN', 'tanggal_surat_tahun',
+    'TGL_SURAT_TAHUN', 'tgl_surat_tahun'
   ].forEach((gKey) => {
     delete context[gKey];
   });
@@ -3192,13 +3267,53 @@ export async function buildUniversalCaseContext(caseIdOrCase, activeFormValues =
     rawOptionTplCode === 'SPRIN_KAP' ||
     rawOptionTplCode === 'SPRIN_KAP_DAN_BA';
   const rawActiveDateForKap = activeFormValues?.TANGGAL_SURAT || activeFormValues?.DOC_DATE || activeFormValues?.TGL_SURAT || options.docDate || '';
+  if (rawActiveDateForKap) {
+    assignDecomposedDateTags(mergedContext, rawActiveDateForKap, ['SURAT', 'DOC']);
+  }
+  const ALL_MASA_BERLAKU_ALIAS_KEYS = [
+    'MASA_BERLAKU',
+    'MASA_BERLAKU_SURAT',
+    'MASA_BERLAKU_SPRIN',
+    'MASA_BERLAKU_SIDIK',
+    'MASA_BERLAKU_SITA',
+    'MASA_BERLAKU_KAP',
+    'SPRIN_MASA_BERLAKU',
+    'SPRIN_MASA_BERLAKU_KAP',
+    'TANGGAL_BERLAKU',
+    'TGL_BERLAKU',
+    'TANGGAL_MASA_BERLAKU',
+    'TGL_MASA_BERLAKU',
+    'BERLAKU_SAMPAI',
+    'BERLAKU_SD',
+    'DOC_VALIDITY'
+  ];
   if (isSprinKapOption && rawActiveDateForKap) {
     const masaBerlakuIsoCtx = addDaysToIsoDate(rawActiveDateForKap, 1);
     const masaBerlakuValCtx = options.forFormUi ? masaBerlakuIsoCtx : formatTanggalIndonesia(masaBerlakuIsoCtx);
     if (masaBerlakuValCtx) {
-      ['MASA_BERLAKU', 'MASA_BERLAKU_KAP', 'SPRIN_MASA_BERLAKU', 'SPRIN_MASA_BERLAKU_KAP', 'TANGGAL_BERLAKU'].forEach((mk) => {
+      ALL_MASA_BERLAKU_ALIAS_KEYS.forEach((mk) => {
         mergedContext[mk] = masaBerlakuValCtx;
         mergedContext[mk.toLowerCase()] = masaBerlakuValCtx;
+      });
+    }
+  } else {
+    const explicitMasaBerlakuCtx =
+      activeFormValues?.MASA_BERLAKU ||
+      activeFormValues?.masa_berlaku ||
+      activeFormValues?.TANGGAL_BERLAKU ||
+      activeFormValues?.BERLAKU_SAMPAI ||
+      activeFormValues?.MASA_BERLAKU_SPRIN ||
+      activeFormValues?.MASA_BERLAKU_SURAT ||
+      activeFormValues?.MASA_BERLAKU_SITA ||
+      activeFormValues?.SPRIN_MASA_BERLAKU ||
+      '';
+    if (explicitMasaBerlakuCtx) {
+      const masaValCtx = options.forFormUi
+        ? (toIsoDateString(explicitMasaBerlakuCtx) || explicitMasaBerlakuCtx)
+        : formatTanggalIndonesia(explicitMasaBerlakuCtx);
+      ALL_MASA_BERLAKU_ALIAS_KEYS.forEach((mk) => {
+        mergedContext[mk] = masaValCtx;
+        mergedContext[mk.toLowerCase()] = masaValCtx;
       });
     }
   }
@@ -4783,9 +4898,29 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     canonicalTplCode === 'SPRIN_KAP_DAN_BA' ||
     tplCode === 'SPRIN_KAP' ||
     tplCode === 'SPRIN_KAP_DAN_BA';
+  const rawInputMasaBerlaku = pickNonEmpty(
+    cleanInput.MASA_BERLAKU,
+    cleanInput.masa_berlaku,
+    cleanInput.TANGGAL_BERLAKU,
+    cleanInput.tanggal_berlaku,
+    cleanInput.BERLAKU_SAMPAI,
+    cleanInput.berlaku_sampai,
+    cleanInput.MASA_BERLAKU_SPRIN,
+    cleanInput.masa_berlaku_sprin,
+    cleanInput.MASA_BERLAKU_SURAT,
+    cleanInput.masa_berlaku_surat,
+    cleanInput.MASA_BERLAKU_SIDIK,
+    cleanInput.masa_berlaku_sidik,
+    cleanInput.MASA_BERLAKU_SITA,
+    cleanInput.masa_berlaku_sita,
+    cleanInput.SPRIN_MASA_BERLAKU,
+    cleanInput.sprin_masa_berlaku,
+    cleanInput.DOC_VALIDITY,
+    cleanInput.doc_validity
+  );
   const rawMasaBerlaku = isSprinKapAutoDoc
-    ? (addDaysToIsoDate(activeRawDate, 1) || cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '')
-    : (cleanInput.MASA_BERLAKU || cleanInput.masa_berlaku || '');
+    ? (addDaysToIsoDate(activeRawDate, 1) || rawInputMasaBerlaku || '')
+    : (rawInputMasaBerlaku || '');
   const masaBerlaku = formatTanggalIndonesia(rawMasaBerlaku);
 
   // B. RUJUKAN TINGKAT PERKARA (dari activeCase / input form)
@@ -5524,7 +5659,20 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   const pekerjaan = cleanInput.PEKERJAAN || cleanInput.pekerjaan || activeSuspect?.pekerjaan || '';
   const kewarganegaraan = cleanInput.KEWARGANEGARAAN || cleanInput.kewarganegaraan || activeSuspect?.kewarganegaraan || 'Indonesia';
   const pendidikan = cleanInput.PENDIDIKAN || cleanInput.pendidikan || activeSuspect?.pendidikan || '';
-  const statusKawin = cleanInput.STATUS_KAWIN || cleanInput.status_kawin || activeSuspect?.status_pernikahan || activeSuspect?.status_kawin || activeSuspect?.marital_status || '';
+  const statusKawin =
+    cleanInput.STATUS_KAWIN ||
+    cleanInput.status_kawin ||
+    cleanInput.STATUS_NIKAH ||
+    cleanInput.status_nikah ||
+    cleanInput.STATUS_PERNIKAHAN ||
+    cleanInput.status_pernikahan ||
+    activeSuspect?.status_pernikahan ||
+    activeSuspect?.status_kawin ||
+    activeSuspect?.status_nikah ||
+    activeSuspect?.marital_status ||
+    initialTerlaporList[0]?.status_pernikahan ||
+    initialTerlaporList[0]?.status_kawin ||
+    '';
   const alamat = cleanInput.ALAMAT || cleanInput.alamat || activeSuspect?.alamat || activeCase?.alamat_tersangka || '';
 
   // E.1.1 STATUS & URUTAN ADMINISTRASI TERSANGKA
@@ -5559,10 +5707,77 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
 
   // F. PENYIDIK & PEJABAT
   // Tanda Tangan Kasat Reskrim (Pemberi Perintah / Penandatangan Utama - Pangkat Singkat Baku)
-  const atasanNama = cleanInput.ATASAN_NAMA || cleanInput.atasan_nama || activeCase?.kasat_nama || '';
-  const atasanPangkatRaw = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.kasat_pangkat || activeCase?.atasan_pangkat || '';
-  const atasanPangkat = (toPangkatSingkat(atasanPangkatRaw) || atasanPangkatRaw).trim();
-  const atasanNrp = cleanInput.ATASAN_NRP || cleanInput.atasan_nrp || activeCase?.kasat_nrp || '';
+  // Resolusi berlapis dari cleanInput -> activeCase -> references -> arsip perkara -> Direktori Personel -> Default Kasat Reskrim
+  const directoryKasatOfficer = combinedPersonnelPool.find((p) => {
+    if (!p || typeof p !== 'object') return false;
+    const rUp = String(p.role || '').toUpperCase();
+    const jUp = String(p.jabatan || '').toUpperCase();
+    return rUp === 'KASAT' || jUp.includes('KASAT') || jUp.includes('KEPALA SATUAN');
+  }) || null;
+
+  let archivedAtasanNama = '';
+  let archivedAtasanPangkat = '';
+  let archivedAtasanNrp = '';
+  for (let i = archivedDocs.length - 1; i >= 0; i--) {
+    const mv = archivedDocs[i]?.meta_values || archivedDocs[i]?.metadata || {};
+    if (mv && typeof mv === 'object') {
+      if (!archivedAtasanNama) archivedAtasanNama = mv.ATASAN_NAMA || mv.KASAT_NAMA || mv.atasan_nama || mv.kasat_nama || '';
+      if (!archivedAtasanPangkat) archivedAtasanPangkat = mv.ATASAN_PANGKAT || mv.KASAT_PANGKAT || mv.atasan_pangkat || mv.kasat_pangkat || '';
+      if (!archivedAtasanNrp) archivedAtasanNrp = mv.ATASAN_NRP || mv.KASAT_NRP || mv.atasan_nrp || mv.kasat_nrp || '';
+    }
+  }
+
+  const rawAtasanNamaCandidate = pickNonEmpty(
+    !isPlaceholderVal(cleanInput.ATASAN_NAMA) ? cleanInput.ATASAN_NAMA : '',
+    !isPlaceholderVal(cleanInput.atasan_nama) ? cleanInput.atasan_nama : '',
+    !isPlaceholderVal(cleanInput.KASAT_NAMA) ? cleanInput.KASAT_NAMA : '',
+    !isPlaceholderVal(cleanInput.kasat_nama) ? cleanInput.kasat_nama : '',
+    activeCase?.kasat_nama,
+    activeCase?.atasan_nama,
+    activeCase?.references?.kasat_nama,
+    activeCase?.references?.atasan_nama,
+    archivedAtasanNama,
+    directoryKasatOfficer?.nama,
+    'Wahyu Hidayat, S.H.'
+  );
+  const atasanNama = rawAtasanNamaCandidate.replace(/^(AKBP|KOMPOL|AKP|IPTU|IPDA)\s+/i, '').trim() || rawAtasanNamaCandidate;
+
+  const matchedAtasanDir = findPersonnelRecordMatch(
+    {
+      nama: atasanNama,
+      nrp: pickNonEmpty(cleanInput.ATASAN_NRP, cleanInput.KASAT_NRP, activeCase?.kasat_nrp, activeCase?.atasan_nrp)
+    },
+    combinedPersonnelPool
+  ) || directoryKasatOfficer;
+
+  const atasanPangkatRaw = pickNonEmpty(
+    !isPlaceholderVal(cleanInput.ATASAN_PANGKAT) ? cleanInput.ATASAN_PANGKAT : '',
+    !isPlaceholderVal(cleanInput.atasan_pangkat) ? cleanInput.atasan_pangkat : '',
+    !isPlaceholderVal(cleanInput.KASAT_PANGKAT) ? cleanInput.KASAT_PANGKAT : '',
+    !isPlaceholderVal(cleanInput.kasat_pangkat) ? cleanInput.kasat_pangkat : '',
+    activeCase?.kasat_pangkat,
+    activeCase?.atasan_pangkat,
+    activeCase?.references?.kasat_pangkat,
+    activeCase?.references?.atasan_pangkat,
+    archivedAtasanPangkat,
+    matchedAtasanDir?.pangkat,
+    extractLeadingPangkatFromLabel(rawAtasanNamaCandidate),
+    'IPTU'
+  );
+  const atasanPangkat = (toPangkatSingkat(atasanPangkatRaw) || atasanPangkatRaw || 'IPTU').trim();
+  const atasanNrp = pickNonEmpty(
+    !isPlaceholderVal(cleanInput.ATASAN_NRP) ? cleanInput.ATASAN_NRP : '',
+    !isPlaceholderVal(cleanInput.atasan_nrp) ? cleanInput.atasan_nrp : '',
+    !isPlaceholderVal(cleanInput.KASAT_NRP) ? cleanInput.KASAT_NRP : '',
+    !isPlaceholderVal(cleanInput.kasat_nrp) ? cleanInput.kasat_nrp : '',
+    activeCase?.kasat_nrp,
+    activeCase?.atasan_nrp,
+    activeCase?.references?.kasat_nrp,
+    activeCase?.references?.atasan_nrp,
+    archivedAtasanNrp,
+    matchedAtasanDir?.nrp,
+    '78120567'
+  );
 
   // Tanda Tangan Kanit / Yang Menerima Perintah / Pemeriksa BA (Pangkat Singkat Baku & Jabatan Otomatis Berbasis Pangkat)
   const penyidikNama = cleanInput.PENYIDIK_NAMA || cleanInput.penyidik_nama || activeCase?.penyidik_1_nama || '';
@@ -5705,6 +5920,15 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     TUJUAN_SURAT: tujuanSurat,
     ALAMAT_TUJUAN: alamatTujuan,
     MASA_BERLAKU: masaBerlaku,
+    masa_berlaku: masaBerlaku,
+    MASA_BERLAKU_SURAT: masaBerlaku,
+    masa_berlaku_surat: masaBerlaku,
+    MASA_BERLAKU_SPRIN: masaBerlaku,
+    masa_berlaku_sprin: masaBerlaku,
+    MASA_BERLAKU_SIDIK: masaBerlaku,
+    masa_berlaku_sidik: masaBerlaku,
+    MASA_BERLAKU_SITA: masaBerlaku,
+    masa_berlaku_sita: masaBerlaku,
     MASA_BERLAKU_KAP: masaBerlaku,
     masa_berlaku_kap: masaBerlaku,
     SPRIN_MASA_BERLAKU: masaBerlaku,
@@ -5713,6 +5937,18 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     sprin_masa_berlaku_kap: masaBerlaku,
     TANGGAL_BERLAKU: masaBerlaku,
     tanggal_berlaku: masaBerlaku,
+    TGL_BERLAKU: masaBerlaku,
+    tgl_berlaku: masaBerlaku,
+    TANGGAL_MASA_BERLAKU: masaBerlaku,
+    tanggal_masa_berlaku: masaBerlaku,
+    TGL_MASA_BERLAKU: masaBerlaku,
+    tgl_masa_berlaku: masaBerlaku,
+    BERLAKU_SAMPAI: masaBerlaku,
+    berlaku_sampai: masaBerlaku,
+    BERLAKU_SD: masaBerlaku,
+    berlaku_sd: masaBerlaku,
+    DOC_VALIDITY: masaBerlaku,
+    doc_validity: masaBerlaku,
 
     // B. RUJUKAN TINGKAT PERKARA (Resmi UPPERCASE)
     NOMOR_LP: nomorLp,
@@ -5982,6 +6218,11 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     KEWARGANEGARAAN: kewarganegaraan,
     PENDIDIKAN: pendidikan,
     STATUS_KAWIN: statusKawin,
+    status_kawin: statusKawin,
+    STATUS_NIKAH: statusKawin,
+    status_nikah: statusKawin,
+    STATUS_PERNIKAHAN: statusKawin,
+    status_pernikahan: statusKawin,
     ALAMAT: alamat,
 
     // E.1. IDENTITAS TERSANGKA LENGKAP & STATUS TERSANGKA
@@ -6005,6 +6246,10 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     pendidikan_tersangka: pendidikan,
     STATUS_KAWIN_TERSANGKA: statusKawin,
     status_kawin_tersangka: statusKawin,
+    STATUS_NIKAH_TERSANGKA: statusKawin,
+    status_nikah_tersangka: statusKawin,
+    STATUS_PERNIKAHAN_TERSANGKA: statusKawin,
+    status_pernikahan_tersangka: statusKawin,
     ALAMAT_TERSANGKA: alamat,
     alamat_tersangka: alamat,
     KONTAK_TERSANGKA: kontakTersangka,
@@ -6130,7 +6375,6 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     tempat_surat: tempatSurat,
     tujuan_surat: tujuanSurat,
     alamat_tujuan: alamatTujuan,
-    masa_berlaku: masaBerlaku,
 
     nomor_lp: nomorLp,
     tanggal_lp: tanggalLp,
@@ -6227,7 +6471,6 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     pekerjaan: pekerjaan,
     kewarganegaraan: kewarganegaraan,
     pendidikan: pendidikan,
-    status_kawin: statusKawin,
     alamat: alamat,
 
     // Lowercase Aliases
@@ -6651,14 +6894,44 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.TANGGAL_SURAT_HEADER = formatTanggalSuratHeader(finalPayload.TANGGAL_SURAT || tanggalSurat);
   finalPayload.tanggal_surat_header = finalPayload.TANGGAL_SURAT_HEADER;
 
-  // 1. Pangkat Atasan & Kasat / Kapolres (Pangkat Singkat Resmi)
-  const atasanPangkatRawFinal = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.atasan_pangkat || activeCase?.kasat_pangkat || finalPayload.ATASAN_PANGKAT || '';
+  // 1. Nama, Pangkat, NRP, & Jabatan Atasan & Kasat / Kapolres (Pangkat Singkat Resmi)
+  finalPayload.ATASAN_NAMA = atasanNama;
+  finalPayload.atasan_nama = atasanNama;
+  finalPayload.ATASAN_NRP = atasanNrp;
+  finalPayload.atasan_nrp = atasanNrp;
+  finalPayload.ATASAN_JABATAN = atasanJabatan;
+  finalPayload.atasan_jabatan = atasanJabatan;
+
+  finalPayload.KASAT_NAMA = atasanNama;
+  finalPayload.kasat_nama = atasanNama;
+  finalPayload.KASAT_NRP = atasanNrp;
+  finalPayload.kasat_nrp = atasanNrp;
+  finalPayload.KASAT_JABATAN = atasanJabatan;
+  finalPayload.kasat_jabatan = atasanJabatan;
+
+  finalPayload.PEMBERI_PERINTAH_NAMA = atasanNama;
+  finalPayload.pemberi_perintah_nama = atasanNama;
+  finalPayload.PEMBERI_PERINTAH_NRP = atasanNrp;
+  finalPayload.pemberi_perintah_nrp = atasanNrp;
+  finalPayload.PEMBERI_PERINTAH_JABATAN = atasanJabatan;
+  finalPayload.pemberi_perintah_jabatan = atasanJabatan;
+
+  const atasanPangkatRawFinal = cleanInput.ATASAN_PANGKAT || cleanInput.atasan_pangkat || activeCase?.atasan_pangkat || activeCase?.kasat_pangkat || atasanPangkat || finalPayload.ATASAN_PANGKAT || 'IPTU';
   finalPayload.ATASAN_PANGKAT = (formatPangkatSingkat(atasanPangkatRawFinal) || atasanPangkatRawFinal).trim();
   finalPayload.atasan_pangkat = finalPayload.ATASAN_PANGKAT;
 
-  const kasatPangkatRawFinal = cleanInput.KASAT_PANGKAT || cleanInput.kasat_pangkat || activeCase?.kasat_pangkat || finalPayload.KASAT_PANGKAT || finalPayload.ATASAN_PANGKAT || '';
+  const kasatPangkatRawFinal = cleanInput.KASAT_PANGKAT || cleanInput.kasat_pangkat || activeCase?.kasat_pangkat || atasanPangkat || finalPayload.KASAT_PANGKAT || finalPayload.ATASAN_PANGKAT || 'IPTU';
   finalPayload.KASAT_PANGKAT = (formatPangkatSingkat(kasatPangkatRawFinal) || kasatPangkatRawFinal).trim();
   finalPayload.kasat_pangkat = finalPayload.KASAT_PANGKAT;
+
+  finalPayload.PEMBERI_PERINTAH_PANGKAT = finalPayload.ATASAN_PANGKAT;
+  finalPayload.pemberi_perintah_pangkat = finalPayload.ATASAN_PANGKAT;
+  finalPayload.ATASAN_PANGKAT_LENGKAP = atasanPangkatLengkap;
+  finalPayload.atasan_pangkat_lengkap = atasanPangkatLengkap;
+  finalPayload.KASAT_PANGKAT_LENGKAP = atasanPangkatLengkap;
+  finalPayload.kasat_pangkat_lengkap = atasanPangkatLengkap;
+  finalPayload.PEMBERI_PERINTAH_PANGKAT_LENGKAP = atasanPangkatLengkap;
+  finalPayload.pemberi_perintah_pangkat_lengkap = atasanPangkatLengkap;
 
   if (finalPayload.KAPOLRES_PANGKAT || finalPayload.kapolres_pangkat || activeCase?.kapolres_pangkat) {
     const kapolresRaw = finalPayload.KAPOLRES_PANGKAT || finalPayload.kapolres_pangkat || activeCase?.kapolres_pangkat || '';
@@ -6825,6 +7098,10 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     : (finalPayload.ATASAN_PANGKAT || finalPayload.ATASAN_NRP || activeCase?.kasat_nrp || '');
   finalPayload.ATASAN_PANGKAT_NRP = finalAtasanPktNrp;
   finalPayload.atasan_pangkat_nrp = finalAtasanPktNrp;
+  finalPayload.KASAT_PANGKAT_NRP = finalAtasanPktNrp;
+  finalPayload.kasat_pangkat_nrp = finalAtasanPktNrp;
+  finalPayload.PEMBERI_PERINTAH_PANGKAT_NRP = finalAtasanPktNrp;
+  finalPayload.pemberi_perintah_pangkat_nrp = finalAtasanPktNrp;
 
   // 4. Daftar Personel Tim di Batang Tubuh / Tabel Tugas (Loop Array {#PENYIDIK}) - Pangkat Singkat & Jabatan Mengikuti Aturan Pangkat
   const normalizeTimArray = (arr) => {
@@ -6983,11 +7260,43 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
   finalPayload.TEMPAT_KAP = tempatKap;
   finalPayload.tempat_kap = tempatKap;
 
-  // Penegasan Masa Berlaku 1x24 Jam otomatis (H+1) untuk SPRIN_KAP / SPRIN_KAP_DAN_BA
-  if (isSprinKapAutoDoc && masaBerlaku) {
-    ['MASA_BERLAKU', 'MASA_BERLAKU_KAP', 'SPRIN_MASA_BERLAKU', 'SPRIN_MASA_BERLAKU_KAP', 'TANGGAL_BERLAKU'].forEach((mk) => {
+  // Penegasan Masa Berlaku untuk semua jenis Sprin (SPRIN_SIDIK, SPRIN_GAS_SIDIK, SPRIN_SIDIK_TAMBAHAN, SPRIN_SITA, SPRIN_KAP, dll.)
+  if (masaBerlaku) {
+    [
+      'MASA_BERLAKU',
+      'MASA_BERLAKU_SURAT',
+      'MASA_BERLAKU_SPRIN',
+      'MASA_BERLAKU_SIDIK',
+      'MASA_BERLAKU_SITA',
+      'MASA_BERLAKU_KAP',
+      'SPRIN_MASA_BERLAKU',
+      'SPRIN_MASA_BERLAKU_KAP',
+      'TANGGAL_BERLAKU',
+      'TGL_BERLAKU',
+      'TANGGAL_MASA_BERLAKU',
+      'TGL_MASA_BERLAKU',
+      'BERLAKU_SAMPAI',
+      'BERLAKU_SD',
+      'DOC_VALIDITY'
+    ].forEach((mk) => {
       finalPayload[mk] = masaBerlaku;
       finalPayload[mk.toLowerCase()] = masaBerlaku;
+    });
+  }
+
+  // Penegasan Status Pernikahan ({STATUS_KAWIN}, {STATUS_NIKAH}, {STATUS_PERNIKAHAN}) pada root payload
+  if (statusKawin) {
+    [
+      'STATUS_KAWIN',
+      'STATUS_NIKAH',
+      'STATUS_PERNIKAHAN',
+      'PERKAWINAN',
+      'STATUS_KAWIN_TERSANGKA',
+      'STATUS_NIKAH_TERSANGKA',
+      'STATUS_PERNIKAHAN_TERSANGKA'
+    ].forEach((sk) => {
+      finalPayload[sk] = statusKawin;
+      finalPayload[sk.toLowerCase()] = statusKawin;
     });
   }
 
@@ -7392,7 +7701,7 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     finalPayload.no_hp = finalEffectiveNoHp;
   }
 
-  // Kunci tanggal terurai surat aktif: {HARI_SURAT}, {TANGGAL_ANGKA_SURAT}, {TGL_ANGKA_SURAT}, {BULAN_SURAT}, {TAHUN_SURAT}
+  // Kunci tanggal terurai surat aktif: {HARI_SURAT}, {TANGGAL_SURAT_HARI}, {TANGGAL_SURAT_BULAN}, {TANGGAL_SURAT_TAHUN}, {BULAN_SURAT}, {TAHUN_SURAT}
   if (parsedActiveDate?.hari) {
     finalPayload.HARI_SURAT = parsedActiveDate.hari;
     finalPayload.hari_surat = parsedActiveDate.hari;
@@ -7403,14 +7712,30 @@ export function buildMindikPayload(arg1 = {}, maybeSuspect = null, maybeInput = 
     finalPayload.tanggal_angka_surat = tglAngkaStr;
     finalPayload.TGL_ANGKA_SURAT = tglAngkaStr;
     finalPayload.tgl_angka_surat = tglAngkaStr;
+    finalPayload.TANGGAL_SURAT_HARI = tglAngkaStr;
+    finalPayload.tanggal_surat_hari = tglAngkaStr;
+    finalPayload.TGL_SURAT_HARI = tglAngkaStr;
+    finalPayload.tgl_surat_hari = tglAngkaStr;
   }
   if (parsedActiveDate?.bulan) {
     finalPayload.BULAN_SURAT = parsedActiveDate.bulan;
     finalPayload.bulan_surat = parsedActiveDate.bulan;
+    finalPayload.BULAN_SURAT_UPPER = parsedActiveDate.bulan.toUpperCase();
+    finalPayload.bulan_surat_upper = parsedActiveDate.bulan.toUpperCase();
+    finalPayload.TANGGAL_SURAT_BULAN = parsedActiveDate.bulan;
+    finalPayload.tanggal_surat_bulan = parsedActiveDate.bulan;
+    finalPayload.TANGGAL_SURAT_BULAN_UPPER = parsedActiveDate.bulan.toUpperCase();
+    finalPayload.tanggal_surat_bulan_upper = parsedActiveDate.bulan.toUpperCase();
+    finalPayload.TGL_SURAT_BULAN = parsedActiveDate.bulan;
+    finalPayload.tgl_surat_bulan = parsedActiveDate.bulan;
   }
   if (parsedActiveDate?.tahun) {
     finalPayload.TAHUN_SURAT = parsedActiveDate.tahun;
     finalPayload.tahun_surat = parsedActiveDate.tahun;
+    finalPayload.TANGGAL_SURAT_TAHUN = parsedActiveDate.tahun;
+    finalPayload.tanggal_surat_tahun = parsedActiveDate.tahun;
+    finalPayload.TGL_SURAT_TAHUN = parsedActiveDate.tahun;
+    finalPayload.tgl_surat_tahun = parsedActiveDate.tahun;
   }
 
   // Penegasan biodata Subjek Target untuk Surat Panggilan Saksi (SPGL_SAKSI_*) dan Surat Panggilan Tersangka (SPGL_TSK_*)
@@ -8151,18 +8476,49 @@ export async function generateDocxBlob({
     'TANGGAL_DOKUMEN', 'tanggal_dokumen',
     'HARI_SURAT', 'hari_surat',
     'BULAN_SURAT', 'bulan_surat',
+    'BULAN_SURAT_UPPER', 'bulan_surat_upper',
     'TAHUN_SURAT', 'tahun_surat',
     'TGL_ANGKA_SURAT', 'tgl_angka_surat',
     'TANGGAL_ANGKA_SURAT', 'tanggal_angka_surat',
+    'TANGGAL_SURAT_HARI', 'tanggal_surat_hari',
+    'TGL_SURAT_HARI', 'tgl_surat_hari',
+    'TANGGAL_SURAT_BULAN', 'tanggal_surat_bulan',
+    'TANGGAL_SURAT_BULAN_UPPER', 'tanggal_surat_bulan_upper',
+    'TGL_SURAT_BULAN', 'tgl_surat_bulan',
+    'TANGGAL_SURAT_TAHUN', 'tanggal_surat_tahun',
+    'TGL_SURAT_TAHUN', 'tgl_surat_tahun',
     'TERBILANG_TAHUN_SURAT', 'terbilang_tahun_surat',
     'TANGGAL_TERURAI_SURAT', 'tanggal_terurai_surat',
     'HARI_DOC', 'hari_doc',
     'TGL_ANGKA_DOC', 'tgl_angka_doc',
     'TANGGAL_ANGKA_DOC', 'tanggal_angka_doc',
+    'TANGGAL_DOC_HARI', 'tanggal_doc_hari',
+    'TGL_DOC_HARI', 'tgl_doc_hari',
     'BULAN_DOC', 'bulan_doc',
+    'BULAN_DOC_UPPER', 'bulan_doc_upper',
+    'TANGGAL_DOC_BULAN', 'tanggal_doc_bulan',
+    'TANGGAL_DOC_BULAN_UPPER', 'tanggal_doc_bulan_upper',
+    'TGL_DOC_BULAN', 'tgl_doc_bulan',
     'TAHUN_DOC', 'tahun_doc',
+    'TANGGAL_DOC_TAHUN', 'tanggal_doc_tahun',
+    'TGL_DOC_TAHUN', 'tgl_doc_tahun',
     'TERBILANG_TAHUN_DOC', 'terbilang_tahun_doc',
-    'TANGGAL_TERURAI_DOC', 'tanggal_terurai_doc'
+    'TANGGAL_TERURAI_DOC', 'tanggal_terurai_doc',
+    'MASA_BERLAKU', 'masa_berlaku',
+    'MASA_BERLAKU_SURAT', 'masa_berlaku_surat',
+    'MASA_BERLAKU_SPRIN', 'masa_berlaku_sprin',
+    'MASA_BERLAKU_SIDIK', 'masa_berlaku_sidik',
+    'MASA_BERLAKU_SITA', 'masa_berlaku_sita',
+    'MASA_BERLAKU_KAP', 'masa_berlaku_kap',
+    'SPRIN_MASA_BERLAKU', 'sprin_masa_berlaku',
+    'SPRIN_MASA_BERLAKU_KAP', 'sprin_masa_berlaku_kap',
+    'TANGGAL_BERLAKU', 'tanggal_berlaku',
+    'TGL_BERLAKU', 'tgl_berlaku',
+    'TANGGAL_MASA_BERLAKU', 'tanggal_masa_berlaku',
+    'TGL_MASA_BERLAKU', 'tgl_masa_berlaku',
+    'BERLAKU_SAMPAI', 'berlaku_sampai',
+    'BERLAKU_SD', 'berlaku_sd',
+    'DOC_VALIDITY', 'doc_validity'
   ]);
   Object.keys(universalContext).forEach((uKey) => {
     if (ACTIVE_SURAT_PROTECTED_KEYS.has(uKey)) return;
@@ -8179,7 +8535,7 @@ export async function generateDocxBlob({
   delete dataMap.__SELECTED_SUBJECTS__;
   delete dataMap.__selected_subjects__;
 
-  // Kunci akhir tanggal surat aktif agar selalu sama persis dengan TANGGAL_SURAT dari form / docDate
+  // Kunci akhir tanggal surat aktif, masa berlaku, & atasan penandatangan agar selalu sama persis dengan baseDataMap
   const ACTIVE_DATE_KEYS_FROM_BASE = [
     'TANGGAL_SURAT', 'tanggal_surat',
     'TGL_SURAT', 'tgl_surat',
@@ -8189,16 +8545,32 @@ export async function generateDocxBlob({
     'TANGGAL_SURAT_HEADER', 'tanggal_surat_header',
     'HARI_SURAT', 'hari_surat',
     'BULAN_SURAT', 'bulan_surat',
+    'BULAN_SURAT_UPPER', 'bulan_surat_upper',
     'TAHUN_SURAT', 'tahun_surat',
     'TGL_ANGKA_SURAT', 'tgl_angka_surat',
     'TANGGAL_ANGKA_SURAT', 'tanggal_angka_surat',
+    'TANGGAL_SURAT_HARI', 'tanggal_surat_hari',
+    'TGL_SURAT_HARI', 'tgl_surat_hari',
+    'TANGGAL_SURAT_BULAN', 'tanggal_surat_bulan',
+    'TANGGAL_SURAT_BULAN_UPPER', 'tanggal_surat_bulan_upper',
+    'TGL_SURAT_BULAN', 'tgl_surat_bulan',
+    'TANGGAL_SURAT_TAHUN', 'tanggal_surat_tahun',
+    'TGL_SURAT_TAHUN', 'tgl_surat_tahun',
     'TERBILANG_TAHUN_SURAT', 'terbilang_tahun_surat',
     'TANGGAL_TERURAI_SURAT', 'tanggal_terurai_surat',
     'HARI_DOC', 'hari_doc',
     'TGL_ANGKA_DOC', 'tgl_angka_doc',
     'TANGGAL_ANGKA_DOC', 'tanggal_angka_doc',
+    'TANGGAL_DOC_HARI', 'tanggal_doc_hari',
+    'TGL_DOC_HARI', 'tgl_doc_hari',
     'BULAN_DOC', 'bulan_doc',
+    'BULAN_DOC_UPPER', 'bulan_doc_upper',
+    'TANGGAL_DOC_BULAN', 'tanggal_doc_bulan',
+    'TANGGAL_DOC_BULAN_UPPER', 'tanggal_doc_bulan_upper',
+    'TGL_DOC_BULAN', 'tgl_doc_bulan',
     'TAHUN_DOC', 'tahun_doc',
+    'TANGGAL_DOC_TAHUN', 'tanggal_doc_tahun',
+    'TGL_DOC_TAHUN', 'tgl_doc_tahun',
     'TERBILANG_TAHUN_DOC', 'terbilang_tahun_doc',
     'TANGGAL_TERURAI_DOC', 'tanggal_terurai_doc',
     'HARI_KAP', 'hari_kap',
@@ -8213,10 +8585,36 @@ export async function generateDocxBlob({
     'WAKTU_KAP', 'waktu_kap',
     'TEMPAT_KAP', 'tempat_kap',
     'MASA_BERLAKU', 'masa_berlaku',
+    'MASA_BERLAKU_SURAT', 'masa_berlaku_surat',
+    'MASA_BERLAKU_SPRIN', 'masa_berlaku_sprin',
+    'MASA_BERLAKU_SIDIK', 'masa_berlaku_sidik',
+    'MASA_BERLAKU_SITA', 'masa_berlaku_sita',
     'MASA_BERLAKU_KAP', 'masa_berlaku_kap',
     'SPRIN_MASA_BERLAKU', 'sprin_masa_berlaku',
     'SPRIN_MASA_BERLAKU_KAP', 'sprin_masa_berlaku_kap',
     'TANGGAL_BERLAKU', 'tanggal_berlaku',
+    'TGL_BERLAKU', 'tgl_berlaku',
+    'TANGGAL_MASA_BERLAKU', 'tanggal_masa_berlaku',
+    'TGL_MASA_BERLAKU', 'tgl_masa_berlaku',
+    'BERLAKU_SAMPAI', 'berlaku_sampai',
+    'BERLAKU_SD', 'berlaku_sd',
+    'DOC_VALIDITY', 'doc_validity',
+    'ATASAN_NAMA', 'atasan_nama',
+    'ATASAN_NRP', 'atasan_nrp',
+    'ATASAN_JABATAN', 'atasan_jabatan',
+    'KASAT_NAMA', 'kasat_nama',
+    'KASAT_NRP', 'kasat_nrp',
+    'KASAT_PANGKAT_NRP', 'kasat_pangkat_nrp',
+    'PEMBERI_PERINTAH_NAMA', 'pemberi_perintah_nama',
+    'PEMBERI_PERINTAH_PANGKAT', 'pemberi_perintah_pangkat',
+    'PEMBERI_PERINTAH_NRP', 'pemberi_perintah_nrp',
+    'PEMBERI_PERINTAH_PANGKAT_NRP', 'pemberi_perintah_pangkat_nrp',
+    'STATUS_KAWIN', 'status_kawin',
+    'STATUS_NIKAH', 'status_nikah',
+    'STATUS_PERNIKAHAN', 'status_pernikahan',
+    'STATUS_KAWIN_TERSANGKA', 'status_kawin_tersangka',
+    'STATUS_NIKAH_TERSANGKA', 'status_nikah_tersangka',
+    'STATUS_PERNIKAHAN_TERSANGKA', 'status_pernikahan_tersangka',
     'MULAI_DITAHAN', 'mulai_ditahan',
     'TANGGAL_MULAI_DITAHAN', 'tanggal_mulai_ditahan',
     'TANGGAL_MULAI_HAN', 'tanggal_mulai_han',

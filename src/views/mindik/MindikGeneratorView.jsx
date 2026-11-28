@@ -264,6 +264,39 @@ export default function MindikGeneratorView({
 
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // Resolusi default Kasat Reskrim dari perkara, direktori personel, atau fallback resmi
+    const kasatFromDirectory = (Array.isArray(personnel) ? personnel : []).find(
+      (p) => p && (
+        String(p.role || '').toUpperCase().includes('KASAT') ||
+        String(p.jabatan || '').toUpperCase().includes('KASAT')
+      )
+    ) || null;
+    const resolvedKasatNama = (
+      currentCase.kasat_nama ||
+      currentCase.atasan_nama ||
+      currentCase.references?.kasat_nama ||
+      currentCase.references?.atasan_nama ||
+      kasatFromDirectory?.nama ||
+      'Wahyu Hidayat, S.H.'
+    ).replace(/^(KOMISARIS\s+BESAR\s+POLISI|AJUN\s+KOMISARIS\s+BESAR\s+POLISI|KOMISARIS\s+POLISI|AJUN\s+KOMISARIS\s+POLISI|INSPEKTUR\s+POLISI\s+SATU|INSPEKTUR\s+POLISI\s+DUA|AJUN\s+INSPEKTUR\s+POLISI\s+SATU|AJUN\s+INSPEKTUR\s+POLISI\s+DUA|KOMBES\s*POL|AKBP|KOMPOL|AKP|IPTU|IPDA|AIPTU|AIPDA|BRIPKA|BRIGPOL|BRIGADIR|BRIPTU|BRIPDA)\.?\s+/i, '').trim() || 'Wahyu Hidayat, S.H.';
+    const resolvedKasatPangkat = formatPangkatSingkat(
+      currentCase.kasat_pangkat ||
+      currentCase.atasan_pangkat ||
+      currentCase.references?.kasat_pangkat ||
+      currentCase.references?.atasan_pangkat ||
+      kasatFromDirectory?.pangkat ||
+      'IPTU'
+    ) || 'IPTU';
+    const resolvedKasatNrp = String(
+      currentCase.kasat_nrp ||
+      currentCase.atasan_nrp ||
+      currentCase.references?.kasat_nrp ||
+      currentCase.references?.atasan_nrp ||
+      kasatFromDirectory?.nrp ||
+      '78120567'
+    ).trim() || '78120567';
+    const resolvedKasatJabatan = currentCase.kasat_jabatan || currentCase.atasan_jabatan || 'Kasat Reskrim';
+
     // Reset Form Values dengan tanggal ISO hari ini & nomor LP aktif
     setFormValues({
       TANGGAL_SURAT: todayStr,
@@ -274,14 +307,14 @@ export default function MindikGeneratorView({
       nomor_lp: currentCase.nomor_lp || currentCase.no_lp || '',
       TANGGAL_LP: currentCase.tanggal_lp || currentCase.sprin_date || todayStr,
       tanggal_lp: currentCase.tanggal_lp || currentCase.sprin_date || todayStr,
-      KASAT_NAMA: currentCase.kasat_nama || '',
-      KASAT_PANGKAT: formatPangkatSingkat(currentCase.kasat_pangkat || ''),
-      KASAT_NRP: currentCase.kasat_nrp || '',
-      KASAT_JABATAN: currentCase.kasat_jabatan || 'Kasat Reskrim',
-      ATASAN_NAMA: currentCase.kasat_nama || '',
-      ATASAN_PANGKAT: formatPangkatSingkat(currentCase.kasat_pangkat || ''),
-      ATASAN_NRP: currentCase.kasat_nrp || '',
-      ATASAN_JABATAN: currentCase.kasat_jabatan || 'Kasat Reskrim',
+      KASAT_NAMA: resolvedKasatNama,
+      KASAT_PANGKAT: resolvedKasatPangkat,
+      KASAT_NRP: resolvedKasatNrp,
+      KASAT_JABATAN: resolvedKasatJabatan,
+      ATASAN_NAMA: resolvedKasatNama,
+      ATASAN_PANGKAT: resolvedKasatPangkat,
+      ATASAN_NRP: resolvedKasatNrp,
+      ATASAN_JABATAN: resolvedKasatJabatan,
       PENYIDIK_NAMA: currentCase.penyidik_1_nama || '',
       PENYIDIK_PANGKAT: formatPangkatSingkat(currentCase.penyidik_1_pangkat || ''),
       PENYIDIK_NRP: currentCase.penyidik_1_nrp || '',
@@ -666,6 +699,8 @@ export default function MindikGeneratorView({
         next.pendidikan = normPrimary.pendidikan || '';
         next.STATUS_KAWIN = normPrimary.status_pernikahan || '';
         next.status_kawin = normPrimary.status_pernikahan || '';
+        next.STATUS_NIKAH = normPrimary.status_pernikahan || '';
+        next.status_nikah = normPrimary.status_pernikahan || '';
         next.STATUS_PERNIKAHAN = normPrimary.status_pernikahan || '';
         next.status_pernikahan = normPrimary.status_pernikahan || '';
         next.ALAMAT = normPrimary.alamat || '';
@@ -1012,6 +1047,45 @@ export default function MindikGeneratorView({
           nextValues.SPRIN_MASA_BERLAKU = autoMasaIso;
           nextValues.SPRIN_MASA_BERLAKU_KAP = autoMasaIso;
           nextValues.TANGGAL_BERLAKU = autoMasaIso;
+        } else {
+          // Untuk jenis Sprin lainnya (SPRIN_SIDIK, SPRIN_GAS_SIDIK, SPRIN_SIDIK_TAMBAHAN, SPRIN_SITA, dll.),
+          // pulihkan Masa Berlaku dari arsip dokumen yang sedang dibuka (jika ada) atau pertahankan input pengguna
+          const existingArchivedMetaForMasa = existingAnyDoc?.meta_values || existingAnyDoc?.metadata || existingAnyDoc?.form_values || {};
+          const parsedArchivedMetaMasa = typeof existingArchivedMetaForMasa === 'string'
+            ? (() => { try { return JSON.parse(existingArchivedMetaForMasa) || {}; } catch { return {}; } })()
+            : (existingArchivedMetaForMasa || {});
+          const archivedMasaIso = toIsoDateString(
+            parsedArchivedMetaMasa.MASA_BERLAKU ||
+            parsedArchivedMetaMasa.masa_berlaku ||
+            parsedArchivedMetaMasa.TANGGAL_BERLAKU ||
+            parsedArchivedMetaMasa.BERLAKU_SAMPAI ||
+            parsedArchivedMetaMasa.MASA_BERLAKU_SPRIN ||
+            parsedArchivedMetaMasa.SPRIN_MASA_BERLAKU
+          );
+          const currentMasaIso = toIsoDateString(
+            nextValues.MASA_BERLAKU ||
+            nextValues.TANGGAL_BERLAKU ||
+            nextValues.BERLAKU_SAMPAI ||
+            nextValues.MASA_BERLAKU_SPRIN ||
+            nextValues.SPRIN_MASA_BERLAKU
+          );
+          const resolvedMasaIso = (isNewTplState && archivedMasaIso)
+            ? archivedMasaIso
+            : (currentMasaIso || archivedMasaIso || finalIsoDate);
+          if (resolvedMasaIso) {
+            nextValues.MASA_BERLAKU = resolvedMasaIso;
+            nextValues.masa_berlaku = resolvedMasaIso;
+            nextValues.TANGGAL_BERLAKU = resolvedMasaIso;
+            nextValues.tanggal_berlaku = resolvedMasaIso;
+            nextValues.BERLAKU_SAMPAI = resolvedMasaIso;
+            nextValues.berlaku_sampai = resolvedMasaIso;
+            nextValues.MASA_BERLAKU_SPRIN = resolvedMasaIso;
+            nextValues.masa_berlaku_sprin = resolvedMasaIso;
+            nextValues.MASA_BERLAKU_SURAT = resolvedMasaIso;
+            nextValues.masa_berlaku_surat = resolvedMasaIso;
+            nextValues.SPRIN_MASA_BERLAKU = resolvedMasaIso;
+            nextValues.sprin_masa_berlaku = resolvedMasaIso;
+          }
         }
 
         if (isBaKapTpl) {
@@ -1786,6 +1860,46 @@ export default function MindikGeneratorView({
         next.TANGGAL_AKHIR_DITAHAN = syncedAkhir;
         next.TANGGAL_AKHIR_HAN = syncedAkhir;
         next.TGL_AKHIR_HAN = syncedAkhir;
+      }
+
+      if ([
+        'MASA_BERLAKU', 'masa_berlaku',
+        'MASA_BERLAKU_SURAT', 'masa_berlaku_surat',
+        'MASA_BERLAKU_SPRIN', 'masa_berlaku_sprin',
+        'MASA_BERLAKU_SIDIK', 'masa_berlaku_sidik',
+        'MASA_BERLAKU_SITA', 'masa_berlaku_sita',
+        'MASA_BERLAKU_KAP', 'masa_berlaku_kap',
+        'SPRIN_MASA_BERLAKU', 'sprin_masa_berlaku',
+        'SPRIN_MASA_BERLAKU_KAP', 'sprin_masa_berlaku_kap',
+        'TANGGAL_BERLAKU', 'tanggal_berlaku',
+        'TGL_BERLAKU', 'tgl_berlaku',
+        'TANGGAL_MASA_BERLAKU', 'tanggal_masa_berlaku',
+        'TGL_MASA_BERLAKU', 'tgl_masa_berlaku',
+        'BERLAKU_SAMPAI', 'berlaku_sampai',
+        'BERLAKU_SD', 'berlaku_sd',
+        'DOC_VALIDITY', 'doc_validity'
+      ].includes(key)) {
+        const syncedMasa = toIsoDateString(value) || value || '';
+        [
+          'MASA_BERLAKU',
+          'MASA_BERLAKU_SURAT',
+          'MASA_BERLAKU_SPRIN',
+          'MASA_BERLAKU_SIDIK',
+          'MASA_BERLAKU_SITA',
+          'MASA_BERLAKU_KAP',
+          'SPRIN_MASA_BERLAKU',
+          'SPRIN_MASA_BERLAKU_KAP',
+          'TANGGAL_BERLAKU',
+          'TGL_BERLAKU',
+          'TANGGAL_MASA_BERLAKU',
+          'TGL_MASA_BERLAKU',
+          'BERLAKU_SAMPAI',
+          'BERLAKU_SD',
+          'DOC_VALIDITY'
+        ].forEach((mk) => {
+          next[mk] = syncedMasa;
+          next[mk.toLowerCase()] = syncedMasa;
+        });
       }
 
       if (key === 'TEMPAT_PENAHANAN' || key === 'TEMPAT_HAN') {
@@ -3672,11 +3786,20 @@ export default function MindikGeneratorView({
               const isAutoChainedReferenceField = (rawKey) => {
                 const k = String(rawKey || '').toUpperCase().trim();
                 if (!k) return true;
-                // 1. Field Nomor & Tanggal Surat utama yang sudah punya input khusus di atas, termasuk BULAN_SURAT, TAHUN_SURAT, Jabatan Penyidik, No. HP Penyidik Penanganan, & Alias Rujukan Penahanan/Dkk otomatis
+                // 1. Field Nomor & Tanggal Surat utama yang sudah punya input khusus di atas, termasuk TANGGAL_SURAT_HARI/BULAN/TAHUN, BULAN_SURAT, TAHUN_SURAT, Jabatan Penyidik, No. HP Penyidik Penanganan, & Alias Rujukan Penahanan/Dkk otomatis
                 if ([
                   'NOMOR_SURAT', 'NO_SURAT', 'DOC_NO', 'TANGGAL_SURAT', 'DOC_DATE', 'TGL_SURAT',
                   'NOMOR_SURAT_HEADER', 'TANGGAL_SURAT_HEADER',
-                  'HARI_SURAT', 'TANGGAL_ANGKA_SURAT', 'TGL_ANGKA_SURAT', 'BULAN_SURAT', 'TAHUN_SURAT',
+                  'HARI_SURAT', 'TANGGAL_ANGKA_SURAT', 'TGL_ANGKA_SURAT',
+                  'TANGGAL_SURAT_HARI', 'TGL_SURAT_HARI',
+                  'TANGGAL_SURAT_BULAN', 'TANGGAL_SURAT_BULAN_UPPER', 'TGL_SURAT_BULAN',
+                  'TANGGAL_SURAT_TAHUN', 'TGL_SURAT_TAHUN',
+                  'BULAN_SURAT', 'BULAN_SURAT_UPPER', 'TAHUN_SURAT',
+                  'HARI_DOC', 'TANGGAL_ANGKA_DOC', 'TGL_ANGKA_DOC',
+                  'TANGGAL_DOC_HARI', 'TGL_DOC_HARI',
+                  'TANGGAL_DOC_BULAN', 'TANGGAL_DOC_BULAN_UPPER', 'TGL_DOC_BULAN',
+                  'TANGGAL_DOC_TAHUN', 'TGL_DOC_TAHUN',
+                  'BULAN_DOC', 'BULAN_DOC_UPPER', 'TAHUN_DOC',
                   'PENYIDIK_PENANGAN_NO_HP', 'NO_HP_PENYIDIK_PENANGAN', 'PENYIDIK_PENANGAN_HP',
                   'PENYIDIK_PENANGAN_JABATAN', 'PENYIDIK_PENANGAN_JABATAN_UPPER',
                   'PENYIDIK_JABATAN', 'PENYIDIK_JABATAN_UPPER',
@@ -3777,8 +3900,21 @@ export default function MindikGeneratorView({
                 if (k === 'TERBILANG_TAHUN' || k.startsWith('TERBILANG_TAHUN_') || k.endsWith('_TERBILANG')) {
                   return true;
                 }
-                // 2. Field yang tetap BOLEH diinput operator pada template tertentu (tanggal jadwal gelar perkara, BA lainnya)
+                // 2. Field yang tetap BOLEH diinput operator pada template tertentu (Masa Berlaku Surat pada Sprin selain Sprin Kap, tanggal jadwal gelar perkara, BA lainnya)
                 const allowedOperatorInputKeys = new Set([
+                  'MASA_BERLAKU',
+                  'MASA_BERLAKU_SURAT',
+                  'MASA_BERLAKU_SPRIN',
+                  'MASA_BERLAKU_SIDIK',
+                  'MASA_BERLAKU_SITA',
+                  'SPRIN_MASA_BERLAKU',
+                  'TANGGAL_BERLAKU',
+                  'TGL_BERLAKU',
+                  'TANGGAL_MASA_BERLAKU',
+                  'TGL_MASA_BERLAKU',
+                  'BERLAKU_SAMPAI',
+                  'BERLAKU_SD',
+                  'DOC_VALIDITY',
                   'TANGGAL_GELAR_PERKARA',
                   'TANGGAL_BA',
                   'TANGGAL_BA_BAWA'
@@ -3839,7 +3975,42 @@ export default function MindikGeneratorView({
                 return false;
               };
 
-              const operatorDynamicFields = (Array.isArray(currentTemplate?.dynamic_fields) ? currentTemplate.dynamic_fields : [])
+              const rawTplDynamicFields = Array.isArray(currentTemplate?.dynamic_fields) ? [...currentTemplate.dynamic_fields] : [];
+              const presetForActiveTpl = MINDIK_PRESETS[activeCanonicalCode] || MINDIK_PRESETS[rawCodeNow] || [];
+              const presetHasMasaBerlaku = presetForActiveTpl.some(f => String(f.tag || '').toUpperCase() === 'MASA_BERLAKU');
+              const isSprinRequiringMasaBerlaku =
+                !isSprinKapActive &&
+                !isDetentionActive &&
+                (
+                  presetHasMasaBerlaku ||
+                  activeCanonicalCode.startsWith('SPRIN_SIDIK') ||
+                  activeCanonicalCode.startsWith('SPGAS_SIDIK') ||
+                  activeCanonicalCode.startsWith('SPRIN_GAS_SIDIK') ||
+                  activeCanonicalCode.startsWith('SPRIN_SITA') ||
+                  activeCanonicalCode === 'SPRIN_BUNGKUS_SEGEL' ||
+                  activeCanonicalCode === 'SPRIN_TITIP_RAWAT_BB' ||
+                  activeCanonicalCode === 'SPRIN_LIDIK' ||
+                  activeCanonicalCode === 'SPGAS_LIDIK'
+                );
+              const MASA_BERLAKU_FIELD_KEY_SET = new Set([
+                'MASA_BERLAKU', 'MASA_BERLAKU_SURAT', 'MASA_BERLAKU_SPRIN',
+                'MASA_BERLAKU_SIDIK', 'MASA_BERLAKU_SITA', 'SPRIN_MASA_BERLAKU',
+                'TANGGAL_BERLAKU', 'TGL_BERLAKU', 'TANGGAL_MASA_BERLAKU',
+                'TGL_MASA_BERLAKU', 'BERLAKU_SAMPAI', 'BERLAKU_SD', 'DOC_VALIDITY'
+              ]);
+              const hasMasaBerlakuInTplFields = rawTplDynamicFields.some(f =>
+                MASA_BERLAKU_FIELD_KEY_SET.has(String(f.field_key || f.key || '').toUpperCase().trim())
+              );
+              if (isSprinRequiringMasaBerlaku && !hasMasaBerlakuInTplFields) {
+                rawTplDynamicFields.push({
+                  field_key: 'MASA_BERLAKU',
+                  key: 'MASA_BERLAKU',
+                  label: 'Masa Berlaku Surat',
+                  field_type: 'date'
+                });
+              }
+
+              const operatorDynamicFields = rawTplDynamicFields
                 .filter(f => !isAutoChainedReferenceField(f.field_key || f.key));
 
               const effectiveTglBaKap = toIsoDateString(formValues.TANGGAL_BA_KAP) || toIsoDateString(formValues.TANGGAL_SURAT) || '';
@@ -4683,9 +4854,14 @@ export default function MindikGeneratorView({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {operatorDynamicFields.map((f, idx) => {
                           const key = f.field_key || f.key || `field_${idx}`;
+                          const upperKey = String(key).toUpperCase().trim();
                           const label = f.label || f.field_label || key;
-                          const isDateField = f.field_type === 'date' || key === 'MASA_BERLAKU';
-                          const inputValue = isDateField ? (toIsoDateString(formValues[key]) || '') : (formValues[key] ?? '');
+                          const isMasaBerlakuKey = MASA_BERLAKU_FIELD_KEY_SET.has(upperKey);
+                          const isDateField = f.field_type === 'date' || isMasaBerlakuKey;
+                          const rawFieldVal = isMasaBerlakuKey
+                            ? (formValues[key] || formValues.MASA_BERLAKU || formValues.TANGGAL_BERLAKU || formValues.BERLAKU_SAMPAI || '')
+                            : (formValues[key] ?? '');
+                          const inputValue = isDateField ? (toIsoDateString(rawFieldVal) || '') : rawFieldVal;
 
                           return (
                             <div key={key} className="form-group" style={{ marginBottom: 0 }}>

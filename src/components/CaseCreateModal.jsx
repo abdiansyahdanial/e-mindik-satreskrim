@@ -98,6 +98,8 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
     agama: 'Islam',
     pekerjaan: '',
     pendidikan: 'SMA',
+    status_pernikahan: 'Kawin',
+    status_kawin: 'Kawin',
     alamat: formData.locus || 'Desa Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
     no_hp: '',
     kontak: '',
@@ -131,6 +133,10 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
         if (prop === 'no_hp' || prop === 'kontak') {
           updated.no_hp = value;
           updated.kontak = value;
+        }
+        if (prop === 'status_pernikahan' || prop === 'status_kawin') {
+          updated.status_pernikahan = value;
+          updated.status_kawin = value;
         }
         return updated;
       })
@@ -167,6 +173,10 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
           updated.no_hp = value;
           updated.kontak = value;
         }
+        if (prop === 'status_pernikahan' || prop === 'status_kawin') {
+          updated.status_pernikahan = value;
+          updated.status_kawin = value;
+        }
         return updated;
       })
     );
@@ -193,6 +203,8 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
       pekerjaan: 'Wiraswasta',
       pendidikan: 'SMA',
       agama: 'Islam',
+      status_pernikahan: 'Kawin',
+      status_kawin: 'Kawin',
       alamat: 'Desa Tirawuta, Kec. Tirawuta, Kab. Kolaka Timur',
       no_hp: '',
       kontak: '',
@@ -221,6 +233,10 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
         if (prop === 'no_hp' || prop === 'kontak') {
           updated.no_hp = value;
           updated.kontak = value;
+        }
+        if (prop === 'status_pernikahan' || prop === 'status_kawin') {
+          updated.status_pernikahan = value;
+          updated.status_kawin = value;
         }
         return updated;
       })
@@ -260,6 +276,10 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
         if (prop === 'no_hp' || prop === 'kontak') {
           updated.no_hp = value;
           updated.kontak = value;
+        }
+        if (prop === 'status_pernikahan' || prop === 'status_kawin') {
+          updated.status_pernikahan = value;
+          updated.status_kawin = value;
         }
         return updated;
       })
@@ -412,6 +432,8 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
       pekerjaan: s.pekerjaan?.trim() || 'Wiraswasta',
       pendidikan: s.pendidikan?.trim() || 'SMA',
       agama: s.agama || 'Islam',
+      status_pernikahan: s.status_pernikahan || s.status_kawin || 'Kawin',
+      status_kawin: s.status_pernikahan || s.status_kawin || 'Kawin',
       alamat: s.alamat?.trim() || formData.locus.trim(),
       no_hp: s.no_hp?.trim() || s.kontak?.trim() || '',
       kontak: s.no_hp?.trim() || s.kontak?.trim() || '',
@@ -1186,10 +1208,23 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                               </div>
                             </div>
 
-                            {/* Baris 4: Alamat Lengkap & No. HP */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '10px' }}>
+                            {/* Baris 4: Status Pernikahan, Alamat Lengkap & No. HP */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.6fr 1fr', gap: '10px' }}>
                               <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '11px' }}>12. Alamat Tempat Tinggal Lengkap</label>
+                                <label className="form-label" style={{ fontSize: '11px' }}>12. Status Pernikahan</label>
+                                <select
+                                  value={subj.status_pernikahan || subj.status_kawin || 'Kawin'}
+                                  onChange={(e) => tabConfig.onUpdate(idx, 'status_pernikahan', e.target.value)}
+                                  className="form-select"
+                                >
+                                  <option value="Belum Kawin">Belum Kawin</option>
+                                  <option value="Kawin">Kawin</option>
+                                  <option value="Cerai Hidup">Cerai Hidup</option>
+                                  <option value="Cerai Mati">Cerai Mati</option>
+                                </select>
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '11px' }}>13. Alamat Tempat Tinggal Lengkap</label>
                                 <input
                                   type="text"
                                   value={subj.alamat || ''}
@@ -1199,7 +1234,7 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
                                 />
                               </div>
                               <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '11px' }}>13. No. HP / Kontak</label>
+                                <label className="form-label" style={{ fontSize: '11px' }}>14. No. HP / Kontak</label>
                                 <input
                                   type="text"
                                   value={subj.no_hp || subj.kontak || ''}
