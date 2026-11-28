@@ -33,6 +33,7 @@ import {
   generateAndDownloadDocx,
   formatTanggalIndonesia,
   formatPangkatSingkat,
+  resolveJabatanPenyidikByPangkat,
   addDaysToIsoDate,
   parseDateParts,
   formatJamPolri,
@@ -40,6 +41,11 @@ import {
   resolveChainedDetentionDates,
   resolveFirstSummonsDocForSubject,
   assignFirstSummonsReferenceTags,
+  INDIVIDUAL_SUSPECT_TEMPLATES,
+  isIndividualSuspectTemplate,
+  getIssuedDocumentForSuspect,
+  COLLECTIVE_MULTI_SUSPECT_TEMPLATES,
+  resolveMultiSuspectTemplateVariant,
   normalizeSubjectRecord,
   deduplicateSubjectRecords,
   populateSubjectPrefixVariables,
@@ -115,6 +121,7 @@ export default function MindikGeneratorView({
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isPemanggilDropdownOpen, setIsPemanggilDropdownOpen] = useState(false);
   const [pemanggilSearchQuery, setPemanggilSearchQuery] = useState('');
+  const [isEmergencySuspectUnlock, setIsEmergencySuspectUnlock] = useState(false);
   const pemanggilDropdownRef = useRef(null);
 
   // Direktori Penyidik Pemanggil (Gabungan Direktori Personel Supabase & Tim Penyidik Perkara Aktif)
@@ -145,7 +152,8 @@ export default function MindikGeneratorView({
         ? rawName.slice(pangkatSingkat.length).trim()
         : rawName;
       const nrp = String(raw.nrp || '').trim();
-      const jabatan = String(raw.jabatan || raw.role || 'Penyidik Pembantu').trim();
+      const rawJabatan = String(raw.jabatan || raw.role || 'Penyidik Pembantu').trim();
+      const jabatan = resolveJabatanPenyidikByPangkat(pangkatSingkat || rawRank, rawJabatan);
       const phone = String(
         raw.phone || raw.no_hp || raw.no_telepon || raw.telepon || raw.whatsapp || raw.hp || ''
       ).trim();
@@ -815,7 +823,7 @@ export default function MindikGeneratorView({
   }, [activeSuspect]);
 
   // Template yang aktif dipilih saat ini (pencocokan persis lalu fallback kode kanonik)
-  const currentTemplate = useMemo(() => {
+  const baseCurrentTemplate = useMemo(() => {
     if (!selectedTemplateCode) return null;
     const rawUpper = selectedTemplateCode.toUpperCase().trim();
     const targetCanonical = toCanonicalMindikCode(rawUpper);
@@ -827,6 +835,22 @@ export default function MindikGeneratorView({
       toCanonicalMindikCode(t.code || t.template_code || '', t.title || t.name || '') === targetCanonical
     ) || null;
   }, [selectedTemplateCode, allTemplates]);
+
+  // Jumlah tersangka aktif/terpilih untuk Hybrid Auto-Routing varian 1_TSK s.d. 6_TSK
+  const detectedSuspectCount = useMemo(() => {
+    const selectedTsk = (Array.isArray(selectedTargetSubjects) ? selectedTargetSubjects : []).filter(
+      (s) => s && (s._category === 'TERSANGKA' || s._category === 'TERLAPOR' || s.status === 'tersangka')
+    );
+    if (selectedTsk.length > 0) return selectedTsk.length;
+    if (allCaseSubjects.tersangka.length > 0) return allCaseSubjects.tersangka.length;
+    if (caseSuspects.length > 0) return caseSuspects.length;
+    return allCaseSubjects.terlapor.length || 1;
+  }, [selectedTargetSubjects, allCaseSubjects, caseSuspects]);
+
+  const currentTemplate = useMemo(() => {
+    if (!baseCurrentTemplate) return null;
+    return resolveMultiSuspectTemplateVariant(baseCurrentTemplate, allTemplates, detectedSuspectCount);
+  }, [baseCurrentTemplate, allTemplates, detectedSuspectCount]);
 
   // Sidik jari deterministik arsip perkara aktif agar efek sinkronisasi tidak bergantung pada .length saja
   const activeCaseDocsSignature = useMemo(() => {
@@ -874,9 +898,19 @@ export default function MindikGeneratorView({
     const isTplOrCaseChanged = lastTemplateKeyRef.current !== tplCaseKey;
     lastTemplateKeyRef.current = tplCaseKey;
 
-    // Cari arsip sah terbaru untuk template tujuan di activeCaseDocs (berdasarkan toCanonicalMindikCode)
-    const existingValidDoc = resolveLatestArchiveDoc(activeCaseDocs, [canonicalCode, rawUpperCode], false);
-    const existingAnyDoc = existingValidDoc || resolveLatestArchiveDoc(activeCaseDocs, [canonicalCode, rawUpperCode], true);
+    // Cari arsip sah terbaru untuk template tujuan di activeCaseDocs (berdasarkan toCanonicalMindikCode).
+    // Untuk dokumen individual per-tersangka (INDIVIDUAL_SUSPECT_TEMPLATES), cari arsip milik tersangka terpilih saja
+    // agar tersangka ke-2 yang belum diterbitkan suratnya tetap memakai pola default (bukan nomor arsip milik tersangka ke-1).
+    const isIndividualTplInit = isIndividualSuspectTemplate(rawUpperCode || canonicalCode, currentTemplate.title || currentTemplate.name || '');
+    const activeTargetSubjInit = selectedTargetSubjects[0] || null;
+    const existingValidDoc = isIndividualTplInit
+      ? (activeTargetSubjInit
+          ? getIssuedDocumentForSuspect(activeCaseDocs, rawUpperCode || canonicalCode, activeTargetSubjInit, currentTemplate.title || currentTemplate.name || '')
+          : null)
+      : resolveLatestArchiveDoc(activeCaseDocs, [canonicalCode, rawUpperCode], false);
+    const existingAnyDoc = isIndividualTplInit
+      ? existingValidDoc
+      : (existingValidDoc || resolveLatestArchiveDoc(activeCaseDocs, [canonicalCode, rawUpperCode], true));
     const preset = MINDIK_PRESETS[canonicalCode] || MINDIK_PRESETS[rawUpperCode] || [];
     const presetDefaultNo = preset.find(f => f.tag === 'NOMOR_SURAT')?.default || '';
 
@@ -1078,8 +1112,12 @@ export default function MindikGeneratorView({
               directoryInvestigatorsList[0] ||
               null;
             if (defaultInv) {
+              const autoJabPemanggil = resolveJabatanPenyidikByPangkat(defaultInv.pangkatSingkat || defaultInv.pangkat, defaultInv.jabatan);
               nextValues.SELECTED_PEMANGGIL_ID = defaultInv.id;
               nextValues.MENEMUI_SIAPA = defaultInv.fullLabel;
+              nextValues.JABATAN_PEMANGGIL = autoJabPemanggil;
+              nextValues.JABATAN_PEMANGGIL_UPPER = autoJabPemanggil.toUpperCase();
+              nextValues.MENEMUI_JABATAN = autoJabPemanggil;
               nextValues.NO_HP = defaultInv.phone || '';
               nextValues.no_hp = defaultInv.phone || '';
               nextValues.NO_HP_PENYIDIK = defaultInv.phone || '';
@@ -1208,6 +1246,20 @@ export default function MindikGeneratorView({
 
   const activeAutoSelectKey = `${currentCase?.id || ''}::${currentTemplate?.id || currentTemplate?.code || activeCanonicalCode}`;
 
+  const isIndividualSuspectTemplateActive = useMemo(() => {
+    const rawCode = String(currentTemplate?.code || currentTemplate?.template_code || selectedTemplateCode || '').toUpperCase().trim();
+    const rawTitle = currentTemplate?.title || currentTemplate?.name || '';
+    return isIndividualSuspectTemplate(rawCode || activeCanonicalCode, rawTitle);
+  }, [currentTemplate, selectedTemplateCode, activeCanonicalCode]);
+
+  const isCollectiveMultiSuspectTemplateActive = useMemo(() => {
+    const rawCode = String(currentTemplate?.code || currentTemplate?.template_code || selectedTemplateCode || '').toUpperCase().trim();
+    return (
+      COLLECTIVE_MULTI_SUSPECT_TEMPLATES.has(activeCanonicalCode) ||
+      COLLECTIVE_MULTI_SUSPECT_TEMPLATES.has(rawCode)
+    );
+  }, [currentTemplate, selectedTemplateCode, activeCanonicalCode]);
+
   const ROMAN_MONTH_PATTERN = /^(.*\/)([^/]+)(\/(?:XII|XI|IX|X|VIII|VII|VI|IV|V|III|II|I)(?:\/|$).*)$/i;
 
   const extractNoUrutFromDocNo = (docNo) => {
@@ -1272,6 +1324,7 @@ export default function MindikGeneratorView({
       lastAutoSelectTplKeyRef.current = '';
       setNoUrutInput(extractNoUrutFromDocNo(formValues.NOMOR_SURAT));
       setShowOptionalSubjectPicker(false);
+      setIsEmergencySuspectUnlock(false);
       if (isTerlaporTemplateActive || currentSubjectMode === 'terlapor_to_tersangka') {
         setSelectedSubjectCategory('TERLAPOR');
       } else if (currentSubjectMode === 'tersangka') {
@@ -1287,9 +1340,23 @@ export default function MindikGeneratorView({
 
     if (!currentCase || !currentTemplate) return;
 
+    const rawTplCodeForLock = String(currentTemplate?.code || currentTemplate?.template_code || activeCanonicalCode || '').toUpperCase().trim();
+    const rawTplTitleForLock = currentTemplate?.title || currentTemplate?.name || '';
+
+    // Cek apakah subjek yang sedang terpilih baru saja terkunci (mis. setelah Simpan ke Arsip)
+    const currentlySelectedSubjs = allCaseSubjects.all.filter(s => selectedTargetSubjectKeys.includes(s._uid));
+    const isCurrentSelectionLocked =
+      isIndividualSuspectTemplateActive &&
+      !isEmergencySuspectUnlock &&
+      currentlySelectedSubjs.length > 0 &&
+      currentlySelectedSubjs.every((subj) =>
+        Boolean(getIssuedDocumentForSuspect(activeCaseDocs, rawTplCodeForLock || activeCanonicalCode, subj, rawTplTitleForLock))
+      );
+
     const shouldAutoSelect =
-      lastAutoSelectTplKeyRef.current !== activeAutoSelectKey &&
-      (isTplOrCaseChanged || selectedTargetSubjectKeys.length === 0);
+      isCurrentSelectionLocked ||
+      (lastAutoSelectTplKeyRef.current !== activeAutoSelectKey &&
+        (isTplOrCaseChanged || selectedTargetSubjectKeys.length === 0));
 
     if (!shouldAutoSelect) return;
 
@@ -1297,7 +1364,8 @@ export default function MindikGeneratorView({
     if (isTerlaporTemplateActive || currentSubjectMode === 'terlapor') {
       poolTargets = allCaseSubjects.terlapor.length > 0 ? allCaseSubjects.terlapor : allCaseSubjects.tersangka;
     } else if (currentSubjectMode === 'terlapor_to_tersangka') {
-      poolTargets = allCaseSubjects.terlapor.length > 0 ? allCaseSubjects.terlapor : allCaseSubjects.tersangka;
+      // Untuk TAP_TSK, utamakan Terlapor yang belum ditetapkan, lalu Tersangka yang belum punya arsip TAP_TSK
+      poolTargets = [...allCaseSubjects.terlapor, ...allCaseSubjects.tersangka];
     } else if (currentSubjectMode === 'tersangka') {
       poolTargets = allCaseSubjects.tersangka.length > 0 ? allCaseSubjects.tersangka : allCaseSubjects.terlapor;
     } else if (currentSubjectMode === 'saksi') {
@@ -1308,17 +1376,49 @@ export default function MindikGeneratorView({
 
     if (poolTargets.length > 0) {
       const tplText = `${currentTemplate?.code || currentTemplate?.template_code || ''} ${currentTemplate?.title || currentTemplate?.name || ''}`;
-      const isMultiSubjectTpl = /MORE_1|LEBIH_1|LEBIH_DARI_1|KOLEKTIF/i.test(tplText);
-      const chosenTargets = isMultiSubjectTpl ? poolTargets : poolTargets.slice(0, 1);
+      const isMultiSubjectTpl =
+        isCollectiveMultiSuspectTemplateActive ||
+        /MORE_1|LEBIH_1|LEBIH_DARI_1|KOLEKTIF/i.test(tplText);
+
+      let chosenTargets = [];
+      if (isIndividualSuspectTemplateActive && !isEmergencySuspectUnlock) {
+        const unlockedPool = poolTargets.filter(
+          (subj) => !getIssuedDocumentForSuspect(activeCaseDocs, rawTplCodeForLock || activeCanonicalCode, subj, rawTplTitleForLock)
+        );
+        chosenTargets = unlockedPool.slice(0, 1);
+      } else {
+        chosenTargets = isMultiSubjectTpl ? poolTargets : poolTargets.slice(0, 1);
+      }
 
       lastAutoSelectTplKeyRef.current = activeAutoSelectKey;
-      setSelectedTargetSubjectKeys(chosenTargets.map(s => s._uid));
-      applyUniversalSelectedSubjects(chosenTargets);
+      if (chosenTargets.length > 0) {
+        setSelectedTargetSubjectKeys(chosenTargets.map(s => s._uid));
+        applyUniversalSelectedSubjects(chosenTargets);
+        const defaultNoPattern = (MINDIK_PRESETS[activeCanonicalCode] || []).find(f => f.tag === 'NOMOR_SURAT')?.default || '';
+        if (isCurrentSelectionLocked && defaultNoPattern) {
+          handleInputChange('NOMOR_SURAT', defaultNoPattern);
+        }
+      } else {
+        setSelectedTargetSubjectKeys(['__NONE__']);
+        applyUniversalSelectedSubjects([]);
+      }
     } else if (isTplOrCaseChanged && selectedTargetSubjectKeys.length > 0) {
       setSelectedTargetSubjectKeys([]);
       applyUniversalSelectedSubjects([]);
     }
-  }, [activeAutoSelectKey, currentCase, currentTemplate, currentSubjectMode, isTerlaporTemplateActive, allCaseSubjects, selectedTargetSubjectKeys.length]);
+  }, [
+    activeAutoSelectKey,
+    currentCase,
+    currentTemplate,
+    currentSubjectMode,
+    isTerlaporTemplateActive,
+    isIndividualSuspectTemplateActive,
+    isCollectiveMultiSuspectTemplateActive,
+    isEmergencySuspectUnlock,
+    allCaseSubjects,
+    activeCaseDocs,
+    selectedTargetSubjectKeys.length
+  ]);
 
   // Sinkronkan No. Urut saat NOMOR_SURAT berubah dari load arsip / ganti template
   useEffect(() => {
@@ -1466,11 +1566,32 @@ export default function MindikGeneratorView({
     return checkPrerequisite(tplCode, selectedCase, activeCaseDocs);
   }, [currentTemplate, selectedCase, activeCaseDocs]);
 
-  // Saring Daftar Template Berdasarkan Filter & Pencarian
+  // Saring Daftar Template Berdasarkan Filter & Pencarian (Pertahankan 1 Tombol Menu Utama Dinamis; sembunyikan seluruh duplikat >1 Tsk/Terlapor)
   const filteredTemplates = useMemo(() => {
+    const rawCodeSet = new Set(
+      (allTemplates || []).map((t) => String(t?.code || t?.template_code || '').toUpperCase().trim())
+    );
+    const seenCanonicalInList = new Set();
     return allTemplates.filter((template) => {
-      const rawTplCode = (template.code || template.template_code || template.id || '').toUpperCase();
+      const rawTplCode = (template.code || template.template_code || template.id || '').toUpperCase().trim();
+      const rawTitleUpper = (template.title || template.name || '').toUpperCase().trim();
       const canonicalCode = toCanonicalMindikCode(rawTplCode, template.title || template.name || '');
+
+      // Sembunyikan sub-varian _MORE_1_*, _LEBIH_1_*, _LEBIH_DARI_1_*, atau _1_TSK s.d. _6_TSK dari daftar tombol menu kiri
+      // bila tombol induk/kanoniknya ada, agar di UI hanya muncul 1 tombol preset dinamis per jenis surat.
+      const isMultiSubjectDuplicateCode =
+        /_(?:MORE|LEBIH|LEBIH_DARI)_1(?:_(?:TSK|TERSANGKA|TERLAPOR))?$/.test(rawTplCode) ||
+        /_([1-6])_(?:TSK|TERSANGKA|TERLAPOR)$/.test(rawTplCode) ||
+        /\b(?:LEBIH DARI 1|>\s*1)\s*(?:TERSANGKA|TERLAPOR|TSK)\b/.test(rawTitleUpper);
+
+      if (isMultiSubjectDuplicateCode && (rawCodeSet.has(canonicalCode) || seenCanonicalInList.has(canonicalCode))) {
+        return false;
+      }
+      if (seenCanonicalInList.has(canonicalCode) && rawTplCode !== canonicalCode) {
+        return false;
+      }
+      seenCanonicalInList.add(canonicalCode);
+
       const mappedCategory = MINDIK_CODE_TO_CATEGORY[canonicalCode] || MINDIK_CODE_TO_CATEGORY[rawTplCode] || template.category;
 
       // 1. Cek Kategori
@@ -1691,6 +1812,7 @@ export default function MindikGeneratorView({
         canonicalCode.includes('SAKSI') ||
         currentSubjectMode === 'saksi';
       const isIndividualSuspectDoc =
+        isIndividualSuspectTemplate(tplCode || canonicalCode, tplTitle) ||
         isTapTsk ||
         isSprinKapDoc ||
         isSprinHanDoc ||
@@ -2798,6 +2920,26 @@ export default function MindikGeneratorView({
                       {activeCanonicalCode}
                     </span>
                   )}
+                  {(isCollectiveMultiSuspectTemplateActive || detectedSuspectCount > 1) && (
+                    <span style={{
+                      fontSize: '10.5px',
+                      fontWeight: 800,
+                      padding: '1.5px 9px',
+                      borderRadius: '999px',
+                      background: 'rgba(16, 185, 129, 0.14)',
+                      border: '1px solid rgba(16, 185, 129, 0.42)',
+                      color: '#6EE7B7',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}>
+                      <Users size={11} color="#10B981" />
+                      <span>
+                        Mode Otomatis: {detectedSuspectCount} Tersangka Terdeteksi
+                        {currentTemplate?._routedVariantCode ? ` (${currentTemplate._routedVariantCode})` : ''}
+                      </span>
+                    </span>
+                  )}
                 </div>
                 <h3 className="heading-font" style={{ fontSize: '17px', fontWeight: 800, color: '#FFFFFF', margin: '4px 0 0' }}>
                   {currentTemplate?.title || currentTemplate?.name || selectedTemplateCode || 'Pilih Format Dokumen'}
@@ -3260,13 +3402,19 @@ export default function MindikGeneratorView({
                   })}
                 </div>
 
-                {/* Daftar Chip / Checkbox Subjek Hukum */}
+                {/* Daftar Chip / Checkbox Subjek Hukum dengan Per-Suspect Lock Otomatis */}
                 {(() => {
+                  const rawCodeSubjLock = String(currentTemplate?.code || currentTemplate?.template_code || activeCanonicalCode || '').toUpperCase().trim();
+                  const titleSubjLock = currentTemplate?.title || currentTemplate?.name || activeCanonicalCode;
                   const visibleSubjects = selectedSubjectCategory === 'ALL'
-                    ? allCaseSubjects.all
-                    : (selectedSubjectCategory === 'TERLAPOR' && isTerlaporTemplateActive && allCaseSubjects.terlapor.length === 0 && allCaseSubjects.tersangka.length > 0
+                    ? (isIndividualSuspectTemplateActive && currentSubjectMode === 'terlapor_to_tersangka'
+                        ? [...allCaseSubjects.terlapor, ...allCaseSubjects.tersangka]
+                        : allCaseSubjects.all)
+                    : (selectedSubjectCategory === 'TERLAPOR' && (isTerlaporTemplateActive || currentSubjectMode === 'terlapor_to_tersangka') && allCaseSubjects.terlapor.length === 0 && allCaseSubjects.tersangka.length > 0
                         ? allCaseSubjects.tersangka
-                        : allCaseSubjects.all.filter(s => s._category === selectedSubjectCategory));
+                        : (selectedSubjectCategory === 'TERLAPOR' && currentSubjectMode === 'terlapor_to_tersangka'
+                            ? [...allCaseSubjects.terlapor, ...allCaseSubjects.tersangka]
+                            : allCaseSubjects.all.filter(s => s._category === selectedSubjectCategory)));
 
                   if (visibleSubjects.length === 0) {
                     return (
@@ -3276,64 +3424,193 @@ export default function MindikGeneratorView({
                     );
                   }
 
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', maxHeight: '140px', overflowY: 'auto' }}>
-                      {visibleSubjects.map((subj) => {
-                        const isChecked = Boolean(
-                          selectedTargetSubjectKeys.includes(subj._uid) ||
-                          (selectedTargetSubjectKeys.length === 0 && activeSuspect && subj.nama === activeSuspect.nama)
+                  const suspectCandidatesForLock = visibleSubjects.filter(
+                    (s) => s._category === 'TERSANGKA' || s._category === 'TERLAPOR'
+                  );
+                  const issuedMapByUid = new Map();
+                  if (isIndividualSuspectTemplateActive) {
+                    visibleSubjects.forEach((subj) => {
+                      if (subj._category === 'TERSANGKA' || subj._category === 'TERLAPOR') {
+                        const issuedDoc = getIssuedDocumentForSuspect(
+                          activeCaseDocs,
+                          rawCodeSubjLock || activeCanonicalCode,
+                          subj,
+                          titleSubjLock
                         );
-                        return (
-                          <label
-                            key={subj._uid}
+                        if (issuedDoc) {
+                          issuedMapByUid.set(subj._uid, issuedDoc);
+                        }
+                      }
+                    });
+                  }
+
+                  const lockedCount = issuedMapByUid.size;
+                  const allCandidateSuspectsLocked =
+                    isIndividualSuspectTemplateActive &&
+                    suspectCandidatesForLock.length > 0 &&
+                    lockedCount >= suspectCandidatesForLock.length;
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {isIndividualSuspectTemplateActive && lockedCount > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '8px',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          background: '#0B0E14',
+                          border: '1px solid rgba(148, 163, 184, 0.20)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#CBD5E1' }}>
+                            <Lock size={12} color={isEmergencySuspectUnlock ? '#F59E0B' : '#10B981'} />
+                            <span>
+                              Penguncian Per-Tersangka Aktif: <strong>{lockedCount}</strong> dari <strong>{suspectCandidatesForLock.length}</strong> subjek sudah memiliki arsip <strong>{titleSubjLock}</strong>.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsEmergencySuspectUnlock((prev) => !prev)}
                             style={{
+                              padding: '3px 9px',
+                              borderRadius: '6px',
+                              fontSize: '10.5px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '7px',
-                              padding: '5px 10px',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '11.5px',
-                              background: isChecked ? 'rgba(255, 42, 42, 0.18)' : '#0B0E14',
-                              border: isChecked ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.2)',
-                              color: '#FFFFFF',
-                              userSelect: 'none'
+                              gap: '5px',
+                              background: isEmergencySuspectUnlock ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255, 42, 42, 0.14)',
+                              border: isEmergencySuspectUnlock ? '1px solid rgba(245, 158, 11, 0.55)' : '1px solid rgba(255, 42, 42, 0.45)',
+                              color: isEmergencySuspectUnlock ? '#FDE68A' : '#FCA5A5'
                             }}
                           >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                const effectiveBaseKeys = selectedTargetSubjectKeys.length > 0
-                                  ? selectedTargetSubjectKeys.filter(k => k !== '__NONE__')
-                                  : allCaseSubjects.all
-                                      .filter(s => activeSuspect && s.nama === activeSuspect.nama)
-                                      .map(s => s._uid);
-                                let nextKeys;
-                                if (e.target.checked) {
-                                  nextKeys = [...new Set([...effectiveBaseKeys, subj._uid])];
-                                } else {
-                                  nextKeys = effectiveBaseKeys.filter(k => k !== subj._uid);
-                                }
-                                setSelectedTargetSubjectKeys(nextKeys.length > 0 ? nextKeys : ['__NONE__']);
-                                const nextSelectedObjs = allCaseSubjects.all.filter(s => nextKeys.includes(s._uid));
-                                applyUniversalSelectedSubjects(nextSelectedObjs);
+                            {isEmergencySuspectUnlock ? <Unlock size={11} /> : <Lock size={11} />}
+                            <span>{isEmergencySuspectUnlock ? 'Kunci Kembali Subjek Terbit' : 'Buka Kunci Darurat'}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {allCandidateSuspectsLocked && (
+                        <div style={{
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          background: 'rgba(245, 158, 11, 0.12)',
+                          border: '1px solid rgba(245, 158, 11, 0.42)',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '8px',
+                          fontSize: '11.5px',
+                          color: '#FDE68A',
+                          lineHeight: 1.45
+                        }}>
+                          <AlertTriangle size={15} color="#F59E0B" style={{ flexShrink: 0, marginTop: '1px' }} />
+                          <span>
+                            Seluruh tersangka pada perkara ini sudah memiliki arsip <strong>{titleSubjLock}</strong>. Hapus arsip terkait jika ingin menerbitkan ulang, atau gunakan <strong>Buka Kunci Darurat</strong> untuk revisi.
+                          </span>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', maxHeight: '160px', overflowY: 'auto' }}>
+                        {visibleSubjects.map((subj) => {
+                          const issuedDocForSubj = issuedMapByUid.get(subj._uid) || null;
+                          const isLockedForSubj = Boolean(
+                            isIndividualSuspectTemplateActive &&
+                            issuedDocForSubj &&
+                            !isEmergencySuspectUnlock
+                          );
+                          const isChecked = !isLockedForSubj && Boolean(
+                            selectedTargetSubjectKeys.includes(subj._uid) ||
+                            (selectedTargetSubjectKeys.length === 0 && activeSuspect && subj.nama === activeSuspect.nama)
+                          );
+                          const issuedNoLabel = issuedDocForSubj?.doc_number || issuedDocForSubj?.nomor_surat || '';
+
+                          return (
+                            <label
+                              key={subj._uid}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '7px',
+                                padding: '5px 10px',
+                                borderRadius: '8px',
+                                cursor: isLockedForSubj ? 'not-allowed' : 'pointer',
+                                fontSize: '11.5px',
+                                background: isLockedForSubj
+                                  ? 'rgba(15, 23, 42, 0.65)'
+                                  : (isChecked ? 'rgba(255, 42, 42, 0.18)' : '#0B0E14'),
+                                border: isLockedForSubj
+                                  ? '1px solid rgba(16, 185, 129, 0.35)'
+                                  : (isChecked ? '1px solid #FF2A2A' : '1px solid rgba(148, 163, 184, 0.2)'),
+                                color: isLockedForSubj ? '#94A3B8' : '#FFFFFF',
+                                opacity: isLockedForSubj ? 0.78 : 1,
+                                userSelect: 'none'
                               }}
-                              style={{ accentColor: '#FF2A2A', cursor: 'pointer' }}
-                            />
-                            <span style={{ fontWeight: 700 }}>{subj.nama_lengkap || subj.nama}</span>
-                            <span style={{
-                              fontSize: '9.5px',
-                              padding: '1px 6px',
-                              borderRadius: '999px',
-                              background: 'rgba(255, 255, 255, 0.08)',
-                              color: '#CBD5E1'
-                            }}>
-                              {subj._categoryLabel}
-                            </span>
-                          </label>
-                        );
-                      })}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                disabled={isLockedForSubj}
+                                onChange={(e) => {
+                                  if (isLockedForSubj) return;
+                                  let nextKeys;
+                                  if (isIndividualSuspectTemplateActive) {
+                                    // Untuk surat individual per-tersangka, memilih satu tersangka langsung memfokuskan surat pada tersangka tersebut
+                                    nextKeys = e.target.checked ? [subj._uid] : [];
+                                  } else {
+                                    const effectiveBaseKeys = selectedTargetSubjectKeys.length > 0
+                                      ? selectedTargetSubjectKeys.filter(k => k !== '__NONE__')
+                                      : allCaseSubjects.all
+                                          .filter(s => activeSuspect && s.nama === activeSuspect.nama)
+                                          .map(s => s._uid);
+                                    if (e.target.checked) {
+                                      nextKeys = [...new Set([...effectiveBaseKeys, subj._uid])];
+                                    } else {
+                                      nextKeys = effectiveBaseKeys.filter(k => k !== subj._uid);
+                                    }
+                                  }
+                                  setSelectedTargetSubjectKeys(nextKeys.length > 0 ? nextKeys : ['__NONE__']);
+                                  const nextSelectedObjs = allCaseSubjects.all.filter(s => nextKeys.includes(s._uid));
+                                  applyUniversalSelectedSubjects(nextSelectedObjs);
+                                }}
+                                style={{ accentColor: '#FF2A2A', cursor: isLockedForSubj ? 'not-allowed' : 'pointer' }}
+                              />
+                              {issuedDocForSubj && (
+                                <Lock size={12} color={isLockedForSubj ? '#10B981' : '#F59E0B'} style={{ flexShrink: 0 }} />
+                              )}
+                              <span style={{ fontWeight: 700 }}>{subj.nama_lengkap || subj.nama}</span>
+                              {issuedDocForSubj ? (
+                                <span
+                                  className="mono"
+                                  style={{
+                                    fontSize: '9.5px',
+                                    fontWeight: 700,
+                                    padding: '1px 7px',
+                                    borderRadius: '999px',
+                                    background: isLockedForSubj ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.18)',
+                                    border: isLockedForSubj ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(245, 158, 11, 0.45)',
+                                    color: isLockedForSubj ? '#6EE7B7' : '#FDE68A'
+                                  }}
+                                >
+                                  Terkunci • Sudah Terbit ({issuedNoLabel})
+                                </span>
+                              ) : (
+                                <span style={{
+                                  fontSize: '9.5px',
+                                  padding: '1px 6px',
+                                  borderRadius: '999px',
+                                  background: 'rgba(255, 255, 255, 0.08)',
+                                  color: '#CBD5E1'
+                                }}>
+                                  {subj._categoryLabel}
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })()}
@@ -3366,12 +3643,46 @@ export default function MindikGeneratorView({
               const isAutoChainedReferenceField = (rawKey) => {
                 const k = String(rawKey || '').toUpperCase().trim();
                 if (!k) return true;
-                // 1. Field Nomor & Tanggal Surat utama yang sudah punya input khusus di atas, termasuk BULAN_SURAT & TAHUN_SURAT otomatis
+                // 1. Field Nomor & Tanggal Surat utama yang sudah punya input khusus di atas, termasuk BULAN_SURAT, TAHUN_SURAT, Jabatan Penyidik, No. HP Penyidik Penanganan, & Alias Rujukan Penahanan/Dkk otomatis
                 if ([
                   'NOMOR_SURAT', 'NO_SURAT', 'DOC_NO', 'TANGGAL_SURAT', 'DOC_DATE', 'TGL_SURAT',
                   'NOMOR_SURAT_HEADER', 'TANGGAL_SURAT_HEADER',
-                  'HARI_SURAT', 'TANGGAL_ANGKA_SURAT', 'TGL_ANGKA_SURAT', 'BULAN_SURAT', 'TAHUN_SURAT'
+                  'HARI_SURAT', 'TANGGAL_ANGKA_SURAT', 'TGL_ANGKA_SURAT', 'BULAN_SURAT', 'TAHUN_SURAT',
+                  'PENYIDIK_PENANGAN_NO_HP', 'NO_HP_PENYIDIK_PENANGAN', 'PENYIDIK_PENANGAN_HP',
+                  'PENYIDIK_PENANGAN_JABATAN', 'PENYIDIK_PENANGAN_JABATAN_UPPER',
+                  'PENYIDIK_JABATAN', 'PENYIDIK_JABATAN_UPPER',
+                  'JABATAN_PEMANGGIL', 'JABATAN_PEMANGGIL_UPPER', 'MENEMUI_JABATAN',
+                  'IS_SINGLE_TSK', 'IS_MULTI_TSK', 'IS_SINGLE_TERLAPOR', 'IS_MULTI_TERLAPOR',
+                  'JUMLAH_TERSANGKA_TERBILANG', 'JUMLAH_TERLAPOR_TERBILANG',
+                  'BARANG_BUKTI', 'NAMA_BARANG_BUKTI',
+                  'NOMOR_PENGANTAR_KEMBALI_P19', 'TANGGAL_PENGANTAR_KEMBALI_P19',
+                  'NO_PENGANTAR_KEMBALI_P19', 'TGL_PENGANTAR_KEMBALI_P19',
+                  'NOMOR_PENGANTAR_TAHAP_1_P19', 'TANGGAL_PENGANTAR_TAHAP_1_P19',
+                  'NO_PENGANTAR_TAHAP_1_P19', 'TGL_PENGANTAR_TAHAP_1_P19',
+                  'NAMA_TERSANGKA_DKK', 'NAMA_TERSANGKA_PERIHAL',
+                  'TEMPAT_HAN', 'TEMPAT_PENAHANAN', 'TEMPAT_RUTAN_HAN',
+                  'TANGGAL_AKHIR_HAN_PENYIDIK', 'TGL_AKHIR_HAN_PENYIDIK',
+                  'NO_SPRIN_HAN_KN', 'TGL_SPRIN_HAN_KN', 'TANGGAL_SPRIN_HAN_KN',
+                  'NO_PANJANG_HAN_KN', 'TGL_PANJANG_HAN_KN', 'PANJANG_HAN_KN',
+                  'NO_TAP_HAN_PN_1', 'TGL_TAP_HAN_PN_1', 'TAP_HAN_PN_1',
+                  'NO_TAP_HAN_PN_2', 'TGL_TAP_HAN_PN_2', 'TAP_HAN_PN_2'
                 ].includes(k)) {
+                  return true;
+                }
+                if (
+                  k.startsWith('TGL_MULAI_JANG_HAN_') ||
+                  k.startsWith('TANGGAL_MULAI_JANG_HAN_') ||
+                  k.startsWith('TGL_AKHIR_JANG_HAN_') ||
+                  k.startsWith('TANGGAL_AKHIR_JANG_HAN_') ||
+                  k.startsWith('TGL_AKHIR_HAN_') ||
+                  k.startsWith('TANGGAL_AKHIR_HAN_') ||
+                  k.startsWith('NO_SPRIN_HAN_PN_') ||
+                  k.startsWith('NO_SPRIN_HAN_PN') ||
+                  k.startsWith('TGL_SPRIN_HAN_PN_') ||
+                  k.startsWith('TGL_SPRIN_HAN_PN') ||
+                  k.startsWith('TANGGAL_SPRIN_HAN_PN_') ||
+                  k.startsWith('TANGGAL_SPRIN_HAN_PN')
+                ) {
                   return true;
                 }
                 // 1a. Sembunyikan seluruh field terpecah Surat Panggilan & rujukan Panggilan Ke-1 saat SPGL_TSK_* / SPGL_SAKSI_* aktif
@@ -3575,10 +3886,14 @@ export default function MindikGeneratorView({
 
               const handleSelectPemanggilOfficer = (inv) => {
                 if (!inv) return;
+                const autoJabPemanggil = resolveJabatanPenyidikByPangkat(inv.pangkatSingkat || inv.pangkat, inv.jabatan);
                 setFormValues((prev) => ({
                   ...prev,
                   SELECTED_PEMANGGIL_ID: inv.id,
                   MENEMUI_SIAPA: inv.fullLabel,
+                  JABATAN_PEMANGGIL: autoJabPemanggil,
+                  JABATAN_PEMANGGIL_UPPER: autoJabPemanggil.toUpperCase(),
+                  MENEMUI_JABATAN: autoJabPemanggil,
                   NO_HP: inv.phone || '',
                   no_hp: inv.phone || '',
                   NO_HP_PENYIDIK: inv.phone || '',

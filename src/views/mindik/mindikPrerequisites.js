@@ -1,5 +1,6 @@
 import {
   toCanonicalMindikCode,
+  normalizeCanonicalTemplateCode,
   CHAIN_RULES,
   PREREQUISITE_LABELS,
   PREREQUISITE_SATISFIERS,
@@ -16,10 +17,13 @@ export const MINDIK_CODES = {
   SP_TAP_TSK: 'TAP_TSK',
   SPDP: 'SPDP_TSK',
   SPRIN_HAN_DAN_BA: 'SPRIN_HAN_DAN_BA',
-  SPRIN_KAP_DAN_BA: 'SPRIN_KAP_DAN_BA'
+  SPRIN_KAP_DAN_BA: 'SPRIN_KAP_DAN_BA',
+  PENGANTAR_BP_TAHAP1: 'PENGANTAR_BP_TAHAP1',
+  PENGANTAR_BP_KEMBALI_P19: 'PENGANTAR_BP_KEMBALI_P19',
+  PENGANTAR_TAHAP2: 'PENGANTAR_TAHAP2'
 };
 
-export { toCanonicalMindikCode, CHAIN_RULES, isValidOfficialDocNumber };
+export { toCanonicalMindikCode, normalizeCanonicalTemplateCode, CHAIN_RULES, isValidOfficialDocNumber };
 
 /**
  * Evaluasi prasyarat rantai formil KUHAP berbasis CHAIN_RULES dan kode kanonik.
@@ -134,6 +138,17 @@ export function checkPrerequisite(targetCode, caseItem, activeCaseDocs = [], tar
     } else {
       infoNoticeType = 'warning';
       infoNotice = rule.recommendedNote || 'Surat Panggilan Tersangka Ke-1 belum ditemukan di arsip perkara ini.';
+    }
+  } else if (canonical === 'PENGANTAR_BP_KEMBALI_P19') {
+    const tahap1Doc = resolveLatestArchiveDoc(safeDocs, ['PENGANTAR_BP_TAHAP1', 'PENGANTAR_TAHAP_1', 'PENGANTAR_TAHAP1'], false);
+    if (tahap1Doc) {
+      const t1No = getArchiveRowDocNumber(tahap1Doc);
+      const t1Date = tahap1Doc.formatted_date || tahap1Doc.tgl_surat || '';
+      infoNoticeType = 'success';
+      infoNotice = `Rujukan Surat Pengantar Berkas Perkara Tahap I terhubung otomatis: Nomor ${t1No}${t1Date ? `, tanggal ${t1Date}` : ''}.`;
+    } else {
+      infoNoticeType = 'warning';
+      infoNotice = rule.recommendedNote || 'Surat Pengantar Berkas Perkara Tahap I sebelumnya belum ditemukan di arsip perkara ini.';
     }
   } else if (missingRecommended.length > 0) {
     infoNotice = rule.recommendedNote || `Opsional: ${missingRecommended.map(m => m.label).join(', ')} belum diterbitkan.`;

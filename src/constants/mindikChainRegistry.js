@@ -64,17 +64,19 @@ const CANONICAL_CODE_ALIASES = {
   SP_GAS_SIDIK_LANJUTAN: 'SPGAS_SIDIK_LANJUTAN',
   SPGAS_SIDIK_LANJUTAN: 'SPGAS_SIDIK_LANJUTAN',
 
-  // Level 2: SPDP
+  // Level 2: SPDP (seluruh varian SPDP_MORE_1_TSK / SPDP_LEBIH_1_TSK dilebur ke dalam 1 preset dinamis SPDP_TSK)
   SPDP: 'SPDP_TSK',
   SPDP_TSK: 'SPDP_TSK',
   SPDP_TERSANGKA: 'SPDP_TSK',
-  SPDP_MORE_1_TSK: 'SPDP_MORE_1_TSK',
-  SPDP_MORE_1_TERSANGKA: 'SPDP_MORE_1_TSK',
-  SPDP_LEBIH_1_TSK: 'SPDP_MORE_1_TSK',
+  SPDP_MORE_1_TSK: 'SPDP_TSK',
+  SPDP_MORE_1_TERSANGKA: 'SPDP_TSK',
+  SPDP_LEBIH_1_TSK: 'SPDP_TSK',
+  SPDP_LEBIH_DARI_1_TSK: 'SPDP_TSK',
   SPDP_TERLAPOR: 'SPDP_TERLAPOR',
   SPDP_DENGAN_TERLAPOR: 'SPDP_TERLAPOR',
   SPDP_MORE_1_TERLAPOR: 'SPDP_TERLAPOR',
   SPDP_LEBIH_1_TERLAPOR: 'SPDP_TERLAPOR',
+  SPDP_LEBIH_DARI_1_TERLAPOR: 'SPDP_TERLAPOR',
   SPDP_NO_NAME: 'SPDP_LIDIK_ANON',
   SPDP_TANPA_NAMA: 'SPDP_LIDIK_ANON',
   SPDP_LIDIK_ANON: 'SPDP_LIDIK_ANON',
@@ -158,24 +160,48 @@ const CANONICAL_CODE_ALIASES = {
   PERPANJANGAN_PN2: 'SPRIN_PANJANG_HAN_30_KPN2_DAN_BA',
   SPRIN_PANJANG_HAN_30_KPN2_DAN_BA: 'SPRIN_PANJANG_HAN_30_KPN2_DAN_BA',
 
-  // Level 4: Berkas Perkara
+  // Level 4: Berkas Perkara & Sita
+  IZIN_SITA_PN: 'IZIN_SITA_PN',
+  IZIN_SITA_PN_LEBIH_1: 'IZIN_SITA_PN',
+  IZIN_SITA_PN_MORE_1: 'IZIN_SITA_PN',
+  IZIN_SITA_PN_MORE_1_TSK: 'IZIN_SITA_PN',
   SAMPUL_BP: 'SAMPUL_BERKAS_PERKARA',
+  SAMPUL_BERKAS: 'SAMPUL_BERKAS_PERKARA',
   SAMPUL_BERKAS_PERKARA: 'SAMPUL_BERKAS_PERKARA',
+  SAMPUL_BERKAS_PERKARA_MORE_1_TSK: 'SAMPUL_BERKAS_PERKARA',
   PENGANTAR_TAHAP_1: 'PENGANTAR_BP_TAHAP1',
   PENGANTAR_TAHAP1: 'PENGANTAR_BP_TAHAP1',
   PENGANTAR_BP_TAHAP_1: 'PENGANTAR_BP_TAHAP1',
   PENGANTAR_BP_TAHAP1: 'PENGANTAR_BP_TAHAP1',
+  PENGANTAR_TAHAP_1_MORE_1_TSK: 'PENGANTAR_BP_TAHAP1',
+  PENGANTAR_BP_TAHAP1_MORE_1_TSK: 'PENGANTAR_BP_TAHAP1',
   TANDA_TERIMA_TAHAP_1: 'TANDA_TERIMA_TAHAP1',
   TANDA_TERIMA_BP_TAHAP_1: 'TANDA_TERIMA_TAHAP1',
   TANDA_TERIMA_TAHAP1: 'TANDA_TERIMA_TAHAP1',
   PENGANTAR_P19: 'PENGANTAR_BP_KEMBALI_P19',
   PENGANTAR_KEMBALI_P19: 'PENGANTAR_BP_KEMBALI_P19',
+  PENGANTAR_TAHAP_1_P19: 'PENGANTAR_BP_KEMBALI_P19',
+  PENGANTAR_TAHAP_1_KEMBALI_P19: 'PENGANTAR_BP_KEMBALI_P19',
+  PENGANTAR_BP_TAHAP_1_KEMBALI_P19: 'PENGANTAR_BP_KEMBALI_P19',
+  PENGANTAR_BP_TAHAP1_KEMBALI_P19: 'PENGANTAR_BP_KEMBALI_P19',
   PENGANTAR_BP_KEMBALI_P19: 'PENGANTAR_BP_KEMBALI_P19',
+  PENGANTAR_P19_MORE_1_TSK: 'PENGANTAR_BP_KEMBALI_P19',
+  PENGANTAR_BP_KEMBALI_P19_MORE_1_TSK: 'PENGANTAR_BP_KEMBALI_P19',
+  PENGANTAR_TAHAP_1_P19_MORE_1_TSK: 'PENGANTAR_BP_KEMBALI_P19',
   TANDA_TERIMA_KEMBALI_BP_P19: 'TANDA_TERIMA_KEMBALI_P19',
   TANDA_TERIMA_KEMBALI_P19: 'TANDA_TERIMA_KEMBALI_P19',
   PENGANTAR_TAHAP_2: 'PENGANTAR_TAHAP2',
   PENGANTAR_KIRIM_TSK_BB_TAHAP_2: 'PENGANTAR_TAHAP2',
-  PENGANTAR_TAHAP2: 'PENGANTAR_TAHAP2'
+  PENGANTAR_PENGIRIMAN_TSK_DAN_BB_TAHAP_2: 'PENGANTAR_TAHAP2',
+  PENGANTAR_PENGIRIMAN_TSK_BB_TAHAP_2: 'PENGANTAR_TAHAP2',
+  PENGIRIMAN_TSK_BB_TAHAP_2: 'PENGANTAR_TAHAP2',
+  PENGIRIMAN_TSK_DAN_BB_TAHAP_2: 'PENGANTAR_TAHAP2',
+  PENGIRIMAN_TSK_BB_TAHAP_2_MORE_1_TSK: 'PENGANTAR_TAHAP2',
+  PENGIRIMAN_TSK_DAN_BB_TAHAP_2_MORE_1_TSK: 'PENGANTAR_TAHAP2',
+  PENGANTAR_KIRIM_TSK_BB_TAHAP_2_MORE_1_TSK: 'PENGANTAR_TAHAP2',
+  PENGANTAR_TAHAP2: 'PENGANTAR_TAHAP2',
+  PENGANTAR_TAHAP_2_MORE_1_TSK: 'PENGANTAR_TAHAP2',
+  PENGANTAR_TAHAP2_MORE_1_TSK: 'PENGANTAR_TAHAP2'
 };
 
 /**
@@ -196,6 +222,44 @@ export function toCanonicalMindikCode(rawCode = '', title = '') {
 
   if (cleanCode && CANONICAL_CODE_ALIASES[cleanCode]) {
     return CANONICAL_CODE_ALIASES[cleanCode];
+  }
+
+  // Normalisasi seluruh varian multi-subjek (_MORE_1_*, _LEBIH_1_*, _LEBIH_DARI_1_*, atau _1_TSK s.d. _6_TSK) ke kode kanonik dasar
+  const multiVariantMatch = cleanCode.match(
+    /^(.+?)_(?:(?:MORE|LEBIH|LEBIH_DARI)_1(?:_(?:TSK|TERSANGKA|TERLAPOR))?|[1-6]_(?:TSK|TERSANGKA|TERLAPOR))$/
+  );
+  if (multiVariantMatch) {
+    const baseWithoutMulti = multiVariantMatch[1];
+    if (CANONICAL_CODE_ALIASES[baseWithoutMulti]) {
+      return CANONICAL_CODE_ALIASES[baseWithoutMulti];
+    }
+    if (baseWithoutMulti === 'SPDP') {
+      return cleanCode.includes('TERLAPOR') ? 'SPDP_TERLAPOR' : 'SPDP_TSK';
+    }
+    if (baseWithoutMulti.includes('P19')) return 'PENGANTAR_BP_KEMBALI_P19';
+    if (baseWithoutMulti === 'PENGANTAR_TAHAP_1' || baseWithoutMulti === 'PENGANTAR_BP_TAHAP_1') return 'PENGANTAR_BP_TAHAP1';
+    if (
+      baseWithoutMulti === 'PENGANTAR_TAHAP_2' ||
+      baseWithoutMulti.includes('TAHAP_2') ||
+      baseWithoutMulti.includes('TAHAP2') ||
+      baseWithoutMulti.includes('TSK_BB') ||
+      baseWithoutMulti.includes('TSK_DAN_BB')
+    ) {
+      return 'PENGANTAR_TAHAP2';
+    }
+    if (baseWithoutMulti === 'PERMOHONAN_PERPANJANGAN_HAN') return 'MINTA_PANJANG_HAN_40_KN';
+    if (baseWithoutMulti === 'IZIN_SITA_PN') return 'IZIN_SITA_PN';
+  }
+
+  if (
+    cleanCode.includes('TAHAP_2') ||
+    cleanCode.includes('TAHAP2') ||
+    cleanCode.includes('TSK_DAN_BB') ||
+    cleanCode.includes('TSK_BB') ||
+    /\bTAHAP\s*(?:2|II)\b/.test(cleanTitle) ||
+    (cleanTitle.includes('PENGANTAR') && cleanTitle.includes('TSK') && cleanTitle.includes('BB'))
+  ) {
+    return 'PENGANTAR_TAHAP2';
   }
 
   // Deteksi pola fleksibel SP.Gas.Sidik vs SP.Sidik
@@ -255,6 +319,15 @@ export function toCanonicalMindikCode(rawCode = '', title = '') {
   }
 
   return cleanCode || 'MINDIK';
+}
+
+/**
+ * Alias resmi normalisasi kode template kanonik untuk kompatibilitas mundur arsip lama
+ * (mis. SPDP_MORE_1_TSK -> SPDP_TSK, PENGANTAR_TAHAP_1_MORE_1_TSK -> PENGANTAR_BP_TAHAP1,
+ * PENGANTAR_P19_MORE_1_TSK -> PENGANTAR_BP_KEMBALI_P19).
+ */
+export function normalizeCanonicalTemplateCode(rawCode = '', title = '') {
+  return toCanonicalMindikCode(rawCode, title);
 }
 
 /**
@@ -340,7 +413,8 @@ export const PREREQUISITE_LABELS = {
   SPGL_SAKSI_1: 'Surat Panggilan Saksi Ke-1 (S.Pgl Saksi I)',
   SPGL_TSK_1: 'Surat Panggilan Tersangka Ke-1 (S.Pgl Tersangka I)',
   SPRIN_KAP_DAN_BA: 'Surat Perintah Penangkapan (SP.Kap)',
-  SPRIN_HAN_DAN_BA: 'Surat Perintah Penahanan (SP.Han)'
+  SPRIN_HAN_DAN_BA: 'Surat Perintah Penahanan (SP.Han)',
+  PENGANTAR_BP_TAHAP1: 'Surat Pengantar Berkas Perkara Tahap I'
 };
 
 /**
@@ -354,14 +428,14 @@ export const PREREQUISITE_SATISFIERS = {
   SPGL_TSK_1: ['SPGL_TSK_1', 'SPGL_TSK'],
   SPDP: [
     'SPDP_TSK',
-    'SPDP_MORE_1_TSK',
     'SPDP_TERLAPOR',
     'SPDP_LIDIK_ANON',
     'SPDP_KORPORASI',
     'PENGIRIMAN_KEMBALI_SPDP_P20'
   ],
   SPRIN_KAP_DAN_BA: ['SPRIN_KAP_DAN_BA'],
-  SPRIN_HAN_DAN_BA: ['SPRIN_HAN_DAN_BA']
+  SPRIN_HAN_DAN_BA: ['SPRIN_HAN_DAN_BA'],
+  PENGANTAR_BP_TAHAP1: ['PENGANTAR_BP_TAHAP1', 'PENGANTAR_TAHAP_1', 'PENGANTAR_TAHAP1']
 };
 
 /**
@@ -384,9 +458,8 @@ export const CHAIN_RULES = {
   SPGAS_SIDIK_TAMBAHAN: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'none' },
   SPGAS_SIDIK_LANJUTAN: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'none' },
 
-  // SPDP
+  // SPDP (1 preset dinamis SPDP_TSK untuk 1 maupun >1 tersangka, dan 1 preset SPDP_TERLAPOR)
   SPDP_TSK: { level: 2, required: ['SPRIN_SIDIK'], recommended: ['TAP_TSK'], subjectMode: 'tersangka' },
-  SPDP_MORE_1_TSK: { level: 2, required: ['SPRIN_SIDIK'], recommended: ['TAP_TSK'], subjectMode: 'tersangka' },
   SPDP_TERLAPOR: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'terlapor' },
   SPDP_LIDIK_ANON: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'none' },
   SPDP_KORPORASI: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'none' },
@@ -409,11 +482,10 @@ export const CHAIN_RULES = {
   VER_LUKA: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'pelapor_korban' },
   VER_PSIKIATRI: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'pelapor_korban' },
 
-  // Sita / Geledah
+  // Sita / Geledah (IZIN_SITA_PN_LEBIH_1 dilebur ke dalam IZIN_SITA_PN dinamis)
   SPRIN_SITA_UMUM: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'none' },
   SPRIN_BUNGKUS_SEGEL: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'none' },
   IZIN_SITA_PN: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'tersangka' },
-  IZIN_SITA_PN_LEBIH_1: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'tersangka' },
   MOHON_TITIP_RAWAT_BB: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'none' },
   SPRIN_TITIP_RAWAT_BB: { level: 2, required: ['SPRIN_SIDIK'], recommended: [], subjectMode: 'none' },
 
@@ -456,10 +528,16 @@ export const CHAIN_RULES = {
   // ======================== LEVEL 4 (SPRIN_SIDIK + SPDP + TAP_TSK SAH) ========================
   SAMPUL_BERKAS_PERKARA: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
   PENGANTAR_BP_TAHAP1: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
-  TANDA_TERIMA_TAHAP1: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
-  PENGANTAR_BP_KEMBALI_P19: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
-  TANDA_TERIMA_KEMBALI_P19: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' },
-  PENGANTAR_TAHAP2: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: [], subjectMode: 'tersangka' }
+  TANDA_TERIMA_TAHAP1: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: ['PENGANTAR_BP_TAHAP1'], subjectMode: 'tersangka' },
+  PENGANTAR_BP_KEMBALI_P19: {
+    level: 4,
+    required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'],
+    recommended: ['PENGANTAR_BP_TAHAP1'],
+    recommendedNote: 'Surat Pengantar Berkas Perkara Tahap I sebelumnya belum ditemukan di arsip perkara ini. Sebaiknya terbitkan Pengantar BP Tahap I terlebih dahulu agar Nomor & Tanggal rujukan Tahap I terhubung otomatis pada Pengantar Tahap I Kembali (P-19).',
+    subjectMode: 'tersangka'
+  },
+  TANDA_TERIMA_KEMBALI_P19: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: ['PENGANTAR_BP_KEMBALI_P19'], subjectMode: 'tersangka' },
+  PENGANTAR_TAHAP2: { level: 4, required: ['SPRIN_SIDIK', 'SPDP', 'TAP_TSK'], recommended: ['PENGANTAR_BP_TAHAP1'], subjectMode: 'tersangka' }
 };
 
 /**

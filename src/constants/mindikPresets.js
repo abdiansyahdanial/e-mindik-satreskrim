@@ -1,4 +1,4 @@
-import { toCanonicalMindikCode } from './mindikChainRegistry.js';
+import { toCanonicalMindikCode, normalizeCanonicalTemplateCode } from './mindikChainRegistry.js';
 
 /**
  * Master Data Preset Dokumen Mindik Satreskrim
@@ -158,13 +158,6 @@ export const MINDIK_PRESETS = {
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
     { tag: "MASA_BERLAKU", label: "Masa Berlaku Surat", type: "date", default: "", required: true }
   ],
-  IZIN_SITA_PN_LEBIH_1: [
-    { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "B/….../I/RES.0.0./2026/Satreskrim", required: true },
-    { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "TUJUAN_SURAT", label: "Tujuan Surat", type: "text", default: "KETUA PENGADILAN NEGERI KOLAKA", required: true },
-    { tag: "ALAMAT_TUJUAN", label: "Alamat Surat", type: "text", default: "Kolaka", required: true }
-  ],
   IZIN_SITA_PN: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "B/….../I/RES.0.0./2026/Satreskrim", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
@@ -207,13 +200,6 @@ export const MINDIK_PRESETS = {
     { tag: "ALAMAT_TUJUAN", label: "Alamat Surat", type: "text", default: "Kolaka", required: true }
   ],
   SPDP_TSK: [
-    { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "B/SPDP/….../I/RES.0.0./2026/Satreskrim", required: true },
-    { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
-    { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
-    { tag: "TUJUAN_SURAT", label: "Tujuan Surat", type: "text", default: "KEPALA KEJAKSAAN NEGERI KOLAKA", required: true },
-    { tag: "ALAMAT_TUJUAN", label: "Alamat Surat", type: "text", default: "Kolaka", required: true }
-  ],
-  SPDP_MORE_1_TSK: [
     { tag: "NOMOR_SURAT", label: "Nomor Surat", type: "text", default: "B/SPDP/….../I/RES.0.0./2026/Satreskrim", required: true },
     { tag: "TANGGAL_SURAT", label: "Tanggal Surat", type: "date", default: "... Januari 2026", required: true },
     { tag: "TEMPAT_SURAT", label: "Tempat Dikeluarkan", type: "text", default: "Tirawuta", required: true },
@@ -430,15 +416,13 @@ export const MINDIK_PRESET_TITLES = {
   SPRIN_BAWA_TSK_DAN_BA: "Surat Perintah Membawa Tersangka dan Berita Acara",
   SPRIN_SITA_UMUM: "Surat Perintah Penyitaan Umum",
   SPRIN_BUNGKUS_SEGEL: "Surat Perintah Pembungkusan & Penyegelan Barang Bukti",
-  IZIN_SITA_PN_LEBIH_1: "Permohonan Izin Sita ke Pengadilan Negeri (> 1 Tersangka)",
   IZIN_SITA_PN: "Permohonan Izin Sita ke Pengadilan Negeri",
   MOHON_TITIP_RAWAT_BB: "Permohonan Penitipan / Perawatan Barang Bukti",
   SPRIN_TITIP_RAWAT_BB: "Surat Perintah Penitipan Rawat Barang Bukti",
   TAP_TSK: "Surat Ketetapan Penetapan Tersangka",
   PEMBERITAHUAN_TAP_TSK: "Pemberitahuan Penetapan Tersangka kepada Tersangka",
   PEMBERITAHUAN_TAP_TSK_JPU: "Pemberitahuan Penetapan Tersangka kepada Penuntut Umum",
-  SPDP_TSK: "Surat Pemberitahuan Dimulainya Penyidikan (Tersangka Tunggal)",
-  SPDP_MORE_1_TSK: "Surat Pemberitahuan Dimulainya Penyidikan (> 1 Tersangka)",
+  SPDP_TSK: "Surat Pemberitahuan Dimulainya Penyidikan (Tersangka)",
   SPDP_TERLAPOR: "Surat Pemberitahuan Dimulainya Penyidikan (Terlapor)",
   SPDP_LIDIK_ANON: "Surat Pemberitahuan Dimulainya Penyidikan (Dalam Lidik / Anon)",
   SPDP_KORPORASI: "Surat Pemberitahuan Dimulainya Penyidikan (Korporasi)",
@@ -460,10 +444,12 @@ export const MINDIK_PRESET_TITLES = {
   SAMPUL_BERKAS_PERKARA: "Sampul Berkas Perkara (BP)",
   PENGANTAR_BP_TAHAP1: "Surat Pengantar Pengiriman Berkas Perkara (Tahap I)",
   TANDA_TERIMA_TAHAP1: "Tanda Terima Berkas Perkara Tahap I",
-  PENGANTAR_BP_KEMBALI_P19: "Surat Pengantar Pengembalian Berkas Perkara (P-19)",
+  PENGANTAR_BP_KEMBALI_P19: "Surat Pengantar Pengiriman Kembali Berkas Perkara Tahap I (P-19)",
   TANDA_TERIMA_KEMBALI_P19: "Tanda Terima Pengembalian Berkas Perkara (P-19)",
-  PENGANTAR_TAHAP2: "Surat Pengantar Penyerahan Tersangka & Barang Bukti (Tahap II)"
+  PENGANTAR_TAHAP2: "Surat Pengantar Pengiriman Tsk dan BB Tahap II"
 };
+
+export { normalizeCanonicalTemplateCode };
 
 /**
  * Normalisasi kode preset menggunakan Single Source of Truth toCanonicalMindikCode
@@ -527,9 +513,8 @@ export const MINDIK_CODE_TO_CATEGORY = {
   SPRIN_SIDIK_LANJUTAN: 'SP_SIDIK',
   SPGAS_SIDIK_LANJUTAN: 'SP_SIDIK',
 
-  // SPDP (6)
+  // SPDP (5)
   SPDP_TSK: 'SPDP',
-  SPDP_MORE_1_TSK: 'SPDP',
   SPDP_TERLAPOR: 'SPDP',
   SPDP_LIDIK_ANON: 'SPDP',
   SPDP_KORPORASI: 'SPDP',
@@ -543,11 +528,10 @@ export const MINDIK_CODE_TO_CATEGORY = {
   SPGL_TSK_2: 'TERSANGKA',
   SPRIN_BAWA_TSK_DAN_BA: 'TERSANGKA',
 
-  // SITA / GELEDAH (6)
+  // SITA / GELEDAH (5)
   SPRIN_SITA_UMUM: 'SITA_GELEDAH',
   SPRIN_BUNGKUS_SEGEL: 'SITA_GELEDAH',
   IZIN_SITA_PN: 'SITA_GELEDAH',
-  IZIN_SITA_PN_LEBIH_1: 'SITA_GELEDAH',
   MOHON_TITIP_RAWAT_BB: 'SITA_GELEDAH',
   SPRIN_TITIP_RAWAT_BB: 'SITA_GELEDAH',
 
