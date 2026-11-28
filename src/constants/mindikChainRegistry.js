@@ -580,3 +580,96 @@ export function getChainRuleForCode(rawCode = '', title = '') {
 export function getSubjectModeForTemplate(rawCode = '', title = '') {
   return getChainRuleForCode(rawCode, title).subjectMode || 'none';
 }
+
+/**
+ * Normalisasi string Nomor Laporan Polisi (LP) menjadi kunci alfanumerik seragam
+ * serta ekstraksi komponen Model (A/B) dan Nomor Urut LP untuk pencocokan lintas format
+ * (misal: "LP/A/2/...", "LP/A/02/...", "LP A 2", "LP-A-2", "LP/B/3/..." dll.).
+ */
+export function normalizeLpNumber(raw = '') {
+  const str = String(raw || '').trim().toUpperCase();
+  if (!str || str === '-' || str === 'NULL' || str === 'UNDEFINED') return '';
+  return str.replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Ekstrak struktur pendek LP: { model: 'A'|'B'|'', seq: '2', hasTail: boolean, alnum: '...' }
+ */
+export function parseLpIdentity(raw = '') {
+  const str = String(raw || '').trim().toUpperCase();
+  const alnum = normalizeLpNumber(str);
+  if (!alnum) return null;
+
+  // Cocokkan pola: LP / A / 2 ... atau LP A 2 ... atau LP B 03 ... atau LP 2 ...
+  const match = str.match(/^LP[\s/._:-]*([AB])?[\s/._:-]*0*(\d+)(?:[\s/._:-]+(.*))?$/i);
+  if (!match) {
+    return { model: '', seq: '', hasTail: true, alnum, raw: str };
+  }
+  const model = (match[1] || '').toUpperCase();
+  const seq = String(match[2] || '').replace(/^0+/, '') || '0';
+  const tail = String(match[3] || '').trim();
+  const hasTail = tail.length > 0;
+  return { model, seq, hasTail, alnum, raw: str };
+}
+
+/**
+ * Membandingkan apakah dua string Nomor LP merujuk pada Laporan Polisi yang sama.
+ * Mendukung pencocokan persis alfanumerik ("LP/A/2" === "LP A 2") maupun
+ * label ringkas ("LP A 2" cocok dengan "LP/A/2/XI/2026/SPKT/...").
+ */
+export function isSameLpNumber(lpA = '', lpB = '') {
+  const normA = normalizeLpNumber(lpA);
+  const normB = normalizeLpNumber(lpB);
+  if (!normA || !normB) return false;
+  if (normA === normB) return true;
+
+  const idA = parseLpIdentity(lpA);
+  const idB = parseLpIdentity(lpB);
+  if (!idA || !idB) return false;
+
+  // Jika keduanya punya model (A atau B) dan nomor urut (seq) yang sama,
+  // dan salah satunya adalah penulisan ringkas tanpa ekor bulan/tahun (misal "LP A 2")
+  if (idA.model && idB.model && idA.model === idB.model && idA.seq && idA.seq === idB.seq) {
+    if (!idA.hasTail || !idB.hasTail) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Memeriksa apakah sebuah dokumen arsip (dari public.documents) terhubung dengan suatu perkara (caseItem)
+ * baik melalui case_id (termasuk variasi prefix case-dumas-) maupun melalui Nomor LP (isSameLpNumber).
+ */
+export function isDocumentLinkedToCase(doc, caseItem) {
+  if (!doc || !caseItem) return false;
+
+  const docCaseId = String(doc.case_id || doc.meta_values?.original_case_id || doc.meta_values?.case_id || '').trim();
+  const caseId = String(caseItem.id || '').trim();
+  const dumasId = String(caseItem.dumas_id || caseItem.references?.dumas_id || '').trim();
+
+  if (docCaseId && caseId) {
+    if (docCaseId === caseId) return true;
+    const cleanDocCaseId = docCaseId.replace(/^case-dumas-/, '').replace(/^recovered-case-/, '');
+    const cleanCaseId = caseId.replace(/^case-dumas-/, '').replace(/^recovered-case-/, '');
+    if (cleanDocCaseId && cleanCaseId && cleanDocCaseId === cleanCaseId) return true;
+    if (dumasId && (docCaseId === dumasId || cleanDocCaseId === dumasId)) return true;
+  }
+
+  const docLp =
+    doc.nomor_lp ||
+    doc.no_lp ||
+    doc.meta_values?.nomor_lp ||
+    doc.meta_values?.NOMOR_LP ||
+    doc.metadata?.nomor_lp ||
+    doc.metadata?.NOMOR_LP ||
+    '';
+  const caseLp = caseItem.nomor_lp || caseItem.no_lp || '';
+
+  if (docLp && caseLp && isSameLpNumber(docLp, caseLp)) {
+    return true;
+  }
+
+  return false;
+}
+

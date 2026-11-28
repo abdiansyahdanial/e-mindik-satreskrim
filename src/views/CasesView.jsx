@@ -193,35 +193,35 @@ export default function CasesView({
                   <tr key={item.id} className="hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(148,163,184,0.08)] text-white transition-colors">
                     <td className="p-3.5 align-middle">
                       <div className="font-mono text-xs font-semibold text-[#FF3B3B] tracking-wide">
-                        {item.no_lp}
+                        {item.nomor_lp || item.no_lp || '-'}
                       </div>
                       <div className="font-mono text-[11px] text-[#94A3B8] mt-0.5">
-                        Tgl LP: {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : '-'}
+                        Tgl LP: {(item.tanggal_lp || item.created_at) ? new Date(item.tanggal_lp || item.created_at).toLocaleDateString('id-ID') : '-'}
                       </div>
                     </td>
 
                     <td className="p-3.5 align-middle">
                       <div className="font-semibold text-white">
-                        {item.tindak_pidana}
+                        {item.tindak_pidana || item.perkara || 'Tindak Pidana Umum'}
                       </div>
                       <div className="text-[11px] text-[#FF3B3B] font-medium mt-0.5">
-                        {item.pasal_uu}
+                        {item.pasal_uu || item.pasal || item.dasar_pasal_uu || '-'}
                       </div>
                     </td>
 
                     <td className="p-3.5 align-middle">
                       <div className="font-semibold text-[#CBD5E1]">
-                        {item.person?.nama || item.terlapor_name}
+                        {item.person?.nama || item.nama_terlapor || item.terlapor_name || '-'}
                       </div>
                       <div className="text-[11px] text-[#94A3B8] mt-0.5">
                         {item.person?.umur ? `${item.person.umur} • ` : ''}
-                        {item.person?.alamat ? `${item.person.alamat.slice(0, 26)}...` : item.locus}
+                        {item.person?.alamat ? `${item.person.alamat.slice(0, 26)}...` : (item.locus || '-')}
                       </div>
                     </td>
 
                     <td className="p-3.5 align-middle">
                       <div className="font-medium text-white">
-                        {item.pelapor_name}
+                        {item.nama_pelapor || item.pelapor_name || '-'}
                       </div>
                       <div className="text-[11px] text-[#64748B] mt-0.5">
                         Saksi Pelapor

@@ -11,31 +11,33 @@ import {
   Download,
   Plus,
   Calendar,
-  User,
-  Shield,
   FileCheck,
   ChevronRight,
-  Clock,
   Briefcase,
-  Layers,
-  Sparkles
+  RefreshCw
 } from 'lucide-react';
 import fileSaver from 'file-saver';
 const saveAs = fileSaver.saveAs || fileSaver;
 import { supabase } from '../supabaseClient';
 import { formatTanggalIndonesia, generateAndDownloadDocx } from '../services/mindikGenerator';
+import { isDocumentLinkedToCase } from '../constants/mindikChainRegistry';
 
 export default function ArchivesView({ 
   documents = [], 
   cases = [], 
   onPreviewDoc, 
   onDeleteDoc,
-  onOpenGenerator 
+  onOpenGenerator,
+  onRelinkDoc,
+  onSyncLocalToDatabase
 }) {
   // State Navigasi Hirarki 2 Tingkat:
   // selectedCaseForArchive === null  => Tingkat 1 (Daftar LP)
   // selectedCaseForArchive !== null  => Tingkat 2 (Daftar Dokumen dalam LP Terpilih)
   const [selectedCaseForArchive, setSelectedCaseForArchive] = useState(null);
+  const [isOrphanPanelOpen, setIsOrphanPanelOpen] = useState(true);
+  const [relinkTargetByDocId, setRelinkTargetByDocId] = useState({});
+  const [isSyncingLocal, setIsSyncingLocal] = useState(false);
 
   // Filter & Search States
   const [lpSearchTerm, setLpSearchTerm] = useState('');
@@ -48,22 +50,22 @@ export default function ArchivesView({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const safeDocs = Array.isArray(documents) ? documents : [];
-  const safeCases = Array.isArray(cases) ? cases : [];
+  const safeDocs = useMemo(() => (Array.isArray(documents) ? documents : []), [documents]);
+  const safeCases = useMemo(() => (Array.isArray(cases) ? cases : []), [cases]);
 
-  // Helper: Ambil seluruh dokumen yang terikat ke suatu perkara (berdasarkan case_id atau nomor_lp)
+  // Helper: Ambil seluruh dokumen yang terikat ke suatu perkara (berdasarkan case_id atau normalisasi nomor_lp)
   const getDocsForCase = (caseItem) => {
     if (!caseItem) return [];
+    return safeDocs.filter((d) => isDocumentLinkedToCase(d, caseItem));
+  };
+
+  // Jaring Pengaman: Dokumen arsip yang belum cocok ke kartu LP mana pun
+  const orphanDocs = useMemo(() => {
     return safeDocs.filter((d) => {
       if (!d) return false;
-      const matchId = d.case_id && String(d.case_id) === String(caseItem.id);
-      const matchLp = Boolean(
-        (caseItem.nomor_lp && (d.nomor_lp === caseItem.nomor_lp || d.no_lp === caseItem.nomor_lp)) ||
-        (caseItem.no_lp && (d.nomor_lp === caseItem.no_lp || d.no_lp === caseItem.no_lp))
-      );
-      return matchId || matchLp;
+      return !safeCases.some((c) => isDocumentLinkedToCase(d, c));
     });
-  };
+  }, [safeDocs, safeCases]);
 
   // --- TINGKAT 1: Filter Daftar LP ---
   const filteredCases = useMemo(() => {
@@ -192,7 +194,38 @@ export default function ArchivesView({
               </p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {onSyncLocalToDatabase && (
+                <button
+                  type="button"
+                  disabled={isSyncingLocal}
+                  onClick={async () => {
+                    setIsSyncingLocal(true);
+                    try {
+                      await onSyncLocalToDatabase();
+                    } finally {
+                      setIsSyncingLocal(false);
+                    }
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12px',
+                    padding: '6px 14px',
+                    borderRadius: '9999px',
+                    borderColor: 'rgba(255, 42, 42, 0.45)',
+                    color: '#FFFFFF',
+                    background: 'rgba(255, 42, 42, 0.14)'
+                  }}
+                  title="Pulihkan & sinkronkan data perkara/dumas/arsip dari localStorage browser ke database Supabase"
+                >
+                  <RefreshCw size={14} className={isSyncingLocal ? 'animate-spin' : ''} color="#FF2A2A" />
+                  <span>{isSyncingLocal ? 'Menyinkronkan...' : 'Sinkronkan Data Lokal ke Database'}</span>
+                </button>
+              )}
+
               <div style={{
                 background: '#131924',
                 padding: '6px 14px',
@@ -261,6 +294,193 @@ export default function ArchivesView({
               </button>
             </div>
           </div>
+
+          {/* Jaring Pengaman: Kartu Arsip Dokumen Belum Tertaut LP (jika masih ada dokumen tanpa induk LP) */}
+          {orphanDocs.length > 0 && (
+            <div
+              className="glass"
+              style={{
+                padding: '18px 20px',
+                borderRadius: '18px',
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.45)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setIsOrphanPanelOpen((prev) => !prev)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      background: 'rgba(245, 158, 11, 0.18)',
+                      border: '1px solid rgba(245, 158, 11, 0.55)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <AlertTriangle size={20} color="#F59E0B" />
+                  </div>
+                  <div>
+                    <div
+                      className="heading-font"
+                      style={{
+                        fontSize: '14px',
+                        fontWeight: 800,
+                        color: '#FBBF24',
+                        letterSpacing: '0.5px'
+                      }}
+                    >
+                      ARSIP DOKUMEN BELUM TERTAUT LP ({orphanDocs.length} Dokumen)
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#CBD5E1', marginTop: '2px' }}>
+                      Dokumen di bawah ini tersimpan aman di database, namun belum tertaut ke kartu Laporan Polisi tertentu. Anda dapat membuka pratinjau, mengunduh .docx, atau menautkannya ke LP yang sesuai.
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    borderColor: 'rgba(245, 158, 11, 0.45)',
+                    color: '#FBBF24',
+                    fontSize: '11.5px'
+                  }}
+                >
+                  {isOrphanPanelOpen ? 'Sembunyikan Daftar' : `Tampilkan (${orphanDocs.length} Dokumen)`}
+                </button>
+              </div>
+
+              {isOrphanPanelOpen && (
+                <div className="table-container" style={{ marginTop: '4px' }}>
+                  <table className="tactical-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '125px' }}>Kode</th>
+                        <th>Judul Dokumen & Info LP</th>
+                        <th style={{ width: '210px' }}>Nomor Surat</th>
+                        <th style={{ width: '250px' }}>Pindahkan / Tautkan ke LP</th>
+                        <th style={{ textAlign: 'right', width: '220px' }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orphanDocs.map((doc, idx) => {
+                        const docCode = doc?.template_code || doc?.code || 'MINDIK';
+                        const docNum = doc?.doc_number || doc?.nomor_surat || '-';
+                        const rawLpLabel =
+                          doc?.nomor_lp ||
+                          doc?.no_lp ||
+                          doc?.meta_values?.nomor_lp ||
+                          doc?.meta_values?.NOMOR_LP ||
+                          '-';
+                        const selectedTargetCaseId = relinkTargetByDocId[doc.id] || '';
+
+                        return (
+                          <tr key={doc?.id || `orphan-doc-${idx}`}>
+                            <td>
+                              <span
+                                className="badge mono"
+                                style={{
+                                  background: 'rgba(245, 158, 11, 0.16)',
+                                  color: '#FBBF24',
+                                  border: '1px solid rgba(245, 158, 11, 0.40)',
+                                  borderRadius: '9999px',
+                                  fontSize: '10.5px'
+                                }}
+                              >
+                                {docCode}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '12.5px' }}>
+                                {doc?.doc_title || doc?.title || 'Dokumen Administrasi Penyidikan'}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                                Label LP Tersimpan: <span className="mono" style={{ color: '#FBBF24' }}>{rawLpLabel}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="mono" style={{ fontSize: '12px', color: '#FBBF24', fontWeight: 600 }}>
+                                {docNum}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <select
+                                  className="form-input"
+                                  value={selectedTargetCaseId}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setRelinkTargetByDocId((prev) => ({ ...prev, [doc.id]: val }));
+                                    const targetCase = safeCases.find((c) => String(c.id) === String(val));
+                                    if (targetCase && onRelinkDoc) {
+                                      onRelinkDoc(doc, targetCase);
+                                    }
+                                  }}
+                                  style={{
+                                    fontSize: '11.5px',
+                                    padding: '5px 10px',
+                                    height: '32px',
+                                    borderRadius: '8px',
+                                    borderColor: 'rgba(245, 158, 11, 0.40)'
+                                  }}
+                                >
+                                  <option value="">Pindahkan / Tautkan ke LP...</option>
+                                  {safeCases.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.nomor_lp || c.no_lp || c.id} — {c.nama_terlapor || c.terlapor_name || c.tindak_pidana || ''}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => onPreviewDoc && onPreviewDoc(doc)}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ fontSize: '11px', padding: '4px 10px', gap: '4px' }}
+                                >
+                                  <Eye size={13} />
+                                  <span>Pratinjau</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadDocx(doc)}
+                                  disabled={isDownloading}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ fontSize: '11px', padding: '4px 10px', gap: '4px' }}
+                                >
+                                  <Download size={13} />
+                                  <span>Unduh .docx</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Grid / Kartu Berkas Perkara (LP) */}
           {filteredCases.length === 0 ? (

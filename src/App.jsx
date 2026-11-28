@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from './supabaseClient';
 import LoginPage from './views/LoginPage';
 import ExpandingSidebar from './components/layout/ExpandingSidebar';
@@ -10,7 +10,12 @@ import MindikGeneratorView from './views/mindik/MindikGeneratorView';
 import ArchivesView from './views/ArchivesView';
 import PersonnelView, { cleanOfficerName } from './views/PersonnelView';
 import AdminTemplateStudio from './views/AdminTemplateStudio';
-import { toCanonicalMindikCode } from './constants/mindikChainRegistry';
+import {
+  toCanonicalMindikCode,
+  normalizeLpNumber,
+  isSameLpNumber,
+  isDocumentLinkedToCase
+} from './constants/mindikChainRegistry';
 import CaseDetailModal from './components/CaseDetailModal';
 import NewCaseModal from './components/NewCaseModal';
 import DocPreviewModal from './components/DocPreviewModal';
@@ -18,7 +23,14 @@ import UserManagementModal from './components/UserManagementModal';
 import DumasView from './views/DumasView';
 import DumasFormView from './components/dumas/DumasFormView';
 import MobileUploadView from './views/MobileUploadView';
-import { fetchDumasRecords } from './services/dumasService';
+import { fetchDumasRecords, convertDumasToCase } from './services/dumasService';
+import {
+  CASES_LOCAL_STORAGE_KEY,
+  DOCUMENTS_LOCAL_STORAGE_KEY,
+  upsertCaseToSupabaseSafe,
+  upsertDocumentToSupabaseSafe,
+  syncLocalDataToSupabase
+} from './services/localDataSyncService';
 import { isSpktRole } from './utils/rbacHelper';
 import { CheckCircle2, RefreshCw } from 'lucide-react';
 
@@ -191,12 +203,22 @@ export default function App() {
     }
 
     const loadSupabaseData = async () => {
-      // 1. Cases: read pure real-time data from Supabase
+      let loadedServerCases = [];
+      let loadedServerDumas = [];
+      let loadedServerDocs = [];
+
+      // 1. Cases: read pure real-time data from Supabase + local cache fallback
       try {
         const { data: casesData, error: casesErr } = await supabase
           .from('cases')
           .select('*')
           .order('created_at', { ascending: false });
+
+        let localCasesCache = [];
+        try {
+          const parsedLocalCases = JSON.parse(localStorage.getItem(CASES_LOCAL_STORAGE_KEY) || '[]');
+          if (Array.isArray(parsedLocalCases)) localCasesCache = parsedLocalCases;
+        } catch {}
 
         if (!casesErr && casesData) {
           const mappedCases = casesData.map((c) => {
@@ -208,15 +230,35 @@ export default function App() {
 
             return {
               ...c,
+              nomor_lp: c.nomor_lp || c.no_lp || '',
+              no_lp: c.no_lp || c.nomor_lp || '',
               penyidik_penangan_index: Number(penanganIdx) || 1,
             };
           });
-          setCases(mappedCases);
+
+          // Gabungkan dengan localCasesCache tanpa menimpa data server
+          const mergedCaseMap = new Map();
+          mappedCases.forEach((c) => mergedCaseMap.set(String(c.id), c));
+          localCasesCache.forEach((lc) => {
+            if (!lc) return;
+            const existsByLp = mappedCases.some((sc) =>
+              isSameLpNumber(sc.nomor_lp || sc.no_lp, lc.nomor_lp || lc.no_lp)
+            );
+            if (!mergedCaseMap.has(String(lc.id)) && !existsByLp) {
+              mergedCaseMap.set(String(lc.id), lc);
+            }
+          });
+
+          loadedServerCases = Array.from(mergedCaseMap.values());
+          setCases(loadedServerCases);
           setSelectedCaseForDetail((prev) => {
             if (!prev) return null;
-            const updated = mappedCases.find((c) => c.id === prev.id);
+            const updated = loadedServerCases.find((c) => c.id === prev.id);
             return updated ? { ...prev, ...updated } : prev;
           });
+        } else if (localCasesCache.length > 0) {
+          loadedServerCases = localCasesCache;
+          setCases(localCasesCache);
         }
       } catch (e) {
         console.warn('Cases sync error:', e);
@@ -277,22 +319,15 @@ export default function App() {
       try {
         const { data: dumasData } = await fetchDumasRecords();
         if (dumasData && Array.isArray(dumasData)) {
+          loadedServerDumas = dumasData;
           setDumasList(dumasData);
         }
       } catch (e) {
         console.warn('Dumas sync error:', e);
       }
 
-      // 4. Documents (Arsip Dokumen): read pure real-time data from Supabase
+      // 4. Documents (Arsip Dokumen): read pure real-time data from Supabase + local cache
       try {
-        // Bersihkan cache localStorage lama jika masih menyimpan data dummy
-        try {
-          const cached = localStorage.getItem('emindik_archive_documents');
-          if (cached && (cached.includes('Sp.Sidik/88') || cached.includes('doc-001') || cached.includes('SPDP B/45'))) {
-            localStorage.removeItem('emindik_archive_documents');
-          }
-        } catch {}
-
         try {
           const { data: listDocs, error: docsError } = await supabase
             .from('documents')
@@ -306,7 +341,7 @@ export default function App() {
           // Ambil juga cache offline dari localStorage jika ada
           let listLocal = [];
           try {
-            const cached = JSON.parse(localStorage.getItem('emindik_archive_documents') || '[]');
+            const cached = JSON.parse(localStorage.getItem(DOCUMENTS_LOCAL_STORAGE_KEY) || '[]');
             if (Array.isArray(cached)) listLocal = cached;
           } catch {}
 
@@ -317,6 +352,7 @@ export default function App() {
             const canonicalCode = toCanonicalMindikCode(doc.template_code || mv.canonical_code || '', doc.doc_title || '');
             return {
               ...doc,
+              case_id: doc.case_id || mv.original_case_id || null,
               template_code: canonicalCode,
               tgl_surat: doc.tgl_surat || mv.tgl_surat || mv.TANGGAL_SURAT || doc.created_at,
               nomor_lp: doc.nomor_lp || mv.nomor_lp || mv.NOMOR_LP || ''
@@ -334,6 +370,7 @@ export default function App() {
             (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
           );
 
+          loadedServerDocs = (listDocs || []).map(hydrateDocRow);
           setDocuments(finalDocs);
         } catch (fetchErr) {
           console.warn('[FETCH DOCUMENTS NOTICE]:', fetchErr);
@@ -341,6 +378,32 @@ export default function App() {
       } catch (e) {
         console.warn('Documents sync error:', e);
         setDocuments([]);
+      }
+
+      // 5. SINKRONISASI OTOMATIS localStorage & Dumas LP -> Supabase (`cases` & `documents`)
+      try {
+        const syncRes = await syncLocalDataToSupabase({
+          existingServerCases: loadedServerCases,
+          existingServerDumas: loadedServerDumas,
+          existingServerDocs: loadedServerDocs
+        });
+        if (syncRes.totalSynced > 0) {
+          setCases(syncRes.syncedCasesList);
+          setDocuments((prev) => {
+            const docMap = new Map();
+            [...syncRes.syncedDocsList, ...prev].forEach((d) => {
+              if (d && d.id && !docMap.has(d.id)) docMap.set(d.id, d);
+            });
+            return Array.from(docMap.values()).sort(
+              (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+            );
+          });
+          showToast(
+            `Pemulihan otomatis berhasil: ${syncRes.syncedCasesCount} Berkas LP & ${syncRes.syncedDocsCount} Dokumen Arsip disinkronkan ke database!`
+          );
+        }
+      } catch (syncErr) {
+        console.warn('[Auto-Sync Local->Supabase Notice]:', syncErr);
       }
     };
 
@@ -417,28 +480,22 @@ export default function App() {
 
   const handleAddCase = async (newCase) => {
     if (isSpktRole(userRole)) return;
-    setCases((prev) => [newCase, ...prev]);
-    showToast(`Perkara ${newCase.nomor_lp || newCase.no_lp} berhasil diregistrasi!`);
+    setCases((prev) => [newCase, ...prev.filter((c) => c.id !== newCase.id)]);
+
+    // Simpan cadangan di localStorage agar perkara baru tidak pernah hilang meskipun jaringan terputus
+    try {
+      const currentLocalCases = JSON.parse(localStorage.getItem(CASES_LOCAL_STORAGE_KEY) || '[]');
+      const nextLocalCases = [newCase, ...(Array.isArray(currentLocalCases) ? currentLocalCases.filter((x) => x.id !== newCase.id) : [])];
+      localStorage.setItem(CASES_LOCAL_STORAGE_KEY, JSON.stringify(nextLocalCases));
+    } catch {}
 
     try {
-      let { error } = await supabase.from('cases').insert([newCase]);
-      if (error && (error.code === 'PGRST204' || (error.message && error.message.includes('schema cache')))) {
-        console.warn('PGRST204: Membuang objek non-kolom dan mencoba insert ulang...');
-        const {
-          penyidik_penangan,
-          pelapor_list,
-          saksi_list,
-          tersangka_list,
-          barang_bukti,
-          ...cleanCase
-        } = newCase;
-        const retry = await supabase.from('cases').insert([cleanCase]);
-        error = retry.error;
-      }
-      if (error) {
-        console.error('Insert case error:', error);
-        alert(`Gagal menyimpan perkara ke database: ${error.message}`);
+      const res = await upsertCaseToSupabaseSafe(newCase);
+      if (!res.success && res.error) {
+        console.error('Insert case error:', res.error);
+        alert(`Gagal menyimpan perkara ke database Supabase: ${res.error.message || JSON.stringify(res.error)}`);
       } else {
+        showToast(`Perkara ${newCase.nomor_lp || newCase.no_lp} berhasil disimpan ke database Supabase!`);
         // Insert seluruh terlapor_list dan tersangka_list ke tabel case_suspects di Supabase
         const allInitialSuspects = [
           ...(Array.isArray(newCase.terlapor_list) ? newCase.terlapor_list.map(t => ({ ...t, status: 'terlapor' })) : []),
@@ -446,8 +503,9 @@ export default function App() {
         ].filter(t => t && t.nama);
 
         if (allInitialSuspects.length > 0) {
+          const targetCaseId = res.id || newCase.id;
           const suspectsPayload = allInitialSuspects.map((t) => ({
-            case_id: newCase.id,
+            case_id: targetCaseId,
             nama: t.nama || 'Dalam Penyelidikan',
             nik: t.nik || '-',
             jenis_kelamin: t.jenis_kelamin || 'Laki-laki',
@@ -476,6 +534,7 @@ export default function App() {
       }
     } catch (err) {
       console.warn('Insert case notice:', err);
+      alert(`Gagal menyimpan perkara ke database Supabase: ${err.message || err}`);
     }
   };
 
@@ -774,19 +833,13 @@ export default function App() {
 
     // Simpan ke database Supabase (lewati bila sudah di-insert oleh pemanggil seperti MindikGeneratorView)
     if (!skipDbUpsert) {
-      try {
-        const { data, error } = await supabase
-          .from('documents')
-          .upsert([dbPayload], { onConflict: 'id' })
-          .select();
-
-        if (error) {
-          console.error('[CRITICAL DB INSERT ERROR]:', error.message);
-        } else {
-          console.log('[App] Dokumen berhasil disimpan ke Supabase:', data);
-        }
-      } catch (err) {
-        console.error('[CRITICAL DB INSERT ERROR]:', err);
+      const targetParentCase = allMergedCases.find(
+        (c) => String(c.id) === String(dbPayload.case_id) || (nomorLpVal && isSameLpNumber(c.nomor_lp || c.no_lp, nomorLpVal))
+      ) || null;
+      const upsertRes = await upsertDocumentToSupabaseSafe(dbPayload, targetParentCase);
+      if (!upsertRes.success && upsertRes.error) {
+        console.error('[CRITICAL DB INSERT ERROR]:', upsertRes.error.message || upsertRes.error);
+        alert(`Gagal menyimpan arsip dokumen ke Supabase: ${upsertRes.error.message || JSON.stringify(upsertRes.error)}`);
       }
     }
   };
@@ -1068,12 +1121,421 @@ export default function App() {
     setActiveTab('generator');
   };
 
-  const handleHandoverFromDumas = (mappedCase) => {
+  const handleHandoverFromDumas = async (mappedCase) => {
     if (isSpktRole(userRole)) return;
-    setCaseForGenerator(mappedCase);
+    if (mappedCase) {
+      const normalizedMapped = {
+        ...mappedCase,
+        nomor_lp: mappedCase.nomor_lp || mappedCase.no_lp || '',
+        no_lp: mappedCase.no_lp || mappedCase.nomor_lp || ''
+      };
+      setCases((prev) => {
+        const exists = prev.some(
+          (c) =>
+            String(c.id) === String(normalizedMapped.id) ||
+            (normalizedMapped.dumas_id && String(c.dumas_id) === String(normalizedMapped.dumas_id)) ||
+            (normalizedMapped.nomor_lp && isSameLpNumber(c.nomor_lp || c.no_lp, normalizedMapped.nomor_lp))
+        );
+        return exists ? prev : [normalizedMapped, ...prev];
+      });
+      setCaseForGenerator(normalizedMapped);
+
+      // Simpan ke localStorage & promosi otomatis ke public.cases Supabase
+      try {
+        const currentLocalCases = JSON.parse(localStorage.getItem(CASES_LOCAL_STORAGE_KEY) || '[]');
+        const nextLocalCases = [
+          normalizedMapped,
+          ...(Array.isArray(currentLocalCases) ? currentLocalCases.filter((x) => x.id !== normalizedMapped.id) : [])
+        ];
+        localStorage.setItem(CASES_LOCAL_STORAGE_KEY, JSON.stringify(nextLocalCases));
+      } catch {}
+
+      upsertCaseToSupabaseSafe(normalizedMapped).catch((err) => {
+        console.warn('[App] Promosi Dumas ke public.cases notice:', err);
+      });
+    } else {
+      setCaseForGenerator(mappedCase);
+    }
     setActiveTab('generator');
-    showToast(`Data perkara Dumas ${mappedCase.no_lp || ''} siap diproses di Generator Mindik.`);
+    showToast(`Data perkara ${mappedCase?.nomor_lp || mappedCase?.no_lp || ''} siap diproses di Generator Mindik.`);
   };
+
+  // Handler Sinkronisasi Manual dari tombol "Sinkronkan Data Lokal ke Database" di halaman Arsip Dokumen
+  const handleManualSyncLocalToSupabase = async () => {
+    if (isSpktRole(userRole)) return { totalSynced: 0 };
+    try {
+      const syncRes = await syncLocalDataToSupabase({
+        existingServerCases: cases,
+        existingServerDumas: dumasList,
+        existingServerDocs: documents
+      });
+      setCases(syncRes.syncedCasesList);
+      setDocuments((prev) => {
+        const docMap = new Map();
+        [...syncRes.syncedDocsList, ...prev].forEach((d) => {
+          if (d && d.id && !docMap.has(d.id)) docMap.set(d.id, d);
+        });
+        return Array.from(docMap.values()).sort(
+          (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+        );
+      });
+      if (syncRes.totalSynced > 0) {
+        showToast(
+          `Berhasil memulihkan ${syncRes.syncedCasesCount} Berkas LP & ${syncRes.syncedDocsCount} Dokumen Arsip ke database Supabase!`
+        );
+      } else {
+        showToast('Seluruh data lokal (Perkara, Dumas LP, dan Arsip Dokumen) sudah tersinkronisasi 100% dengan database Supabase.');
+      }
+      return syncRes;
+    } catch (err) {
+      console.error('[Manual Sync Error]:', err);
+      alert(`Gagal menyinkronkan data lokal ke Supabase: ${err.message || err}`);
+      return { totalSynced: 0, error: err };
+    }
+  };
+
+  // Jaring Pengaman Re-Link Dokumen Arsip ke Laporan Polisi (READ / MERGE / RE-LINK ONLY - TANPA MENGHAPUS DATA)
+  const handleRelinkDocumentToCase = async (doc, targetCase) => {
+    if (isSpktRole(userRole)) return;
+    if (!doc?.id || !targetCase?.id) return;
+
+    const targetLp = targetCase.nomor_lp || targetCase.no_lp || '';
+    const existingMeta = (doc.meta_values && typeof doc.meta_values === 'object') ? doc.meta_values : {};
+    const updatedMetaValues = {
+      ...existingMeta,
+      nomor_lp: targetLp,
+      NOMOR_LP: targetLp
+    };
+
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          case_id: String(targetCase.id),
+          meta_values: updatedMetaValues
+        })
+        .eq('id', doc.id);
+
+      if (error) {
+        console.warn('[App] Notice saat re-link dokumen ke LP:', error.message);
+      }
+    } catch (err) {
+      console.warn('[App] Exception saat re-link dokumen ke LP:', err);
+    }
+
+    setDocuments((prev) =>
+      prev.map((d) => {
+        if (d.id !== doc.id) return d;
+        return {
+          ...d,
+          case_id: String(targetCase.id),
+          nomor_lp: targetLp,
+          no_lp: targetLp,
+          meta_values: updatedMetaValues
+        };
+      })
+    );
+
+    try {
+      const cached = JSON.parse(localStorage.getItem('emindik_archive_documents') || '[]');
+      if (Array.isArray(cached) && cached.length > 0) {
+        const updatedCache = cached.map((d) =>
+          d.id === doc.id
+            ? { ...d, case_id: String(targetCase.id), nomor_lp: targetLp, no_lp: targetLp, meta_values: updatedMetaValues }
+            : d
+        );
+        localStorage.setItem('emindik_archive_documents', JSON.stringify(updatedCache));
+      }
+    } catch {}
+
+    showToast(`Dokumen "${doc.doc_title || doc.title || 'Mindik'}" berhasil ditautkan ke ${targetLp}!`);
+  };
+
+  // --- SINKRONISASI & PEMULIHAN OTOMATIS PERKARA LP MODEL A & LP MODEL B (NON-DESTRUCTIVE MERGE) ---
+  // Menggabungkan:
+  // 1. Seluruh baris resmi dari public.cases (LP Model A maupun LP Model B)
+  // 2. Baris dari dumasList (laporan_pengaduan) yang bernomor LP/A atau LP/B atau sudah memiliki dokumen arsip
+  // 3. Rekonstruksi otomatis kartu perkara dari arsip public.documents (misal "LP A 2") jika induknya belum ada di state cases
+  const allMergedCases = useMemo(() => {
+    if (isSpktUser) return [];
+
+    const result = [];
+    const seenIds = new Set();
+
+    const addOrMergeCase = (rawCase) => {
+      if (!rawCase) return;
+      const nomorLp = String(rawCase.nomor_lp || rawCase.no_lp || '').trim();
+      const normalizedObj = {
+        ...rawCase,
+        id: String(rawCase.id || `recovered-case-${normalizeLpNumber(nomorLp) || Date.now()}`),
+        nomor_lp: nomorLp,
+        no_lp: String(rawCase.no_lp || rawCase.nomor_lp || nomorLp).trim()
+      };
+
+      const existingIdx = result.findIndex((existing) => {
+        if (String(existing.id) === String(normalizedObj.id)) return true;
+        const cleanExistingId = String(existing.id).replace(/^case-dumas-/, '');
+        const cleanNewId = String(normalizedObj.id).replace(/^case-dumas-/, '');
+        if (cleanExistingId && cleanNewId && cleanExistingId === cleanNewId) return true;
+        if (existing.dumas_id && normalizedObj.dumas_id && String(existing.dumas_id) === String(normalizedObj.dumas_id)) return true;
+        if (nomorLp && (existing.nomor_lp || existing.no_lp) && isSameLpNumber(existing.nomor_lp || existing.no_lp, nomorLp)) return true;
+        return false;
+      });
+
+      if (existingIdx === -1) {
+        seenIds.add(String(normalizedObj.id));
+        result.push(normalizedObj);
+      } else {
+        // Perkaya field yang kosong tanpa menimpa data utama dari public.cases
+        const current = result[existingIdx];
+        result[existingIdx] = {
+          ...normalizedObj,
+          ...current,
+          id: current.id,
+          dumas_id: current.dumas_id || normalizedObj.dumas_id || null,
+          nomor_lp: current.nomor_lp || normalizedObj.nomor_lp || current.no_lp || '',
+          no_lp: current.no_lp || normalizedObj.no_lp || current.nomor_lp || '',
+          nama_pelapor: (current.nama_pelapor && current.nama_pelapor !== '-') ? current.nama_pelapor : (normalizedObj.nama_pelapor || current.pelapor_name || '-'),
+          pelapor_name: (current.pelapor_name && current.pelapor_name !== '-') ? current.pelapor_name : (normalizedObj.pelapor_name || current.nama_pelapor || '-'),
+          nama_terlapor: (current.nama_terlapor && current.nama_terlapor !== '-') ? current.nama_terlapor : (normalizedObj.nama_terlapor || current.terlapor_name || '-'),
+          terlapor_name: (current.terlapor_name && current.terlapor_name !== '-') ? current.terlapor_name : (normalizedObj.terlapor_name || current.nama_terlapor || '-'),
+          tindak_pidana: (current.tindak_pidana && current.tindak_pidana !== '-') ? current.tindak_pidana : (normalizedObj.tindak_pidana || current.perkara || 'Tindak Pidana Umum')
+        };
+      }
+    };
+
+    // 1. Masukkan seluruh perkara dari public.cases
+    (Array.isArray(cases) ? cases : []).forEach(addOrMergeCase);
+
+    // 2. Periksa dumasList (laporan_pengaduan): masukkan jika merupakan Laporan Polisi (LP/A, LP A, LP/B, LP B)
+    //    atau jika sudah memiliki dokumen mindik yang merujuk ke ID / Nomor LP-nya
+    (Array.isArray(dumasList) ? dumasList : []).forEach((dItem) => {
+      if (!dItem) return;
+      const rawNo = String(dItem.nomor_lp || dItem.no_lp || '').trim();
+      const isPoliceReportNumber = /^LP[\s/._:-]*(?:[AB]|\d)/i.test(rawNo);
+      const hasLinkedDocs = (Array.isArray(documents) ? documents : []).some((doc) => {
+        if (!doc) return false;
+        const docCaseId = String(doc.case_id || '').trim();
+        if (docCaseId && (docCaseId === String(dItem.id) || docCaseId === `case-dumas-${dItem.id}`)) return true;
+        const docLp = doc.nomor_lp || doc.no_lp || doc.meta_values?.nomor_lp || doc.meta_values?.NOMOR_LP || '';
+        return Boolean(rawNo && docLp && isSameLpNumber(docLp, rawNo));
+      });
+
+      if (isPoliceReportNumber || hasLinkedDocs) {
+        const converted = convertDumasToCase(dItem);
+        // Jika dokumen di public.documents disimpan menggunakan dItem.id langsung, selaraskan ID-nya
+        const directIdUsedInDocs = (Array.isArray(documents) ? documents : []).some(
+          (doc) => doc && String(doc.case_id) === String(dItem.id)
+        );
+        addOrMergeCase({
+          ...converted,
+          id: directIdUsedInDocs ? String(dItem.id) : converted.id,
+          dumas_id: dItem.id
+        });
+      }
+    });
+
+    // 3. Rekonstruksi otomatis dari public.documents untuk LP (seperti "LP A 2") yang dokumennya ada di database
+    //    tetapi belum memiliki baris induk di state cases
+    const unlinkedGroups = new Map();
+    (Array.isArray(documents) ? documents : []).forEach((doc) => {
+      if (!doc) return;
+      const alreadyMatched = result.some((c) => isDocumentLinkedToCase(doc, c));
+      if (alreadyMatched) return;
+
+      const mv = (doc.meta_values && typeof doc.meta_values === 'object') ? doc.meta_values : {};
+      const docLp = String(
+        doc.nomor_lp ||
+        doc.no_lp ||
+        mv.nomor_lp ||
+        mv.NOMOR_LP ||
+        mv.no_lp ||
+        mv.NO_LP ||
+        ''
+      ).trim();
+      const docCaseId = String(doc.case_id || mv.case_id || '').trim();
+
+      // Hanya rekonstruksi kartu LP jika dokumen memiliki nomor_lp atau case_id
+      const normLp = normalizeLpNumber(docLp);
+      if (!normLp && !docCaseId) return;
+
+      // Cari apakah sudah ada grup yang cocok berdasarkan case_id atau isSameLpNumber
+      let matchedGroupKey = null;
+      for (const [gKey, gVal] of unlinkedGroups.entries()) {
+        if (docCaseId && gVal.caseIds.has(docCaseId)) {
+          matchedGroupKey = gKey;
+          break;
+        }
+        if (docLp && gVal.nomorLp && isSameLpNumber(docLp, gVal.nomorLp)) {
+          matchedGroupKey = gKey;
+          break;
+        }
+      }
+
+      if (!matchedGroupKey) {
+        matchedGroupKey = normLp ? `lp:${normLp}` : `id:${docCaseId}`;
+        unlinkedGroups.set(matchedGroupKey, {
+          nomorLp: docLp,
+          caseIds: new Set(docCaseId ? [docCaseId] : []),
+          docs: []
+        });
+      }
+
+      const grp = unlinkedGroups.get(matchedGroupKey);
+      if (docCaseId) grp.caseIds.add(docCaseId);
+      if (docLp && (!grp.nomorLp || docLp.length > grp.nomorLp.length)) {
+        grp.nomorLp = docLp;
+      }
+      grp.docs.push(doc);
+    });
+
+    for (const grp of unlinkedGroups.values()) {
+      const docsInGroup = grp.docs;
+      if (docsInGroup.length === 0) continue;
+
+      // Ambil metadata terkaya dari kumpulan dokumen LP tersebut
+      const firstCaseId = Array.from(grp.caseIds)[0] || `recovered-case-${normalizeLpNumber(grp.nomorLp) || Date.now()}`;
+      const recoveredLp = grp.nomorLp || firstCaseId;
+
+      let tanggalLp = '';
+      let namaPelapor = '';
+      let namaTerlapor = '';
+      let tindakPidana = '';
+      let pasal = '';
+      let locus = '';
+      let tempus = '';
+      let kasatNama = '';
+      let kasatPangkat = '';
+      let kasatNrp = '';
+      let penyidik1Nama = '';
+      let penyidik1Pangkat = '';
+      let penyidik1Nrp = '';
+      let penyidik1Jabatan = '';
+      let noSprinSidik = '';
+      let tglSprinSidik = '';
+      let noSpdp = '';
+      const recoveredSuspects = [];
+
+      docsInGroup.forEach((d) => {
+        const mv = (d.meta_values && typeof d.meta_values === 'object') ? d.meta_values : {};
+        if (!tanggalLp) tanggalLp = mv.TANGGAL_LP || mv.tanggal_lp || mv.TGL_LP || '';
+        if (!namaPelapor) namaPelapor = mv.NAMA_PELAPOR || mv.PELAPOR_NAMA || mv.nama_pelapor || '';
+        if (!namaTerlapor) {
+          namaTerlapor =
+            mv.NAMA_TERSANGKA ||
+            mv.TERSANGKA_NAMA ||
+            mv.NAMA_TERLAPOR ||
+            mv.TERLAPOR_NAMA ||
+            mv.target_suspect_name ||
+            mv.target_subject_name ||
+            '';
+        }
+        if (!tindakPidana) {
+          tindakPidana =
+            mv.TINDAK_PIDANA ||
+            mv.PERKARA ||
+            mv.URAIAN_SINGKAT_KEJADIAN ||
+            mv.tindak_pidana ||
+            '';
+        }
+        if (!pasal) pasal = mv.PASAL || mv.PASAL_UU || mv.PASAL_DILANGGAR || mv.pasal || '';
+        if (!locus) locus = mv.TEMPAT_KEJADIAN || mv.TKP || mv.LOCUS || mv.locus || '';
+        if (!tempus) tempus = mv.WAKTU_KEJADIAN || mv.TEMPUS || mv.tempus || '';
+        if (!kasatNama) kasatNama = mv.KASAT_NAMA || mv.ATASAN_NAMA || '';
+        if (!kasatPangkat) kasatPangkat = mv.KASAT_PANGKAT || mv.ATASAN_PANGKAT || '';
+        if (!kasatNrp) kasatNrp = mv.KASAT_NRP || mv.ATASAN_NRP || '';
+        if (!penyidik1Nama) penyidik1Nama = mv.PENYIDIK_1_NAMA || mv.PENYIDIK_PENANGAN_NAMA || mv.PENYIDIK_NAMA || '';
+        if (!penyidik1Pangkat) penyidik1Pangkat = mv.PENYIDIK_1_PANGKAT || mv.PENYIDIK_PENANGAN_PANGKAT || mv.PENYIDIK_PANGKAT || '';
+        if (!penyidik1Nrp) penyidik1Nrp = mv.PENYIDIK_1_NRP || mv.PENYIDIK_PENANGAN_NRP || mv.PENYIDIK_NRP || '';
+        if (!penyidik1Jabatan) penyidik1Jabatan = mv.PENYIDIK_1_JABATAN || mv.PENYIDIK_PENANGAN_JABATAN || mv.PENYIDIK_JABATAN || '';
+        if (!noSprinSidik) {
+          if (d.template_code === 'SPRIN_SIDIK' && d.doc_number && d.doc_number !== '-') {
+            noSprinSidik = d.doc_number;
+            tglSprinSidik = d.tgl_surat || mv.TANGGAL_SURAT || '';
+          } else {
+            noSprinSidik = mv.NO_SPRIN_SIDIK || mv.NOMOR_SPRIN_SIDIK || '';
+            tglSprinSidik = mv.TGL_SPRIN_SIDIK || mv.TANGGAL_SPRIN_SIDIK || '';
+          }
+        }
+        if (!noSpdp && String(d.template_code || '').startsWith('SPDP') && d.doc_number && d.doc_number !== '-') {
+          noSpdp = d.doc_number;
+        }
+        if (Array.isArray(mv.suspect_data)) {
+          mv.suspect_data.forEach((s) => {
+            if (s && (s.nama || s.name)) recoveredSuspects.push(s);
+          });
+        } else if (Array.isArray(mv.TERSANGKA)) {
+          mv.TERSANGKA.forEach((s) => {
+            if (s && (s.nama || s.NAMA)) {
+              recoveredSuspects.push({
+                nama: s.nama || s.NAMA,
+                nik: s.nik || s.NIK || '-',
+                jenis_kelamin: s.jenis_kelamin || s.JENIS_KELAMIN || 'Laki-laki',
+                tempat_lahir: s.tempat_lahir || s.TEMPAT_LAHIR || 'Kolaka Timur',
+                tgl_lahir: s.tgl_lahir || s.TANGGAL_LAHIR || null,
+                agama: s.agama || s.AGAMA || 'Islam',
+                pekerjaan: s.pekerjaan || s.PEKERJAAN || 'Wiraswasta',
+                kewarganegaraan: s.kewarganegaraan || s.KEWARGANEGARAAN || 'Indonesia',
+                alamat: s.alamat || s.ALAMAT || '',
+                status: 'tersangka'
+              });
+            }
+          });
+        }
+      });
+
+      const earliestCreatedAt = docsInGroup
+        .map((d) => d.created_at)
+        .filter(Boolean)
+        .sort()[0] || new Date().toISOString();
+
+      const isLpModelA = /^LP[\s/._:-]*A\b/i.test(recoveredLp);
+
+      addOrMergeCase({
+        id: firstCaseId,
+        nomor_lp: recoveredLp,
+        no_lp: recoveredLp,
+        jenis_lp: isLpModelA ? 'LP Model A' : 'LP Model B',
+        tanggal_lp: tanggalLp || earliestCreatedAt.split('T')[0],
+        nama_pelapor: namaPelapor || (isLpModelA ? 'Petugas Polri (LP Model A)' : '-'),
+        pelapor_name: namaPelapor || (isLpModelA ? 'Petugas Polri (LP Model A)' : '-'),
+        nama_terlapor: namaTerlapor || recoveredSuspects[0]?.nama || 'Dalam Penyidikan',
+        terlapor_name: namaTerlapor || recoveredSuspects[0]?.nama || 'Dalam Penyidikan',
+        tindak_pidana: tindakPidana || 'Tindak Pidana Umum',
+        perkara: tindakPidana || 'Tindak Pidana Umum',
+        pasal: pasal || '',
+        pasal_uu: pasal || '',
+        dasar_pasal_uu: pasal || '',
+        locus: locus || 'Wilayah Hukum Polres Kolaka Timur',
+        tempus: tempus || '-',
+        kasat_nama: kasatNama || 'IPTU Wahyu Hidayat, S.H.',
+        kasat_pangkat: kasatPangkat || 'IPTU',
+        kasat_nrp: kasatNrp || '',
+        penyidik_1_nama: penyidik1Nama || '',
+        penyidik_1_pangkat: penyidik1Pangkat || '',
+        penyidik_1_nrp: penyidik1Nrp || '',
+        penyidik_1_jabatan: penyidik1Jabatan || 'Penyidik Pembantu',
+        penyidik_penangan_index: 1,
+        no_sprin_sidik: noSprinSidik || null,
+        tgl_sprin_sidik: tglSprinSidik || null,
+        sprin_date: tglSprinSidik || tanggalLp || earliestCreatedAt.split('T')[0],
+        no_spdp: noSpdp || null,
+        status: 'Sidik',
+        created_at: earliestCreatedAt,
+        terlapor_list: recoveredSuspects,
+        tersangka_list: recoveredSuspects.filter((s) => s.status === 'tersangka' || !s.status),
+        references: {
+          no_sprin_sidik: noSprinSidik || '',
+          tgl_sprin_sidik: tglSprinSidik || '',
+          no_spdp: noSpdp || '',
+          terlapor_list: recoveredSuspects,
+          tersangka_list: recoveredSuspects
+        }
+      });
+    }
+
+    return result;
+  }, [cases, dumasList, documents, isSpktUser]);
 
   // Handle Public Mobile Upload Route (Dibuka langsung dari pemindaian kamera HP - Tanpa Perlu Login)
   if (typeof window !== 'undefined' && (window.location.pathname === '/mobile-upload' || window.location.pathname.startsWith('/mobile-upload'))) {
@@ -1199,7 +1661,7 @@ export default function App() {
       <ExpandingSidebar
         activeTab={isSpktUser ? 'dumas' : activeTab}
         setActiveTab={handleNavigateTab}
-        caseCount={cases.length}
+        caseCount={allMergedCases.length}
         dumasCount={dumasList.length}
         docCount={documents.length}
         personnelCount={personnel.length}
@@ -1238,7 +1700,7 @@ export default function App() {
         <main className="main-content">
           {!isSpktUser && activeTab === 'dashboard' && (
             <DashboardView
-              cases={cases}
+              cases={allMergedCases}
               documents={documents}
               personnel={personnel}
               onSelectCase={(c) => setSelectedCaseForDetail(c)}
@@ -1276,7 +1738,7 @@ export default function App() {
 
           {!isSpktUser && activeTab === 'cases' && (
             <CasesView
-              cases={cases}
+              cases={allMergedCases}
               personnel={personnel}
               userRole={userRole}
               onSelectCase={(c) => setSelectedCaseForDetail(c)}
@@ -1289,7 +1751,7 @@ export default function App() {
 
           {!isSpktUser && activeTab === 'generator' && (
             <MindikGeneratorView
-              cases={cases}
+              cases={allMergedCases}
               personnel={personnel}
               userRole={userRole}
               initialCase={caseForGenerator}
@@ -1304,16 +1766,18 @@ export default function App() {
             <ArchivesView
               documents={documents}
               personnel={personnel}
-              cases={cases}
+              cases={allMergedCases}
               onPreviewDoc={(doc) => setSelectedDocForPreview(doc)}
               onDeleteDoc={handleDeleteDocument}
               onOpenGenerator={(c) => handleOpenGeneratorForCase(c)}
+              onRelinkDoc={handleRelinkDocumentToCase}
+              onSyncLocalToDatabase={handleManualSyncLocalToSupabase}
             />
           )}
 
           {!isSpktUser && activeTab === 'personnel' && userRole === 'super_admin' && (
             <PersonnelView
-              cases={cases}
+              cases={allMergedCases}
               personnel={personnel}
               userRole={userRole}
               onAddPersonnel={handleAddPersonnel}
@@ -1345,7 +1809,7 @@ export default function App() {
           onClose={() => setSelectedCaseForDetail(null)}
           onGenerateDocForCase={(c, tpl, suspId) => handleOpenGeneratorForCase(c, tpl, suspId)}
           onUpdateCase={handleUpdateCase}
-          caseDocuments={documents.filter((d) => d.case_id === selectedCaseForDetail.id)}
+          caseDocuments={documents.filter((d) => isDocumentLinkedToCase(d, selectedCaseForDetail))}
         />
       )}
 
@@ -1362,7 +1826,7 @@ export default function App() {
       {!isSpktUser && selectedDocForPreview && (
         <DocPreviewModal
           docItem={selectedDocForPreview}
-          cases={cases}
+          cases={allMergedCases}
           onClose={() => setSelectedDocForPreview(null)}
         />
       )}

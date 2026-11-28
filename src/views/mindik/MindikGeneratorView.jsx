@@ -64,8 +64,13 @@ import {
   toCanonicalMindikCode,
   isValidOfficialDocNumber,
   resolveLatestArchiveDoc,
-  getSubjectModeForTemplate
+  getSubjectModeForTemplate,
+  isDocumentLinkedToCase
 } from '../../constants/mindikChainRegistry';
+import {
+  DOCUMENTS_LOCAL_STORAGE_KEY,
+  upsertDocumentToSupabaseSafe
+} from '../../services/localDataSyncService';
 
 export default function MindikGeneratorView({
   cases = [],
@@ -289,7 +294,9 @@ export default function MindikGeneratorView({
     });
 
     // Muat Arsip Dokumen murni dari tabel resmi public.documents (diurutkan created_at ASC)
-    const fetchActiveCaseDocs = async (caseId) => {
+    // Mencocokkan baik berdasarkan case_id (termasuk dumas_id / case-dumas-*) maupun normalisasi nomor_lp
+    const fetchActiveCaseDocs = async (targetCase) => {
+      const caseId = targetCase?.id;
       if (!caseId) {
         if (caseFetchSeqRef.current === fetchSeq) setActiveCaseDocs([]);
         return;
@@ -299,13 +306,30 @@ export default function MindikGeneratorView({
         const { data, error } = await supabase
           .from('documents')
           .select('*')
-          .eq('case_id', String(caseId).trim())
           .order('created_at', { ascending: true });
 
         if (error) throw error;
         if (caseFetchSeqRef.current !== fetchSeq) return;
 
-        const normalizedDocs = (Array.isArray(data) ? data : []).map((doc) => {
+        // Gabungkan hasil public.documents dengan cache lokal (jika ada dokumen offline yang belum tersinkron)
+        let localCachedDocs = [];
+        try {
+          const parsedLocal = JSON.parse(localStorage.getItem(DOCUMENTS_LOCAL_STORAGE_KEY) || '[]');
+          if (Array.isArray(parsedLocal)) localCachedDocs = parsedLocal;
+        } catch {}
+
+        const combinedById = new Map();
+        [...(Array.isArray(data) ? data : []), ...localCachedDocs].forEach((doc) => {
+          if (doc && doc.id && !combinedById.has(doc.id)) {
+            combinedById.set(doc.id, doc);
+          }
+        });
+
+        const matchedRows = Array.from(combinedById.values()).filter((doc) =>
+          isDocumentLinkedToCase(doc, targetCase)
+        );
+
+        const normalizedDocs = matchedRows.map((doc) => {
           const rawCode = doc.template_code || doc.code || '';
           const rawTitle = doc.doc_title || doc.title || '';
           const canonicalCode = toCanonicalMindikCode(rawCode, rawTitle);
@@ -337,7 +361,7 @@ export default function MindikGeneratorView({
       }
     };
 
-    fetchActiveCaseDocs(currentCase?.id);
+    fetchActiveCaseDocs(currentCase);
 
     // Muat Tersangka Perkara
     const loadCaseSuspects = async () => {
@@ -2099,20 +2123,18 @@ export default function MindikGeneratorView({
       };
 
       let savedDoc = null;
+      let dbSaveError = null;
       try {
-        const { data, error } = await supabase.from('documents').insert([dbDocumentPayload]).select();
-        if (error) {
-          console.warn('[MindikGeneratorView] Gagal simpan ke documents:', error.message);
-        } else if (data && data[0]) {
-          savedDoc = {
-            ...data[0],
-            template_code: toCanonicalMindikCode(data[0].template_code, data[0].doc_title),
-            tgl_surat: data[0].meta_values?.tgl_surat || docDate,
-            nomor_lp: data[0].meta_values?.nomor_lp || currentCase.nomor_lp || currentCase.no_lp || ''
-          };
+        const upsertRes = await upsertDocumentToSupabaseSafe(dbDocumentPayload, currentCase);
+        if (!upsertRes.success && upsertRes.error) {
+          dbSaveError = upsertRes.error;
+          console.warn('[MindikGeneratorView] Gagal simpan ke documents:', upsertRes.error.message || upsertRes.error);
+        } else if (upsertRes.data) {
+          savedDoc = upsertRes.data;
           setActiveCaseDocs(prev => [...prev, savedDoc]);
         }
       } catch (errCaseDoc) {
+        dbSaveError = errCaseDoc;
         console.warn('[MindikGeneratorView] Exception saat simpan ke documents:', errCaseDoc?.message || errCaseDoc);
       }
 
@@ -2187,13 +2209,20 @@ export default function MindikGeneratorView({
       }
 
       setIsSaved(true);
-      setFeedbackNotice({
-        type: 'success',
-        message: `Arsip '${tplTitle}' berhasil disimpan ke riwayat perkara.`
-      });
+      if (dbSaveError) {
+        setFeedbackNotice({
+          type: 'warning',
+          message: `Dokumen disimpan ke arsip lokal, namun Supabase menolak penyimpanan server: ${dbSaveError.message || JSON.stringify(dbSaveError)}`
+        });
+      } else {
+        setFeedbackNotice({
+          type: 'success',
+          message: `Arsip '${tplTitle}' berhasil disimpan ke database Supabase & riwayat perkara.`
+        });
+      }
 
       if (onSaveDocument) {
-        onSaveDocument(savedDoc ? { ...savedDoc, _skipDbUpsert: true } : hydratedDocForUi);
+        onSaveDocument(savedDoc ? { ...savedDoc, _skipDbUpsert: true } : { ...hydratedDocForUi, _skipDbUpsert: true });
       }
       return true;
     } catch (err) {

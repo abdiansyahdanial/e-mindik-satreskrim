@@ -242,11 +242,21 @@ export async function fetchDumasRecords() {
 
     // Jika pemanggilan ke Supabase berhasil
     if (!error && Array.isArray(dbRecords)) {
-      // JIKA TABEL SUPABASE KOSONG []: biarkan data kosong [], jangan pernah isi ulang dengan dummy!
-      if (dbRecords.length === 0) {
-        try {
-          localStorage.removeItem(DUMAS_LOCAL_STORAGE_KEY);
-        } catch {}
+      // BACA JUGA CACHE LOKAL AGAR DATA DI LOCALSTORAGE TIDAK PERNAH HILANG (STRICT GUARDRAIL: DILARANG MENGHAPUS DATA LOKAL)
+      let localRecords = [];
+      try {
+        const rawLocal = localStorage.getItem(DUMAS_LOCAL_STORAGE_KEY);
+        if (rawLocal) {
+          const parsedLocal = JSON.parse(rawLocal);
+          if (Array.isArray(parsedLocal)) {
+            localRecords = parsedLocal.filter(
+              (item) => item && item.id !== 'dum-2026-001' && !String(item.id).startsWith('dum-mock-')
+            );
+          }
+        }
+      } catch {}
+
+      if (dbRecords.length === 0 && localRecords.length === 0) {
         return { success: true, data: [] };
       }
 
@@ -274,12 +284,33 @@ export async function fetchDumasRecords() {
         })
       );
 
-      // Sinkronkan ke cache lokal sebagai fallback offline
+      // Gabungkan data Supabase + data lokal yang belum ada di Supabase (tanpa menimpa data server)
+      const mergedMap = new Map();
+      enriched.forEach((rec) => {
+        if (rec && (rec.id || rec.nomor_lp)) {
+          mergedMap.set(String(rec.id || rec.nomor_lp), rec);
+        }
+      });
+      localRecords.forEach((locRec) => {
+        if (!locRec) return;
+        const alreadyInServer = enriched.some(
+          (srv) =>
+            (srv.id && locRec.id && String(srv.id) === String(locRec.id)) ||
+            (srv.nomor_lp && locRec.nomor_lp && String(srv.nomor_lp).trim().toUpperCase() === String(locRec.nomor_lp).trim().toUpperCase())
+        );
+        if (!alreadyInServer) {
+          mergedMap.set(String(locRec.id || locRec.nomor_lp || `local-${Date.now()}`), locRec);
+        }
+      });
+
+      const mergedAll = Array.from(mergedMap.values());
+
+      // Sinkronkan gabungan ke cache lokal sebagai fallback offline
       try {
-        localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(enriched));
+        localStorage.setItem(DUMAS_LOCAL_STORAGE_KEY, JSON.stringify(mergedAll));
       } catch {}
 
-      return { success: true, data: enriched };
+      return { success: true, data: mergedAll };
     }
   } catch (err) {
     console.warn('Gagal fetch dari Supabase, beralih ke cache lokal:', err);

@@ -633,22 +633,59 @@ export default function CaseCreateModal({ onClose, onAddCase, personnel = [] }) 
 
             {/* SECTION 1: DATA LAPORAN POLISI */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FF3B3B', letterSpacing: '0.5px' }}>
-                1. IDENTITAS DASAR LAPORAN POLISI
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#FF3B3B', letterSpacing: '0.5px' }}>
+                  1. IDENTITAS DASAR LAPORAN POLISI
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Model LP:</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        nomor_lp: /^LP[\s/._:-]*A\b/i.test(prev.nomor_lp || '')
+                          ? String(prev.nomor_lp).replace(/^LP([\s/._:-]*)A\b/i, 'LP$1B')
+                          : (prev.nomor_lp || 'LP/B/1/IX/2026/SPKT/POLRES KOLAKA TIMUR')
+                      }))
+                    }
+                    className={`btn btn-sm ${!/^LP[\s/._:-]*A\b/i.test(formData.nomor_lp || '') ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: '11px', padding: '3px 10px' }}
+                  >
+                    LP Model B (Masyarakat)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        nomor_lp: /^LP[\s/._:-]*B\b/i.test(prev.nomor_lp || '')
+                          ? String(prev.nomor_lp).replace(/^LP([\s/._:-]*)B\b/i, 'LP$1A')
+                          : (/^LP[\s/._:-]*A\b/i.test(prev.nomor_lp || '')
+                              ? prev.nomor_lp
+                              : 'LP/A/2/IX/2026/SPKT/POLRES KOLAKA TIMUR')
+                      }))
+                    }
+                    className={`btn btn-sm ${/^LP[\s/._:-]*A\b/i.test(formData.nomor_lp || '') ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: '11px', padding: '3px 10px' }}
+                  >
+                    LP Model A (Petugas Polri)
+                  </button>
+                </div>
               </div>
 
               {/* Baris 1: Nomor LP & Tanggal LP */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">
-                    Nomor Laporan Polisi (LP) <span style={{ color: 'var(--accent-red)' }}>*</span>
+                    Nomor Laporan Polisi (LP Model A / LP Model B) <span style={{ color: 'var(--accent-red)' }}>*</span>
                   </label>
                   <input
                     type="text"
                     name="nomor_lp"
                     value={formData.nomor_lp}
                     onChange={handleChange}
-                    placeholder="Contoh: LP/B/24/VIII/2026/SPKT/POLRES KOLAKA TIMUR"
+                    placeholder="Contoh: LP/A/2/... atau LP/B/24/VIII/2026/SPKT/POLRES KOLAKA TIMUR"
                     className="form-input mono"
                     required
                   />
